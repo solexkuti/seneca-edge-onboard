@@ -49,6 +49,7 @@ export default function OnboardingFlow() {
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [name, setName] = useState("");
+  const [entered, setEntered] = useState(false);
   const slide = slideOrder[index];
 
   const goNext = () => {
@@ -65,11 +66,16 @@ export default function OnboardingFlow() {
 
   // Auto-advance for slides with auto duration
   useEffect(() => {
+    if (entered) return;
     if (slide.auto > 0) {
       const t = window.setTimeout(goNext, slide.auto);
       return () => window.clearTimeout(t);
     }
-  }, [index, slide.auto]);
+  }, [index, slide.auto, entered]);
+
+  if (entered) {
+    return <ControlHub userName={name} />;
+  }
 
   const Component = slide.Component;
 
@@ -110,7 +116,7 @@ export default function OnboardingFlow() {
                   onChange={setName}
                 />
               ) : slide.key === "success" ? (
-                <Slide7Success onNext={goNext} userName={name} />
+                <Slide7Success onNext={() => setEntered(true)} userName={name} />
               ) : (
                 <Component onNext={goNext} />
               )}
