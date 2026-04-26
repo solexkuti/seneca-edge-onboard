@@ -33,7 +33,7 @@ export default function Slide4Market({ onNext }: SlideProps) {
         <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1">
           <span className="h-1.5 w-1.5 rounded-full bg-gradient-primary" />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
-            Step 1 of 2
+            Step 1 of 4
           </span>
         </div>
         <h1 className="mt-3 text-[26px] font-bold leading-[1.15] tracking-tight text-text-primary">
@@ -54,7 +54,10 @@ export default function Slide4Market({ onNext }: SlideProps) {
               icon={m.icon}
               label={m.label}
               selected={selected === m.id}
-              onClick={() => setSelected(m.id)}
+              onClick={() => {
+                setSelected(m.id);
+                window.setTimeout(onNext, 380);
+              }}
             />
           </motion.div>
         ))}
