@@ -21,7 +21,7 @@ export type SlideProps = {
 // Then the existing question flow continues: market → style → loader → success.
 const slideOrder = [
   { key: "pressure", auto: 4200, Component: Slide1Hero },
-  { key: "behavior", auto: 4200, Component: Slide2Intelligence },
+  { key: "behavior", auto: 5200, Component: Slide2Intelligence },
   { key: "rules", auto: 4200, Component: Slide3Flow },
   { key: "discipline", auto: 4200, Component: Slide6Building },
   { key: "control", auto: 4500, Component: SlideControl },
