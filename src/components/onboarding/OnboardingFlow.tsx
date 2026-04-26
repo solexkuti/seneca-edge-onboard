@@ -18,6 +18,7 @@ import SlideBuildingLoader from "@/components/onboarding/SlideBuildingLoader";
 import Slide7Success from "@/components/onboarding/Slide7Success";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
 import ProgressDots from "@/components/onboarding/ProgressDots";
+import ControlHub from "@/components/control-hub/ControlHub";
 
 export type SlideProps = {
   onNext: () => void;
