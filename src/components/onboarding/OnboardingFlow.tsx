@@ -5,11 +5,14 @@ import Slide2Intelligence from "@/components/onboarding/Slide2Intelligence";
 import Slide3Flow from "@/components/onboarding/Slide3Flow";
 import Slide6Building from "@/components/onboarding/Slide6Building";
 import SlideControl from "@/components/onboarding/SlideControl";
+import SlideMentor from "@/components/onboarding/SlideMentor";
 import SlideCTA from "@/components/onboarding/SlideCTA";
 import Slide4Market from "@/components/onboarding/Slide4Market";
 import SlideExperience from "@/components/onboarding/SlideExperience";
 import SlideStruggle from "@/components/onboarding/SlideStruggle";
 import SlideGoal from "@/components/onboarding/SlideGoal";
+import SlideName from "@/components/onboarding/SlideName";
+import SlideAuth from "@/components/onboarding/SlideAuth";
 import SlideBuildingLoader from "@/components/onboarding/SlideBuildingLoader";
 import Slide7Success from "@/components/onboarding/Slide7Success";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
@@ -19,29 +22,42 @@ export type SlideProps = {
   onNext: () => void;
 };
 
-// Narrative slides 1–5 auto-advance. Slide 6 (CTA) waits for user tap.
-// Then the existing question flow continues: market → style → loader → success.
+// Narrative slides auto-advance. Question/input slides wait for the user.
+// Final flow: psychology → AI mentor preview → 4 questions → name → auth → build → success.
 const slideOrder = [
   { key: "pressure", auto: 4200, Component: Slide1Hero },
   { key: "behavior", auto: 5200, Component: Slide2Intelligence },
   { key: "rules", auto: 4200, Component: Slide3Flow },
   { key: "discipline", auto: 4200, Component: Slide6Building },
   { key: "control", auto: 4500, Component: SlideControl },
+  { key: "mentor", auto: 5500, Component: SlideMentor },
   { key: "cta", auto: 0, Component: SlideCTA },
   { key: "market", auto: 0, Component: Slide4Market },
   { key: "experience", auto: 0, Component: SlideExperience },
   { key: "struggle", auto: 0, Component: SlideStruggle },
   { key: "goal", auto: 0, Component: SlideGoal },
+  { key: "name", auto: 0, Component: SlideName },
+  { key: "auth", auto: 0, Component: SlideAuth },
   { key: "loader", auto: 4500, Component: SlideBuildingLoader },
   { key: "success", auto: 0, Component: Slide7Success },
 ] as const;
 
 export default function OnboardingFlow() {
   const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState<1 | -1>(1);
+  const [name, setName] = useState("");
   const slide = slideOrder[index];
 
   const goNext = () => {
+    setDirection(1);
     setIndex((i) => Math.min(i + 1, slideOrder.length - 1));
+  };
+
+  const goTo = (target: number) => {
+    if (target === index) return;
+    if (target > index) return; // never jump forward via dots
+    setDirection(-1);
+    setIndex(target);
   };
 
   // Auto-advance for slides with auto duration
@@ -65,21 +81,36 @@ export default function OnboardingFlow() {
         {/* Top brand row */}
         <div className="flex items-center justify-between">
           <BrandMark />
-          <ProgressDots count={slideOrder.length} active={index} />
+          <ProgressDots
+            count={slideOrder.length}
+            active={index}
+            onSelect={goTo}
+          />
         </div>
 
         {/* Slide stage */}
         <div className="relative mt-4 flex flex-1 items-center justify-center">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={slide.key}
-              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              custom={direction}
+              initial={{ opacity: 0, y: direction === 1 ? 24 : -24, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -16, scale: 0.98 }}
+              exit={{ opacity: 0, y: direction === 1 ? -16 : 16, scale: 0.98 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               className="w-full"
             >
-              <Component onNext={goNext} />
+              {slide.key === "name" ? (
+                <SlideName
+                  onNext={goNext}
+                  value={name}
+                  onChange={setName}
+                />
+              ) : slide.key === "success" ? (
+                <Slide7Success onNext={goNext} userName={name} />
+              ) : (
+                <Component onNext={goNext} />
+              )}
             </motion.div>
           </AnimatePresence>
         </div>

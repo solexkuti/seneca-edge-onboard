@@ -40,11 +40,11 @@ export default function Slide3Flow(_props: SlideProps) {
         className="text-center"
       >
         <h1 className="text-[22px] font-bold leading-[1.25] tracking-tight text-text-primary">
-          Before you enter a trade…
+          Drop your chart.
         </h1>
-        <p className="mt-2 text-[18px] font-semibold">
-          it checks your setup against{" "}
-          <span className="text-gradient-primary">your rules.</span>
+        <p className="mt-2 text-[18px] font-semibold text-text-primary">
+          Get instant insight based on{" "}
+          <span className="text-gradient-primary">how YOU trade.</span>
         </p>
       </motion.div>
     </div>

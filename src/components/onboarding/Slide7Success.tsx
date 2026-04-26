@@ -2,7 +2,10 @@ import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
 
-export default function Slide7Success({ onNext }: SlideProps) {
+export default function Slide7Success({
+  onNext,
+  userName,
+}: SlideProps & { userName?: string }) {
   return (
     <div className="flex flex-col items-center gap-10">
       {/* Logo with particles */}
@@ -95,10 +98,10 @@ export default function Slide7Success({ onNext }: SlideProps) {
         className="text-center"
       >
         <h1 className="text-[28px] font-bold leading-[1.1] tracking-tight text-text-primary">
-          You're in.
+          {userName ? `You're in, ${userName}.` : "You're in."}
         </h1>
         <h2 className="mt-1 text-[24px] font-bold leading-[1.1] tracking-tight">
-          <span className="text-gradient-mix">Let's trade smarter.</span>
+          <span className="text-gradient-mix">Let's trade with control.</span>
         </h2>
       </motion.div>
 
