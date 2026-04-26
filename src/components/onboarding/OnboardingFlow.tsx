@@ -5,6 +5,7 @@ import Slide2Intelligence from "@/components/onboarding/Slide2Intelligence";
 import Slide3Flow from "@/components/onboarding/Slide3Flow";
 import Slide6Building from "@/components/onboarding/Slide6Building";
 import SlideControl from "@/components/onboarding/SlideControl";
+import SlideJournal from "@/components/onboarding/SlideJournal";
 import SlideMentor from "@/components/onboarding/SlideMentor";
 import SlideCTA from "@/components/onboarding/SlideCTA";
 import Slide4Market from "@/components/onboarding/Slide4Market";
