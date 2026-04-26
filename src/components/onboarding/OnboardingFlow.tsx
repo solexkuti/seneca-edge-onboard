@@ -5,6 +5,7 @@ import Slide2Intelligence from "@/components/onboarding/Slide2Intelligence";
 import Slide3Flow from "@/components/onboarding/Slide3Flow";
 import Slide6Building from "@/components/onboarding/Slide6Building";
 import SlideControl from "@/components/onboarding/SlideControl";
+import SlideJournal from "@/components/onboarding/SlideJournal";
 import SlideMentor from "@/components/onboarding/SlideMentor";
 import SlideCTA from "@/components/onboarding/SlideCTA";
 import Slide4Market from "@/components/onboarding/Slide4Market";
@@ -30,6 +31,7 @@ const slideOrder = [
   { key: "rules", auto: 4200, Component: Slide3Flow },
   { key: "discipline", auto: 4200, Component: Slide6Building },
   { key: "control", auto: 4500, Component: SlideControl },
+  { key: "journal", auto: 5200, Component: SlideJournal },
   { key: "mentor", auto: 5500, Component: SlideMentor },
   { key: "cta", auto: 0, Component: SlideCTA },
   { key: "market", auto: 0, Component: Slide4Market },
