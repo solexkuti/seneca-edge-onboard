@@ -1,26 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
+import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "SenecaEdge — Trade smarter, not harder." },
+      {
+        name: "description",
+        content:
+          "SenecaEdge is the trading AI that analyzes your chart in seconds and builds your decision system.",
+      },
+      { property: "og:title", content: "SenecaEdge — Trading AI" },
+      {
+        property: "og:description",
+        content:
+          "AI-powered trade setups, calculated entries, stops, and take profits. Your edge, built into every trade.",
+      },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
-}
-
 function Index() {
-  return <PlaceholderIndex />;
+  return <OnboardingFlow />;
 }
