@@ -3,9 +3,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import Slide1Hero from "@/components/onboarding/Slide1Hero";
 import Slide2Intelligence from "@/components/onboarding/Slide2Intelligence";
 import Slide3Flow from "@/components/onboarding/Slide3Flow";
+import Slide6Building from "@/components/onboarding/Slide6Building";
+import SlideControl from "@/components/onboarding/SlideControl";
+import SlideCTA from "@/components/onboarding/SlideCTA";
 import Slide4Market from "@/components/onboarding/Slide4Market";
 import Slide5Style from "@/components/onboarding/Slide5Style";
-import Slide6Building from "@/components/onboarding/Slide6Building";
+import SlideBuildingLoader from "@/components/onboarding/SlideBuildingLoader";
 import Slide7Success from "@/components/onboarding/Slide7Success";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
 import ProgressDots from "@/components/onboarding/ProgressDots";
@@ -14,13 +17,18 @@ export type SlideProps = {
   onNext: () => void;
 };
 
+// Narrative slides 1–5 auto-advance. Slide 6 (CTA) waits for user tap.
+// Then the existing question flow continues: market → style → loader → success.
 const slideOrder = [
-  { key: "hero", auto: 3200, Component: Slide1Hero },
-  { key: "intel", auto: 3200, Component: Slide2Intelligence },
-  { key: "flow", auto: 0, Component: Slide3Flow },
+  { key: "pressure", auto: 3600, Component: Slide1Hero },
+  { key: "behavior", auto: 3600, Component: Slide2Intelligence },
+  { key: "rules", auto: 3600, Component: Slide3Flow },
+  { key: "discipline", auto: 3600, Component: Slide6Building },
+  { key: "control", auto: 3800, Component: SlideControl },
+  { key: "cta", auto: 0, Component: SlideCTA },
   { key: "market", auto: 0, Component: Slide4Market },
   { key: "style", auto: 0, Component: Slide5Style },
-  { key: "building", auto: 4500, Component: Slide6Building },
+  { key: "loader", auto: 4500, Component: SlideBuildingLoader },
   { key: "success", auto: 0, Component: Slide7Success },
 ] as const;
 
