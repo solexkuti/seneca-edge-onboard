@@ -1,25 +1,17 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  Bitcoin,
-  CandlestickChart,
-  DollarSign,
-  Globe2,
-  LineChart,
-} from "lucide-react";
+import { ArrowRight, Flame, Repeat, Timer, ShieldOff } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import type { SlideProps } from "./OnboardingFlow";
 
-const markets = [
-  { id: "forex", label: "Forex", icon: <DollarSign className="h-5 w-5" /> },
-  { id: "crypto", label: "Crypto", icon: <Bitcoin className="h-5 w-5" /> },
-  { id: "stocks", label: "Stocks", icon: <CandlestickChart className="h-5 w-5" /> },
-  { id: "indices", label: "Indices", icon: <LineChart className="h-5 w-5" /> },
-  { id: "all", label: "All Markets", icon: <Globe2 className="h-5 w-5" /> },
+const struggles = [
+  { id: "emotion", label: "Emotional decisions", icon: <Flame className="h-5 w-5" /> },
+  { id: "revenge", label: "Revenge trading", icon: <Repeat className="h-5 w-5" /> },
+  { id: "overtrade", label: "Overtrading", icon: <Timer className="h-5 w-5" /> },
+  { id: "rules", label: "Breaking my own rules", icon: <ShieldOff className="h-5 w-5" /> },
 ];
 
-export default function Slide4Market({ onNext }: SlideProps) {
+export default function SlideStruggle({ onNext }: SlideProps) {
   const [selected, setSelected] = useState<string | null>(null);
 
   return (
@@ -30,20 +22,20 @@ export default function Slide4Market({ onNext }: SlideProps) {
         transition={{ duration: 0.5 }}
         className="text-center"
       >
-        <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-gradient-primary" />
+        <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-highlight/15 px-3 py-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-gradient-mix" />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
-            Step 1 of 4
+            Step 3 of 4
           </span>
         </div>
         <h1 className="mt-3 text-[26px] font-bold leading-[1.15] tracking-tight text-text-primary">
-          Which market do you{" "}
-          <span className="text-gradient-primary">trade most?</span>
+          What breaks your{" "}
+          <span className="text-gradient-mix">discipline most?</span>
         </h1>
       </motion.div>
 
       <div className="space-y-2.5">
-        {markets.map((m, i) => (
+        {struggles.map((m, i) => (
           <motion.div
             key={m.id}
             initial={{ opacity: 0, x: -16 }}

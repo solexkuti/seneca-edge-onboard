@@ -1,25 +1,17 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  Bitcoin,
-  CandlestickChart,
-  DollarSign,
-  Globe2,
-  LineChart,
-} from "lucide-react";
+import { ArrowRight, Sprout, TrendingUp, Trophy, Crown } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import type { SlideProps } from "./OnboardingFlow";
 
-const markets = [
-  { id: "forex", label: "Forex", icon: <DollarSign className="h-5 w-5" /> },
-  { id: "crypto", label: "Crypto", icon: <Bitcoin className="h-5 w-5" /> },
-  { id: "stocks", label: "Stocks", icon: <CandlestickChart className="h-5 w-5" /> },
-  { id: "indices", label: "Indices", icon: <LineChart className="h-5 w-5" /> },
-  { id: "all", label: "All Markets", icon: <Globe2 className="h-5 w-5" /> },
+const levels = [
+  { id: "new", label: "New · Less than 1 year", icon: <Sprout className="h-5 w-5" /> },
+  { id: "growing", label: "Growing · 1–3 years", icon: <TrendingUp className="h-5 w-5" /> },
+  { id: "experienced", label: "Experienced · 3–5 years", icon: <Trophy className="h-5 w-5" /> },
+  { id: "pro", label: "Pro · 5+ years", icon: <Crown className="h-5 w-5" /> },
 ];
 
-export default function Slide4Market({ onNext }: SlideProps) {
+export default function SlideExperience({ onNext }: SlideProps) {
   const [selected, setSelected] = useState<string | null>(null);
 
   return (
@@ -33,17 +25,17 @@ export default function Slide4Market({ onNext }: SlideProps) {
         <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1">
           <span className="h-1.5 w-1.5 rounded-full bg-gradient-primary" />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
-            Step 1 of 4
+            Step 2 of 4
           </span>
         </div>
         <h1 className="mt-3 text-[26px] font-bold leading-[1.15] tracking-tight text-text-primary">
-          Which market do you{" "}
-          <span className="text-gradient-primary">trade most?</span>
+          How long have you{" "}
+          <span className="text-gradient-primary">been trading?</span>
         </h1>
       </motion.div>
 
       <div className="space-y-2.5">
-        {markets.map((m, i) => (
+        {levels.map((m, i) => (
           <motion.div
             key={m.id}
             initial={{ opacity: 0, x: -16 }}

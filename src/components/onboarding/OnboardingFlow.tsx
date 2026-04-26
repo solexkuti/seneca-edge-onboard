@@ -7,7 +7,9 @@ import Slide6Building from "@/components/onboarding/Slide6Building";
 import SlideControl from "@/components/onboarding/SlideControl";
 import SlideCTA from "@/components/onboarding/SlideCTA";
 import Slide4Market from "@/components/onboarding/Slide4Market";
-import Slide5Style from "@/components/onboarding/Slide5Style";
+import SlideExperience from "@/components/onboarding/SlideExperience";
+import SlideStruggle from "@/components/onboarding/SlideStruggle";
+import SlideGoal from "@/components/onboarding/SlideGoal";
 import SlideBuildingLoader from "@/components/onboarding/SlideBuildingLoader";
 import Slide7Success from "@/components/onboarding/Slide7Success";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
@@ -27,7 +29,9 @@ const slideOrder = [
   { key: "control", auto: 4500, Component: SlideControl },
   { key: "cta", auto: 0, Component: SlideCTA },
   { key: "market", auto: 0, Component: Slide4Market },
-  { key: "style", auto: 0, Component: Slide5Style },
+  { key: "experience", auto: 0, Component: SlideExperience },
+  { key: "struggle", auto: 0, Component: SlideStruggle },
+  { key: "goal", auto: 0, Component: SlideGoal },
   { key: "loader", auto: 4500, Component: SlideBuildingLoader },
   { key: "success", auto: 0, Component: Slide7Success },
 ] as const;
