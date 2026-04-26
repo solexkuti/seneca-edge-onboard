@@ -98,14 +98,16 @@ export default function SlideCTA({ onNext }: SlideProps) {
         transition={{ delay: 0.3, duration: 0.6 }}
         className="text-center"
       >
-        <h1 className="text-[28px] font-bold leading-[1.1] tracking-tight text-text-primary">
-          We don't guess.
+        <h1 className="text-[26px] font-bold leading-[1.15] tracking-tight text-text-primary">
+          Discipline beats strategy.
         </h1>
-        <h2 className="mt-1 text-[28px] font-bold leading-[1.1] tracking-tight">
-          <span className="text-gradient-mix">We calculate.</span>
+        <h2 className="mt-1 text-[26px] font-bold leading-[1.15] tracking-tight">
+          <span className="text-gradient-mix">Control beats emotion.</span>
         </h2>
-        <p className="mt-3 text-[14px] text-text-secondary">
-          Your edge, built into every decision.
+        <p className="mt-3 text-[14px] leading-[1.5] text-text-secondary">
+          SenecaEdge keeps you consistent
+          <br />
+          when pressure tries to break you.
         </p>
       </motion.div>
 
@@ -121,7 +123,7 @@ export default function SlideCTA({ onNext }: SlideProps) {
       >
         <span className="absolute inset-0 bg-gradient-flash opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
         <span className="relative flex items-center justify-center gap-2 text-[16px] font-semibold text-white">
-          Start Trading
+          Step into Control
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
         </span>
       </motion.button>
