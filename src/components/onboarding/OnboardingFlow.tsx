@@ -20,11 +20,11 @@ export type SlideProps = {
 // Narrative slides 1–5 auto-advance. Slide 6 (CTA) waits for user tap.
 // Then the existing question flow continues: market → style → loader → success.
 const slideOrder = [
-  { key: "pressure", auto: 3600, Component: Slide1Hero },
-  { key: "behavior", auto: 3600, Component: Slide2Intelligence },
-  { key: "rules", auto: 3600, Component: Slide3Flow },
-  { key: "discipline", auto: 3600, Component: Slide6Building },
-  { key: "control", auto: 3800, Component: SlideControl },
+  { key: "pressure", auto: 4200, Component: Slide1Hero },
+  { key: "behavior", auto: 4200, Component: Slide2Intelligence },
+  { key: "rules", auto: 4200, Component: Slide3Flow },
+  { key: "discipline", auto: 4200, Component: Slide6Building },
+  { key: "control", auto: 4500, Component: SlideControl },
   { key: "cta", auto: 0, Component: SlideCTA },
   { key: "market", auto: 0, Component: Slide4Market },
   { key: "style", auto: 0, Component: Slide5Style },
