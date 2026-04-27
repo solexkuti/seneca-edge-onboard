@@ -248,18 +248,18 @@ function MentalSignalCard({ pattern }: { pattern: BehaviorPattern }) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/75">
-              Mental signal
+              {eyebrow}
             </p>
             <AnimatePresence mode="wait">
               <motion.p
-                key={signalIdx}
+                key={pattern.kind}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                 className="mt-1 text-[15.5px] font-semibold leading-snug tracking-tight text-white"
               >
-                {message}
+                {pattern.message}
               </motion.p>
             </AnimatePresence>
           </div>
