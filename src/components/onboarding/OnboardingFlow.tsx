@@ -1,61 +1,37 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useNavigate } from "@tanstack/react-router";
 import Slide1Hero from "@/components/onboarding/Slide1Hero";
 import Slide2Intelligence from "@/components/onboarding/Slide2Intelligence";
-import Slide3Flow from "@/components/onboarding/Slide3Flow";
 import Slide6Building from "@/components/onboarding/Slide6Building";
-import SlideControl from "@/components/onboarding/SlideControl";
-import SlideStrategy from "@/components/onboarding/SlideStrategy";
-import SlideTestimonials from "@/components/onboarding/SlideTestimonials";
-import SlideJournal from "@/components/onboarding/SlideJournal";
-import SlideMentor from "@/components/onboarding/SlideMentor";
-import SlideCTA from "@/components/onboarding/SlideCTA";
-import Slide4Market from "@/components/onboarding/Slide4Market";
-import SlideExperience from "@/components/onboarding/SlideExperience";
-import SlideStruggle from "@/components/onboarding/SlideStruggle";
-import SlideGoal from "@/components/onboarding/SlideGoal";
-import SlideName from "@/components/onboarding/SlideName";
-import SlideAuth from "@/components/onboarding/SlideAuth";
-import SlideBuildingLoader from "@/components/onboarding/SlideBuildingLoader";
-import Slide7Success from "@/components/onboarding/Slide7Success";
+import SlideProof from "@/components/onboarding/SlideProof";
+import Slide3Flow from "@/components/onboarding/Slide3Flow";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
 import ProgressDots from "@/components/onboarding/ProgressDots";
-import { saveUserName } from "@/lib/userName";
-
 
 export type SlideProps = {
   onNext: () => void;
 };
 
-// Narrative slides auto-advance. Question/input slides wait for the user.
-// Final flow: psychology → AI mentor preview → 4 questions → name → auth → build → success.
+/**
+ * 5-slide onboarding — emotional hook → mockup → features → proof → decision.
+ *
+ *   1. Hero       — emotional hook, single CTA (manual)
+ *   2. Mockup     — animated phone, floating overlay (auto)
+ *   3. Features   — 3 cards (auto)
+ *   4. Proof      — soft trust layer + 1 testimonial (auto)
+ *   5. Path       — pick a path → confirmation → route into the chosen flow
+ */
 const slideOrder = [
-  { key: "pressure", auto: 4200, Component: Slide1Hero },
-  { key: "behavior", auto: 5200, Component: Slide2Intelligence },
-  { key: "rules", auto: 0, Component: Slide3Flow },
-  { key: "discipline", auto: 4200, Component: Slide6Building },
-  { key: "control", auto: 4500, Component: SlideControl },
-  { key: "strategy", auto: 5500, Component: SlideStrategy },
-  { key: "testimonials", auto: 7800, Component: SlideTestimonials },
-  { key: "journal", auto: 5200, Component: SlideJournal },
-  { key: "mentor", auto: 5500, Component: SlideMentor },
-  { key: "cta", auto: 0, Component: SlideCTA },
-  { key: "market", auto: 0, Component: Slide4Market },
-  { key: "experience", auto: 0, Component: SlideExperience },
-  { key: "struggle", auto: 0, Component: SlideStruggle },
-  { key: "goal", auto: 0, Component: SlideGoal },
-  { key: "name", auto: 0, Component: SlideName },
-  { key: "auth", auto: 0, Component: SlideAuth },
-  { key: "loader", auto: 4500, Component: SlideBuildingLoader },
-  { key: "success", auto: 0, Component: Slide7Success },
+  { key: "hook", auto: 0, Component: Slide1Hero },
+  { key: "experience", auto: 5200, Component: Slide2Intelligence },
+  { key: "features", auto: 5200, Component: Slide6Building },
+  { key: "proof", auto: 6200, Component: SlideProof },
+  { key: "path", auto: 0, Component: Slide3Flow },
 ] as const;
 
 export default function OnboardingFlow() {
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
-  const [name, setName] = useState("");
-  const navigate = useNavigate();
   const slide = slideOrder[index];
 
   const goNext = () => {
@@ -75,18 +51,11 @@ export default function OnboardingFlow() {
     setIndex(target);
   };
 
-  // Swipe is enabled on narrative/preview slides (auto-advancing) and on the CTA.
-  // It's disabled on selection/input slides (market, experience, struggle, goal,
-  // name, auth) to avoid conflicts with taps and typing.
-  const swipeEnabled =
-    slide.auto > 0 || slide.key === "cta" || slide.key === "success";
+  // Swipe is enabled on auto-advancing narrative slides.
+  // Disabled on the hook (single CTA) and the path picker (taps).
+  const swipeEnabled = slide.auto > 0;
 
-  const enterApp = () => {
-    if (name.trim()) saveUserName(name.trim());
-    navigate({ to: "/hub" });
-  };
-
-  // Auto-advance for slides with auto duration
+  // Auto-advance for narrative slides
   useEffect(() => {
     if (slide.auto > 0) {
       const t = window.setTimeout(goNext, slide.auto);
@@ -98,13 +67,12 @@ export default function OnboardingFlow() {
 
   return (
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
-      {/* Background glow */}
+      {/* Background ambient */}
       <div className="pointer-events-none absolute inset-0 bg-app-glow" />
-      {/* Subtle floating chart lines background */}
       <BackdropLines />
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pb-8 pt-[48px]">
-        {/* Progress dots — top anchor */}
+        {/* Progress dots */}
         <header className="flex justify-center">
           <ProgressDots
             count={slideOrder.length}
@@ -142,17 +110,7 @@ export default function OnboardingFlow() {
               }}
               className={`w-full ${swipeEnabled ? "touch-pan-y cursor-grab active:cursor-grabbing" : ""}`}
             >
-              {slide.key === "name" ? (
-                <SlideName
-                  onNext={goNext}
-                  value={name}
-                  onChange={setName}
-                />
-              ) : slide.key === "success" ? (
-                <Slide7Success onNext={enterApp} userName={name} />
-              ) : (
-                <Component onNext={goNext} />
-              )}
+              <Component onNext={goNext} />
             </motion.div>
           </AnimatePresence>
         </div>
@@ -160,7 +118,6 @@ export default function OnboardingFlow() {
     </div>
   );
 }
-
 
 function BackdropLines() {
   return (
