@@ -341,14 +341,23 @@ Deno.serve(async (req) => {
     }
 
     // Build a USER CONTEXT block only when real data exists.
+    const hasContext = !!(
+      context &&
+      (context.journalSummary || context.systemRules || context.profileSummary)
+    );
     let contextBlock = "";
-    if (context && (context.journalSummary || context.systemRules)) {
+    if (hasContext) {
       contextBlock = "\n\nUSER CONTEXT (real data — weave in gently when it helps the user see themselves clearly):";
-      if (context.journalSummary) {
-        contextBlock += `\n\n[Trading Journal]\n${context.journalSummary}`;
+      if (context!.profileSummary) {
+        // Profile from onboarding: market, experience, biggest struggle, goal.
+        // Use it to tune depth, vocabulary, and emphasis — never quote it back as a list.
+        contextBlock += `\n\n[Trader Profile]\n${context!.profileSummary}`;
       }
-      if (context.systemRules) {
-        contextBlock += `\n\n[User's Trading System]\n${context.systemRules}`;
+      if (context!.journalSummary) {
+        contextBlock += `\n\n[Trading Journal]\n${context!.journalSummary}`;
+      }
+      if (context!.systemRules) {
+        contextBlock += `\n\n[User's Trading System]\n${context!.systemRules}`;
       }
     } else {
       contextBlock =
