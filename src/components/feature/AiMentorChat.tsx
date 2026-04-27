@@ -21,6 +21,10 @@ const SUGGESTIONS = [
 ];
 
 const MENTOR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mentor-chat`;
+const SESSION_ID =
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 export default function AiMentorChat() {
   const journal = useJournal();
