@@ -69,7 +69,7 @@ export default function Slide6Building({ onNext }: SlideProps) {
           return (
             <motion.div
               key={f.title}
-              initial={{ opacity: 0, y: 14 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
                 duration: 0.5,
