@@ -34,6 +34,7 @@ const slideOrder = [
   { key: "rules", auto: 4200, Component: Slide3Flow },
   { key: "discipline", auto: 4200, Component: Slide6Building },
   { key: "control", auto: 4500, Component: SlideControl },
+  { key: "strategy", auto: 5500, Component: SlideStrategy },
   { key: "journal", auto: 5200, Component: SlideJournal },
   { key: "mentor", auto: 5500, Component: SlideMentor },
   { key: "cta", auto: 0, Component: SlideCTA },
