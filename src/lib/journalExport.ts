@@ -96,19 +96,36 @@ function triggerDownload(content: string, mime: string, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+export type ExportRange = { from?: Date | null; to?: Date | null };
+
 export async function exportJournal(
   format: ExportFormat,
+  range?: ExportRange,
 ): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
   try {
-    const rows = await fetchJournal();
+    let rows = await fetchJournal();
+    const fromMs = range?.from ? new Date(range.from).setHours(0, 0, 0, 0) : null;
+    const toMs = range?.to ? new Date(range.to).setHours(23, 59, 59, 999) : null;
+    if (fromMs !== null) rows = rows.filter((r) => r.timestamp >= fromMs);
+    if (toMs !== null) rows = rows.filter((r) => r.timestamp <= toMs);
     if (rows.length === 0) {
-      return { ok: false, error: "No journal entries to export yet." };
+      return {
+        ok: false,
+        error:
+          fromMs !== null || toMs !== null
+            ? "No journal entries in that date range."
+            : "No journal entries to export yet.",
+      };
     }
     const stamp = new Date().toISOString().slice(0, 10);
+    const suffix =
+      fromMs !== null || toMs !== null
+        ? `-${range?.from ? new Date(range.from).toISOString().slice(0, 10) : "start"}_to_${range?.to ? new Date(range.to).toISOString().slice(0, 10) : "now"}`
+        : "";
     if (format === "csv") {
-      triggerDownload(rowsToCsv(rows), "text/csv;charset=utf-8", `journal-${stamp}.csv`);
+      triggerDownload(rowsToCsv(rows), "text/csv;charset=utf-8", `journal-${stamp}${suffix}.csv`);
     } else {
-      triggerDownload(rowsToJson(rows), "application/json", `journal-${stamp}.json`);
+      triggerDownload(rowsToJson(rows), "application/json", `journal-${stamp}${suffix}.json`);
     }
     return { ok: true, count: rows.length };
   } catch (err: any) {
