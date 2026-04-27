@@ -22,7 +22,7 @@ import Slide7Success from "@/components/onboarding/Slide7Success";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
 import ProgressDots from "@/components/onboarding/ProgressDots";
 import { saveUserName } from "@/lib/userName";
-
+import Logo from "@/components/brand/Logo";
 
 export type SlideProps = {
   onNext: () => void;
@@ -103,9 +103,18 @@ export default function OnboardingFlow() {
       {/* Subtle floating chart lines background */}
       <BackdropLines />
 
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pt-7 pb-8">
-        {/* Progress indicator */}
-        <header className="flex justify-center">
+      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pb-8 pt-[44px]">
+        {/* LOGO — sits directly on the background, no container */}
+        <div className="flex justify-center">
+          <Logo
+            size="md"
+            variant="full"
+            className="h-auto w-[24vw] min-w-[88px] max-w-[120px]"
+          />
+        </div>
+
+        {/* Progress dots */}
+        <header className="mt-5 flex justify-center">
           <ProgressDots
             count={slideOrder.length}
             active={index}
@@ -114,7 +123,7 @@ export default function OnboardingFlow() {
         </header>
 
         {/* Slide stage */}
-        <div className="relative mt-4 flex flex-1 items-center justify-center">
+        <div className="relative mt-9 flex flex-1 items-center justify-center">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={slide.key}
