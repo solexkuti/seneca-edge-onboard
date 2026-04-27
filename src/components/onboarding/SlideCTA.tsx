@@ -45,7 +45,7 @@ export default function SlideCTA({ onNext }: SlideProps) {
                 background: colors[i % 3],
                 left: `calc(50% + ${x}px)`,
                 top: `calc(50% + ${y}px)`,
-                boxShadow: `0 0 12px ${colors[i % 3]}`,
+                boxShadow: `0 0 6px ${colors[i % 3]}40`,
               }}
               animate={{
                 scale: [0.5, 1.4, 0.5],

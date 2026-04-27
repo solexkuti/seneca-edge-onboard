@@ -102,7 +102,7 @@ export default function SlideBuildingLoader(_props: SlideProps) {
               width: n.size * 2,
               height: n.size * 2,
               background: n.color,
-              boxShadow: `0 0 24px ${n.color}`,
+              boxShadow: `0 0 12px ${n.color}55`,
             }}
             animate={{
               scale: [1, 1.25, 1],
