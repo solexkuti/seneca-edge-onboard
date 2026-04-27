@@ -23,6 +23,7 @@ import {
   type BehaviorStateKey,
 } from "@/lib/behaviorState";
 import CheckHistorySparkline from "./CheckHistorySparkline";
+import Logo from "@/components/brand/Logo";
 
 type CoreFeature = {
   key: string;
