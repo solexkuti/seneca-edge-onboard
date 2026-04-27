@@ -15,20 +15,10 @@ import {
 } from "lucide-react";
 import { useJournal } from "@/hooks/useJournal";
 import { computeDiscipline, type JournalEntry } from "@/lib/tradingJournal";
-
-
-// ─────────────────────────────────────────────────────────────
-// Stoic, Mark Douglas–inspired mental signals.
-// Designed to feel variable even when the source is static.
-// ─────────────────────────────────────────────────────────────
-const MENTAL_SIGNALS = [
-  "Your edge is useless without discipline.",
-  "One impulsive trade destroys ten good ones.",
-  "You are not here to be right. You are here to execute.",
-  "The market owes you nothing. Your process owes you everything.",
-  "Anything can happen. Trade the plan, not the outcome.",
-  "Patience is a position.",
-];
+import {
+  detectBehaviorPattern,
+  type BehaviorPattern,
+} from "@/lib/behaviorPattern";
 
 type ToolItem = {
   key: string;
