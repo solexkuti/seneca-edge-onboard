@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   Brain,
@@ -18,6 +19,7 @@ type CoreFeature = {
   text: string;
   Icon: typeof Brain;
   tone: "violet" | "cyan" | "pink" | "blue" | "mint";
+  to: "/hub/mind" | "/hub/chart" | "/hub/state" | "/hub/journal" | "/hub/mentor";
 };
 
 const coreFeatures: CoreFeature[] = [
@@ -27,6 +29,7 @@ const coreFeatures: CoreFeature[] = [
     text: "Check your mental state before trading.",
     Icon: Brain,
     tone: "violet",
+    to: "/hub/mind",
   },
   {
     key: "chart",
@@ -34,6 +37,7 @@ const coreFeatures: CoreFeature[] = [
     text: "Upload your chart and get insight based on your strategy.",
     Icon: LineChart,
     tone: "cyan",
+    to: "/hub/chart",
   },
   {
     key: "state",
@@ -41,6 +45,7 @@ const coreFeatures: CoreFeature[] = [
     text: "Stay disciplined during live trades.",
     Icon: Activity,
     tone: "pink",
+    to: "/hub/state",
   },
   {
     key: "journal",
@@ -48,6 +53,7 @@ const coreFeatures: CoreFeature[] = [
     text: "Track your trades and discover your patterns.",
     Icon: BookOpenCheck,
     tone: "blue",
+    to: "/hub/journal",
   },
   {
     key: "mentor",
@@ -55,6 +61,7 @@ const coreFeatures: CoreFeature[] = [
     text: "Ask questions and get real-time trading guidance.",
     Icon: Sparkles,
     tone: "mint",
+    to: "/hub/mentor",
   },
 ];
 
@@ -260,33 +267,37 @@ function FeatureCard({
   const tone = toneStyles[feature.tone];
   const { Icon } = feature;
   return (
-    <motion.button
+    <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       whileTap={{ scale: 0.985 }}
       whileHover={{ y: -2 }}
-      onClick={() => toast(`${feature.title} — opening soon`)}
-      className={`group relative flex w-full items-center gap-3.5 overflow-hidden rounded-2xl bg-card p-3.5 text-left ring-1 ring-border transition-all hover:shadow-card-premium ${tone.ring}`}
     >
-      <div
-        className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${tone.iconBg} ${tone.glow}`}
+      <Link
+        to={feature.to}
+        preload="intent"
+        className={`group relative flex w-full items-center gap-3.5 overflow-hidden rounded-2xl bg-card p-3.5 text-left ring-1 ring-border transition-all hover:shadow-card-premium ${tone.ring}`}
       >
-        <Icon className="h-5 w-5 text-white" strokeWidth={2.2} />
-        <FeatureMicroAnim featureKey={feature.key} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <h3 className="truncate text-[15px] font-semibold tracking-tight text-text-primary">
-            {feature.title}
-          </h3>
+        <div
+          className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${tone.iconBg} ${tone.glow}`}
+        >
+          <Icon className="h-5 w-5 text-white" strokeWidth={2.2} />
+          <FeatureMicroAnim featureKey={feature.key} />
         </div>
-        <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-snug text-text-secondary">
-          {feature.text}
-        </p>
-      </div>
-      <ArrowUpRight className="h-4 w-4 shrink-0 text-text-secondary/60 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-text-primary" />
-    </motion.button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <h3 className="truncate text-[15px] font-semibold tracking-tight text-text-primary">
+              {feature.title}
+            </h3>
+          </div>
+          <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-snug text-text-secondary">
+            {feature.text}
+          </p>
+        </div>
+        <ArrowUpRight className="h-4 w-4 shrink-0 text-text-secondary/60 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-text-primary" />
+      </Link>
+    </motion.div>
   );
 }
 

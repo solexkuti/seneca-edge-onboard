@@ -10,33 +10,115 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HubIndexRouteImport } from './routes/hub.index'
+import { Route as HubStateRouteImport } from './routes/hub.state'
+import { Route as HubMindRouteImport } from './routes/hub.mind'
+import { Route as HubMentorRouteImport } from './routes/hub.mentor'
+import { Route as HubJournalRouteImport } from './routes/hub.journal'
+import { Route as HubChartRouteImport } from './routes/hub.chart'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HubIndexRoute = HubIndexRouteImport.update({
+  id: '/hub/',
+  path: '/hub/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HubStateRoute = HubStateRouteImport.update({
+  id: '/hub/state',
+  path: '/hub/state',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HubMindRoute = HubMindRouteImport.update({
+  id: '/hub/mind',
+  path: '/hub/mind',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HubMentorRoute = HubMentorRouteImport.update({
+  id: '/hub/mentor',
+  path: '/hub/mentor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HubJournalRoute = HubJournalRouteImport.update({
+  id: '/hub/journal',
+  path: '/hub/journal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HubChartRoute = HubChartRouteImport.update({
+  id: '/hub/chart',
+  path: '/hub/chart',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/hub/chart': typeof HubChartRoute
+  '/hub/journal': typeof HubJournalRoute
+  '/hub/mentor': typeof HubMentorRoute
+  '/hub/mind': typeof HubMindRoute
+  '/hub/state': typeof HubStateRoute
+  '/hub/': typeof HubIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/hub/chart': typeof HubChartRoute
+  '/hub/journal': typeof HubJournalRoute
+  '/hub/mentor': typeof HubMentorRoute
+  '/hub/mind': typeof HubMindRoute
+  '/hub/state': typeof HubStateRoute
+  '/hub': typeof HubIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/hub/chart': typeof HubChartRoute
+  '/hub/journal': typeof HubJournalRoute
+  '/hub/mentor': typeof HubMentorRoute
+  '/hub/mind': typeof HubMindRoute
+  '/hub/state': typeof HubStateRoute
+  '/hub/': typeof HubIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/hub/chart'
+    | '/hub/journal'
+    | '/hub/mentor'
+    | '/hub/mind'
+    | '/hub/state'
+    | '/hub/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/hub/chart'
+    | '/hub/journal'
+    | '/hub/mentor'
+    | '/hub/mind'
+    | '/hub/state'
+    | '/hub'
+  id:
+    | '__root__'
+    | '/'
+    | '/hub/chart'
+    | '/hub/journal'
+    | '/hub/mentor'
+    | '/hub/mind'
+    | '/hub/state'
+    | '/hub/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HubChartRoute: typeof HubChartRoute
+  HubJournalRoute: typeof HubJournalRoute
+  HubMentorRoute: typeof HubMentorRoute
+  HubMindRoute: typeof HubMindRoute
+  HubStateRoute: typeof HubStateRoute
+  HubIndexRoute: typeof HubIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +130,59 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hub/': {
+      id: '/hub/'
+      path: '/hub'
+      fullPath: '/hub/'
+      preLoaderRoute: typeof HubIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hub/state': {
+      id: '/hub/state'
+      path: '/hub/state'
+      fullPath: '/hub/state'
+      preLoaderRoute: typeof HubStateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hub/mind': {
+      id: '/hub/mind'
+      path: '/hub/mind'
+      fullPath: '/hub/mind'
+      preLoaderRoute: typeof HubMindRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hub/mentor': {
+      id: '/hub/mentor'
+      path: '/hub/mentor'
+      fullPath: '/hub/mentor'
+      preLoaderRoute: typeof HubMentorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hub/journal': {
+      id: '/hub/journal'
+      path: '/hub/journal'
+      fullPath: '/hub/journal'
+      preLoaderRoute: typeof HubJournalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hub/chart': {
+      id: '/hub/chart'
+      path: '/hub/chart'
+      fullPath: '/hub/chart'
+      preLoaderRoute: typeof HubChartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  HubChartRoute: HubChartRoute,
+  HubJournalRoute: HubJournalRoute,
+  HubMentorRoute: HubMentorRoute,
+  HubMindRoute: HubMindRoute,
+  HubStateRoute: HubStateRoute,
+  HubIndexRoute: HubIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
