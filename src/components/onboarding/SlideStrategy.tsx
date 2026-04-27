@@ -177,66 +177,64 @@ function RuleSystem({
         }}
       />
 
-      {/* Connection lines (vertical between cards in 2x2 grid + cross link) */}
-      <svg
-        viewBox="0 0 320 220"
-        preserveAspectRatio="none"
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        aria-hidden
-      >
-        <defs>
-          <linearGradient id="strat-line" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#6C5CE7" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#00C6FF" stopOpacity="0.9" />
-          </linearGradient>
-        </defs>
+      {/* Grid + connection lines (lines are scoped to grid, never overlap text) */}
+      <div className="relative">
+        <svg
+          viewBox="0 0 320 220"
+          preserveAspectRatio="none"
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          aria-hidden
+        >
+          <defs>
+            <linearGradient id="strat-line" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#6C5CE7" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#00C6FF" stopOpacity="0.9" />
+            </linearGradient>
+          </defs>
 
-        {/* Top-left → Top-right */}
-        <motion.line
-          x1="115" y1="55" x2="205" y2="55"
-          stroke="url(#strat-line)" strokeWidth="1.4" strokeLinecap="round"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ delay: cardDelay(1) - 0.1, duration: 0.45 }}
-        />
-        {/* Top-left → Bottom-left */}
-        <motion.line
-          x1="65" y1="80" x2="65" y2="140"
-          stroke="url(#strat-line)" strokeWidth="1.4" strokeLinecap="round"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ delay: cardDelay(2) - 0.1, duration: 0.45 }}
-        />
-        {/* Top-right → Bottom-right */}
-        <motion.line
-          x1="255" y1="80" x2="255" y2="140"
-          stroke="url(#strat-line)" strokeWidth="1.4" strokeLinecap="round"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ delay: cardDelay(3) - 0.1, duration: 0.45 }}
-        />
-        {/* Bottom diagonal cross */}
-        <motion.line
-          x1="115" y1="165" x2="205" y2="165"
-          stroke="url(#strat-line)" strokeWidth="1.4" strokeLinecap="round"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ delay: cardDelay(3) + 0.1, duration: 0.45 }}
-        />
-      </svg>
-
-      {/* 2x2 modular grid */}
-      <div className="grid grid-cols-2 gap-3 p-2">
-        {rules.map((r, i) => (
-          <RuleCard
-            key={r.key}
-            label={r.label}
-            value={r.value}
-            Icon={r.Icon}
-            tone={r.tone}
-            delay={cardDelay(i)}
+          <motion.line
+            x1="115" y1="55" x2="205" y2="55"
+            stroke="url(#strat-line)" strokeWidth="1.4" strokeLinecap="round"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ delay: cardDelay(1) - 0.1, duration: 0.45 }}
           />
-        ))}
+          <motion.line
+            x1="65" y1="80" x2="65" y2="140"
+            stroke="url(#strat-line)" strokeWidth="1.4" strokeLinecap="round"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ delay: cardDelay(2) - 0.1, duration: 0.45 }}
+          />
+          <motion.line
+            x1="255" y1="80" x2="255" y2="140"
+            stroke="url(#strat-line)" strokeWidth="1.4" strokeLinecap="round"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ delay: cardDelay(3) - 0.1, duration: 0.45 }}
+          />
+          <motion.line
+            x1="115" y1="165" x2="205" y2="165"
+            stroke="url(#strat-line)" strokeWidth="1.4" strokeLinecap="round"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ delay: cardDelay(3) + 0.1, duration: 0.45 }}
+          />
+        </svg>
+
+        {/* 2x2 modular grid */}
+        <div className="relative grid grid-cols-2 gap-3 p-2">
+          {rules.map((r, i) => (
+            <RuleCard
+              key={r.key}
+              label={r.label}
+              value={r.value}
+              Icon={r.Icon}
+              tone={r.tone}
+              delay={cardDelay(i)}
+            />
+          ))}
+        </div>
       </div>
 
       {/* "System Locked" pill appears after all rules connect */}
@@ -244,7 +242,7 @@ function RuleSystem({
         initial={{ opacity: 0, y: 8, scale: 0.9 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ delay: finalGlowDelay + 0.2, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        className="mx-auto mt-3 flex w-fit items-center gap-1.5 rounded-full bg-card px-3 py-1.5 shadow-card-premium ring-1 ring-border"
+        className="mx-auto mt-4 flex w-fit items-center gap-1.5 rounded-full bg-card px-3 py-1.5 shadow-card-premium ring-1 ring-border"
       >
         <motion.span
           className="h-2 w-2 rounded-full bg-emerald-400"
