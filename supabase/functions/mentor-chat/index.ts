@@ -67,15 +67,39 @@ type UserContext = {
   systemRules?: string;
 };
 
+type MentorMode = "standard" | "strict" | "beginner" | "breakdown";
+
+const MODE_INSTRUCTIONS: Record<MentorMode, string> = {
+  standard: `MODE: STANDARD (default)
+- Balanced tone. Calm, structured, slightly strict.
+- Medium-length answers. Follow the full response format.`,
+  strict: `MODE: STRICT
+- More direct and blunt. Minimal explanation.
+- Lead with the correction. Call out the mistake clearly by name.
+- Keep total length under ~70 words. Cut anything that isn't a correction, a reason, or a rule.
+- The "Sharp Truth" must sting a little. Do not soften.`,
+  beginner: `MODE: BEGINNER
+- Simple language. Define any term that isn't everyday English.
+- Step-by-step explanations using short numbered steps when teaching a concept.
+- Stay on fundamentals only. Do not introduce advanced concepts (ICT, order blocks, liquidity sweeps, etc.) unless the user explicitly asks.
+- Still disciplined and direct — never soft, never motivational.`,
+  breakdown: `MODE: BREAKDOWN
+- Deeper, more structured explanation for advanced understanding.
+- Allow up to ~220 words. Use a brief structured breakdown (short labeled lines or a tight numbered list) when it genuinely aids learning.
+- Cover: the principle → why it works → where traders misapply it → the rule.
+- Still concise. No filler. No academic tone.`,
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages, context } = (await req.json()) as {
+    const { messages, context, mode } = (await req.json()) as {
       messages: Msg[];
       context?: UserContext;
+      mode?: MentorMode;
     };
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -104,7 +128,11 @@ Deno.serve(async (req) => {
         "\n\nUSER CONTEXT: none yet. Teach from universal knowledge as if mentoring a beginner. Do NOT mention missing data. Do NOT refuse. Do NOT invent personal stats — just give a strong general answer and, if useful, ask 1–2 clarifying questions at the end.";
     }
 
-    const systemContent = SYSTEM_PROMPT + contextBlock;
+    const activeMode: MentorMode =
+      mode && MODE_INSTRUCTIONS[mode] ? mode : "standard";
+    const modeBlock = `\n\n${MODE_INSTRUCTIONS[activeMode]}\n\nMode only changes tone and depth. Never lose clarity. Never become motivational or soft. The Seneca personality always applies.`;
+
+    const systemContent = SYSTEM_PROMPT + contextBlock + modeBlock;
 
     const upstream = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
