@@ -192,7 +192,20 @@ export default function OnboardingFlow() {
               }}
               className="w-full touch-pan-y cursor-grab active:cursor-grabbing"
             >
-              <Component onNext={goNext} />
+              {slide.key === "name" ? (
+                <SlideName
+                  onNext={goNext}
+                  value={userName}
+                  onChange={(v) => {
+                    setUserName(v);
+                    saveUserName(v);
+                  }}
+                />
+              ) : slide.key === "auth" ? (
+                <SlideAuth onNext={goNext} username={userName} />
+              ) : (
+                <Component onNext={goNext} />
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
