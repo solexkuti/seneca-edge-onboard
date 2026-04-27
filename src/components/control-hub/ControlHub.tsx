@@ -62,17 +62,10 @@ const TOOLS: ToolItem[] = [
 ];
 
 export default function ControlHub({ userName }: { userName?: string }) {
-  // Rotating mental signal — picks a random start and rotates every 9s.
-  // Random seed initialized after mount to avoid SSR hydration mismatch.
-  const [signalIdx, setSignalIdx] = useState(0);
-  useEffect(() => {
-    setSignalIdx(Math.floor(Math.random() * MENTAL_SIGNALS.length));
-    const id = setInterval(
-      () => setSignalIdx((i) => (i + 1) % MENTAL_SIGNALS.length),
-      9000,
-    );
-    return () => clearInterval(id);
-  }, []);
+  // Behavior pattern — derived strictly from Trading Journal entries.
+  // Updates in real time as new trades are logged.
+  const journal = useJournal();
+  const pattern = useMemo(() => detectBehaviorPattern(journal), [journal]);
 
   const initial = useMemo(
     () => (userName ? userName.slice(0, 1).toUpperCase() : "S"),
@@ -87,12 +80,9 @@ export default function ControlHub({ userName }: { userName?: string }) {
         {/* HEADER */}
         <Header userName={userName} initial={initial} />
 
-        {/* MENTAL SIGNAL */}
+        {/* BEHAVIOR PATTERN */}
         <div className="mt-8">
-          <MentalSignalCard
-            message={MENTAL_SIGNALS[signalIdx]}
-            signalIdx={signalIdx}
-          />
+          <MentalSignalCard pattern={pattern} />
         </div>
 
         {/* PRIMARY ACTION */}
