@@ -55,9 +55,19 @@ export function summarizeJournal(entries: JournalEntry[]): string | null {
   lines.push(`Current behavior pattern: ${pattern.kind} — ${pattern.message}`);
 
   lines.push("");
-  lines.push("Last trades (most recent first):");
+  lines.push(
+    "Recent discipline logs (most recent first — cite by [time] when referencing):",
+  );
   for (const e of recent) {
-    const when = new Date(e.timestamp).toISOString().slice(0, 16).replace("T", " ");
+    const d = new Date(e.timestamp);
+    // Friendly, citation-ready timestamp: "Apr 27, 14:32"
+    const when = d.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
     const followed =
       typeof e.followedPlan === "boolean"
         ? e.followedPlan
@@ -73,8 +83,12 @@ export function summarizeJournal(entries: JournalEntry[]): string | null {
     }
     const brokenTag = broken.length ? ` | broke: ${broken.join(", ")}` : "";
     const stateTag = e.emotionalState ? ` | ${e.emotionalState}` : "";
+    const scoreTag =
+      typeof e.disciplineScore === "number"
+        ? ` | score ${e.disciplineScore}/100`
+        : "";
     lines.push(
-      `- ${when} | ${e.pair} | ${e.resultR >= 0 ? "+" : ""}${e.resultR}R | ${followed}${brokenTag}${stateTag}`,
+      `- [${when}] ${e.pair} | ${e.resultR >= 0 ? "+" : ""}${e.resultR}R | ${followed}${brokenTag}${stateTag}${scoreTag}`,
     );
   }
 
