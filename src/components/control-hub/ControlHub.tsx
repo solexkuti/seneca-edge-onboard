@@ -329,46 +329,23 @@ function BehaviorInsightCard({
   msgIdx: number;
 }) {
   const accent = stateAccent[stateKey];
-  const state = BEHAVIOR_STATES[stateKey];
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      className="relative mt-5 overflow-hidden rounded-2xl p-[1.5px]"
+      className="relative mt-3 overflow-hidden rounded-2xl p-[1.5px]"
       style={{ backgroundImage: accent.bg }}
     >
-      <div className="relative rounded-[14px] bg-card p-4">
+      <div className="relative rounded-[14px] bg-card px-5 py-5">
         <div
-          className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full opacity-50 blur-2xl"
+          className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full opacity-40 blur-2xl"
           style={{
             background: `radial-gradient(closest-side, ${accent.glow}, transparent 70%)`,
           }}
         />
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
-              Behavior Insight
-            </span>
-            <span className="h-1 w-1 rounded-full bg-text-secondary/40" />
-            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-gradient-mix">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-60" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-current" />
-              </span>
-              Live
-            </span>
-          </div>
-          <div
-            className={`flex items-center gap-1.5 rounded-full bg-text-primary/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ring-1 ring-border ${accent.label}`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${accent.dot}`} />
-            {state.label}
-          </div>
-        </div>
-
-        <div className="mt-3 flex items-start gap-3">
+        <div className="flex items-start gap-3.5">
           <div
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
             style={{ backgroundImage: accent.bg }}
@@ -383,7 +360,7 @@ function BehaviorInsightCard({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                className="text-[14px] font-medium leading-snug text-text-primary"
+                className="text-[15px] font-medium leading-snug text-text-primary"
               >
                 {message}
               </motion.p>
@@ -391,8 +368,7 @@ function BehaviorInsightCard({
           </div>
         </div>
 
-        {/* Behavior pulse line */}
-        <div className="mt-3 h-[3px] w-full overflow-hidden rounded-full bg-text-secondary/10">
+        <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-text-secondary/10">
           <motion.div
             key={msgIdx}
             initial={{ x: "-100%" }}
@@ -413,28 +389,28 @@ function CheckBeforeTradeButton() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.18, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="mt-3"
     >
       <Link
         to="/hub/mind"
         preload="intent"
-        className="group relative flex w-full items-center justify-between overflow-hidden rounded-2xl bg-gradient-mix p-[1.5px] shadow-glow-primary"
+        className="group relative block w-full overflow-hidden rounded-2xl bg-gradient-mix p-[1.5px] shadow-glow-primary transition-transform active:scale-[0.99]"
       >
-        <div className="relative flex w-full items-center justify-between rounded-[14px] bg-card px-4 py-3.5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-mix shadow-glow-primary">
-              <ShieldCheck className="h-[18px] w-[18px] text-white" strokeWidth={2.2} />
+        <span className="pointer-events-none absolute -inset-1 rounded-3xl bg-gradient-mix opacity-30 blur-xl" />
+        <div className="relative flex w-full items-center justify-between rounded-[14px] bg-gradient-mix px-5 py-5">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
+              <ShieldCheck className="h-5 w-5 text-white" strokeWidth={2.3} />
             </div>
             <div className="text-left">
-              <p className="text-[14.5px] font-semibold tracking-tight text-text-primary">
+              <p className="text-[16px] font-semibold tracking-tight text-white">
                 Check Before Trade
               </p>
-              <p className="text-[11.5px] text-text-secondary">
+              <p className="text-[12px] text-white/85">
                 60-second discipline scan.
               </p>
             </div>
           </div>
-          <ArrowUpRight className="h-4 w-4 text-text-secondary/70 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-text-primary" />
+          <ArrowUpRight className="h-5 w-5 text-white transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
         </div>
       </Link>
     </motion.div>
