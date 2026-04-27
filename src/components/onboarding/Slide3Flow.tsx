@@ -54,8 +54,8 @@ export default function Slide3Flow(_props: SlideProps) {
 function RuleCheckScreen() {
   return (
     <div className="relative h-full w-full bg-gradient-to-b from-[#0F172A] via-[#1A1B3A] to-[#0F172A] p-4 pt-12">
-      <div className="absolute -left-10 top-16 h-32 w-32 rounded-full bg-[#6C5CE7] opacity-40 blur-3xl" />
-      <div className="absolute -right-10 bottom-16 h-32 w-32 rounded-full bg-[#00C6FF] opacity-30 blur-3xl" />
+      <div className="absolute -left-10 top-16 h-32 w-32 rounded-full bg-[#6C5CE7] opacity-40 blur-3xl animate-drift" />
+      <div className="absolute -right-10 bottom-16 h-32 w-32 rounded-full bg-[#00C6FF] opacity-30 blur-3xl animate-drift [animation-delay:-3s]" />
 
       {/* Upload card */}
       <motion.div
@@ -122,8 +122,15 @@ function RuleCheckScreen() {
             r="3"
             fill="#00C6FF"
             initial={{ scale: 0 }}
-            animate={{ scale: [0, 1.5, 1] }}
-            transition={{ delay: 2.1, duration: 0.5 }}
+            animate={{ scale: [0, 1.5, 1, 1.25, 1] }}
+            transition={{
+              delay: 2.1,
+              duration: 2.6,
+              times: [0, 0.15, 0.35, 0.7, 1],
+              repeat: Infinity,
+              repeatDelay: 1.2,
+              ease: "easeInOut",
+            }}
           />
         </svg>
       </motion.div>

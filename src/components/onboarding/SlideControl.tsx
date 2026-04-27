@@ -48,7 +48,7 @@ export default function SlideControl(_props: SlideProps) {
 function ControlScreen() {
   return (
     <div className="relative h-full w-full bg-gradient-to-b from-[#0F172A] via-[#1A1B3A] to-[#0F172A] p-3 pt-11">
-      <div className="absolute -left-10 top-20 h-32 w-32 rounded-full bg-[#FF7AF5] opacity-25 blur-3xl" />
+      <div className="absolute -left-10 top-20 h-32 w-32 rounded-full bg-[#FF7AF5] opacity-25 blur-3xl animate-drift" />
       <motion.div
         className="absolute -right-10 bottom-16 h-40 w-40 rounded-full bg-[#00C6FF] opacity-0 blur-3xl"
         animate={{ opacity: [0, 0.5] }}

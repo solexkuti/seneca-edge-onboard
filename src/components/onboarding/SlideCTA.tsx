@@ -14,7 +14,7 @@ export default function SlideCTA({ onNext }: SlideProps) {
       {/* Hero visual */}
       <div className="relative flex h-[280px] w-full items-center justify-center">
         <motion.div
-          className="absolute h-56 w-56 rounded-full bg-gradient-mix opacity-40 blur-3xl"
+          className="absolute h-56 w-56 rounded-full bg-gradient-mix opacity-40 blur-3xl animate-pulse-glow"
           animate={{ scale: [1, 1.15, 1], opacity: [0.35, 0.55, 0.35] }}
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
         />
