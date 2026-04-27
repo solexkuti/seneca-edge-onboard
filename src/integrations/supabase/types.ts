@@ -25,7 +25,7 @@ export type Database = {
           followed_risk: boolean
           id: string
           notes: string | null
-          trade_id: string | null
+          trade_id: string
           user_id: string
         }
         Insert: {
@@ -40,7 +40,7 @@ export type Database = {
           followed_risk?: boolean
           id?: string
           notes?: string | null
-          trade_id?: string | null
+          trade_id: string
           user_id: string
         }
         Update: {
@@ -55,7 +55,7 @@ export type Database = {
           followed_risk?: boolean
           id?: string
           notes?: string | null
-          trade_id?: string | null
+          trade_id?: string
           user_id?: string
         }
         Relationships: [
@@ -285,6 +285,7 @@ export type Database = {
         | "overconfident"
         | "neutral"
         | "confused"
+        | "calm"
       trade_direction: "long" | "short"
       trade_result: "win" | "loss" | "breakeven"
     }
@@ -420,6 +421,7 @@ export const Constants = {
         "overconfident",
         "neutral",
         "confused",
+        "calm",
       ],
       trade_direction: ["long", "short"],
       trade_result: ["win", "loss", "breakeven"],

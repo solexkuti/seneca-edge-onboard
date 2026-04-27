@@ -9,6 +9,20 @@ export type JournalEntry = {
   resultR: number;     // e.g. 0.8 or -1.2 (in R)
   followedPlan?: boolean;
   notes?: string;
+  // Optional, present only for DB-backed entries:
+  emotionalState?:
+    | "calm"
+    | "fearful"
+    | "frustrated"
+    | "overconfident"
+    | "confused";
+  disciplineScore?: number; // 0–100
+  rules?: {
+    entry: boolean;
+    exit: boolean;
+    risk: boolean;
+    behavior: boolean;
+  };
 };
 
 const KEY = "seneca_trading_journal";

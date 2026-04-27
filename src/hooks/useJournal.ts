@@ -1,28 +1,50 @@
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   JOURNAL_EVENT,
-  readJournal,
+  readJournal as readLocalJournal,
   type JournalEntry,
 } from "@/lib/tradingJournal";
+import { fetchJournal, toLegacyEntries } from "@/lib/dbJournal";
 
-// Subscribes to the trading journal store. Re-renders on updates from
-// the same tab (custom event) and other tabs (storage event).
 export function useJournal(): JournalEntry[] {
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [entries, setEntries] = useState<JournalEntry[]>(() => readLocalJournal());
 
   useEffect(() => {
-    setEntries(readJournal());
+    let cancelled = false;
 
-    const refresh = () => setEntries(readJournal());
+    const refresh = async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (!data.user) {
+          // No session → fall back to legacy local entries
+          if (!cancelled) setEntries(readLocalJournal());
+          return;
+        }
+        const rows = await fetchJournal();
+        if (!cancelled) {
+          setEntries(rows.length ? toLegacyEntries(rows) : readLocalJournal());
+        }
+      } catch {
+        if (!cancelled) setEntries(readLocalJournal());
+      }
+    };
+
+    refresh();
+
+    const onUpdate = () => refresh();
     const onStorage = (e: StorageEvent) => {
       if (e.key === null || e.key === "seneca_trading_journal") refresh();
     };
-
-    window.addEventListener(JOURNAL_EVENT, refresh);
+    window.addEventListener(JOURNAL_EVENT, onUpdate);
     window.addEventListener("storage", onStorage);
+    const { data: sub } = supabase.auth.onAuthStateChange(() => refresh());
+
     return () => {
-      window.removeEventListener(JOURNAL_EVENT, refresh);
+      cancelled = true;
+      window.removeEventListener(JOURNAL_EVENT, onUpdate);
       window.removeEventListener("storage", onStorage);
+      sub.subscription.unsubscribe();
     };
   }, []);
 
