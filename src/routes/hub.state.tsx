@@ -123,6 +123,9 @@ function ControlStatePage() {
           {/* Most recent trade — rule-by-rule breakdown */}
           <LastTradeCard row={rows[0]} />
 
+          {/* Discipline streak & trend */}
+          <DisciplineStreakWidget rows={rows} />
+
           {/* Rules followed % */}
           <div className="rounded-2xl bg-card p-5 ring-1 ring-border shadow-soft">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
