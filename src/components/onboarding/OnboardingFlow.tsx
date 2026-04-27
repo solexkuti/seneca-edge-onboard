@@ -103,9 +103,20 @@ export default function OnboardingFlow() {
       {/* Subtle floating chart lines background */}
       <BackdropLines />
 
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pt-7 pb-8">
-        {/* Progress indicator */}
-        <header className="flex justify-center">
+      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pb-8 pt-[44px]">
+        {/* LOGO — sits directly on the background, no container */}
+        <div className="flex justify-center">
+          <img
+            src={(Logo as unknown as { logoSrc?: string }).logoSrc /* fallback below */}
+            alt=""
+            aria-hidden
+            hidden
+          />
+          <Logo size="md" variant="full" className="w-[24vw] max-w-[120px] min-w-[88px] h-auto" />
+        </div>
+
+        {/* Progress dots */}
+        <header className="mt-5 flex justify-center">
           <ProgressDots
             count={slideOrder.length}
             active={index}
@@ -114,7 +125,7 @@ export default function OnboardingFlow() {
         </header>
 
         {/* Slide stage */}
-        <div className="relative mt-4 flex flex-1 items-center justify-center">
+        <div className="relative mt-9 flex flex-1 items-center justify-center">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={slide.key}
