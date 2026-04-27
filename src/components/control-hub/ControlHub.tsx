@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Eye,
   ShieldCheck,
@@ -15,20 +15,22 @@ import {
 } from "lucide-react";
 import { useJournal } from "@/hooks/useJournal";
 import { computeDiscipline, type JournalEntry } from "@/lib/tradingJournal";
+import {
+  detectBehaviorPattern,
+  type BehaviorPattern,
+} from "@/lib/behaviorPattern";
 
-
-// ─────────────────────────────────────────────────────────────
-// Stoic, Mark Douglas–inspired mental signals.
-// Designed to feel variable even when the source is static.
-// ─────────────────────────────────────────────────────────────
-const MENTAL_SIGNALS = [
-  "Your edge is useless without discipline.",
-  "One impulsive trade destroys ten good ones.",
-  "You are not here to be right. You are here to execute.",
-  "The market owes you nothing. Your process owes you everything.",
-  "Anything can happen. Trade the plan, not the outcome.",
-  "Patience is a position.",
-];
+// Eyebrow label by pattern kind. Reflects the actual signal, not generic copy.
+const PATTERN_LABEL: Record<
+  Exclude<BehaviorPattern["kind"], "empty">,
+  string
+> = {
+  rule_breaking: "Rule breaking",
+  revenge: "Revenge trading",
+  overtrading: "Overtrading",
+  discipline: "Discipline",
+  neutral: "Behavior pattern",
+};
 
 type ToolItem = {
   key: string;
@@ -72,17 +74,10 @@ const TOOLS: ToolItem[] = [
 ];
 
 export default function ControlHub({ userName }: { userName?: string }) {
-  // Rotating mental signal — picks a random start and rotates every 9s.
-  // Random seed initialized after mount to avoid SSR hydration mismatch.
-  const [signalIdx, setSignalIdx] = useState(0);
-  useEffect(() => {
-    setSignalIdx(Math.floor(Math.random() * MENTAL_SIGNALS.length));
-    const id = setInterval(
-      () => setSignalIdx((i) => (i + 1) % MENTAL_SIGNALS.length),
-      9000,
-    );
-    return () => clearInterval(id);
-  }, []);
+  // Behavior pattern — derived strictly from Trading Journal entries.
+  // Updates in real time as new trades are logged.
+  const journal = useJournal();
+  const pattern = useMemo(() => detectBehaviorPattern(journal), [journal]);
 
   const initial = useMemo(
     () => (userName ? userName.slice(0, 1).toUpperCase() : "S"),
@@ -97,12 +92,9 @@ export default function ControlHub({ userName }: { userName?: string }) {
         {/* HEADER */}
         <Header userName={userName} initial={initial} />
 
-        {/* MENTAL SIGNAL */}
+        {/* BEHAVIOR PATTERN */}
         <div className="mt-8">
-          <MentalSignalCard
-            message={MENTAL_SIGNALS[signalIdx]}
-            signalIdx={signalIdx}
-          />
+          <MentalSignalCard pattern={pattern} />
         </div>
 
         {/* PRIMARY ACTION */}
@@ -197,15 +189,14 @@ function Header({ userName, initial }: { userName?: string; initial: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Mental signal — soft purple→blue gradient, rotating stoic line.
+// Behavior pattern card — driven by Trading Journal data.
+// Replaces the old "Mental signal" rotating quotes.
 // ─────────────────────────────────────────────────────────────
-function MentalSignalCard({
-  message,
-  signalIdx,
-}: {
-  message: string;
-  signalIdx: number;
-}) {
+function MentalSignalCard({ pattern }: { pattern: BehaviorPattern }) {
+  // Eyebrow label reflects the actual pattern kind, not generic copy.
+  const eyebrow =
+    pattern.kind === "empty" ? "Behavior pattern" : PATTERN_LABEL[pattern.kind];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -269,18 +260,18 @@ function MentalSignalCard({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/75">
-              Mental signal
+              {eyebrow}
             </p>
             <AnimatePresence mode="wait">
               <motion.p
-                key={signalIdx}
+                key={pattern.kind}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                 className="mt-1 text-[15.5px] font-semibold leading-snug tracking-tight text-white"
               >
-                {message}
+                {pattern.message}
               </motion.p>
             </AnimatePresence>
           </div>
