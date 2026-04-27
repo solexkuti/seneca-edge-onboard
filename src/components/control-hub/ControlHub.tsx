@@ -165,22 +165,9 @@ function Header({ userName, initial }: { userName?: string; initial: string }) {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="flex items-start justify-between gap-4"
     >
-      {/* Top row: logo (left) + profile (right), vertically aligned */}
-      <div className="flex items-center justify-between">
-        <Logo size="sm" variant="full" />
-        <div
-          aria-label={userName ? `Profile ${userName}` : "Profile"}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card ring-1 ring-border shadow-soft"
-        >
-          <span className="text-[13px] font-semibold text-text-primary">
-            {initial}
-          </span>
-        </div>
-      </div>
-
-      {/* Title block — clear breathing room from logo row */}
-      <div className="mt-7">
+      <div className="min-w-0 flex-1">
         <h1 className="text-[26px] font-bold leading-[1.1] tracking-tight text-text-primary">
           Control State
         </h1>
@@ -193,6 +180,15 @@ function Header({ userName, initial }: { userName?: string; initial: string }) {
             <span className="font-semibold text-text-primary">{userName}</span>.
           </p>
         )}
+      </div>
+
+      <div
+        aria-label={userName ? `Profile ${userName}` : "Profile"}
+        className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card ring-1 ring-border shadow-soft"
+      >
+        <span className="text-[13px] font-semibold text-text-primary">
+          {initial}
+        </span>
       </div>
     </motion.header>
   );
