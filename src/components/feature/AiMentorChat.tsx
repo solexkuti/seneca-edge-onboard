@@ -35,7 +35,43 @@ export default function AiMentorChat() {
   ]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [recentSuggestionIds, setRecentSuggestionIds] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Last user message drives the detected emotional state.
+  const lastUserMessage = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") return messages[i].content;
+    }
+    return "";
+  }, [messages]);
+
+  const detectedState = useMemo(
+    () => detectMentorState(lastUserMessage),
+    [lastUserMessage],
+  );
+
+  // Build suggestions: state-aware + journal-personalized + anti-repeat.
+  const suggestions = useMemo(
+    () =>
+      pickMentorSuggestions({
+        state: detectedState,
+        journal,
+        recentlyShownIds: recentSuggestionIds,
+      }),
+    [detectedState, journal, recentSuggestionIds],
+  );
+
+  // Track suggestions we've shown so we don't repeat them every turn.
+  useEffect(() => {
+    if (!suggestions.length) return;
+    setRecentSuggestionIds((prev) => {
+      const ids = suggestions.map((s) => s.id);
+      const merged = [...ids, ...prev.filter((id) => !ids.includes(id))];
+      return merged.slice(0, 8); // remember last ~2 turns
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastUserMessage, detectedState]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
