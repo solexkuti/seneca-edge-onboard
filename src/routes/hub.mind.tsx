@@ -1,16 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import ComingSoonScreen from "@/components/feature/ComingSoonScreen";
+import CheckBeforeTradeFlow from "@/components/feature/CheckBeforeTradeFlow";
 
 export const Route = createFileRoute("/hub/mind")({
   head: () => ({
-    meta: [{ title: "Train Your Mind — SenecaEdge" }],
+    meta: [
+      { title: "Check Before Trade — SenecaEdge" },
+      {
+        name: "description",
+        content:
+          "A psychological gate that slows you down before execution. Force conscious awareness.",
+      },
+    ],
   }),
-  component: () => (
-    <ComingSoonScreen
-      eyebrow="Train Your Mind"
-      title="Check in before you trade."
-      subtitle="A 60-second mental state scan."
-      description="A guided pre-trade check that flags impulse, fatigue, and revenge urges before they cost you."
-    />
-  ),
+  component: CheckBeforeTradeFlow,
 });
