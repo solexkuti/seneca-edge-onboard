@@ -210,6 +210,106 @@ type UserContext = {
   systemRules?: string;
 };
 
+// ── Hidden analytics helpers ───────────────────────────────────────────────
+type EmotionalState =
+  | "frustrated"
+  | "overconfident"
+  | "confused"
+  | "fearful"
+  | "neutral";
+
+const STATE_PATTERNS: Array<{ state: EmotionalState; rx: RegExp }> = [
+  {
+    state: "frustrated",
+    rx: /\b(keep losing|always (lose|mess|fail)|i'?m tired|sick of|stupid market|hate this|fed up|nothing works|every time|over and over|again and again)\b/i,
+  },
+  {
+    state: "overconfident",
+    rx: /\b(all in|all-?in|guaranteed|can'?t lose|sure thing|easy money|100%|cant miss|locked in|free money|going to print)\b/i,
+  },
+  {
+    state: "fearful",
+    rx: /\b(scared|afraid|terrified|frozen|can'?t pull the trigger|what if i lose|nervous|anxious|hesita(te|nt)|worried|paralyz(ed|e))\b/i,
+  },
+  {
+    state: "confused",
+    rx: /\b(don'?t (get|understand)|confus(ed|ing)|too complex|i'?m lost|makes no sense|stuck|no idea)\b/i,
+  },
+];
+
+const SPIRAL_PATTERNS =
+  /\b(i'?m done|can'?t do this|never get it|blew (up |my |the )?account|always|every time|keeps happening|what'?s wrong with me|i'?m stupid|need to fix.*now|right now|tell me what to do)\b/i;
+
+function detectState(message: string): {
+  state: EmotionalState;
+  spiral: boolean;
+} {
+  const text = (message ?? "").toLowerCase();
+  let state: EmotionalState = "neutral";
+  for (const { state: s, rx } of STATE_PATTERNS) {
+    if (rx.test(text)) {
+      state = s;
+      break;
+    }
+  }
+  const spiral =
+    (state === "frustrated" || state === "fearful") &&
+    SPIRAL_PATTERNS.test(text);
+  return { state, spiral };
+}
+
+// Pull the final question (closing) out of the assistant's reply.
+function extractClosing(reply: string): {
+  question: string | null;
+  type: "question" | "suggestion" | "none";
+} {
+  if (!reply) return { question: null, type: "none" };
+  const trimmed = reply.trim();
+  const lastQ = trimmed.lastIndexOf("?");
+  if (lastQ !== -1) {
+    let start = lastQ - 1;
+    while (start >= 0 && !".!?\n".includes(trimmed[start])) start--;
+    const question = trimmed.slice(start + 1, lastQ + 1).trim();
+    return { question: question.slice(0, 500), type: "question" };
+  }
+  const sentences = trimmed.split(/(?<=[.!])\s+/).filter(Boolean);
+  const last = sentences[sentences.length - 1] ?? "";
+  return {
+    question: last.slice(0, 500) || null,
+    type: last ? "suggestion" : "none",
+  };
+}
+
+async function logAnalytics(payload: {
+  session_id: string | null;
+  detected_state: EmotionalState;
+  spiral_triggered: boolean;
+  closing_question: string | null;
+  closing_type: string;
+  user_message_length: number;
+  user_message_preview: string;
+  assistant_message_length: number;
+  model: string;
+}) {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return; // fail silent
+  try {
+    await fetch(`${url}/rest/v1/mentor_analytics`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    console.error("analytics insert failed:", err);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
