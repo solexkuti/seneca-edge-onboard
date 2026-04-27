@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Sprout, TrendingUp, Trophy, Crown } from "lucide-react";
+import { Sprout, TrendingUp, Trophy, Crown } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import type { SlideProps } from "./OnboardingFlow";
 
