@@ -17,19 +17,30 @@ export type SlideProps = {
 };
 
 /**
- * 5-slide onboarding — emotional hook → mockup → features → proof → decision.
+ * Onboarding — narrative previews → 4-step personalization → path picker.
  *
- *   1. Hero       — emotional hook, single CTA (manual)
- *   2. Mockup     — animated phone, floating overlay (auto)
- *   3. Features   — 3 cards (auto)
- *   4. Proof      — soft trust layer + 1 testimonial (auto)
- *   5. Path       — pick a path → confirmation → route into the chosen flow
+ *   1. Hero          — emotional hook, single CTA (manual)
+ *   2. Mockup        — animated phone, floating overlay (auto)
+ *   3. Features      — 3 cards (auto)
+ *   4. Proof         — soft trust layer + 1 testimonial (auto)
+ *   5. Market        — Step 1/4 personalization (manual)
+ *   6. Experience    — Step 2/4 personalization (manual)
+ *   7. Challenge     — Step 3/4 personalization (manual)
+ *   8. Goal          — Step 4/4 personalization (manual)
+ *   9. Path          — pick a path → confirmation → route into the chosen flow
+ *
+ * Personalization answers are persisted to localStorage and read by Seneca
+ * AI as USER CONTEXT on first interaction (see src/lib/onboardingProfile.ts).
  */
 const slideOrder = [
   { key: "hook", auto: 0, Component: Slide1Hero },
   { key: "experience", auto: 5200, Component: Slide2Intelligence },
   { key: "features", auto: 5200, Component: Slide6Building },
   { key: "proof", auto: 6200, Component: SlideProof },
+  { key: "q-market", auto: 0, Component: Slide4Market },
+  { key: "q-experience", auto: 0, Component: SlideExperience },
+  { key: "q-challenge", auto: 0, Component: SlideStruggle },
+  { key: "q-goal", auto: 0, Component: SlideGoal },
   { key: "path", auto: 0, Component: Slide3Flow },
 ] as const;
 
