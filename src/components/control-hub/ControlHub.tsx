@@ -96,12 +96,12 @@ export default function ControlHub({ userName }: { userName?: string }) {
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
       <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-90" />
 
-      <div className="relative z-10 mx-auto w-full max-w-[440px] px-5 pt-7 pb-16">
+      <div className="relative z-10 mx-auto w-full max-w-[440px] px-6 pt-8 pb-20">
         {/* HEADER */}
         <Header userName={userName} initial={initial} />
 
         {/* MENTAL SIGNAL */}
-        <div className="mt-7">
+        <div className="mt-8">
           <MentalSignalCard
             message={MENTAL_SIGNALS[signalIdx]}
             signalIdx={signalIdx}
@@ -109,49 +109,55 @@ export default function ControlHub({ userName }: { userName?: string }) {
         </div>
 
         {/* PRIMARY ACTION */}
-        <div className="mt-7">
+        <div className="mt-6">
           <CheckBeforeTradeButton />
         </div>
 
         {/* YOUR SYSTEM */}
-        <div className="mt-10">
-          <SectionLabel>Your system</SectionLabel>
-          <div className="mt-3">
-            <YourSystemCard />
-          </div>
-        </div>
+        <Section label="Your system">
+          <YourSystemCard />
+        </Section>
 
         {/* TOOLS */}
-        <div className="mt-10">
-          <SectionLabel>Tools</SectionLabel>
-          <div className="mt-3 space-y-2.5">
+        <Section label="Tools">
+          <div className="space-y-2">
             {TOOLS.map((t, i) => (
               <ToolCard key={t.key} tool={t} delay={0.04 * i} />
             ))}
           </div>
-        </div>
+        </Section>
 
         {/* UPCOMING */}
-        <div className="mt-10">
-          <SectionLabel>Upcoming</SectionLabel>
-          <div className="mt-3">
-            <UpcomingCard />
-          </div>
-        </div>
+        <Section label="Upcoming">
+          <UpcomingCard />
+        </Section>
 
         {/* RECENT ACTIVITY */}
-        <div className="mt-10">
-          <SectionLabel>Recent activity</SectionLabel>
-          <div className="mt-3">
-            <RecentActivityCard />
-          </div>
-        </div>
+        <Section label="Recent activity">
+          <RecentActivityCard />
+        </Section>
 
-        <p className="mt-12 text-center text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary/70">
+        <p className="mt-14 text-center text-[10.5px] font-medium uppercase tracking-[0.24em] text-text-secondary/60">
           SenecaEdge · Control State
         </p>
       </div>
     </div>
+  );
+}
+
+// Consistent vertical rhythm wrapper for major sections.
+function Section({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mt-10">
+      <SectionLabel>{label}</SectionLabel>
+      <div className="mt-4">{children}</div>
+    </section>
   );
 }
 
@@ -164,31 +170,34 @@ function Header({ userName, initial }: { userName?: string; initial: string }) {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="flex items-start justify-between gap-4"
     >
-      <div className="min-w-0 flex-1">
-        <Logo size="sm" variant="full" className="mb-4" />
+      {/* Top row: logo (left) + profile (right), vertically aligned */}
+      <div className="flex items-center justify-between">
+        <Logo size="sm" variant="full" />
+        <div
+          aria-label={userName ? `Profile ${userName}` : "Profile"}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card ring-1 ring-border shadow-soft"
+        >
+          <span className="text-[13px] font-semibold text-text-primary">
+            {initial}
+          </span>
+        </div>
+      </div>
+
+      {/* Title block — clear breathing room from logo row */}
+      <div className="mt-7">
         <h1 className="text-[26px] font-bold leading-[1.1] tracking-tight text-text-primary">
           Control State
         </h1>
-        <p className="mt-1.5 text-[13px] leading-snug text-text-secondary">
+        <p className="mt-2 text-[13.5px] leading-snug text-text-secondary">
           You don’t trade the market. You manage yourself.
         </p>
         {userName && (
-          <p className="mt-1 text-[12px] text-text-secondary/80">
+          <p className="mt-2 text-[12px] text-text-secondary/80">
             Welcome back,{" "}
             <span className="font-semibold text-text-primary">{userName}</span>.
           </p>
         )}
-      </div>
-
-      <div
-        aria-label={userName ? `Profile ${userName}` : "Profile"}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card ring-1 ring-border shadow-soft"
-      >
-        <span className="text-[13px] font-semibold text-text-primary">
-          {initial}
-        </span>
       </div>
     </motion.header>
   );
@@ -323,31 +332,32 @@ function YourSystemCard() {
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       className="rounded-2xl bg-card px-5 py-5 ring-1 ring-border shadow-soft"
     >
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+      <div className="grid grid-cols-2 gap-x-5 gap-y-4">
         {SYSTEM_FIELDS.map((f) => (
           <div key={f.label} className="min-w-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/80">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/70">
               {f.label}
             </p>
-            <p className="mt-1 text-[14px] font-medium text-text-primary/70">
+            <p className="mt-1.5 text-[14px] font-medium text-text-primary/70">
               {f.value}
             </p>
           </div>
         ))}
       </div>
 
-      <p className="mt-5 text-[12.5px] leading-snug text-text-secondary">
-        You haven’t defined your system yet.
-      </p>
-
-      <Link
-        to="/hub/strategy"
-        preload="intent"
-        className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-mix px-4 py-2 text-[12.5px] font-semibold text-white shadow-glow-primary transition-transform active:scale-[0.98]"
-      >
-        <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
-        Define System
-      </Link>
+      <div className="mt-6 flex items-center justify-between gap-4 border-t border-border/60 pt-5">
+        <p className="text-[12.5px] leading-snug text-text-secondary">
+          You haven’t defined your system yet.
+        </p>
+        <Link
+          to="/hub/strategy"
+          preload="intent"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-mix px-3.5 py-2 text-[12px] font-semibold text-white shadow-glow-primary transition-transform active:scale-[0.98]"
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+          Define System
+        </Link>
+      </div>
     </motion.div>
   );
 }
@@ -357,9 +367,9 @@ function YourSystemCard() {
 // ─────────────────────────────────────────────────────────────
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/80">
+    <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.24em] text-text-secondary/70">
       <span>{children}</span>
-      <span className="h-px flex-1 bg-gradient-to-r from-text-secondary/20 to-transparent" />
+      <span className="h-px flex-1 bg-gradient-to-r from-text-secondary/15 to-transparent" />
     </div>
   );
 }
@@ -436,23 +446,22 @@ function RecentActivityCard() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-2xl bg-card px-5 py-4 ring-1 ring-border shadow-soft"
+      className="rounded-2xl bg-card px-5 py-5 ring-1 ring-border shadow-soft"
     >
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/80">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/70">
             Last trade
           </p>
-          <p className="mt-1 text-[14.5px] font-semibold text-text-primary">
-            EUR/USD{" "}
-            <span className="text-emerald-600">+0.8R</span>
+          <p className="mt-1.5 text-[14.5px] font-semibold text-text-primary">
+            EUR/USD <span className="text-emerald-600">+0.8R</span>
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/80">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/70">
             Discipline
           </p>
-          <p className="mt-1 text-[14.5px] font-semibold text-text-primary">
+          <p className="mt-1.5 text-[14.5px] font-semibold text-text-primary">
             72%
           </p>
         </div>
