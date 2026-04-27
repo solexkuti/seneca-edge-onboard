@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Mail, Lock, ArrowLeft } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
+import Logo from "@/components/brand/Logo";
 
 export default function SlideAuth({ onNext }: SlideProps) {
   const [mode, setMode] = useState<"choose" | "email">("choose");
