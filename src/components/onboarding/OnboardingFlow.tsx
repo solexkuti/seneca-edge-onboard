@@ -106,13 +106,11 @@ export default function OnboardingFlow() {
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pb-8 pt-[44px]">
         {/* LOGO — sits directly on the background, no container */}
         <div className="flex justify-center">
-          <img
-            src={(Logo as unknown as { logoSrc?: string }).logoSrc /* fallback below */}
-            alt=""
-            aria-hidden
-            hidden
+          <Logo
+            size="md"
+            variant="full"
+            className="h-auto w-[24vw] min-w-[88px] max-w-[120px]"
           />
-          <Logo size="md" variant="full" className="w-[24vw] max-w-[120px] min-w-[88px] h-auto" />
         </div>
 
         {/* Progress dots */}
