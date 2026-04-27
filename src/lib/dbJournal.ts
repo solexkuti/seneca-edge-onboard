@@ -167,6 +167,14 @@ export function toLegacyEntries(rows: DbJournalRow[]): JournalEntry[] {
     resultR: r.resultR,
     followedPlan: r.followedPlan,
     notes: r.notes ?? undefined,
+    emotionalState: r.emotional_state,
+    disciplineScore: r.discipline_score,
+    rules: {
+      entry: r.followed_entry,
+      exit: r.followed_exit,
+      risk: r.followed_risk,
+      behavior: r.followed_behavior,
+    },
   }));
 }
 
