@@ -91,7 +91,6 @@ export default function SlideTestimonials(_props: SlideProps) {
 type Testimonial = {
   name: string;
   role: string;
-  avatar: string;
   tag: "Discipline" | "Overtrading" | "Rule breaking";
   quote: string;
   tone: "violet" | "blue" | "magenta";
@@ -101,7 +100,6 @@ const testimonials: Testimonial[] = [
   {
     name: "Marco D.",
     role: "Futures · 3 yrs",
-    avatar: avatarMarco,
     tag: "Discipline",
     tone: "violet",
     quote:
@@ -110,7 +108,6 @@ const testimonials: Testimonial[] = [
   {
     name: "Aisha R.",
     role: "Forex · 5 yrs",
-    avatar: avatarAisha,
     tag: "Overtrading",
     tone: "blue",
     quote:
@@ -119,7 +116,6 @@ const testimonials: Testimonial[] = [
   {
     name: "Kenji T.",
     role: "Crypto · 2 yrs",
-    avatar: avatarKenji,
     tag: "Rule breaking",
     tone: "magenta",
     quote:
@@ -131,24 +127,34 @@ const testimonials: Testimonial[] = [
 
 const TONE_MAP: Record<
   Testimonial["tone"],
-  { avatar: string; tag: string; quoteIcon: string }
+  { initials: string; tag: string; quoteIcon: string }
 > = {
   violet: {
-    avatar: "bg-gradient-to-br from-[#6C5CE7] to-[#8B7CF7]",
+    initials: "bg-[#6C5CE7]/10 text-[#5B4ECC] ring-[#6C5CE7]/20",
     tag: "bg-[#6C5CE7]/10 text-[#6C5CE7] ring-[#6C5CE7]/20",
     quoteIcon: "text-[#6C5CE7]/30",
   },
   blue: {
-    avatar: "bg-gradient-to-br from-[#4F8BFF] to-[#00C6FF]",
+    initials: "bg-[#00C6FF]/10 text-[#0277A8] ring-[#00C6FF]/20",
     tag: "bg-[#00C6FF]/10 text-[#0092C7] ring-[#00C6FF]/20",
     quoteIcon: "text-[#00C6FF]/30",
   },
   magenta: {
-    avatar: "bg-gradient-to-br from-[#FF7AF5] to-[#A29BFE]",
+    initials: "bg-[#A855F7]/10 text-[#9333EA] ring-[#A855F7]/20",
     tag: "bg-[#FF7AF5]/10 text-[#C026D3] ring-[#FF7AF5]/20",
     quoteIcon: "text-[#FF7AF5]/30",
   },
 };
+
+/** Extract initials from "Marco D." -> "MD" */
+function getInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((part) => part.replace(/[^A-Za-z]/g, "").charAt(0).toUpperCase())
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("");
+}
 
 function TestimonialCard({
   testimonial,
