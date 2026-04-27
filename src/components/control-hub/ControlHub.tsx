@@ -13,7 +13,7 @@ import {
   Gamepad2,
   Plus,
 } from "lucide-react";
-import Logo from "@/components/brand/Logo";
+
 
 // ─────────────────────────────────────────────────────────────
 // Stoic, Mark Douglas–inspired mental signals.
