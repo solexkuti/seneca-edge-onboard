@@ -76,16 +76,21 @@ export default function AiMentorChat() {
     [lastUserMessage],
   );
 
-  // Build suggestions: state-aware + journal-personalized + anti-repeat.
-  const suggestions = useMemo(
-    () =>
-      pickMentorSuggestions({
-        state: detectedState,
-        journal,
-        recentlyShownIds: recentSuggestionIds,
-      }),
-    [detectedState, journal, recentSuggestionIds],
-  );
+  // Build suggestions:
+  //   • If we have a start-path AND the user hasn't replied yet → use the
+  //     path-specific quick-replies (per spec).
+  //   • Otherwise → state-aware + journal-personalized + anti-repeat.
+  const isFirstTurn = !lastUserMessage;
+  const suggestions: MentorSuggestion[] = useMemo(() => {
+    if (startPath && isFirstTurn) {
+      return getOpeningFor(startPath).chips.slice(0, 4);
+    }
+    return pickMentorSuggestions({
+      state: detectedState,
+      journal,
+      recentlyShownIds: recentSuggestionIds,
+    });
+  }, [startPath, isFirstTurn, detectedState, journal, recentSuggestionIds]);
 
   // Track suggestions we've shown so we don't repeat them every turn.
   useEffect(() => {
