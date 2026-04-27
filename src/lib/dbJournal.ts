@@ -54,6 +54,12 @@ export type DbJournalRow = {
   resultR: number;       // signed R for legacy compatibility
   emotional_state: EmotionalState;
   notes: string | null;
+  strategy_id: string | null;
+  strategy_name: string | null;
+  entry_rule: string | null;
+  exit_rule: string | null;
+  risk_rule: string | null;
+  behavior_rule: string | null;
 };
 
 /**
