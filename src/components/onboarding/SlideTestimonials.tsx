@@ -94,7 +94,7 @@ export default function SlideTestimonials(_props: SlideProps) {
 type Testimonial = {
   name: string;
   role: string;
-  initials: string;
+  avatar: string;
   tag: "Discipline" | "Overtrading" | "Rule breaking";
   quote: string;
   tone: "violet" | "blue" | "magenta";
@@ -104,7 +104,7 @@ const testimonials: Testimonial[] = [
   {
     name: "Marco D.",
     role: "Futures · 3 yrs",
-    initials: "MD",
+    avatar: avatarMarco,
     tag: "Discipline",
     tone: "violet",
     quote:
@@ -113,7 +113,7 @@ const testimonials: Testimonial[] = [
   {
     name: "Aisha R.",
     role: "Forex · 5 yrs",
-    initials: "AR",
+    avatar: avatarAisha,
     tag: "Overtrading",
     tone: "blue",
     quote:
@@ -122,7 +122,7 @@ const testimonials: Testimonial[] = [
   {
     name: "Kenji T.",
     role: "Crypto · 2 yrs",
-    initials: "KT",
+    avatar: avatarKenji,
     tag: "Rule breaking",
     tone: "magenta",
     quote:
