@@ -226,20 +226,15 @@ function TestimonialCard({
         )}
       </AnimatePresence>
 
-      {/* Footer: avatar + name */}
+      {/* Footer: initials badge + name */}
       <div className="mt-4 flex items-center gap-2.5">
         <div
-          className={`relative h-10 w-10 shrink-0 overflow-hidden rounded-full p-[1.5px] ${t.avatar}`}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-1 ${t.initials}`}
           aria-hidden
         >
-          <img
-            src={testimonial.avatar}
-            alt=""
-            width={512}
-            height={512}
-            loading="lazy"
-            className="h-full w-full rounded-full object-cover ring-2 ring-card"
-          />
+          <span className="text-[12px] font-semibold tracking-wider">
+            {getInitials(testimonial.name)}
+          </span>
         </div>
         <div className="leading-tight">
           <div className="text-[12.5px] font-semibold text-text-primary">
