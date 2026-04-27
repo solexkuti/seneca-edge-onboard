@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Sprout, TrendingUp, Trophy, Crown } from "lucide-react";
+import { Sprout, TrendingUp, Trophy, Crown } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import type { SlideProps } from "./OnboardingFlow";
 
@@ -48,25 +48,12 @@ export default function SlideExperience({ onNext }: SlideProps) {
               selected={selected === m.id}
               onClick={() => {
                 setSelected(m.id);
-                window.setTimeout(onNext, 380);
+                window.setTimeout(onNext, 200);
               }}
             />
           </motion.div>
         ))}
       </div>
-
-      <motion.button
-        whileTap={{ scale: 0.97 }}
-        disabled={!selected}
-        onClick={onNext}
-        animate={{ opacity: selected ? 1 : 0.4 }}
-        className="group relative mt-2 w-full overflow-hidden rounded-2xl bg-gradient-primary px-6 py-4 shadow-glow-primary disabled:cursor-not-allowed"
-      >
-        <span className="relative flex items-center justify-center gap-2 text-[16px] font-semibold text-white">
-          Continue
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-        </span>
-      </motion.button>
     </div>
   );
 }
