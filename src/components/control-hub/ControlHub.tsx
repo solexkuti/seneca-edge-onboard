@@ -22,6 +22,7 @@ import {
   pickRandom,
   type BehaviorStateKey,
 } from "@/lib/behaviorState";
+import CheckHistorySparkline from "./CheckHistorySparkline";
 
 type CoreFeature = {
   key: string;
@@ -164,6 +165,11 @@ export default function ControlHub({ userName }: { userName?: string }) {
         {/* SECTION: Primary action */}
         <div className="mt-8">
           <CheckBeforeTradeButton />
+        </div>
+
+        {/* SECTION: Check history sparkline */}
+        <div className="mt-6">
+          <CheckHistorySparkline />
         </div>
 
         {/* SECTION: Primary tool */}
