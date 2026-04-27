@@ -16,9 +16,9 @@ import type { SlideProps } from "./OnboardingFlow";
  */
 
 const FLOATERS = [
-  { text: "Set your rules once", x: "-12%", y: "12%", delay: 0 },
-  { text: "Lock your risk", x: "78%", y: "32%", delay: 1.4 },
-  { text: "No impulsive entries", x: "-8%", y: "70%", delay: 2.8 },
+  { text: "Set your rules once", x: "-12%", y: "12%", delay: 0.6 },
+  { text: "Lock your risk", x: "78%", y: "32%", delay: 0.8 },
+  { text: "No impulsive entries", x: "-8%", y: "70%", delay: 1.0 },
 ];
 
 export default function Slide2Intelligence({ onNext }: SlideProps) {
@@ -47,14 +47,20 @@ export default function Slide2Intelligence({ onNext }: SlideProps) {
         {FLOATERS.map((f) => (
           <motion.div
             key={f.text}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: [0, 1, 1, 0], y: [6, 0, 0, -6] }}
+            initial={{ opacity: 0, x: 0 }}
+            animate={{
+              opacity: [0, 1, 1, 1],
+              x: [0, 3, -3, 0],
+            }}
             transition={{
-              duration: 4.2,
-              delay: f.delay,
-              repeat: Infinity,
-              repeatDelay: 4.2,
-              ease: "easeInOut",
+              opacity: { duration: 0.6, delay: f.delay, ease: "easeOut" },
+              x: {
+                duration: 6,
+                delay: f.delay + 0.6,
+                repeat: Infinity,
+                repeatType: "mirror",
+                ease: "easeInOut",
+              },
             }}
             className="pointer-events-none absolute z-20 rounded-full bg-card/85 px-3 py-1.5 text-[11px] font-medium text-text-primary shadow-soft ring-1 ring-border backdrop-blur-md"
             style={{ left: f.x, top: f.y }}
