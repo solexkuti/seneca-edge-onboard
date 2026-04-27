@@ -55,8 +55,8 @@ const TOOLS: ToolItem[] = [
   },
   {
     key: "state",
-    title: "State Check",
-    subtitle: "Assess your mental condition",
+    title: "In-Trade Check",
+    subtitle: "Access your mental state while a trade is active. Pause before you act.",
     Icon: Activity,
     to: "/hub/state",
   },
