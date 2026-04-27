@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      mentor_analytics: {
+        Row: {
+          assistant_message_length: number | null
+          closing_question: string | null
+          closing_type: string | null
+          created_at: string
+          detected_state: string
+          id: string
+          model: string | null
+          session_id: string | null
+          spiral_triggered: boolean
+          user_message_length: number | null
+          user_message_preview: string | null
+        }
+        Insert: {
+          assistant_message_length?: number | null
+          closing_question?: string | null
+          closing_type?: string | null
+          created_at?: string
+          detected_state: string
+          id?: string
+          model?: string | null
+          session_id?: string | null
+          spiral_triggered?: boolean
+          user_message_length?: number | null
+          user_message_preview?: string | null
+        }
+        Update: {
+          assistant_message_length?: number | null
+          closing_question?: string | null
+          closing_type?: string | null
+          created_at?: string
+          detected_state?: string
+          id?: string
+          model?: string | null
+          session_id?: string | null
+          spiral_triggered?: boolean
+          user_message_length?: number | null
+          user_message_preview?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

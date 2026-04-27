@@ -21,6 +21,10 @@ const SUGGESTIONS = [
 ];
 
 const MENTOR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mentor-chat`;
+const SESSION_ID =
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 export default function AiMentorChat() {
   const journal = useJournal();
@@ -83,7 +87,7 @@ export default function AiMentorChat() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: wireMessages, context: ctx }),
+        body: JSON.stringify({ messages: wireMessages, context: ctx, sessionId: SESSION_ID }),
       });
 
       if (!resp.ok || !resp.body) {

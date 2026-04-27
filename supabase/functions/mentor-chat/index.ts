@@ -210,16 +210,122 @@ type UserContext = {
   systemRules?: string;
 };
 
+// ── Hidden analytics helpers ───────────────────────────────────────────────
+type EmotionalState =
+  | "frustrated"
+  | "overconfident"
+  | "confused"
+  | "fearful"
+  | "neutral";
+
+const STATE_PATTERNS: Array<{ state: EmotionalState; rx: RegExp }> = [
+  {
+    state: "frustrated",
+    rx: /\b(keep losing|always (lose|mess|fail)|i'?m tired|sick of|stupid market|hate this|fed up|nothing works|every time|over and over|again and again)\b/i,
+  },
+  {
+    state: "overconfident",
+    rx: /\b(all in|all-?in|guaranteed|can'?t lose|sure thing|easy money|100%|cant miss|locked in|free money|going to print)\b/i,
+  },
+  {
+    state: "fearful",
+    rx: /\b(scared|afraid|terrified|frozen|can'?t pull the trigger|what if i lose|nervous|anxious|hesita(te|nt)|worried|paralyz(ed|e))\b/i,
+  },
+  {
+    state: "confused",
+    rx: /\b(don'?t (get|understand)|confus(ed|ing)|too complex|i'?m lost|makes no sense|stuck|no idea)\b/i,
+  },
+];
+
+const SPIRAL_PATTERNS =
+  /\b(i'?m done|can'?t do this|never get it|blew (up |my |the )?account|always|every time|keeps happening|what'?s wrong with me|i'?m stupid|need to fix.*now|right now|tell me what to do)\b/i;
+
+function detectState(message: string): {
+  state: EmotionalState;
+  spiral: boolean;
+} {
+  const text = (message ?? "").toLowerCase();
+  let state: EmotionalState = "neutral";
+  for (const { state: s, rx } of STATE_PATTERNS) {
+    if (rx.test(text)) {
+      state = s;
+      break;
+    }
+  }
+  const spiral =
+    (state === "frustrated" || state === "fearful") &&
+    SPIRAL_PATTERNS.test(text);
+  return { state, spiral };
+}
+
+// Pull the final question (closing) out of the assistant's reply.
+function extractClosing(reply: string): {
+  question: string | null;
+  type: "question" | "suggestion" | "none";
+} {
+  if (!reply) return { question: null, type: "none" };
+  const trimmed = reply.trim();
+  const lastQ = trimmed.lastIndexOf("?");
+  if (lastQ !== -1) {
+    let start = lastQ - 1;
+    while (start >= 0 && !".!?\n".includes(trimmed[start])) start--;
+    const question = trimmed.slice(start + 1, lastQ + 1).trim();
+    return { question: question.slice(0, 500), type: "question" };
+  }
+  const sentences = trimmed.split(/(?<=[.!])\s+/).filter(Boolean);
+  const last = sentences[sentences.length - 1] ?? "";
+  return {
+    question: last.slice(0, 500) || null,
+    type: last ? "suggestion" : "none",
+  };
+}
+
+async function logAnalytics(payload: {
+  session_id: string | null;
+  detected_state: EmotionalState;
+  spiral_triggered: boolean;
+  closing_question: string | null;
+  closing_type: string;
+  user_message_length: number;
+  user_message_preview: string;
+  assistant_message_length: number;
+  model: string;
+}) {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return; // fail silent
+  try {
+    await fetch(`${url}/rest/v1/mentor_analytics`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    console.error("analytics insert failed:", err);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages, context } = (await req.json()) as {
+    const { messages, context, sessionId } = (await req.json()) as {
       messages: Msg[];
       context?: UserContext;
+      sessionId?: string;
     };
+
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const userText = lastUser?.content ?? "";
+    const { state: detectedState, spiral } = detectState(userText);
+    const MODEL = "google/gemini-2.5-flash";
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -258,7 +364,7 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: MODEL,
           stream: true,
           messages: [
             { role: "system", content: systemContent },
@@ -297,7 +403,56 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(upstream.body, {
+    // Tee the stream: one branch goes to the client, the other accumulates
+    // the assistant text so we can log analytics silently when it's done.
+    const [clientStream, captureStream] = upstream.body!.tee();
+
+    (async () => {
+      try {
+        const reader = captureStream.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let acc = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let nl: number;
+          while ((nl = buffer.indexOf("\n")) !== -1) {
+            const line = buffer.slice(0, nl).replace(/\r$/, "");
+            buffer = buffer.slice(nl + 1);
+            if (!line || line.startsWith(":") || !line.startsWith("data: ")) continue;
+            const payload = line.slice(6).trim();
+            if (payload === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(payload);
+              const delta = parsed.choices?.[0]?.delta?.content as
+                | string
+                | undefined;
+              if (delta) acc += delta;
+            } catch {
+              // partial chunk — ignore
+            }
+          }
+        }
+        const closing = extractClosing(acc);
+        await logAnalytics({
+          session_id: sessionId ?? null,
+          detected_state: detectedState,
+          spiral_triggered: spiral,
+          closing_question: closing.question,
+          closing_type: closing.type,
+          user_message_length: userText.length,
+          user_message_preview: userText.slice(0, 140),
+          assistant_message_length: acc.length,
+          model: MODEL,
+        });
+      } catch (err) {
+        console.error("analytics capture failed:", err);
+      }
+    })();
+
+    return new Response(clientStream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
