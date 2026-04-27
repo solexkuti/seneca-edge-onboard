@@ -55,8 +55,8 @@ export default function Slide6Building(_props: SlideProps) {
 function DisciplineScreen() {
   return (
     <div className="relative h-full w-full bg-gradient-to-b from-[#0F172A] via-[#1A1B3A] to-[#0F172A] p-3 pt-11">
-      <div className="absolute -left-10 top-20 h-32 w-32 rounded-full bg-[#6C5CE7] opacity-40 blur-3xl" />
-      <div className="absolute -right-10 bottom-20 h-32 w-32 rounded-full bg-[#FF7AF5] opacity-25 blur-3xl" />
+      <div className="absolute -left-10 top-20 h-32 w-32 rounded-full bg-[#6C5CE7] opacity-40 blur-3xl animate-drift" />
+      <div className="absolute -right-10 bottom-20 h-32 w-32 rounded-full bg-[#FF7AF5] opacity-25 blur-3xl animate-drift [animation-delay:-2s]" />
 
       {/* Header */}
       <div className="relative flex items-center justify-between px-1">
