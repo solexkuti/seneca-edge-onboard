@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useNavigate } from "@tanstack/react-router";
 import Slide1Hero from "@/components/onboarding/Slide1Hero";
 import Slide2Intelligence from "@/components/onboarding/Slide2Intelligence";
 import Slide3Flow from "@/components/onboarding/Slide3Flow";
@@ -18,7 +19,7 @@ import SlideBuildingLoader from "@/components/onboarding/SlideBuildingLoader";
 import Slide7Success from "@/components/onboarding/Slide7Success";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
 import ProgressDots from "@/components/onboarding/ProgressDots";
-import ControlHub from "@/components/control-hub/ControlHub";
+import { saveUserName } from "@/lib/userName";
 
 export type SlideProps = {
   onNext: () => void;
@@ -49,7 +50,7 @@ export default function OnboardingFlow() {
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [name, setName] = useState("");
-  const [entered, setEntered] = useState(false);
+  const navigate = useNavigate();
   const slide = slideOrder[index];
 
   const goNext = () => {
@@ -64,18 +65,18 @@ export default function OnboardingFlow() {
     setIndex(target);
   };
 
+  const enterApp = () => {
+    if (name.trim()) saveUserName(name.trim());
+    navigate({ to: "/hub" });
+  };
+
   // Auto-advance for slides with auto duration
   useEffect(() => {
-    if (entered) return;
     if (slide.auto > 0) {
       const t = window.setTimeout(goNext, slide.auto);
       return () => window.clearTimeout(t);
     }
-  }, [index, slide.auto, entered]);
-
-  if (entered) {
-    return <ControlHub userName={name} />;
-  }
+  }, [index, slide.auto]);
 
   const Component = slide.Component;
 
@@ -116,7 +117,7 @@ export default function OnboardingFlow() {
                   onChange={setName}
                 />
               ) : slide.key === "success" ? (
-                <Slide7Success onNext={() => setEntered(true)} userName={name} />
+                <Slide7Success onNext={enterApp} userName={name} />
               ) : (
                 <Component onNext={goNext} />
               )}
