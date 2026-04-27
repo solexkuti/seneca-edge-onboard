@@ -332,31 +332,32 @@ function YourSystemCard() {
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       className="rounded-2xl bg-card px-5 py-5 ring-1 ring-border shadow-soft"
     >
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+      <div className="grid grid-cols-2 gap-x-5 gap-y-4">
         {SYSTEM_FIELDS.map((f) => (
           <div key={f.label} className="min-w-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/80">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/70">
               {f.label}
             </p>
-            <p className="mt-1 text-[14px] font-medium text-text-primary/70">
+            <p className="mt-1.5 text-[14px] font-medium text-text-primary/70">
               {f.value}
             </p>
           </div>
         ))}
       </div>
 
-      <p className="mt-5 text-[12.5px] leading-snug text-text-secondary">
-        You haven’t defined your system yet.
-      </p>
-
-      <Link
-        to="/hub/strategy"
-        preload="intent"
-        className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-mix px-4 py-2 text-[12.5px] font-semibold text-white shadow-glow-primary transition-transform active:scale-[0.98]"
-      >
-        <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
-        Define System
-      </Link>
+      <div className="mt-6 flex items-center justify-between gap-4 border-t border-border/60 pt-5">
+        <p className="text-[12.5px] leading-snug text-text-secondary">
+          You haven’t defined your system yet.
+        </p>
+        <Link
+          to="/hub/strategy"
+          preload="intent"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-mix px-3.5 py-2 text-[12px] font-semibold text-white shadow-glow-primary transition-transform active:scale-[0.98]"
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+          Define System
+        </Link>
+      </div>
     </motion.div>
   );
 }
