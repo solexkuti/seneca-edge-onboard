@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
+import { playFeedback } from "@/lib/feedback";
 
 /**
  * Reusable calm "Continue" CTA used on narrative onboarding slides.
@@ -17,7 +18,10 @@ export default function ContinueButton({
   return (
     <motion.button
       type="button"
-      onClick={onClick}
+      onClick={() => {
+        playFeedback("press");
+        onClick();
+      }}
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}

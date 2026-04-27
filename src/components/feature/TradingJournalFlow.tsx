@@ -24,6 +24,7 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import FeatureShell from "./FeatureShell";
+import { playFeedback } from "@/lib/feedback";
 import {
   submitJournalEntry,
   type EmotionalState,
@@ -109,9 +110,11 @@ export default function TradingJournalFlow() {
 
   const handleNext = async () => {
     if (step < 3) {
+      playFeedback("step");
       setStep((s) => (s + 1) as 0 | 1 | 2 | 3);
       return;
     }
+    playFeedback("press");
     await handleSubmit();
   };
 
@@ -185,16 +188,20 @@ export default function TradingJournalFlow() {
           <div className="mt-6 flex gap-2.5">
             <button
               onClick={() => {
+                playFeedback("tap");
                 setDraft(EMPTY_DRAFT);
                 setStep(0);
                 setDoneScore(null);
               }}
-              className="flex-1 rounded-xl bg-text-primary/[0.04] px-4 py-3 text-[13.5px] font-semibold text-text-primary ring-1 ring-border transition-all hover:bg-text-primary/[0.07]"
+              className="flex-1 rounded-xl bg-text-primary/[0.04] px-4 py-3 text-[13.5px] font-semibold text-text-primary ring-1 ring-border transition-all hover:bg-text-primary/[0.07] active:scale-[0.99]"
             >
               Log another
             </button>
             <button
-              onClick={() => navigate({ to: "/hub" })}
+              onClick={() => {
+                playFeedback("press");
+                navigate({ to: "/hub" });
+              }}
               className="flex-1 rounded-xl bg-gradient-primary px-4 py-3 text-[13.5px] font-semibold text-white shadow-glow-primary transition-transform active:scale-[0.99]"
             >
               Back to hub
@@ -251,9 +258,12 @@ export default function TradingJournalFlow() {
       <div className="mt-6 flex items-center gap-2.5">
         {step > 0 ? (
           <button
-            onClick={() => setStep((s) => Math.max(0, s - 1) as 0 | 1 | 2 | 3)}
+            onClick={() => {
+              playFeedback("back");
+              setStep((s) => Math.max(0, s - 1) as 0 | 1 | 2 | 3);
+            }}
             disabled={submitting}
-            className="flex h-12 items-center gap-2 rounded-xl bg-text-primary/[0.04] px-4 text-[13.5px] font-semibold text-text-primary ring-1 ring-border transition-all hover:bg-text-primary/[0.08] disabled:opacity-50"
+            className="flex h-12 items-center gap-2 rounded-xl bg-text-primary/[0.04] px-4 text-[13.5px] font-semibold text-text-primary ring-1 ring-border transition-all hover:bg-text-primary/[0.08] active:scale-[0.99] disabled:opacity-50"
           >
             <ArrowLeft className="h-4 w-4" strokeWidth={2.2} />
             Back
@@ -450,8 +460,11 @@ function StepEmotion({
         return (
           <button
             key={e.key}
-            onClick={() => setDraft({ ...draft, emotional_state: e.key })}
-            className={`flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-left ring-1 transition-all ${
+            onClick={() => {
+              playFeedback("tap");
+              setDraft({ ...draft, emotional_state: e.key });
+            }}
+            className={`flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-left ring-1 transition-all active:scale-[0.99] ${
               active
                 ? "bg-gradient-mix text-white ring-transparent shadow-glow-primary"
                 : "bg-card text-text-primary ring-border hover:bg-text-primary/[0.04]"
@@ -559,8 +572,11 @@ function DirectionButton({
 }) {
   return (
     <button
-      onClick={onClick}
-      className={`flex h-12 items-center justify-center gap-2 rounded-xl text-[14px] font-semibold tracking-tight ring-1 transition-all ${
+      onClick={() => {
+        playFeedback("tap");
+        onClick();
+      }}
+      className={`flex h-12 items-center justify-center gap-2 rounded-xl text-[14px] font-semibold tracking-tight ring-1 transition-all active:scale-[0.98] ${
         active
           ? "bg-gradient-primary text-white ring-transparent shadow-glow-primary"
           : "bg-card text-text-primary ring-border hover:bg-text-primary/[0.04]"
@@ -591,8 +607,11 @@ function ResultButton({
         : "bg-amber-500/90 text-white ring-transparent shadow-soft";
   return (
     <button
-      onClick={onClick}
-      className={`h-11 rounded-xl text-[13.5px] font-semibold tracking-tight ring-1 transition-all ${
+      onClick={() => {
+        playFeedback("tap");
+        onClick();
+      }}
+      className={`h-11 rounded-xl text-[13.5px] font-semibold tracking-tight ring-1 transition-all active:scale-[0.98] ${
         active
           ? activeStyles
           : "bg-card text-text-primary ring-border hover:bg-text-primary/[0.04]"
@@ -622,8 +641,11 @@ function YesNoButton({
       : "bg-rose-500/90 text-white ring-transparent shadow-soft";
   return (
     <button
-      onClick={onClick}
-      className={`flex h-11 items-center justify-center gap-1.5 rounded-xl text-[13.5px] font-semibold ring-1 transition-all ${
+      onClick={() => {
+        playFeedback("tap");
+        onClick();
+      }}
+      className={`flex h-11 items-center justify-center gap-1.5 rounded-xl text-[13.5px] font-semibold ring-1 transition-all active:scale-[0.98] ${
         active
           ? on
           : "bg-text-primary/[0.04] text-text-primary ring-border hover:bg-text-primary/[0.08]"
