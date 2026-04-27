@@ -426,11 +426,51 @@ function SectionLabel({
 }) {
   return (
     <div
-      className={`mt-6 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/80 ${className}`}
+      className={`flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/80 ${className}`}
     >
       <span>{children}</span>
       <span className="h-px flex-1 bg-gradient-to-r from-text-secondary/20 to-transparent" />
     </div>
+  );
+}
+
+function SecondaryFeatureCard({
+  feature,
+  delay,
+}: {
+  feature: CoreFeature;
+  delay: number;
+}) {
+  const tone = toneStyles[feature.tone];
+  const { Icon } = feature;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      whileTap={{ scale: 0.99 }}
+    >
+      <Link
+        to={feature.to}
+        preload="intent"
+        className="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl bg-card/90 px-3.5 py-3 ring-1 ring-border transition-all hover:bg-card hover:shadow-soft"
+      >
+        <div
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${tone.iconBg}`}
+        >
+          <Icon className="h-4 w-4 text-white" strokeWidth={2.2} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-[13.5px] font-semibold tracking-tight text-text-primary">
+            {feature.title}
+          </h3>
+          <p className="truncate text-[11.5px] text-text-secondary">
+            {feature.text}
+          </p>
+        </div>
+        <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-text-secondary/50 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-text-primary" />
+      </Link>
+    </motion.div>
   );
 }
 
