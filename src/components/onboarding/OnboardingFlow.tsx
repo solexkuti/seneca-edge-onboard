@@ -119,11 +119,28 @@ export default function OnboardingFlow() {
             <motion.div
               key={slide.key}
               custom={direction}
-              initial={{ opacity: 0, y: direction === 1 ? 24 : -24, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: direction === 1 ? -16 : 16, scale: 0.98 }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full"
+              initial={{ opacity: 0, x: direction === 1 ? 40 : -40, scale: 0.98 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: direction === 1 ? -40 : 40, scale: 0.98 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              drag={swipeEnabled ? "x" : false}
+              dragElastic={0.18}
+              dragMomentum={false}
+              dragConstraints={{ left: 0, right: 0 }}
+              onDragEnd={(_, info) => {
+                if (!swipeEnabled) return;
+                const threshold = 60;
+                const velocity = 400;
+                if (info.offset.x < -threshold || info.velocity.x < -velocity) {
+                  goNext();
+                } else if (
+                  info.offset.x > threshold ||
+                  info.velocity.x > velocity
+                ) {
+                  goPrev();
+                }
+              }}
+              className={`w-full ${swipeEnabled ? "touch-pan-y cursor-grab active:cursor-grabbing" : ""}`}
             >
               {slide.key === "name" ? (
                 <SlideName
