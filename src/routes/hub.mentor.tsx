@@ -1,15 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import AiMentor from "@/components/feature/AiMentor";
+import ComingSoonScreen from "@/components/feature/ComingSoonScreen";
 
 export const Route = createFileRoute("/hub/mentor")({
   head: () => ({
-    meta: [
-      { title: "AI Mentor — SenecaEdge" },
-      {
-        name: "description",
-        content: "Real-time trading guidance to keep you disciplined.",
-      },
-    ],
+    meta: [{ title: "AI Mentor — SenecaEdge" }],
   }),
-  component: AiMentor,
+  component: () => (
+    <ComingSoonScreen
+      eyebrow="AI Mentor"
+      title="Guided trading reflection."
+      subtitle="A mirror, not an oracle."
+      description="Structured prompts to help you process trades and stay aligned with your system."
+    />
+  ),
 });

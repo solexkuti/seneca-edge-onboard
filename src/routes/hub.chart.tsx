@@ -1,16 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import ChartAnalyzer from "@/components/feature/ChartAnalyzer";
+import ComingSoonScreen from "@/components/feature/ComingSoonScreen";
 
 export const Route = createFileRoute("/hub/chart")({
   head: () => ({
-    meta: [
-      { title: "Chart Analyzer — SenecaEdge" },
-      {
-        name: "description",
-        content:
-          "Drop your chart and get instant insight based on your strategy.",
-      },
-    ],
+    meta: [{ title: "Chart Analyzer — SenecaEdge" }],
   }),
-  component: ChartAnalyzer,
+  component: () => (
+    <ComingSoonScreen
+      eyebrow="Chart Analyzer"
+      title="Analyze your trade against your rules."
+      subtitle="Decision clarity, on demand."
+      description="Drop in your chart and get an instant read against your defined system. In active development."
+    />
+  ),
 });
