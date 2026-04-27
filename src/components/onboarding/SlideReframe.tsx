@@ -3,13 +3,12 @@ import { ArrowRight } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
 
 /**
- * Bridge — Problem Awareness
- * Three lines, each separated by a calm 0.5s pause, then a quiet subtext.
+ * Reframe — shifts the conversation from "strategy" to "control".
+ * Two lines, calm pause between them.
  */
-export default function SlideBridge({ onNext }: SlideProps) {
+export default function SlideReframe({ onNext }: SlideProps) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-12 px-2 text-center">
-      {/* Tiny eyebrow */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -18,57 +17,37 @@ export default function SlideBridge({ onNext }: SlideProps) {
       >
         <span className="h-1.5 w-1.5 rounded-full bg-brand" />
         <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
-          The real problem
+          Reframe
         </span>
         <span className="h-1.5 w-1.5 rounded-full bg-accent-cyan" />
       </motion.div>
 
-      {/* Three-line reveal */}
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-6">
         <motion.p
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="text-[24px] font-semibold leading-[1.3] tracking-tight text-text-primary sm:text-[26px]"
+          className="text-[26px] font-semibold leading-[1.25] tracking-tight text-text-secondary sm:text-[28px]"
         >
-          You already know how to trade.
+          It's not a strategy problem.
         </motion.p>
 
         <motion.p
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.9, ease: [0.22, 1, 0.36, 1] }}
-          className="text-[22px] font-medium leading-[1.4] text-text-secondary sm:text-[24px]"
+          transition={{ duration: 0.8, delay: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          className="text-[28px] font-bold leading-[1.2] tracking-tight text-gradient-mix sm:text-[30px]"
         >
-          But in the moment…
-        </motion.p>
-
-        <motion.p
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1.7, ease: [0.22, 1, 0.36, 1] }}
-          className="text-[22px] font-semibold leading-[1.4] text-gradient-mix sm:text-[24px]"
-        >
-          You don't always follow what you know.
-        </motion.p>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 2.5 }}
-          className="text-[13px] text-text-secondary/80"
-        >
-          That's where most losses come from.
+          It's a control problem.
         </motion.p>
       </div>
 
-      {/* CTA */}
       <motion.button
         type="button"
         onClick={onNext}
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 2.9 }}
+        transition={{ duration: 0.5, delay: 1.7 }}
         whileHover={{ y: -1 }}
         whileTap={{ scale: 0.97 }}
         className="group inline-flex items-center gap-2 rounded-2xl bg-gradient-primary px-7 py-3.5 text-[15px] font-semibold text-white shadow-soft"
