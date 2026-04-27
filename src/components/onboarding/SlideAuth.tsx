@@ -3,7 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Mail, Lock, ArrowLeft } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
 
-export default function SlideAuth({ onNext }: SlideProps) {
+export default function SlideAuth({
+  onNext,
+  username,
+}: SlideProps & { username?: string }) {
   const [mode, setMode] = useState<"choose" | "email">("choose");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,15 +25,21 @@ export default function SlideAuth({ onNext }: SlideProps) {
         <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1">
           <span className="h-1.5 w-1.5 rounded-full bg-gradient-primary" />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
-            Final Step
+            One last step
           </span>
         </div>
         <h1 className="mt-3 text-[26px] font-bold leading-[1.15] tracking-tight text-text-primary">
-          Create your <span className="text-gradient-mix">account</span>
+          Everything is <span className="text-gradient-mix">ready.</span>
         </h1>
         <p className="mt-2 text-[14px] text-text-secondary">
-          Lock in your discipline system.
+          Save your setup and step into control.
         </p>
+        {username && (
+          <p className="mt-1.5 text-[12px] text-text-secondary/80">
+            This will be saved as{" "}
+            <span className="font-semibold text-text-primary">{username}</span>
+          </p>
+        )}
       </motion.div>
 
       <AnimatePresence mode="wait">
