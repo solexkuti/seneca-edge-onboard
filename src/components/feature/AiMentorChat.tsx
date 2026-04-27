@@ -8,7 +8,14 @@ import {
   detectMentorState,
   pickMentorSuggestions,
   INTENT_STYLES,
+  type MentorSuggestion,
 } from "@/lib/mentorSuggestions";
+import {
+  readStartPath,
+  clearStartPath,
+  getOpeningFor,
+  type StartPath,
+} from "@/lib/mentorOpening";
 import { toast } from "sonner";
 
 type Msg = {
