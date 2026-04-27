@@ -54,6 +54,12 @@ export type DbJournalRow = {
   resultR: number;       // signed R for legacy compatibility
   emotional_state: EmotionalState;
   notes: string | null;
+  strategy_id: string | null;
+  strategy_name: string | null;
+  entry_rule: string | null;
+  exit_rule: string | null;
+  risk_rule: string | null;
+  behavior_rule: string | null;
 };
 
 /**
@@ -142,7 +148,8 @@ export async function fetchJournal(): Promise<DbJournalRow[]> {
       `id, trade_id, followed_entry, followed_exit, followed_risk,
        followed_behavior, discipline_score, emotional_state, notes,
        trade:trades!inner (
-         id, market, direction, result, rr, executed_at
+         id, market, direction, result, rr, executed_at, strategy_id,
+         strategy:strategies ( id, name, entry_rule, exit_rule, risk_rule, behavior_rule )
        )`,
     )
     .eq("user_id", userData.user.id)
@@ -203,6 +210,7 @@ function combine(trade: any, log: any): DbJournalRow {
   if (trade.result === "win") resultR = rr ?? 1;
   else if (trade.result === "loss") resultR = -(rr ?? 1);
 
+  const strategy = trade.strategy ?? null;
   return {
     id: log.id,
     trade_id: trade.id,
@@ -220,5 +228,11 @@ function combine(trade: any, log: any): DbJournalRow {
     resultR,
     emotional_state: log.emotional_state ?? "calm",
     notes: log.notes ?? null,
+    strategy_id: trade.strategy_id ?? strategy?.id ?? null,
+    strategy_name: strategy?.name ?? null,
+    entry_rule: strategy?.entry_rule ?? null,
+    exit_rule: strategy?.exit_rule ?? null,
+    risk_rule: strategy?.risk_rule ?? null,
+    behavior_rule: strategy?.behavior_rule ?? null,
   };
 }
