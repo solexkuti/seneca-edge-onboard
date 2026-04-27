@@ -95,11 +95,15 @@ export default function AiMentorChat() {
     setDraft("");
     setStreaming(true);
 
-    // Build user context (only real data)
+    // Build user context from real signals: trading journal + onboarding profile.
     const journalSummary = summarizeJournal(journal) ?? undefined;
+    const profileSummary = summarizeProfile(readProfile()) ?? undefined;
     const ctx =
-      journalSummary
-        ? { journalSummary }
+      journalSummary || profileSummary
+        ? {
+            ...(journalSummary ? { journalSummary } : {}),
+            ...(profileSummary ? { profileSummary } : {}),
+          }
         : undefined;
 
     // Strip the intro message from what we send to the model — it's UI only.
