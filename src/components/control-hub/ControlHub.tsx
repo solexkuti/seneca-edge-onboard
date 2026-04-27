@@ -218,61 +218,98 @@ function MentalSignalCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="relative overflow-hidden rounded-2xl bg-gradient-mix p-5 shadow-glow-primary"
+      className="relative overflow-hidden rounded-2xl shadow-glow-primary"
     >
+      {/* Slow drifting gradient base — almost imperceptible color shift */}
+      <motion.div
+        aria-hidden
+        className="absolute inset-0 -z-0"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, #6E62C9 0%, #7E70CF 35%, #5FB3D4 100%)",
+          backgroundSize: "180% 180%",
+        }}
+        animate={{
+          backgroundPosition: ["0% 0%", "100% 50%", "0% 100%", "0% 0%"],
+        }}
+        transition={{ duration: 24, ease: "easeInOut", repeat: Infinity }}
+      />
+
       {/* Slow rotating conic highlight — sweeps across surface */}
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute -inset-1/4 opacity-40 mix-blend-soft-light"
+        className="pointer-events-none absolute -inset-1/4 opacity-30 mix-blend-soft-light"
         style={{
           background:
-            "conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.55) 60deg, transparent 140deg, transparent 360deg)",
+            "conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.5) 60deg, transparent 140deg, transparent 360deg)",
         }}
         animate={{ rotate: 360 }}
-        transition={{ duration: 22, ease: "linear", repeat: Infinity }}
+        transition={{ duration: 26, ease: "linear", repeat: Infinity }}
       />
 
-      {/* Slow breathing glow — top-right halo shifts opacity & scale */}
+      {/* Slow breathing glow — top-right halo */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/20 blur-2xl"
-        animate={{ opacity: [0.35, 0.6, 0.35], scale: [1, 1.12, 1] }}
-        transition={{ duration: 7, ease: "easeInOut", repeat: Infinity }}
+        animate={{ opacity: [0.3, 0.55, 0.3], scale: [1, 1.1, 1] }}
+        transition={{ duration: 8, ease: "easeInOut", repeat: Infinity }}
       />
 
       {/* Counter-breathing glow — bottom-left, opposite phase */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-white/15 blur-2xl"
-        animate={{ opacity: [0.5, 0.25, 0.5], scale: [1.05, 0.95, 1.05] }}
-        transition={{ duration: 9, ease: "easeInOut", repeat: Infinity }}
+        animate={{ opacity: [0.45, 0.2, 0.45], scale: [1.05, 0.95, 1.05] }}
+        transition={{ duration: 10, ease: "easeInOut", repeat: Infinity }}
       />
 
-      <div className="relative flex items-start gap-3.5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
-          <motion.div
-            animate={{ opacity: [0.85, 1, 0.85] }}
-            transition={{ duration: 4, ease: "easeInOut", repeat: Infinity }}
-          >
-            <Eye className="h-4.5 w-4.5 text-white" strokeWidth={2.2} />
-          </motion.div>
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
-            Mental signal
-          </p>
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={signalIdx}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-              className="mt-1.5 text-[15.5px] font-medium leading-snug text-white"
+      {/* Tighter padding for sharper feel */}
+      <div className="relative px-4 pt-4 pb-3.5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
+            <motion.div
+              animate={{ opacity: [0.85, 1, 0.85] }}
+              transition={{ duration: 4, ease: "easeInOut", repeat: Infinity }}
             >
-              {message}
-            </motion.p>
-          </AnimatePresence>
+              <Eye className="h-[18px] w-[18px] text-white" strokeWidth={2.2} />
+            </motion.div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/75">
+              Mental signal
+            </p>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={signalIdx}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-1 text-[15.5px] font-semibold leading-snug tracking-tight text-white"
+              >
+                {message}
+              </motion.p>
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Pulse line — calm heartbeat, not a loader */}
+        <div className="relative mt-3.5 h-px w-full overflow-hidden rounded-full bg-white/15">
+          <motion.span
+            aria-hidden
+            className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-white/70"
+            animate={{
+              x: ["-30%", "120%"],
+              opacity: [0, 0.9, 0.9, 0],
+            }}
+            transition={{
+              duration: 4.5,
+              times: [0, 0.15, 0.85, 1],
+              ease: "easeInOut",
+              repeat: Infinity,
+              repeatDelay: 1.2,
+            }}
+          />
         </div>
       </div>
     </motion.div>
