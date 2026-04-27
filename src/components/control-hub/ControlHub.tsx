@@ -98,8 +98,11 @@ export default function ControlHub({ userName }: { userName?: string }) {
     return () => clearInterval(id);
   }, [state.messages.length]);
 
-  // Chart copy rotation — different on each mount
-  const chartCopy = useMemo(() => pickRandom(CHART_DESCRIPTIONS), []);
+  // Chart copy rotation — randomized after mount to avoid SSR hydration mismatch
+  const [chartCopy, setChartCopy] = useState(CHART_DESCRIPTIONS[0]);
+  useEffect(() => {
+    setChartCopy(pickRandom(CHART_DESCRIPTIONS));
+  }, []);
 
   const primaryFeature: CoreFeature = {
     key: "chart",
