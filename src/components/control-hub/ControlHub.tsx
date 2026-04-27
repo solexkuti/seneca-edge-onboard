@@ -446,23 +446,22 @@ function RecentActivityCard() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-2xl bg-card px-5 py-4 ring-1 ring-border shadow-soft"
+      className="rounded-2xl bg-card px-5 py-5 ring-1 ring-border shadow-soft"
     >
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/80">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/70">
             Last trade
           </p>
-          <p className="mt-1 text-[14.5px] font-semibold text-text-primary">
-            EUR/USD{" "}
-            <span className="text-emerald-600">+0.8R</span>
+          <p className="mt-1.5 text-[14.5px] font-semibold text-text-primary">
+            EUR/USD <span className="text-emerald-600">+0.8R</span>
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/80">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/70">
             Discipline
           </p>
-          <p className="mt-1 text-[14.5px] font-semibold text-text-primary">
+          <p className="mt-1.5 text-[14.5px] font-semibold text-text-primary">
             72%
           </p>
         </div>
