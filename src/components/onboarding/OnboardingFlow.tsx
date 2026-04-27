@@ -134,9 +134,6 @@ export default function OnboardingFlow() {
   );
 }
 
-function BrandMark() {
-  return <Logo size="md" variant="full" />;
-}
 
 function BackdropLines() {
   return (
