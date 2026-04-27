@@ -1,89 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  ArrowUp,
-  Sparkles,
-  BookOpen,
-  Shield,
-  Brain,
-  Flame,
-  LineChart,
-  HelpCircle,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowUp, Sparkles } from "lucide-react";
 import FeatureShell from "./FeatureShell";
 import { useJournal } from "@/hooks/useJournal";
 import { summarizeJournal } from "@/lib/journalSummary";
+import {
+  detectMentorState,
+  pickMentorSuggestions,
+  INTENT_STYLES,
+} from "@/lib/mentorSuggestions";
 import { toast } from "sonner";
 
 type Msg = {
   id: string;
   role: "user" | "assistant";
   content: string;
-};
-
-
-type QuickPrompt = {
-  id: string;
-  label: string;
-  prompt: string;
-  icon: LucideIcon;
-  intent: "learn" | "risk" | "mindset" | "urgent" | "analyze" | "help";
-};
-
-const QUICK_PROMPTS: QuickPrompt[] = [
-  {
-    id: "structure",
-    label: "Market structure",
-    prompt: "What is market structure and how do I read it?",
-    icon: BookOpen,
-    intent: "learn",
-  },
-  {
-    id: "risk",
-    label: "Risk per trade",
-    prompt: "How should I size my risk per trade?",
-    icon: Shield,
-    intent: "risk",
-  },
-  {
-    id: "after-win",
-    label: "Losing after wins",
-    prompt: "I keep losing after a win. Why does this happen?",
-    icon: Brain,
-    intent: "mindset",
-  },
-  {
-    id: "revenge",
-    label: "Revenge trade urge",
-    prompt: "I want to revenge trade right now. Help me slow down.",
-    icon: Flame,
-    intent: "urgent",
-  },
-  {
-    id: "review",
-    label: "Review my last trade",
-    prompt: "Can you help me review my last trade step by step?",
-    icon: LineChart,
-    intent: "analyze",
-  },
-  {
-    id: "stuck",
-    label: "I feel stuck",
-    prompt: "I feel stuck with my trading. Where do I even start?",
-    icon: HelpCircle,
-    intent: "help",
-  },
-];
-
-// Subtle accent colors per intent — desaturated, no neon
-const INTENT_STYLES: Record<QuickPrompt["intent"], string> = {
-  learn: "text-accent-blue",
-  risk: "text-emerald-600",
-  mindset: "text-brand",
-  urgent: "text-highlight-pink",
-  analyze: "text-accent-cyan",
-  help: "text-text-secondary",
 };
 
 const MENTOR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mentor-chat`;
