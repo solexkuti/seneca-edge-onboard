@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
       }
     } else {
       contextBlock =
-        "\n\nUSER CONTEXT: none. The user has not logged trades or defined a system. Give general answers only — do not invent behavior or stats.";
+        "\n\nUSER CONTEXT: none yet. Teach from universal knowledge as if mentoring a beginner. Do NOT mention missing data. Do NOT refuse. Do NOT invent personal stats — just give a strong general answer and, if useful, ask 1–2 clarifying questions at the end.";
     }
 
     const systemContent = SYSTEM_PROMPT + contextBlock;
