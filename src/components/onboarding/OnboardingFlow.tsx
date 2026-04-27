@@ -121,7 +121,7 @@ export default function OnboardingFlow() {
       <BackdropLines />
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pb-8 pt-[40px]">
-        {/* Segmented progress bar */}
+        {/* Progress bar + paused hint */}
         <header className="px-1">
           <SegmentedProgress
             count={slideOrder.length}
@@ -130,6 +130,26 @@ export default function OnboardingFlow() {
             paused={paused}
             onSelect={goTo}
           />
+          <div className="mt-2 flex h-4 items-center justify-center">
+            <AnimatePresence>
+              {paused && slide.auto > 0 && (
+                <motion.div
+                  key="paused-hint"
+                  initial={{ opacity: 0, y: -2 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -2 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-card/70 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-text-secondary ring-1 ring-border/70 backdrop-blur-sm"
+                >
+                  <span className="flex items-center gap-[2px]">
+                    <span className="h-2 w-[2px] rounded-sm bg-text-secondary/80" />
+                    <span className="h-2 w-[2px] rounded-sm bg-text-secondary/80" />
+                  </span>
+                  Paused
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </header>
 
         {/* Slide stage */}
