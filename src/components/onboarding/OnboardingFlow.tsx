@@ -93,9 +93,8 @@ export default function OnboardingFlow() {
       <BackdropLines />
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pt-7 pb-8">
-        {/* Brand anchor — identical position on every slide */}
-        <header className="flex flex-col items-center gap-4">
-          <Logo size="lg" variant="full" />
+        {/* Progress indicator */}
+        <header className="flex justify-center">
           <ProgressDots
             count={slideOrder.length}
             active={index}
