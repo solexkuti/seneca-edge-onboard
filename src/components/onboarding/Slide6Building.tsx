@@ -1,224 +1,99 @@
 import { motion } from "framer-motion";
-import { Lock, Target, TrendingUp } from "lucide-react";
-import PhoneFrame from "./PhoneFrame";
+import { LineChart, Settings2, ShieldCheck } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
 
 /**
- * Slide 4 — Discipline tracking during the trade
- * "During the trade… it monitors your discipline."
+ * Slide 3 — Feature Experience
+ * Three clean cards. Icon + label + one-liner. No buttons.
+ * Auto-advances. Spacing intentionally generous = premium feel.
  */
-export default function Slide6Building(_props: SlideProps) {
+
+type Feature = {
+  icon: LucideIcon;
+  title: string;
+  desc: string;
+  tint: string; // text color
+  bg: string; // icon bg
+};
+
+const FEATURES: Feature[] = [
+  {
+    icon: LineChart,
+    title: "Analyze your trades",
+    desc: "Drop a chart. Break it down step by step.",
+    tint: "text-accent-cyan",
+    bg: "bg-accent-cyan/10 ring-accent-cyan/20",
+  },
+  {
+    icon: Settings2,
+    title: "Build your system",
+    desc: "Define rules you can actually follow.",
+    tint: "text-brand",
+    bg: "bg-brand/10 ring-brand/20",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Stay in control",
+    desc: "Track behavior, not just profits.",
+    tint: "text-accent-blue",
+    bg: "bg-accent-blue/10 ring-accent-blue/20",
+  },
+];
+
+export default function Slide6Building(_: SlideProps) {
   return (
-    <div className="flex flex-col items-center gap-7">
-      <div className="relative">
-        <PhoneFrame className="animate-float-slow">
-          <DisciplineScreen />
-        </PhoneFrame>
-
-        {/* Floating discipline tag */}
-        <motion.div
-          initial={{ opacity: 0, x: -20, y: 10 }}
-          animate={{ opacity: 1, x: 0, y: 0 }}
-          transition={{ delay: 1.4, duration: 0.6 }}
-          className="absolute -left-2 top-28 animate-float-mid"
-        >
-          <div className="glass-strong flex items-center gap-2 rounded-2xl px-3 py-2 shadow-glow-pink">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-highlight-pink opacity-70" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-highlight-pink" />
-            </span>
-            <span className="text-[11px] font-semibold text-text-primary">
-              Discipline tracking active
-            </span>
-          </div>
-        </motion.div>
-      </div>
-
+    <div className="flex w-full max-w-md flex-col items-center gap-7 px-2">
+      {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: 14 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.6 }}
+        transition={{ duration: 0.5 }}
         className="text-center"
       >
-        <h1 className="text-[22px] font-bold leading-[1.25] tracking-tight text-text-primary">
-          During the trade…
-        </h1>
-        <p className="mt-2 text-[18px] font-semibold">
-          it monitors your{" "}
-          <span className="text-gradient-mix">discipline.</span>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+          What you get
         </p>
+        <h2 className="mt-2 text-[24px] font-bold leading-[1.2] tracking-tight text-text-primary">
+          Three tools.
+          <br />
+          <span className="text-gradient-mix">One disciplined trader.</span>
+        </h2>
       </motion.div>
+
+      {/* Feature cards */}
+      <div className="flex w-full flex-col gap-2.5">
+        {FEATURES.map((f, i) => {
+          const Icon = f.icon;
+          return (
+            <motion.div
+              key={f.title}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.45,
+                delay: 0.2 + i * 0.12,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="flex w-full items-center gap-3.5 rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft"
+            >
+              <span
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ${f.bg}`}
+              >
+                <Icon className={`h-5 w-5 ${f.tint}`} strokeWidth={2.2} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-semibold text-text-primary">
+                  {f.title}
+                </div>
+                <div className="mt-0.5 text-[12px] leading-snug text-text-secondary">
+                  {f.desc}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
-  );
-}
-
-function DisciplineScreen() {
-  return (
-    <div className="relative h-full w-full bg-gradient-to-b from-[#0F172A] via-[#1A1B3A] to-[#0F172A] p-3 pt-11">
-      <div className="absolute -left-10 top-20 h-32 w-32 rounded-full bg-[#6C5CE7] opacity-40 blur-3xl animate-drift" />
-      <div className="absolute -right-10 bottom-20 h-32 w-32 rounded-full bg-[#FF7AF5] opacity-25 blur-3xl animate-drift [animation-delay:-2s]" />
-
-      {/* Header */}
-      <div className="relative flex items-center justify-between px-1">
-        <div>
-          <div className="text-[10px] font-bold text-white">EUR/USD</div>
-          <div className="text-[9px] text-white/60">Live trade</div>
-        </div>
-        <div className="rounded-full bg-emerald-400/20 px-2 py-0.5 text-[9px] font-bold text-emerald-300">
-          +0.42%
-        </div>
-      </div>
-
-      {/* Mini chart */}
-      <svg
-        viewBox="0 0 220 70"
-        className="mt-2 h-[70px] w-full"
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <linearGradient id="s4-line" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#A29BFE" />
-            <stop offset="100%" stopColor="#00C6FF" />
-          </linearGradient>
-        </defs>
-        <motion.path
-          d="M0 45 C 30 30, 60 50, 90 35 S 150 18, 180 22 S 210 14, 220 18"
-          fill="none"
-          stroke="url(#s4-line)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1.4, ease: "easeInOut" }}
-        />
-        <motion.circle
-          cx="218"
-          cy="18"
-          r="3"
-          fill="#00C6FF"
-          initial={{ scale: 0 }}
-          animate={{ scale: [0, 1.5, 1, 1.25, 1] }}
-          transition={{
-            delay: 1.4,
-            duration: 2.6,
-            times: [0, 0.15, 0.35, 0.7, 1],
-            repeat: Infinity,
-            repeatDelay: 1.2,
-            ease: "easeInOut",
-          }}
-        />
-      </svg>
-
-      {/* Trade levels */}
-      <div className="mt-3 space-y-1.5">
-        <LevelRow
-          icon={<Target className="h-3 w-3" />}
-          label="Entry"
-          value="1.0942"
-          tone="primary"
-          delay={0.4}
-        />
-        <LevelRow
-          icon={<Lock className="h-3 w-3" />}
-          label="Stop Loss"
-          value="1.0908"
-          tone="pink"
-          locked
-          delay={0.7}
-        />
-        <LevelRow
-          icon={<TrendingUp className="h-3 w-3" />}
-          label="Take Profit"
-          value="1.1024"
-          tone="cyan"
-          delay={1.0}
-        />
-      </div>
-
-      {/* Discipline meter */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.2, duration: 0.5 }}
-        className="mt-3 rounded-xl bg-white/5 p-2.5 ring-1 ring-white/10"
-      >
-        <div className="flex items-center justify-between">
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-white/60">
-            Discipline
-          </span>
-          <span className="text-[9px] font-bold text-emerald-300">98%</span>
-        </div>
-        <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/10">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: "98%" }}
-            transition={{ delay: 1.4, duration: 1.2, ease: "easeOut" }}
-            className="h-full bg-gradient-mix"
-          />
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-function LevelRow({
-  icon,
-  label,
-  value,
-  tone,
-  locked,
-  delay,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  tone: "primary" | "cyan" | "pink";
-  locked?: boolean;
-  delay: number;
-}) {
-  const iconBg =
-    tone === "primary"
-      ? "bg-gradient-primary"
-      : tone === "cyan"
-        ? "bg-gradient-accent"
-        : "bg-gradient-flash";
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay, duration: 0.45 }}
-      className="flex items-center justify-between rounded-xl bg-white/5 px-2.5 py-1.5 ring-1 ring-white/10"
-    >
-      <div className="flex items-center gap-2">
-        <motion.span
-          initial={locked ? { rotate: -25, scale: 0.8 } : {}}
-          animate={locked ? { rotate: 0, scale: 1 } : {}}
-          transition={{
-            delay: delay + 0.4,
-            type: "spring",
-            stiffness: 240,
-          }}
-          className={`flex h-6 w-6 items-center justify-center rounded-lg text-white ${iconBg}`}
-        >
-          {icon}
-        </motion.span>
-        <span className="text-[10px] font-semibold text-white/85">
-          {label}
-        </span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <span className="text-[11px] font-bold text-white">{value}</span>
-        {locked && (
-          <motion.span
-            initial={{ opacity: 0, scale: 0.6 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: delay + 0.6 }}
-            className="rounded-md bg-highlight-pink/20 px-1 py-0.5 text-[8px] font-bold text-highlight-pink"
-          >
-            LOCKED
-          </motion.span>
-        )}
-      </div>
-    </motion.div>
   );
 }
