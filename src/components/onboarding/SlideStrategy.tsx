@@ -25,28 +25,33 @@ export default function SlideStrategy(_props: SlideProps) {
   ];
 
   return (
-    <div className="flex flex-col items-center gap-6">
-      {/* Eyebrow + cross-fading headline */}
-      <div className="text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55 }}
-          className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1"
-        >
-          <Layers className="h-3 w-3 text-brand" />
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
-            Strategy Builder
-          </span>
-        </motion.div>
+    <div className="flex w-full flex-col items-center">
+      {/* 1. HEADER */}
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55 }}
+        className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1"
+      >
+        <Layers className="h-3 w-3 text-brand" />
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
+          Strategy Builder
+        </span>
+      </motion.div>
 
-        <div className="relative mt-3 min-h-[88px]">
+      {/* 2. MESSAGE — focus area, breathes, never overlapped */}
+      <div className="relative mt-8 w-full px-2">
+        <div className="relative mx-auto min-h-[120px] max-w-[320px] text-center">
           <motion.div
             key="phase-0"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: phase === 0 ? 1 : 0, y: phase === 0 ? 0 : -10 }}
+            initial={false}
+            animate={{
+              opacity: phase === 0 ? 1 : 0,
+              y: phase === 0 ? 0 : -10,
+            }}
             transition={{ duration: 0.55 }}
             className="absolute inset-0"
+            style={{ pointerEvents: phase === 0 ? "auto" : "none" }}
           >
             <h1 className="text-[22px] font-bold leading-[1.2] tracking-tight text-text-primary">
               Most traders don't have a strategy.
@@ -63,9 +68,13 @@ export default function SlideStrategy(_props: SlideProps) {
           <motion.div
             key="phase-1"
             initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: phase === 1 ? 1 : 0, y: phase === 1 ? 0 : 10 }}
+            animate={{
+              opacity: phase === 1 ? 1 : 0,
+              y: phase === 1 ? 0 : 10,
+            }}
             transition={{ duration: 0.55 }}
             className="absolute inset-0"
+            style={{ pointerEvents: phase === 1 ? "auto" : "none" }}
           >
             <h1 className="text-[22px] font-bold leading-[1.2] tracking-tight text-text-primary">
               Build your strategy.{" "}
@@ -73,22 +82,22 @@ export default function SlideStrategy(_props: SlideProps) {
             </h1>
             <p className="mt-2 text-[13px] leading-[1.5] text-text-secondary">
               Define your entry, risk, and exit.
-              <br />
-              Then let the system hold you accountable.
             </p>
           </motion.div>
         </div>
       </div>
 
-      {/* Modular rule blocks with connecting lines */}
-      <RuleSystem rules={rules} />
+      {/* 3. CARDS — clean grid below text, nothing floats over message */}
+      <div className="mt-6 w-full">
+        <RuleSystem rules={rules} />
+      </div>
 
       {/* Final line */}
       <motion.p
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 3.4, duration: 0.6 }}
-        className="text-center text-[12.5px] leading-[1.55] text-text-secondary"
+        className="mt-5 text-center text-[12.5px] leading-[1.55] text-text-secondary"
       >
         No more guessing what to do next.
         <br />
