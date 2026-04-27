@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      discipline_logs: {
+        Row: {
+          created_at: string
+          discipline_score: number
+          emotional_state: Database["public"]["Enums"]["emotional_state"] | null
+          followed_behavior: boolean
+          followed_entry: boolean
+          followed_exit: boolean
+          followed_risk: boolean
+          id: string
+          notes: string | null
+          trade_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          discipline_score?: number
+          emotional_state?:
+            | Database["public"]["Enums"]["emotional_state"]
+            | null
+          followed_behavior?: boolean
+          followed_entry?: boolean
+          followed_exit?: boolean
+          followed_risk?: boolean
+          id?: string
+          notes?: string | null
+          trade_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          discipline_score?: number
+          emotional_state?:
+            | Database["public"]["Enums"]["emotional_state"]
+            | null
+          followed_behavior?: boolean
+          followed_entry?: boolean
+          followed_exit?: boolean
+          followed_risk?: boolean
+          id?: string
+          notes?: string | null
+          trade_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discipline_logs_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: true
+            referencedRelation: "trades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emotional_events: {
+        Row: {
+          action_taken: string | null
+          created_at: string
+          id: string
+          state: Database["public"]["Enums"]["emotional_state"]
+          trigger: string | null
+          user_id: string
+        }
+        Insert: {
+          action_taken?: string | null
+          created_at?: string
+          id?: string
+          state: Database["public"]["Enums"]["emotional_state"]
+          trigger?: string | null
+          user_id: string
+        }
+        Update: {
+          action_taken?: string | null
+          created_at?: string
+          id?: string
+          state?: Database["public"]["Enums"]["emotional_state"]
+          trigger?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       mentor_analytics: {
         Row: {
           assistant_message_length: number | null
@@ -92,6 +173,104 @@ export type Database = {
         }
         Relationships: []
       }
+      strategies: {
+        Row: {
+          behavior_rule: string | null
+          created_at: string
+          entry_rule: string | null
+          exit_rule: string | null
+          id: string
+          is_active: boolean
+          name: string
+          risk_rule: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          behavior_rule?: string | null
+          created_at?: string
+          entry_rule?: string | null
+          exit_rule?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          risk_rule?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          behavior_rule?: string | null
+          created_at?: string
+          entry_rule?: string | null
+          exit_rule?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          risk_rule?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trades: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          direction: Database["public"]["Enums"]["trade_direction"]
+          entry_price: number | null
+          executed_at: string
+          id: string
+          market: string
+          result: Database["public"]["Enums"]["trade_result"] | null
+          rr: number | null
+          stop_loss: number | null
+          strategy_id: string | null
+          take_profit: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          direction: Database["public"]["Enums"]["trade_direction"]
+          entry_price?: number | null
+          executed_at?: string
+          id?: string
+          market: string
+          result?: Database["public"]["Enums"]["trade_result"] | null
+          rr?: number | null
+          stop_loss?: number | null
+          strategy_id?: string | null
+          take_profit?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          direction?: Database["public"]["Enums"]["trade_direction"]
+          entry_price?: number | null
+          executed_at?: string
+          id?: string
+          market?: string
+          result?: Database["public"]["Enums"]["trade_result"] | null
+          rr?: number | null
+          stop_loss?: number | null
+          strategy_id?: string | null
+          take_profit?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trades_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -100,7 +279,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      emotional_state:
+        | "frustrated"
+        | "fearful"
+        | "overconfident"
+        | "neutral"
+        | "confused"
+      trade_direction: "long" | "short"
+      trade_result: "win" | "loss" | "breakeven"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -227,6 +413,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      emotional_state: [
+        "frustrated",
+        "fearful",
+        "overconfident",
+        "neutral",
+        "confused",
+      ],
+      trade_direction: ["long", "short"],
+      trade_result: ["win", "loss", "breakeven"],
+    },
   },
 } as const
