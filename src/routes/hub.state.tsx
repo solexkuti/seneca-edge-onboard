@@ -15,6 +15,7 @@ import FeatureShell from "@/components/feature/FeatureShell";
 import { useDbJournal } from "@/hooks/useDbJournal";
 import { detectBehaviorPattern } from "@/lib/behaviorPattern";
 import type { DbJournalRow } from "@/lib/dbJournal";
+import DisciplineStreakWidget from "@/components/feature/DisciplineStreakWidget";
 
 export const Route = createFileRoute("/hub/state")({
   head: () => ({
@@ -121,6 +122,9 @@ function ControlStatePage() {
 
           {/* Most recent trade — rule-by-rule breakdown */}
           <LastTradeCard row={rows[0]} />
+
+          {/* Discipline streak & trend */}
+          <DisciplineStreakWidget rows={rows} />
 
           {/* Rules followed % */}
           <div className="rounded-2xl bg-card p-5 ring-1 ring-border shadow-soft">
