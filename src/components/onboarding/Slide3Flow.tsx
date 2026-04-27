@@ -42,7 +42,7 @@ const PATHS: PathOption[] = [
     desc: "Bring a recent setup. We'll break it down step by step.",
     accent: "text-accent-cyan",
     iconBg: "bg-accent-cyan/10 ring-accent-cyan/20",
-    route: "/hub/chart",
+    route: "/hub/mentor",
   },
   {
     id: "plan",
