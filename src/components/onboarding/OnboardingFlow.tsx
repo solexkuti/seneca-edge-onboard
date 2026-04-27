@@ -134,39 +134,7 @@ export default function OnboardingFlow() {
 }
 
 function BrandMark() {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="relative h-9 w-9 rounded-2xl bg-gradient-primary shadow-glow-primary">
-        <div className="absolute inset-[3px] rounded-[14px] bg-card/85 backdrop-blur" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <svg viewBox="0 0 24 24" className="h-4 w-4">
-            <path
-              d="M3 16 L9 10 L13 14 L21 6"
-              fill="none"
-              stroke="url(#bm)"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <defs>
-              <linearGradient id="bm" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#6C5CE7" />
-                <stop offset="100%" stopColor="#00C6FF" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-      </div>
-      <div className="leading-none">
-        <div className="text-[15px] font-semibold tracking-tight text-text-primary">
-          SenecaEdge
-        </div>
-        <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-secondary">
-          Trading AI
-        </div>
-      </div>
-    </div>
-  );
+  return <Logo size="md" variant="full" />;
 }
 
 function BackdropLines() {
