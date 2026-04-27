@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Sparkles } from "lucide-react";
+import {
+  ArrowUp,
+  Sparkles,
+  BookOpen,
+  Shield,
+  Brain,
+  Flame,
+  LineChart,
+  HelpCircle,
+  type LucideIcon,
+} from "lucide-react";
 import FeatureShell from "./FeatureShell";
 import { useJournal } from "@/hooks/useJournal";
 import { summarizeJournal } from "@/lib/journalSummary";
@@ -13,12 +23,68 @@ type Msg = {
 };
 
 
-const SUGGESTIONS = [
-  "What is market structure?",
-  "How should I size my risk per trade?",
-  "I keep losing after a win. Why?",
-  "I want to revenge trade right now.",
+type QuickPrompt = {
+  id: string;
+  label: string;
+  prompt: string;
+  icon: LucideIcon;
+  intent: "learn" | "risk" | "mindset" | "urgent" | "analyze" | "help";
+};
+
+const QUICK_PROMPTS: QuickPrompt[] = [
+  {
+    id: "structure",
+    label: "Market structure",
+    prompt: "What is market structure and how do I read it?",
+    icon: BookOpen,
+    intent: "learn",
+  },
+  {
+    id: "risk",
+    label: "Risk per trade",
+    prompt: "How should I size my risk per trade?",
+    icon: Shield,
+    intent: "risk",
+  },
+  {
+    id: "after-win",
+    label: "Losing after wins",
+    prompt: "I keep losing after a win. Why does this happen?",
+    icon: Brain,
+    intent: "mindset",
+  },
+  {
+    id: "revenge",
+    label: "Revenge trade urge",
+    prompt: "I want to revenge trade right now. Help me slow down.",
+    icon: Flame,
+    intent: "urgent",
+  },
+  {
+    id: "review",
+    label: "Review my last trade",
+    prompt: "Can you help me review my last trade step by step?",
+    icon: LineChart,
+    intent: "analyze",
+  },
+  {
+    id: "stuck",
+    label: "I feel stuck",
+    prompt: "I feel stuck with my trading. Where do I even start?",
+    icon: HelpCircle,
+    intent: "help",
+  },
 ];
+
+// Subtle accent colors per intent — desaturated, no neon
+const INTENT_STYLES: Record<QuickPrompt["intent"], string> = {
+  learn: "text-accent-blue",
+  risk: "text-emerald-600",
+  mindset: "text-brand",
+  urgent: "text-highlight-pink",
+  analyze: "text-accent-cyan",
+  help: "text-text-secondary",
+};
 
 const MENTOR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mentor-chat`;
 const SESSION_ID =
@@ -205,23 +271,41 @@ export default function AiMentorChat() {
           </AnimatePresence>
         </div>
 
-        {/* Suggestion chips (only before first user message) */}
+        {/* Quick prompt pills (only before first user message) */}
         {messages.length === 1 ? (
           <div className="border-t border-border/60 px-4 py-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
               Try asking
             </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => send(s)}
-                  disabled={streaming}
-                  className="rounded-full bg-text-primary/[0.04] px-2.5 py-1 text-[11.5px] font-medium text-text-primary ring-1 ring-border transition-all hover:bg-text-primary/[0.08] disabled:opacity-40"
-                >
-                  {s}
-                </button>
-              ))}
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {QUICK_PROMPTS.map((q, i) => {
+                const Icon = q.icon;
+                return (
+                  <motion.button
+                    key={q.id}
+                    type="button"
+                    onClick={() => send(q.prompt)}
+                    disabled={streaming}
+                    title={q.prompt}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.25,
+                      delay: 0.04 * i,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    whileHover={{ y: -1.5 }}
+                    whileTap={{ scale: 0.96 }}
+                    className="group inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[12px] font-medium text-text-primary ring-1 ring-border shadow-soft transition-colors hover:bg-text-primary/[0.04] hover:ring-brand/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Icon
+                      className={`h-3.5 w-3.5 ${INTENT_STYLES[q.intent]} transition-transform group-hover:scale-110`}
+                      strokeWidth={2.2}
+                    />
+                    <span>{q.label}</span>
+                  </motion.button>
+                );
+              })}
             </div>
           </div>
         ) : null}
