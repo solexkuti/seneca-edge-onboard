@@ -136,7 +136,9 @@ export default function OnboardingFlow() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, paused]);
 
-  const Component = slide.Component;
+  // SlideAuth + SlideName are rendered explicitly below; this cast keeps
+  // the generic narrative/question slides callable with just `onNext`.
+  const Component = slide.Component as React.ComponentType<SlideProps>;
 
   return (
     <div
