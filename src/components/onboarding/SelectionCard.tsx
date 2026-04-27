@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
+import { playFeedback } from "@/lib/feedback";
 
 export default function SelectionCard({
   icon,
@@ -17,7 +18,10 @@ export default function SelectionCard({
     <motion.button
       whileTap={{ scale: 0.98 }}
       whileHover={{ y: -1 }}
-      onClick={onClick}
+      onClick={() => {
+        playFeedback("tap");
+        onClick();
+      }}
       className={`interactive-glow group relative w-full overflow-hidden rounded-2xl p-4 text-left transition-all duration-300 ${
         selected
           ? "shadow-card ring-1 ring-brand/50"
