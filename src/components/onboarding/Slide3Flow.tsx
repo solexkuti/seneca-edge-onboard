@@ -123,7 +123,7 @@ export default function Slide3Flow(_: SlideProps) {
                     }}
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.985 }}
-                    className="group flex w-full items-center gap-3.5 rounded-2xl bg-card p-3.5 text-left ring-1 ring-border shadow-soft transition-colors hover:ring-brand/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                    className="interactive-glow group flex w-full items-center gap-3.5 rounded-2xl bg-card p-3.5 text-left ring-1 ring-border shadow-soft transition-colors hover:ring-brand/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
                   >
                     <span
                       className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ${p.iconBg}`}
