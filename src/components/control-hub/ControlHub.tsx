@@ -426,7 +426,7 @@ function ToolCard({ tool, delay }: { tool: ToolItem; delay: number }) {
           <h3 className="truncate text-[14px] font-semibold tracking-tight text-text-primary">
             {tool.title}
           </h3>
-          <p className="truncate text-[12px] text-text-secondary">
+          <p className="mt-0.5 text-[12px] leading-snug text-text-secondary">
             {tool.subtitle}
           </p>
         </div>
