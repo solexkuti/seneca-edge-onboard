@@ -9,7 +9,7 @@ import {
   BookOpenCheck,
   Activity,
   Sparkles,
-  LayoutTemplate,
+  
   Gamepad2,
   Plus,
 } from "lucide-react";
