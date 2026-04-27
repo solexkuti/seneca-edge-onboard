@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import PhoneFrame from "./PhoneFrame";
-import ContinueButton from "./ContinueButton";
 import type { SlideProps } from "./OnboardingFlow";
 
 /**
@@ -21,7 +20,7 @@ const FLOATERS = [
   { text: "No impulsive entries", x: "-8%", y: "70%", delay: 2.8 },
 ];
 
-export default function Slide2Intelligence({ onNext }: SlideProps) {
+export default function Slide2Intelligence(_: SlideProps) {
   return (
     <div className="relative flex w-full max-w-md flex-col items-center gap-6 px-2">
       {/* Caption above */}
@@ -77,7 +76,6 @@ export default function Slide2Intelligence({ onNext }: SlideProps) {
         It keeps you aligned when it matters most.
       </motion.p>
 
-      <ContinueButton onClick={onNext} delay={0.9} />
     </div>
   );
 }

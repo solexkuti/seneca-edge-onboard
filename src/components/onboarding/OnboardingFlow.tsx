@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Slide1Hero from "@/components/onboarding/Slide1Hero";
 import SlideBridge from "@/components/onboarding/SlideBridge";
@@ -13,36 +13,34 @@ import SlideStruggle from "@/components/onboarding/SlideStruggle";
 import SlideGoal from "@/components/onboarding/SlideGoal";
 import Slide3Flow from "@/components/onboarding/Slide3Flow";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
-import ProgressDots from "@/components/onboarding/ProgressDots";
+import SegmentedProgress from "@/components/onboarding/SegmentedProgress";
 
 export type SlideProps = {
   onNext: () => void;
 };
 
 /**
- * Onboarding — narrative previews → 4-step personalization → path picker.
+ * Auto-guided onboarding.
  *
- *   1. Hero          — emotional hook, single CTA (manual)
- *   2. Mockup        — animated phone, floating overlay (auto)
- *   3. Features      — 3 cards (auto)
- *   4. Proof         — soft trust layer + 1 testimonial (auto)
- *   5. Market        — Step 1/4 personalization (manual)
- *   6. Experience    — Step 2/4 personalization (manual)
- *   7. Challenge     — Step 3/4 personalization (manual)
- *   8. Goal          — Step 4/4 personalization (manual)
- *   9. Path          — pick a path → confirmation → route into the chosen flow
- *
- * Personalization answers are persisted to localStorage and read by Seneca
- * AI as USER CONTEXT on first interaction (see src/lib/onboardingProfile.ts).
+ *   • Narrative slides auto-advance after a calm dwell (3–6s).
+ *   • Swipe left/right to move between slides at any time.
+ *   • Any tap/touch pauses auto-slide for ~2s, then resumes.
+ *   • The final narrative slide (Proof) has the only button:
+ *       "Step into control →"  → enters the personalization questions.
+ *   • Question slides advance via the user's selection (no timer).
+ *   • A segmented progress bar at the top fills with the active dwell.
  */
 const slideOrder = [
-  { key: "hook", auto: 0, Component: Slide1Hero },
-  { key: "bridge", auto: 0, Component: SlideBridge },
-  { key: "reframe", auto: 0, Component: SlideReframe },
-  { key: "solution", auto: 0, Component: SlideSolution },
-  { key: "experience", auto: 0, Component: Slide2Intelligence },
-  { key: "features", auto: 0, Component: Slide6Building },
+  // Narrative — auto-advance
+  { key: "hook", auto: 4500, Component: Slide1Hero },
+  { key: "bridge", auto: 6000, Component: SlideBridge },
+  { key: "reframe", auto: 4500, Component: SlideReframe },
+  { key: "solution", auto: 5000, Component: SlideSolution },
+  { key: "experience", auto: 5000, Component: Slide2Intelligence },
+  { key: "features", auto: 6000, Component: Slide6Building },
+  // Final narrative — manual CTA only
   { key: "proof", auto: 0, Component: SlideProof },
+  // Personalization — manual selection
   { key: "q-market", auto: 0, Component: Slide4Market },
   { key: "q-experience", auto: 0, Component: SlideExperience },
   { key: "q-challenge", auto: 0, Component: SlideStruggle },
@@ -50,54 +48,86 @@ const slideOrder = [
   { key: "path", auto: 0, Component: Slide3Flow },
 ] as const;
 
+const RESUME_DELAY = 2000;
+
 export default function OnboardingFlow() {
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
+  const [paused, setPaused] = useState(false);
+  const advanceTimer = useRef<number | null>(null);
+  const resumeTimer = useRef<number | null>(null);
+
   const slide = slideOrder[index];
+  const isLast = index >= slideOrder.length - 1;
+
+  const clearTimers = () => {
+    if (advanceTimer.current) {
+      window.clearTimeout(advanceTimer.current);
+      advanceTimer.current = null;
+    }
+    if (resumeTimer.current) {
+      window.clearTimeout(resumeTimer.current);
+      resumeTimer.current = null;
+    }
+  };
 
   const goNext = () => {
+    clearTimers();
     setDirection(1);
     setIndex((i) => Math.min(i + 1, slideOrder.length - 1));
   };
-
   const goPrev = () => {
+    clearTimers();
     setDirection(-1);
     setIndex((i) => Math.max(i - 1, 0));
   };
-
   const goTo = (target: number) => {
     if (target === index) return;
-    if (target > index) return; // never jump forward via dots
+    if (target > index) return; // never jump forward via the bar
+    clearTimers();
     setDirection(-1);
     setIndex(target);
   };
 
-  // Swipe is enabled on auto-advancing narrative slides.
-  // Disabled on the hook (single CTA) and the path picker (taps).
-  const swipeEnabled = slide.auto > 0;
+  // Pause auto-slide on any user interaction; resume after RESUME_DELAY.
+  const pauseAndScheduleResume = () => {
+    setPaused(true);
+    if (resumeTimer.current) window.clearTimeout(resumeTimer.current);
+    resumeTimer.current = window.setTimeout(() => {
+      setPaused(false);
+      resumeTimer.current = null;
+    }, RESUME_DELAY);
+  };
 
-  // Auto-advance for narrative slides
+  // Auto-advance schedule
   useEffect(() => {
-    if (slide.auto > 0) {
-      const t = window.setTimeout(goNext, slide.auto);
-      return () => window.clearTimeout(t);
+    clearTimers();
+    if (slide.auto > 0 && !paused && !isLast) {
+      advanceTimer.current = window.setTimeout(goNext, slide.auto);
     }
-  }, [index, slide.auto]);
+    return clearTimers;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, paused]);
 
   const Component = slide.Component;
 
   return (
-    <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
+    <div
+      className="relative min-h-[100svh] w-full overflow-hidden bg-background"
+      onPointerDown={() => slide.auto > 0 && pauseAndScheduleResume()}
+    >
       {/* Background ambient */}
       <div className="pointer-events-none absolute inset-0 bg-app-glow" />
       <BackdropLines />
 
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pb-8 pt-[48px]">
-        {/* Progress dots */}
-        <header className="flex justify-center">
-          <ProgressDots
+      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pb-8 pt-[40px]">
+        {/* Segmented progress bar */}
+        <header className="px-1">
+          <SegmentedProgress
             count={slideOrder.length}
             active={index}
+            duration={slide.auto}
+            paused={paused}
             onSelect={goTo}
           />
         </header>
@@ -108,16 +138,16 @@ export default function OnboardingFlow() {
             <motion.div
               key={slide.key}
               custom={direction}
-              initial={{ opacity: 0, x: direction === 1 ? 40 : -40, scale: 0.98 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: direction === 1 ? -40 : 40, scale: 0.98 }}
-              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-              drag={swipeEnabled ? "x" : false}
+              initial={{ opacity: 0, x: direction === 1 ? 30 : -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: direction === 1 ? -30 : 30 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              drag="x"
               dragElastic={0.18}
               dragMomentum={false}
               dragConstraints={{ left: 0, right: 0 }}
+              onDragStart={pauseAndScheduleResume}
               onDragEnd={(_, info) => {
-                if (!swipeEnabled) return;
                 const threshold = 60;
                 const velocity = 400;
                 if (info.offset.x < -threshold || info.velocity.x < -velocity) {
@@ -129,7 +159,7 @@ export default function OnboardingFlow() {
                   goPrev();
                 }
               }}
-              className={`w-full ${swipeEnabled ? "touch-pan-y cursor-grab active:cursor-grabbing" : ""}`}
+              className="w-full touch-pan-y cursor-grab active:cursor-grabbing"
             >
               <Component onNext={goNext} />
             </motion.div>
