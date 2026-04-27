@@ -69,9 +69,15 @@ export default function Slide2Intelligence({ onNext }: SlideProps) {
           </motion.div>
         ))}
 
-        <PhoneFrame>
-          <PhoneScreen />
-        </PhoneFrame>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        >
+          <PhoneFrame>
+            <PhoneScreen />
+          </PhoneFrame>
+        </motion.div>
       </div>
 
       <motion.p
