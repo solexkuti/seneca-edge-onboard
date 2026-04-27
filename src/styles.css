@@ -209,8 +209,55 @@
 @keyframes spin-slow {
   to { transform: rotate(360deg); }
 }
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(6px, -4px); }
+  50% { transform: translate(-3px, -8px); }
+  75% { transform: translate(-6px, 2px); }
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.92; }
+  50% { transform: scale(1.015); opacity: 1; }
+}
+@keyframes particle-rise {
+  0% { transform: translateY(0) scale(0.9); opacity: 0; }
+  20% { opacity: 0.6; }
+  100% { transform: translateY(-40px) scale(1); opacity: 0; }
+}
+@keyframes line-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.85; }
+}
+@keyframes bar-grow {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.08); }
+}
 
 .animate-float-slow { animation: float-slow 5s ease-in-out infinite; }
 .animate-float-mid { animation: float-mid 4s ease-in-out infinite; }
 .animate-pulse-glow { animation: pulse-glow 2.4s ease-in-out infinite; }
 .animate-spin-slow { animation: spin-slow 18s linear infinite; }
+.animate-drift { animation: drift 8s ease-in-out infinite; }
+.animate-breathe { animation: breathe 4.5s ease-in-out infinite; }
+.animate-particle-rise { animation: particle-rise 4s ease-in-out infinite; }
+.animate-line-pulse { animation: line-pulse 3s ease-in-out infinite; }
+.animate-bar-grow { animation: bar-grow 3.5s ease-in-out infinite; transform-origin: bottom; }
+.animate-shimmer-bg {
+  background-size: 200% 100%;
+  animation: shimmer 6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-slow,
+  .animate-float-mid,
+  .animate-pulse-glow,
+  .animate-spin-slow,
+  .animate-drift,
+  .animate-breathe,
+  .animate-particle-rise,
+  .animate-line-pulse,
+  .animate-bar-grow,
+  .animate-shimmer-bg {
+    animation: none !important;
+  }
+}
