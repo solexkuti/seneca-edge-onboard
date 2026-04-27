@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   Brain,
@@ -18,6 +19,7 @@ type CoreFeature = {
   text: string;
   Icon: typeof Brain;
   tone: "violet" | "cyan" | "pink" | "blue" | "mint";
+  to: "/hub/mind" | "/hub/chart" | "/hub/state" | "/hub/journal" | "/hub/mentor";
 };
 
 const coreFeatures: CoreFeature[] = [
@@ -27,6 +29,7 @@ const coreFeatures: CoreFeature[] = [
     text: "Check your mental state before trading.",
     Icon: Brain,
     tone: "violet",
+    to: "/hub/mind",
   },
   {
     key: "chart",
@@ -34,6 +37,7 @@ const coreFeatures: CoreFeature[] = [
     text: "Upload your chart and get insight based on your strategy.",
     Icon: LineChart,
     tone: "cyan",
+    to: "/hub/chart",
   },
   {
     key: "state",
@@ -41,6 +45,7 @@ const coreFeatures: CoreFeature[] = [
     text: "Stay disciplined during live trades.",
     Icon: Activity,
     tone: "pink",
+    to: "/hub/state",
   },
   {
     key: "journal",
@@ -48,6 +53,7 @@ const coreFeatures: CoreFeature[] = [
     text: "Track your trades and discover your patterns.",
     Icon: BookOpenCheck,
     tone: "blue",
+    to: "/hub/journal",
   },
   {
     key: "mentor",
@@ -55,6 +61,7 @@ const coreFeatures: CoreFeature[] = [
     text: "Ask questions and get real-time trading guidance.",
     Icon: Sparkles,
     tone: "mint",
+    to: "/hub/mentor",
   },
 ];
 
