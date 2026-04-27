@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { LineChart, Settings2, ShieldCheck, Sparkles, PlayCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import ContinueButton from "./ContinueButton";
 import type { SlideProps } from "./OnboardingFlow";
 
 /**
@@ -59,7 +58,7 @@ const FEATURES: Feature[] = [
   },
 ];
 
-export default function Slide6Building({ onNext }: SlideProps) {
+export default function Slide6Building(_: SlideProps) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-7 px-2">
       {/* Header */}
@@ -117,7 +116,6 @@ export default function Slide6Building({ onNext }: SlideProps) {
         })}
       </div>
 
-      <ContinueButton onClick={onNext} delay={0.7} />
     </div>
   );
 }

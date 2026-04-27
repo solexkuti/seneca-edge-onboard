@@ -1,12 +1,11 @@
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
 
 /**
  * Bridge — Problem Awareness
  * Three lines, each separated by a calm 0.5s pause, then a quiet subtext.
  */
-export default function SlideBridge({ onNext }: SlideProps) {
+export default function SlideBridge(_: SlideProps) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-12 px-2 text-center">
       {/* Tiny eyebrow */}
@@ -62,23 +61,6 @@ export default function SlideBridge({ onNext }: SlideProps) {
         </motion.p>
       </div>
 
-      {/* CTA */}
-      <motion.button
-        type="button"
-        onClick={onNext}
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 2.9 }}
-        whileHover={{ y: -1 }}
-        whileTap={{ scale: 0.97 }}
-        className="group inline-flex items-center gap-2 rounded-2xl bg-gradient-primary px-7 py-3.5 text-[15px] font-semibold text-white shadow-soft"
-      >
-        Continue
-        <ArrowRight
-          className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-          strokeWidth={2.4}
-        />
-      </motion.button>
     </div>
   );
 }

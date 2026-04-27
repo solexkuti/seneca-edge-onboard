@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
 
 /**
@@ -7,7 +6,7 @@ import type { SlideProps } from "./OnboardingFlow";
  * Minimal. One headline. One CTA. No mockups, no features.
  * The whole point: name the real problem before promising anything.
  */
-export default function Slide1Hero({ onNext }: SlideProps) {
+export default function Slide1Hero(_: SlideProps) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-12 px-2 text-center">
       {/* Tiny eyebrow — keeps the page from feeling empty */}
@@ -41,23 +40,6 @@ export default function Slide1Hero({ onNext }: SlideProps) {
         </span>
       </motion.h1>
 
-      {/* Single CTA */}
-      <motion.button
-        type="button"
-        onClick={onNext}
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-        whileHover={{ y: -1 }}
-        whileTap={{ scale: 0.97 }}
-        className="group inline-flex items-center gap-2 rounded-2xl bg-gradient-primary px-7 py-3.5 text-[15px] font-semibold text-white shadow-soft"
-      >
-        Continue
-        <ArrowRight
-          className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-          strokeWidth={2.4}
-        />
-      </motion.button>
     </div>
   );
 }
