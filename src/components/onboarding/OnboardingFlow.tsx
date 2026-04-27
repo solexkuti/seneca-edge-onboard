@@ -7,6 +7,7 @@ import Slide3Flow from "@/components/onboarding/Slide3Flow";
 import Slide6Building from "@/components/onboarding/Slide6Building";
 import SlideControl from "@/components/onboarding/SlideControl";
 import SlideStrategy from "@/components/onboarding/SlideStrategy";
+import SlideTestimonials from "@/components/onboarding/SlideTestimonials";
 import SlideJournal from "@/components/onboarding/SlideJournal";
 import SlideMentor from "@/components/onboarding/SlideMentor";
 import SlideCTA from "@/components/onboarding/SlideCTA";
