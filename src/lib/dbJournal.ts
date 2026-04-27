@@ -210,6 +210,7 @@ function combine(trade: any, log: any): DbJournalRow {
   if (trade.result === "win") resultR = rr ?? 1;
   else if (trade.result === "loss") resultR = -(rr ?? 1);
 
+  const strategy = trade.strategy ?? null;
   return {
     id: log.id,
     trade_id: trade.id,
@@ -227,5 +228,11 @@ function combine(trade: any, log: any): DbJournalRow {
     resultR,
     emotional_state: log.emotional_state ?? "calm",
     notes: log.notes ?? null,
+    strategy_id: trade.strategy_id ?? strategy?.id ?? null,
+    strategy_name: strategy?.name ?? null,
+    entry_rule: strategy?.entry_rule ?? null,
+    exit_rule: strategy?.exit_rule ?? null,
+    risk_rule: strategy?.risk_rule ?? null,
+    behavior_rule: strategy?.behavior_rule ?? null,
   };
 }
