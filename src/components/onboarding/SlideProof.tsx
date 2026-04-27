@@ -1,6 +1,6 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, Quote } from "lucide-react";
-import ContinueButton from "./ContinueButton";
+import { ArrowRight, CheckCircle2, Quote } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
 
 /**
@@ -17,6 +17,12 @@ const PROOF_LINES = [
 ];
 
 export default function SlideProof({ onNext }: SlideProps) {
+  const [pressing, setPressing] = useState(false);
+  const handleStep = () => {
+    setPressing(true);
+    window.setTimeout(() => onNext(), 350);
+  };
+
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-7 px-2">
       {/* Header */}
