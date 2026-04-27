@@ -22,7 +22,7 @@ type PathOption = {
   desc: string;
   accent: string;
   iconBg: string;
-  route: "/hub" | "/hub/chart" | "/hub/strategy";
+  route: "/hub/mentor" | "/hub/chart" | "/hub/strategy";
 };
 
 const PATHS: PathOption[] = [
@@ -33,7 +33,7 @@ const PATHS: PathOption[] = [
     desc: "Start with structure, risk, and the mindset behind every trade.",
     accent: "text-accent-blue",
     iconBg: "bg-accent-blue/10 ring-accent-blue/20",
-    route: "/hub",
+    route: "/hub/mentor",
   },
   {
     id: "review",
