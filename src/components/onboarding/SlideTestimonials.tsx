@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Quote, MessageSquareQuote } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
+import avatarMarco from "@/assets/avatar-marco.jpg";
+import avatarAisha from "@/assets/avatar-aisha.jpg";
+import avatarKenji from "@/assets/avatar-kenji.jpg";
 
 /**
  * Testimonial slide — stacked card carousel.
@@ -91,7 +94,7 @@ export default function SlideTestimonials(_props: SlideProps) {
 type Testimonial = {
   name: string;
   role: string;
-  initials: string;
+  avatar: string;
   tag: "Discipline" | "Overtrading" | "Rule breaking";
   quote: string;
   tone: "violet" | "blue" | "magenta";
@@ -101,7 +104,7 @@ const testimonials: Testimonial[] = [
   {
     name: "Marco D.",
     role: "Futures · 3 yrs",
-    initials: "MD",
+    avatar: avatarMarco,
     tag: "Discipline",
     tone: "violet",
     quote:
@@ -110,7 +113,7 @@ const testimonials: Testimonial[] = [
   {
     name: "Aisha R.",
     role: "Forex · 5 yrs",
-    initials: "AR",
+    avatar: avatarAisha,
     tag: "Overtrading",
     tone: "blue",
     quote:
@@ -119,7 +122,7 @@ const testimonials: Testimonial[] = [
   {
     name: "Kenji T.",
     role: "Crypto · 2 yrs",
-    initials: "KT",
+    avatar: avatarKenji,
     tag: "Rule breaking",
     tone: "magenta",
     quote:
@@ -223,10 +226,17 @@ function TestimonialCard({
       {/* Footer: avatar + name */}
       <div className="mt-4 flex items-center gap-2.5">
         <div
-          className={`flex h-9 w-9 items-center justify-center rounded-full text-[12px] font-bold text-white ${t.avatar}`}
+          className={`relative h-10 w-10 shrink-0 overflow-hidden rounded-full p-[1.5px] ${t.avatar}`}
           aria-hidden
         >
-          {testimonial.initials}
+          <img
+            src={testimonial.avatar}
+            alt=""
+            width={512}
+            height={512}
+            loading="lazy"
+            className="h-full w-full rounded-full object-cover ring-2 ring-card"
+          />
         </div>
         <div className="leading-tight">
           <div className="text-[12.5px] font-semibold text-text-primary">
