@@ -1,0 +1,1 @@
+ALTER TYPE public.emotional_state ADD VALUE IF NOT EXISTS 'calm';

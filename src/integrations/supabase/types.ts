@@ -285,6 +285,7 @@ export type Database = {
         | "overconfident"
         | "neutral"
         | "confused"
+        | "calm"
       trade_direction: "long" | "short"
       trade_result: "win" | "loss" | "breakeven"
     }
@@ -420,6 +421,7 @@ export const Constants = {
         "overconfident",
         "neutral",
         "confused",
+        "calm",
       ],
       trade_direction: ["long", "short"],
       trade_result: ["win", "loss", "breakeven"],
