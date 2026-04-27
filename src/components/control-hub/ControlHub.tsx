@@ -177,15 +177,14 @@ function Header({ userName, initial }: { userName?: string; initial: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Mental signal — soft purple→blue gradient, rotating stoic line.
+// Behavior pattern card — driven by Trading Journal data.
+// Replaces the old "Mental signal" rotating quotes.
 // ─────────────────────────────────────────────────────────────
-function MentalSignalCard({
-  message,
-  signalIdx,
-}: {
-  message: string;
-  signalIdx: number;
-}) {
+function MentalSignalCard({ pattern }: { pattern: BehaviorPattern }) {
+  // Eyebrow label reflects the actual pattern kind, not generic copy.
+  const eyebrow =
+    pattern.kind === "empty" ? "Behavior pattern" : PATTERN_LABEL[pattern.kind];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
