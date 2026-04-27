@@ -2,7 +2,6 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Mail, Lock, ArrowLeft } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
-import Logo from "@/components/brand/Logo";
 
 export default function SlideAuth({ onNext }: SlideProps) {
   const [mode, setMode] = useState<"choose" | "email">("choose");
@@ -20,7 +19,6 @@ export default function SlideAuth({ onNext }: SlideProps) {
         transition={{ duration: 0.5 }}
         className="text-center"
       >
-        <Logo size="lg" variant="full" className="mx-auto mb-4" />
         <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1">
           <span className="h-1.5 w-1.5 rounded-full bg-gradient-primary" />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
