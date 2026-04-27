@@ -75,7 +75,7 @@ export default function SlideAuth({
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={() => setMode("email")}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-6 py-4 text-[15px] font-semibold text-text-primary shadow-soft transition-all hover:border-brand/40 hover:shadow-glow-primary"
+              className="interactive-glow flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-6 py-4 text-[15px] font-semibold text-text-primary shadow-soft transition-colors hover:border-brand/40"
             >
               <Mail className="h-4 w-4 text-brand" />
               Sign up with email
@@ -117,7 +117,7 @@ export default function SlideAuth({
               disabled={!canSubmitEmail}
               onClick={onNext}
               animate={{ opacity: canSubmitEmail ? 1 : 0.4 }}
-              className="group relative w-full overflow-hidden rounded-2xl bg-gradient-primary px-6 py-4 shadow-glow-primary disabled:cursor-not-allowed"
+              className="interactive-glow group relative w-full overflow-hidden rounded-2xl bg-gradient-primary px-6 py-4 shadow-soft disabled:cursor-not-allowed"
             >
               <span className="relative flex items-center justify-center gap-2 text-[16px] font-semibold text-white">
                 Create account
@@ -159,9 +159,9 @@ function SocialButton({
       whileTap={{ scale: 0.97 }}
       whileHover={{ scale: 1.01 }}
       onClick={onClick}
-      className={`flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-[15px] font-semibold shadow-soft transition-all ${
+      className={`interactive-glow flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-[15px] font-semibold shadow-soft transition-colors ${
         dark
-          ? "bg-[#0F172A] text-white hover:shadow-card-premium"
+          ? "bg-[#0F172A] text-white"
           : "border border-border bg-card text-text-primary hover:border-brand/40"
       }`}
     >
