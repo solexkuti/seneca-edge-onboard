@@ -18,11 +18,39 @@ export function summarizeJournal(entries: JournalEntry[]): string | null {
   const discipline = computeDiscipline(entries);
   const pattern = detectBehaviorPattern(entries);
 
+  // Average discipline_score from DB-backed entries (0–100)
+  const scored = entries.filter(
+    (e) => typeof e.disciplineScore === "number",
+  );
+  const avgScore =
+    scored.length > 0
+      ? Math.round(
+          scored.reduce((acc, e) => acc + (e.disciplineScore ?? 0), 0) /
+            scored.length,
+        )
+      : null;
+
+  // Most common emotional state across recent trades
+  const stateCount: Record<string, number> = {};
+  for (const e of recent) {
+    if (e.emotionalState) {
+      stateCount[e.emotionalState] = (stateCount[e.emotionalState] ?? 0) + 1;
+    }
+  }
+  const dominantState =
+    Object.entries(stateCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
   const lines: string[] = [];
   lines.push(`Total trades: ${total} (W:${wins} / L:${losses})`);
   lines.push(`Net result: ${sumR.toFixed(2)}R`);
   if (discipline !== null) {
     lines.push(`Plan adherence: ${discipline}%`);
+  }
+  if (avgScore !== null) {
+    lines.push(`Avg discipline score: ${avgScore}/100`);
+  }
+  if (dominantState) {
+    lines.push(`Dominant recent emotional state: ${dominantState}`);
   }
   lines.push(`Current behavior pattern: ${pattern.kind} — ${pattern.message}`);
 
@@ -36,8 +64,17 @@ export function summarizeJournal(entries: JournalEntry[]): string | null {
           ? "followed plan"
           : "BROKE plan"
         : "no plan tag";
+    const broken: string[] = [];
+    if (e.rules) {
+      if (!e.rules.entry) broken.push("entry");
+      if (!e.rules.exit) broken.push("exit");
+      if (!e.rules.risk) broken.push("risk");
+      if (!e.rules.behavior) broken.push("behavior");
+    }
+    const brokenTag = broken.length ? ` | broke: ${broken.join(", ")}` : "";
+    const stateTag = e.emotionalState ? ` | ${e.emotionalState}` : "";
     lines.push(
-      `- ${when} | ${e.pair} | ${e.resultR >= 0 ? "+" : ""}${e.resultR}R | ${followed}`,
+      `- ${when} | ${e.pair} | ${e.resultR >= 0 ? "+" : ""}${e.resultR}R | ${followed}${brokenTag}${stateTag}`,
     );
   }
 
