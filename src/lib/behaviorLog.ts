@@ -37,7 +37,15 @@ export function logCheck(record: Omit<CheckRecord, "id" | "timestamp">) {
   const all = safeRead();
   all.unshift(entry);
   window.localStorage.setItem(KEY, JSON.stringify(all.slice(0, 50)));
+  try {
+    window.dispatchEvent(new CustomEvent("seneca:check-logged", { detail: entry }));
+  } catch {
+    // ignore (older browsers)
+  }
 }
+
+export const CHECK_HISTORY_EVENT = "seneca:check-logged";
+export const CHECK_HISTORY_KEY = KEY;
 
 export function readCheckHistory(): CheckRecord[] {
   return safeRead();

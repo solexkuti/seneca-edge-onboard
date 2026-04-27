@@ -1,14 +1,19 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Activity } from "lucide-react";
-import { readCheckHistory, type CheckRecord } from "@/lib/behaviorLog";
+import {
+  readCheckHistory,
+  CHECK_HISTORY_EVENT,
+  CHECK_HISTORY_KEY,
+  type CheckRecord,
+} from "@/lib/behaviorLog";
 
 /**
  * Compact sparkline visualizing the user's recent Check Before Trade history.
  * Two overlaid lines:
  *   - Risk %  (cyan/blue) — quantitative
  *   - Emotional bias (magenta) — binary, plotted as 0/1 area
- * Reads from localStorage; safe on SSR (renders empty state until mounted).
+ * Reads from localStorage; safe on SSR (renders skeleton until mounted).
  */
 
 const W = 280;
@@ -21,17 +26,32 @@ export default function CheckHistorySparkline() {
   const [history, setHistory] = useState<CheckRecord[] | null>(null);
 
   useEffect(() => {
-    setHistory(readCheckHistory());
+    const refresh = () => setHistory(readCheckHistory());
+    refresh();
 
-    // Refresh when the tab regains focus (likely after a check was completed)
-    const onFocus = () => setHistory(readCheckHistory());
+    const onFocus = () => refresh();
+    const onLogged = () => refresh();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === CHECK_HISTORY_KEY) refresh();
+    };
+
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    window.addEventListener(CHECK_HISTORY_EVENT, onLogged as EventListener);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener(CHECK_HISTORY_EVENT, onLogged as EventListener);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
-  // Render skeleton on SSR / first paint
+  // Animated skeleton on SSR / first paint
   if (history === null) {
-    return <Card>{null}</Card>;
+    return (
+      <Card>
+        <SkeletonState />
+      </Card>
+    );
   }
 
   // Empty state
@@ -256,6 +276,88 @@ function Card({ children }: { children: React.ReactNode }) {
       />
       <div className="relative">{children}</div>
     </motion.div>
+  );
+}
+
+function SkeletonState() {
+  // Build a smooth fake sine path so the skeleton "feels" like a sparkline.
+  const N = 12;
+  const stepX = (W - PAD_X * 2) / (N - 1);
+  const pts = Array.from({ length: N }, (_, i) => {
+    const x = PAD_X + i * stepX;
+    const y =
+      H / 2 + Math.sin(i * 0.9) * (H / 4 - 2) + Math.cos(i * 0.4) * 3;
+    return `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+  }).join(" ");
+
+  return (
+    <div aria-busy="true" aria-live="polite">
+      {/* Header skeleton */}
+      <div className="flex items-start justify-between">
+        <div className="space-y-1.5">
+          <div className="h-3 w-24 animate-pulse rounded bg-text-secondary/15" />
+          <div className="h-2.5 w-40 animate-pulse rounded bg-text-secondary/10" />
+        </div>
+        <div className="h-4 w-16 animate-pulse rounded-full bg-text-secondary/10" />
+      </div>
+
+      {/* Chart skeleton */}
+      <div className="relative mt-3 overflow-hidden rounded-md">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          height={H}
+          preserveAspectRatio="none"
+          className="block"
+          aria-hidden
+        >
+          {/* baseline */}
+          <line
+            x1={PAD_X}
+            x2={W - PAD_X}
+            y1={H - PAD_Y}
+            y2={H - PAD_Y}
+            stroke="currentColor"
+            className="text-text-secondary/15"
+            strokeDasharray="2 3"
+          />
+          {/* faint placeholder sparkline */}
+          <path
+            d={pts}
+            fill="none"
+            stroke="currentColor"
+            className="text-text-secondary/25"
+            strokeWidth={1.6}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        {/* shimmer sweep */}
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)",
+          }}
+          animate={{ x: ["0%", "400%"] }}
+          transition={{
+            duration: 1.4,
+            ease: "easeInOut",
+            repeat: Infinity,
+          }}
+        />
+      </div>
+
+      {/* Footer skeleton */}
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="h-2.5 w-14 animate-pulse rounded bg-text-secondary/10" />
+          <div className="h-2.5 w-20 animate-pulse rounded bg-text-secondary/10" />
+        </div>
+        <div className="h-2.5 w-20 animate-pulse rounded bg-text-secondary/10" />
+      </div>
+    </div>
   );
 }
 
