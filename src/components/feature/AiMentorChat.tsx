@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Sparkles } from "lucide-react";
+import {
+  ArrowUp,
+  Sparkles,
+  BookOpen,
+  Shield,
+  Brain,
+  Flame,
+  LineChart,
+  HelpCircle,
+  type LucideIcon,
+} from "lucide-react";
 import FeatureShell from "./FeatureShell";
 import { useJournal } from "@/hooks/useJournal";
 import { summarizeJournal } from "@/lib/journalSummary";
