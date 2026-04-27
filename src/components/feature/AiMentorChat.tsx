@@ -12,6 +12,15 @@ type Msg = {
   content: string;
 };
 
+type MentorMode = "standard" | "strict" | "beginner" | "breakdown";
+
+const MODES: { id: MentorMode; label: string; hint: string }[] = [
+  { id: "standard", label: "Standard", hint: "Balanced & structured" },
+  { id: "strict", label: "Strict", hint: "Blunt corrections" },
+  { id: "beginner", label: "Beginner", hint: "Fundamentals only" },
+  { id: "breakdown", label: "Breakdown", hint: "Deeper structured teaching" },
+];
+
 const SUGGESTIONS = [
   "What is market structure?",
   "How should I size my risk per trade?",
@@ -23,6 +32,7 @@ const MENTOR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mentor-cha
 
 export default function AiMentorChat() {
   const journal = useJournal();
+  const [mode, setMode] = useState<MentorMode>("standard");
   const [messages, setMessages] = useState<Msg[]>([
     {
       id: "intro",
