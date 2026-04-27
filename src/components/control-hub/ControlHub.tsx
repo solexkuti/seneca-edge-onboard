@@ -115,7 +115,7 @@ export default function ControlHub({ userName }: { userName?: string }) {
 
         {/* TOOLS */}
         <Section label="Tools">
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {TOOLS.map((t, i) => (
               <ToolCard key={t.key} tool={t} delay={0.04 * i} />
             ))}
