@@ -29,7 +29,6 @@ export type SlideProps = {
  *
  *   • Narrative slides auto-advance after a calm dwell (3–6s).
  *   • Swipe left/right to move between slides at any time.
- *   • Any tap/touch pauses auto-slide for ~2s, then resumes.
  *   • Proof has the only narrative CTA → enters personalization.
  *   • Question slides advance on selection.
  *   • Final tail: Name → Signup → /hub (control state).
@@ -54,16 +53,12 @@ const slideOrder = [
   { key: "auth", auto: 0, Component: SlideAuth },
 ] as const;
 
-const RESUME_DELAY = 2000;
-
 export default function OnboardingFlow() {
   const navigate = useNavigate();
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
-  const [paused, setPaused] = useState(false);
   const [userName, setUserName] = useState<string>(() => getUserName() ?? "");
   const advanceTimer = useRef<number | null>(null);
-  const resumeTimer = useRef<number | null>(null);
 
   // If the user already has a session (e.g. returning from Google OAuth),
   // sync their profile and jump straight into the control state.
@@ -86,10 +81,6 @@ export default function OnboardingFlow() {
     if (advanceTimer.current) {
       window.clearTimeout(advanceTimer.current);
       advanceTimer.current = null;
-    }
-    if (resumeTimer.current) {
-      window.clearTimeout(resumeTimer.current);
-      resumeTimer.current = null;
     }
   };
 
@@ -116,69 +107,35 @@ export default function OnboardingFlow() {
     setIndex(target);
   };
 
-  // Pause auto-slide on any user interaction; resume after RESUME_DELAY.
-  const pauseAndScheduleResume = () => {
-    setPaused(true);
-    if (resumeTimer.current) window.clearTimeout(resumeTimer.current);
-    resumeTimer.current = window.setTimeout(() => {
-      setPaused(false);
-      resumeTimer.current = null;
-    }, RESUME_DELAY);
-  };
-
-  // Auto-advance schedule
+  // Auto-advance schedule — runs uninterrupted; only swipes / selections move slides.
   useEffect(() => {
     clearTimers();
-    if (slide.auto > 0 && !paused && !isLast) {
+    if (slide.auto > 0 && !isLast) {
       advanceTimer.current = window.setTimeout(goNext, slide.auto);
     }
     return clearTimers;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, paused]);
+  }, [index]);
 
   // SlideAuth + SlideName are rendered explicitly below; this cast keeps
   // the generic narrative/question slides callable with just `onNext`.
   const Component = slide.Component as React.ComponentType<SlideProps>;
 
   return (
-    <div
-      className="relative min-h-[100svh] w-full overflow-hidden bg-background"
-      onPointerDown={() => slide.auto > 0 && pauseAndScheduleResume()}
-    >
+    <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
       {/* Background ambient */}
       <div className="pointer-events-none absolute inset-0 bg-app-glow" />
       <BackdropLines />
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pb-8 pt-[40px]">
-        {/* Progress bar + paused hint */}
+        {/* Progress bar */}
         <header className="px-1">
           <SegmentedProgress
             count={slideOrder.length}
             active={index}
             duration={slide.auto}
-            paused={paused}
             onSelect={goTo}
           />
-          <div className="mt-2 flex h-4 items-center justify-center">
-            <AnimatePresence>
-              {paused && slide.auto > 0 && (
-                <motion.div
-                  key="paused-hint"
-                  initial={{ opacity: 0, y: -2 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -2 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-card/70 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-text-secondary ring-1 ring-border/70 backdrop-blur-sm"
-                >
-                  <span className="flex items-center gap-[2px]">
-                    <span className="h-2 w-[2px] rounded-sm bg-text-secondary/80" />
-                    <span className="h-2 w-[2px] rounded-sm bg-text-secondary/80" />
-                  </span>
-                  Paused
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
         </header>
 
         {/* Slide stage */}
@@ -195,7 +152,6 @@ export default function OnboardingFlow() {
               dragElastic={0.18}
               dragMomentum={false}
               dragConstraints={{ left: 0, right: 0 }}
-              onDragStart={pauseAndScheduleResume}
               onDragEnd={(_, info) => {
                 const threshold = 60;
                 const velocity = 400;
