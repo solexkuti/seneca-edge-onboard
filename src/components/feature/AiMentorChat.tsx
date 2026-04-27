@@ -8,7 +8,14 @@ import {
   detectMentorState,
   pickMentorSuggestions,
   INTENT_STYLES,
+  type MentorSuggestion,
 } from "@/lib/mentorSuggestions";
+import {
+  readStartPath,
+  clearStartPath,
+  getOpeningFor,
+  type StartPath,
+} from "@/lib/mentorOpening";
 import { toast } from "sonner";
 
 type Msg = {
@@ -33,6 +40,24 @@ export default function AiMentorChat() {
         "Hi, I'm Seneca. I'm here to think through trades, mindset, and execution with you. Whatever's on your mind — wins, losses, doubts, or a setup you're unsure about — we can talk it out.",
     },
   ]);
+  // Path chosen during onboarding (Slide 5). Drives the very first turn:
+  // a path-specific opening message + path-specific quick-reply chips.
+  // Read once on mount; cleared after consumption so refreshes don't repeat.
+  const [startPath, setStartPath] = useState<StartPath | null>(null);
+  useEffect(() => {
+    const p = readStartPath();
+    if (!p) return;
+    setStartPath(p);
+    setMessages([
+      {
+        id: "intro",
+        role: "assistant",
+        content: getOpeningFor(p).message,
+      },
+    ]);
+    clearStartPath();
+  }, []);
+
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [recentSuggestionIds, setRecentSuggestionIds] = useState<string[]>([]);
@@ -51,16 +76,21 @@ export default function AiMentorChat() {
     [lastUserMessage],
   );
 
-  // Build suggestions: state-aware + journal-personalized + anti-repeat.
-  const suggestions = useMemo(
-    () =>
-      pickMentorSuggestions({
-        state: detectedState,
-        journal,
-        recentlyShownIds: recentSuggestionIds,
-      }),
-    [detectedState, journal, recentSuggestionIds],
-  );
+  // Build suggestions:
+  //   • If we have a start-path AND the user hasn't replied yet → use the
+  //     path-specific quick-replies (per spec).
+  //   • Otherwise → state-aware + journal-personalized + anti-repeat.
+  const isFirstTurn = !lastUserMessage;
+  const suggestions: MentorSuggestion[] = useMemo(() => {
+    if (startPath && isFirstTurn) {
+      return getOpeningFor(startPath).chips.slice(0, 4);
+    }
+    return pickMentorSuggestions({
+      state: detectedState,
+      journal,
+      recentlyShownIds: recentSuggestionIds,
+    });
+  }, [startPath, isFirstTurn, detectedState, journal, recentSuggestionIds]);
 
   // Track suggestions we've shown so we don't repeat them every turn.
   useEffect(() => {
@@ -94,11 +124,15 @@ export default function AiMentorChat() {
     setDraft("");
     setStreaming(true);
 
-    // Build user context (only real data)
+    // Build user context (only real data). Pass startPath ONCE on the first
+    // turn so the backend can shape its first reply around the chosen path.
     const journalSummary = summarizeJournal(journal) ?? undefined;
     const ctx =
-      journalSummary
-        ? { journalSummary }
+      journalSummary || (startPath && isFirstTurn)
+        ? {
+            ...(journalSummary ? { journalSummary } : {}),
+            ...(startPath && isFirstTurn ? { startPath } : {}),
+          }
         : undefined;
 
     // Strip the intro message from what we send to the model — it's UI only.
