@@ -72,11 +72,12 @@ export default function Slide6Building({ onNext }: SlideProps) {
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
-                duration: 0.45,
-                delay: 0.2 + i * 0.12,
-                ease: [0.22, 1, 0.36, 1],
+                duration: 0.5,
+                delay: 0.2 + i * 0.15,
+                ease: "easeOut",
               }}
-              className="flex w-full items-center gap-3.5 rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft"
+              whileHover={{ y: -2, scale: 1.02 }}
+              className="flex w-full items-center gap-3.5 rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft transition-shadow hover:shadow-md"
             >
               <span
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ${f.bg}`}
