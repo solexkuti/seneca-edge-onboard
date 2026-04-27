@@ -1,10 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Activity, Shield, AlertTriangle, ArrowUpRight } from "lucide-react";
+import {
+  Activity,
+  Shield,
+  AlertTriangle,
+  ArrowUpRight,
+  Check,
+  X,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
 import { useMemo } from "react";
 import FeatureShell from "@/components/feature/FeatureShell";
 import { useDbJournal } from "@/hooks/useDbJournal";
 import { detectBehaviorPattern } from "@/lib/behaviorPattern";
+import type { DbJournalRow } from "@/lib/dbJournal";
 
 export const Route = createFileRoute("/hub/state")({
   head: () => ({
