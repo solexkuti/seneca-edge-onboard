@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
 import Slide1Hero from "@/components/onboarding/Slide1Hero";
@@ -226,7 +226,10 @@ export default function OnboardingFlow() {
                   onAuthed={() => navigate({ to: "/hub" })}
                 />
               ) : (
-                <Component onNext={goNext} />
+                React.createElement(
+                  Component as React.ComponentType<SlideProps>,
+                  { onNext: goNext },
+                )
               )}
             </motion.div>
           </AnimatePresence>
