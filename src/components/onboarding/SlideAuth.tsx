@@ -20,6 +20,7 @@ export default function SlideAuth({ onNext }: SlideProps) {
         transition={{ duration: 0.5 }}
         className="text-center"
       >
+        <Logo size="lg" variant="full" className="mx-auto mb-4" />
         <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1">
           <span className="h-1.5 w-1.5 rounded-full bg-gradient-primary" />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
