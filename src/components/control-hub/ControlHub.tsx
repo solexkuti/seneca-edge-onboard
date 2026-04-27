@@ -9,7 +9,7 @@ import {
   BookOpenCheck,
   Activity,
   Sparkles,
-  LayoutTemplate,
+  
   Gamepad2,
   Plus,
 } from "lucide-react";
@@ -33,9 +33,11 @@ type ToolItem = {
   title: string;
   subtitle: string;
   Icon: typeof LineChart;
-  to: "/hub/chart" | "/hub/journal" | "/hub/state" | "/hub/mentor" | "/hub/strategy";
+  to: "/hub/chart" | "/hub/journal" | "/hub/state" | "/hub/mentor";
 };
 
+// Tools = where the user *interacts* with their edge.
+// Strategy Builder is intentionally absent — it lives in "Your System" above.
 const TOOLS: ToolItem[] = [
   {
     key: "chart",
@@ -64,13 +66,6 @@ const TOOLS: ToolItem[] = [
     subtitle: "Guided trading reflection",
     Icon: Sparkles,
     to: "/hub/mentor",
-  },
-  {
-    key: "strategy",
-    title: "Strategy Builder",
-    subtitle: "Define and refine your system",
-    Icon: LayoutTemplate,
-    to: "/hub/strategy",
   },
 ];
 
@@ -120,7 +115,7 @@ export default function ControlHub({ userName }: { userName?: string }) {
 
         {/* TOOLS */}
         <Section label="Tools">
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {TOOLS.map((t, i) => (
               <ToolCard key={t.key} tool={t} delay={0.04 * i} />
             ))}
