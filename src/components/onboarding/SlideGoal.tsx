@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Target, Coins, Award, Sparkles } from "lucide-react";
+import { Target, Coins, Award, Sparkles } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import type { SlideProps } from "./OnboardingFlow";
 
