@@ -97,7 +97,22 @@ export default function SlideProof({ onNext }: SlideProps) {
         </figcaption>
       </motion.figure>
 
-      <ContinueButton onClick={onNext} delay={0.95} />
+      {/* Quiet, intentional CTA — only one button in the entire narrative flow */}
+      <motion.button
+        type="button"
+        onClick={handleStep}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0, scale: pressing ? 0.97 : 1 }}
+        transition={{ duration: 0.5, delay: 0.95, ease: [0.22, 1, 0.36, 1] }}
+        whileHover={{ y: -1 }}
+        className="group mt-2 inline-flex items-center gap-2 rounded-full border border-border bg-card/40 px-6 py-3 text-[14px] font-medium text-text-primary backdrop-blur-sm transition-all hover:border-brand/40 hover:bg-card/70 hover:shadow-soft"
+      >
+        Step into control
+        <ArrowRight
+          className="h-4 w-4 text-brand transition-transform group-hover:translate-x-0.5"
+          strokeWidth={2.2}
+        />
+      </motion.button>
     </div>
   );
 }
