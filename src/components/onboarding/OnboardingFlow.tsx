@@ -92,16 +92,16 @@ export default function OnboardingFlow() {
       {/* Subtle floating chart lines background */}
       <BackdropLines />
 
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pt-6 pb-8">
-        {/* Top brand row */}
-        <div className="flex items-center justify-between">
-          <BrandMark />
+      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pt-7 pb-8">
+        {/* Brand anchor — identical position on every slide */}
+        <header className="flex flex-col items-center gap-4">
+          <Logo size="lg" variant="full" />
           <ProgressDots
             count={slideOrder.length}
             active={index}
             onSelect={goTo}
           />
-        </div>
+        </header>
 
         {/* Slide stage */}
         <div className="relative mt-4 flex flex-1 items-center justify-center">
@@ -134,9 +134,6 @@ export default function OnboardingFlow() {
   );
 }
 
-function BrandMark() {
-  return <Logo size="md" variant="full" />;
-}
 
 function BackdropLines() {
   return (
