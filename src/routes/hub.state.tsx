@@ -3,14 +3,14 @@ import ComingSoonScreen from "@/components/feature/ComingSoonScreen";
 
 export const Route = createFileRoute("/hub/state")({
   head: () => ({
-    meta: [{ title: "State Check — SenecaEdge" }],
+    meta: [{ title: "In-Trade Check — SenecaEdge" }],
   }),
   component: () => (
     <ComingSoonScreen
-      eyebrow="State Check"
-      title="Stay in control during live trades."
-      subtitle="Real-time discipline tracking."
-      description="A live monitor that watches your behavior mid-trade and warns you the second emotion takes over."
+      eyebrow="In-Trade Check"
+      title="Pause before you act."
+      subtitle="Real-time awareness during an active trade."
+      description="Interrupt impulse, regain control, and make the next decision consciously — not reactively."
     />
   ),
 });
