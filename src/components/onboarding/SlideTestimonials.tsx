@@ -2,9 +2,6 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Quote, MessageSquareQuote } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
-import avatarMarco from "@/assets/avatar-marco.jpg";
-import avatarAisha from "@/assets/avatar-aisha.jpg";
-import avatarKenji from "@/assets/avatar-kenji.jpg";
 
 /**
  * Testimonial slide — stacked card carousel.
