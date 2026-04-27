@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { LineChart, Settings2, ShieldCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import ContinueButton from "./ContinueButton";
 import type { SlideProps } from "./OnboardingFlow";
 
 /**
@@ -35,13 +36,13 @@ const FEATURES: Feature[] = [
   {
     icon: ShieldCheck,
     title: "Stay in control",
-    desc: "Track behavior, not just profits.",
+    desc: "Track behavior, not just results.",
     tint: "text-accent-blue",
     bg: "bg-accent-blue/10 ring-accent-blue/20",
   },
 ];
 
-export default function Slide6Building(_: SlideProps) {
+export default function Slide6Building({ onNext }: SlideProps) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-7 px-2">
       {/* Header */}
@@ -94,6 +95,8 @@ export default function Slide6Building(_: SlideProps) {
           );
         })}
       </div>
+
+      <ContinueButton onClick={onNext} delay={0.7} />
     </div>
   );
 }
