@@ -56,6 +56,42 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          challenge: string | null
+          created_at: string
+          experience: string | null
+          goal: string | null
+          id: string
+          market: string | null
+          onboarded_at: string | null
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          challenge?: string | null
+          created_at?: string
+          experience?: string | null
+          goal?: string | null
+          id: string
+          market?: string | null
+          onboarded_at?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          challenge?: string | null
+          created_at?: string
+          experience?: string | null
+          goal?: string | null
+          id?: string
+          market?: string | null
+          onboarded_at?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
