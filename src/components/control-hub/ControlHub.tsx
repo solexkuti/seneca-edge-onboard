@@ -264,6 +264,7 @@ function Header({ userName }: { userName?: string }) {
       className="flex items-start justify-between"
     >
       <div className="min-w-0">
+        <Logo size="sm" variant="full" className="mb-3" />
         <div className="flex items-center gap-2">
           <span className="relative flex h-2.5 w-2.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22c55e] opacity-60" />
