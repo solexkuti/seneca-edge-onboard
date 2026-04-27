@@ -73,9 +73,9 @@ export default function Slide6Building({ onNext }: SlideProps) {
           What you get
         </p>
         <h2 className="mt-2 text-[24px] font-bold leading-[1.2] tracking-tight text-text-primary">
-          Three tools.
+          A system for
           <br />
-          <span className="text-gradient-mix">One disciplined trader.</span>
+          <span className="text-gradient-mix">disciplined trading.</span>
         </h2>
       </motion.div>
 
