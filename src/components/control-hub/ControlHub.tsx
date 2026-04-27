@@ -96,12 +96,12 @@ export default function ControlHub({ userName }: { userName?: string }) {
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
       <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-90" />
 
-      <div className="relative z-10 mx-auto w-full max-w-[440px] px-5 pt-7 pb-16">
+      <div className="relative z-10 mx-auto w-full max-w-[440px] px-6 pt-8 pb-20">
         {/* HEADER */}
         <Header userName={userName} initial={initial} />
 
         {/* MENTAL SIGNAL */}
-        <div className="mt-7">
+        <div className="mt-8">
           <MentalSignalCard
             message={MENTAL_SIGNALS[signalIdx]}
             signalIdx={signalIdx}
@@ -109,49 +109,55 @@ export default function ControlHub({ userName }: { userName?: string }) {
         </div>
 
         {/* PRIMARY ACTION */}
-        <div className="mt-7">
+        <div className="mt-6">
           <CheckBeforeTradeButton />
         </div>
 
         {/* YOUR SYSTEM */}
-        <div className="mt-10">
-          <SectionLabel>Your system</SectionLabel>
-          <div className="mt-3">
-            <YourSystemCard />
-          </div>
-        </div>
+        <Section label="Your system">
+          <YourSystemCard />
+        </Section>
 
         {/* TOOLS */}
-        <div className="mt-10">
-          <SectionLabel>Tools</SectionLabel>
-          <div className="mt-3 space-y-2.5">
+        <Section label="Tools">
+          <div className="space-y-2">
             {TOOLS.map((t, i) => (
               <ToolCard key={t.key} tool={t} delay={0.04 * i} />
             ))}
           </div>
-        </div>
+        </Section>
 
         {/* UPCOMING */}
-        <div className="mt-10">
-          <SectionLabel>Upcoming</SectionLabel>
-          <div className="mt-3">
-            <UpcomingCard />
-          </div>
-        </div>
+        <Section label="Upcoming">
+          <UpcomingCard />
+        </Section>
 
         {/* RECENT ACTIVITY */}
-        <div className="mt-10">
-          <SectionLabel>Recent activity</SectionLabel>
-          <div className="mt-3">
-            <RecentActivityCard />
-          </div>
-        </div>
+        <Section label="Recent activity">
+          <RecentActivityCard />
+        </Section>
 
-        <p className="mt-12 text-center text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary/70">
+        <p className="mt-14 text-center text-[10.5px] font-medium uppercase tracking-[0.24em] text-text-secondary/60">
           SenecaEdge · Control State
         </p>
       </div>
     </div>
+  );
+}
+
+// Consistent vertical rhythm wrapper for major sections.
+function Section({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mt-10">
+      <SectionLabel>{label}</SectionLabel>
+      <div className="mt-4">{children}</div>
+    </section>
   );
 }
 
