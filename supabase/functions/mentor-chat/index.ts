@@ -208,6 +208,8 @@ type Msg = { role: "user" | "assistant"; content: string };
 type UserContext = {
   journalSummary?: string;
   systemRules?: string;
+  /** From the 4-step onboarding personalization (market, experience, challenge, goal). */
+  profileSummary?: string;
 };
 
 // ── Hidden analytics helpers ───────────────────────────────────────────────
