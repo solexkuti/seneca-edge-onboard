@@ -22,6 +22,7 @@ import {
   pickRandom,
   type BehaviorStateKey,
 } from "@/lib/behaviorState";
+import CheckHistorySparkline from "./CheckHistorySparkline";
 
 type CoreFeature = {
   key: string;
