@@ -29,7 +29,6 @@ export type SlideProps = {
  *
  *   • Narrative slides auto-advance after a calm dwell (3–6s).
  *   • Swipe left/right to move between slides at any time.
- *   • Any tap/touch pauses auto-slide for ~2s, then resumes.
  *   • Proof has the only narrative CTA → enters personalization.
  *   • Question slides advance on selection.
  *   • Final tail: Name → Signup → /hub (control state).
@@ -53,8 +52,6 @@ const slideOrder = [
   { key: "name", auto: 0, Component: SlideName },
   { key: "auth", auto: 0, Component: SlideAuth },
 ] as const;
-
-const RESUME_DELAY = 2000;
 
 export default function OnboardingFlow() {
   const navigate = useNavigate();
