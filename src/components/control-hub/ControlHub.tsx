@@ -33,9 +33,11 @@ type ToolItem = {
   title: string;
   subtitle: string;
   Icon: typeof LineChart;
-  to: "/hub/chart" | "/hub/journal" | "/hub/state" | "/hub/mentor" | "/hub/strategy";
+  to: "/hub/chart" | "/hub/journal" | "/hub/state" | "/hub/mentor";
 };
 
+// Tools = where the user *interacts* with their edge.
+// Strategy Builder is intentionally absent — it lives in "Your System" above.
 const TOOLS: ToolItem[] = [
   {
     key: "chart",
@@ -64,13 +66,6 @@ const TOOLS: ToolItem[] = [
     subtitle: "Guided trading reflection",
     Icon: Sparkles,
     to: "/hub/mentor",
-  },
-  {
-    key: "strategy",
-    title: "Strategy Builder",
-    subtitle: "Define and refine your system",
-    Icon: LayoutTemplate,
-    to: "/hub/strategy",
   },
 ];
 
