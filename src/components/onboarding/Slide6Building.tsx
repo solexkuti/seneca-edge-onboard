@@ -93,7 +93,11 @@ export default function Slide6Building({ onNext }: SlideProps) {
                 delay: 0.2 + i * 0.12,
                 ease: [0.22, 1, 0.36, 1],
               }}
-              className="flex w-full items-center gap-3.5 rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft"
+              className={`flex w-full items-center gap-3.5 rounded-2xl p-3.5 ring-1 shadow-soft ${
+                f.highlight
+                  ? "bg-gradient-to-br from-brand/[0.06] to-accent-cyan/[0.05] ring-brand/25"
+                  : "bg-card ring-border"
+              }`}
             >
               <span
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ${f.bg}`}
