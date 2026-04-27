@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useNavigate } from "@tanstack/react-router";
 import Slide1Hero from "@/components/onboarding/Slide1Hero";
 import SlideBridge from "@/components/onboarding/SlideBridge";
 import SlideReframe from "@/components/onboarding/SlideReframe";
@@ -11,9 +12,11 @@ import Slide4Market from "@/components/onboarding/Slide4Market";
 import SlideExperience from "@/components/onboarding/SlideExperience";
 import SlideStruggle from "@/components/onboarding/SlideStruggle";
 import SlideGoal from "@/components/onboarding/SlideGoal";
-import Slide3Flow from "@/components/onboarding/Slide3Flow";
+import SlideName from "@/components/onboarding/SlideName";
+import SlideAuth from "@/components/onboarding/SlideAuth";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
 import SegmentedProgress from "@/components/onboarding/SegmentedProgress";
+import { saveUserName, getUserName } from "@/lib/userName";
 
 export type SlideProps = {
   onNext: () => void;
@@ -25,10 +28,9 @@ export type SlideProps = {
  *   • Narrative slides auto-advance after a calm dwell (3–6s).
  *   • Swipe left/right to move between slides at any time.
  *   • Any tap/touch pauses auto-slide for ~2s, then resumes.
- *   • The final narrative slide (Proof) has the only button:
- *       "Step into control →"  → enters the personalization questions.
- *   • Question slides advance via the user's selection (no timer).
- *   • A segmented progress bar at the top fills with the active dwell.
+ *   • Proof has the only narrative CTA → enters personalization.
+ *   • Question slides advance on selection.
+ *   • Final tail: Name → Signup → /hub (control state).
  */
 const slideOrder = [
   // Narrative — auto-advance
@@ -45,15 +47,19 @@ const slideOrder = [
   { key: "q-experience", auto: 0, Component: SlideExperience },
   { key: "q-challenge", auto: 0, Component: SlideStruggle },
   { key: "q-goal", auto: 0, Component: SlideGoal },
-  { key: "path", auto: 0, Component: Slide3Flow },
+  // Identity → signup → control state
+  { key: "name", auto: 0, Component: SlideName },
+  { key: "auth", auto: 0, Component: SlideAuth },
 ] as const;
 
 const RESUME_DELAY = 2000;
 
 export default function OnboardingFlow() {
+  const navigate = useNavigate();
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [paused, setPaused] = useState(false);
+  const [userName, setUserName] = useState<string>(() => getUserName() ?? "");
   const advanceTimer = useRef<number | null>(null);
   const resumeTimer = useRef<number | null>(null);
 
@@ -73,6 +79,11 @@ export default function OnboardingFlow() {
 
   const goNext = () => {
     clearTimers();
+    // Advancing past the final slide (auth) → enter the control state.
+    if (slideOrder[index].key === "auth") {
+      navigate({ to: "/hub" });
+      return;
+    }
     setDirection(1);
     setIndex((i) => Math.min(i + 1, slideOrder.length - 1));
   };
@@ -181,7 +192,20 @@ export default function OnboardingFlow() {
               }}
               className="w-full touch-pan-y cursor-grab active:cursor-grabbing"
             >
-              <Component onNext={goNext} />
+              {slide.key === "name" ? (
+                <SlideName
+                  onNext={goNext}
+                  value={userName}
+                  onChange={(v) => {
+                    setUserName(v);
+                    saveUserName(v);
+                  }}
+                />
+              ) : slide.key === "auth" ? (
+                <SlideAuth onNext={goNext} username={userName} />
+              ) : (
+                <Component onNext={goNext} />
+              )}
             </motion.div>
           </AnimatePresence>
         </div>

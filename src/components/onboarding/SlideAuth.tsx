@@ -3,7 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Mail, Lock, ArrowLeft } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
 
-export default function SlideAuth({ onNext }: SlideProps) {
+export default function SlideAuth({
+  onNext,
+  username,
+}: SlideProps & { username?: string }) {
   const [mode, setMode] = useState<"choose" | "email">("choose");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,15 +25,21 @@ export default function SlideAuth({ onNext }: SlideProps) {
         <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1">
           <span className="h-1.5 w-1.5 rounded-full bg-gradient-primary" />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
-            Final Step
+            One last step
           </span>
         </div>
         <h1 className="mt-3 text-[26px] font-bold leading-[1.15] tracking-tight text-text-primary">
-          Create your <span className="text-gradient-mix">account</span>
+          Everything is <span className="text-gradient-mix">ready.</span>
         </h1>
         <p className="mt-2 text-[14px] text-text-secondary">
-          Lock in your discipline system.
+          Save your setup and step into control.
         </p>
+        {username && (
+          <p className="mt-1.5 text-[12px] text-text-secondary/80">
+            This will be saved as{" "}
+            <span className="font-semibold text-text-primary">{username}</span>
+          </p>
+        )}
       </motion.div>
 
       <AnimatePresence mode="wait">
@@ -66,7 +75,7 @@ export default function SlideAuth({ onNext }: SlideProps) {
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={() => setMode("email")}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-6 py-4 text-[15px] font-semibold text-text-primary shadow-soft transition-all hover:border-brand/40 hover:shadow-glow-primary"
+              className="interactive-glow flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-6 py-4 text-[15px] font-semibold text-text-primary shadow-soft transition-colors hover:border-brand/40"
             >
               <Mail className="h-4 w-4 text-brand" />
               Sign up with email
@@ -108,7 +117,7 @@ export default function SlideAuth({ onNext }: SlideProps) {
               disabled={!canSubmitEmail}
               onClick={onNext}
               animate={{ opacity: canSubmitEmail ? 1 : 0.4 }}
-              className="group relative w-full overflow-hidden rounded-2xl bg-gradient-primary px-6 py-4 shadow-glow-primary disabled:cursor-not-allowed"
+              className="interactive-glow group relative w-full overflow-hidden rounded-2xl bg-gradient-primary px-6 py-4 shadow-soft disabled:cursor-not-allowed"
             >
               <span className="relative flex items-center justify-center gap-2 text-[16px] font-semibold text-white">
                 Create account
@@ -150,9 +159,9 @@ function SocialButton({
       whileTap={{ scale: 0.97 }}
       whileHover={{ scale: 1.01 }}
       onClick={onClick}
-      className={`flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-[15px] font-semibold shadow-soft transition-all ${
+      className={`interactive-glow flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-[15px] font-semibold shadow-soft transition-colors ${
         dark
-          ? "bg-[#0F172A] text-white hover:shadow-card-premium"
+          ? "bg-[#0F172A] text-white"
           : "border border-border bg-card text-text-primary hover:border-brand/40"
       }`}
     >
