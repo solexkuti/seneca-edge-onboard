@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HubIndexRouteImport } from './routes/hub.index'
+import { Route as HubStrategyRouteImport } from './routes/hub.strategy'
 import { Route as HubStateRouteImport } from './routes/hub.state'
 import { Route as HubMindRouteImport } from './routes/hub.mind'
 import { Route as HubMentorRouteImport } from './routes/hub.mentor'
@@ -25,6 +26,11 @@ const IndexRoute = IndexRouteImport.update({
 const HubIndexRoute = HubIndexRouteImport.update({
   id: '/hub/',
   path: '/hub/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HubStrategyRoute = HubStrategyRouteImport.update({
+  id: '/hub/strategy',
+  path: '/hub/strategy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HubStateRoute = HubStateRouteImport.update({
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/hub/mentor': typeof HubMentorRoute
   '/hub/mind': typeof HubMindRoute
   '/hub/state': typeof HubStateRoute
+  '/hub/strategy': typeof HubStrategyRoute
   '/hub/': typeof HubIndexRoute
 }
 export interface FileRoutesByTo {
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/hub/mentor': typeof HubMentorRoute
   '/hub/mind': typeof HubMindRoute
   '/hub/state': typeof HubStateRoute
+  '/hub/strategy': typeof HubStrategyRoute
   '/hub': typeof HubIndexRoute
 }
 export interface FileRoutesById {
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/hub/mentor': typeof HubMentorRoute
   '/hub/mind': typeof HubMindRoute
   '/hub/state': typeof HubStateRoute
+  '/hub/strategy': typeof HubStrategyRoute
   '/hub/': typeof HubIndexRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
     | '/hub/mentor'
     | '/hub/mind'
     | '/hub/state'
+    | '/hub/strategy'
     | '/hub/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/hub/mentor'
     | '/hub/mind'
     | '/hub/state'
+    | '/hub/strategy'
     | '/hub'
   id:
     | '__root__'
@@ -108,6 +119,7 @@ export interface FileRouteTypes {
     | '/hub/mentor'
     | '/hub/mind'
     | '/hub/state'
+    | '/hub/strategy'
     | '/hub/'
   fileRoutesById: FileRoutesById
 }
@@ -118,6 +130,7 @@ export interface RootRouteChildren {
   HubMentorRoute: typeof HubMentorRoute
   HubMindRoute: typeof HubMindRoute
   HubStateRoute: typeof HubStateRoute
+  HubStrategyRoute: typeof HubStrategyRoute
   HubIndexRoute: typeof HubIndexRoute
 }
 
@@ -135,6 +148,13 @@ declare module '@tanstack/react-router' {
       path: '/hub'
       fullPath: '/hub/'
       preLoaderRoute: typeof HubIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hub/strategy': {
+      id: '/hub/strategy'
+      path: '/hub/strategy'
+      fullPath: '/hub/strategy'
+      preLoaderRoute: typeof HubStrategyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hub/state': {
@@ -182,6 +202,7 @@ const rootRouteChildren: RootRouteChildren = {
   HubMentorRoute: HubMentorRoute,
   HubMindRoute: HubMindRoute,
   HubStateRoute: HubStateRoute,
+  HubStrategyRoute: HubStrategyRoute,
   HubIndexRoute: HubIndexRoute,
 }
 export const routeTree = rootRouteImport
