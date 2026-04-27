@@ -12,7 +12,7 @@ type LogoProps = {
 const SIZE_MAP: Record<NonNullable<LogoProps["size"]>, { full: string; icon: string }> = {
   sm: { full: "h-7", icon: "h-8 w-8" },
   md: { full: "h-9", icon: "h-10 w-10" },
-  lg: { full: "h-14", icon: "h-14 w-14" },
+  lg: { full: "h-16", icon: "h-14 w-14" },
   xl: { full: "h-24", icon: "h-24 w-24" },
 };
 
