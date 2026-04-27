@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Eye,
   ShieldCheck,
@@ -19,6 +19,18 @@ import {
   detectBehaviorPattern,
   type BehaviorPattern,
 } from "@/lib/behaviorPattern";
+
+// Eyebrow label by pattern kind. Reflects the actual signal, not generic copy.
+const PATTERN_LABEL: Record<
+  Exclude<BehaviorPattern["kind"], "empty">,
+  string
+> = {
+  rule_breaking: "Rule breaking",
+  revenge: "Revenge trading",
+  overtrading: "Overtrading",
+  discipline: "Discipline",
+  neutral: "Behavior pattern",
+};
 
 type ToolItem = {
   key: string;
