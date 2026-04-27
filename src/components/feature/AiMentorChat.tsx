@@ -92,7 +92,7 @@ export default function AiMentorChat() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: wireMessages, context: ctx }),
+        body: JSON.stringify({ messages: wireMessages, context: ctx, mode }),
       });
 
       if (!resp.ok || !resp.body) {
