@@ -226,10 +226,17 @@ function TestimonialCard({
       {/* Footer: avatar + name */}
       <div className="mt-4 flex items-center gap-2.5">
         <div
-          className={`flex h-9 w-9 items-center justify-center rounded-full text-[12px] font-bold text-white ${t.avatar}`}
+          className={`relative h-10 w-10 shrink-0 overflow-hidden rounded-full p-[1.5px] ${t.avatar}`}
           aria-hidden
         >
-          {testimonial.initials}
+          <img
+            src={testimonial.avatar}
+            alt=""
+            width={512}
+            height={512}
+            loading="lazy"
+            className="h-full w-full rounded-full object-cover ring-2 ring-card"
+          />
         </div>
         <div className="leading-tight">
           <div className="text-[12.5px] font-semibold text-text-primary">
