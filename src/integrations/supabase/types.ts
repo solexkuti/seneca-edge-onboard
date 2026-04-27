@@ -25,7 +25,7 @@ export type Database = {
           followed_risk: boolean
           id: string
           notes: string | null
-          trade_id: string | null
+          trade_id: string
           user_id: string
         }
         Insert: {
@@ -40,7 +40,7 @@ export type Database = {
           followed_risk?: boolean
           id?: string
           notes?: string | null
-          trade_id?: string | null
+          trade_id: string
           user_id: string
         }
         Update: {
@@ -55,7 +55,7 @@ export type Database = {
           followed_risk?: boolean
           id?: string
           notes?: string | null
-          trade_id?: string | null
+          trade_id?: string
           user_id?: string
         }
         Relationships: [
