@@ -1,13 +1,13 @@
 import { motion } from "framer-motion";
-import { LineChart, Settings2, ShieldCheck } from "lucide-react";
+import { LineChart, Settings2, ShieldCheck, Sparkles, PlayCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import ContinueButton from "./ContinueButton";
 import type { SlideProps } from "./OnboardingFlow";
 
 /**
  * Slide 3 — Feature Experience
- * Three clean cards. Icon + label + one-liner. No buttons.
- * Auto-advances. Spacing intentionally generous = premium feel.
+ * Five clean cards. Icon + label + one-liner. No buttons.
+ * AI mentor and Simulation are visually highlighted as differentiators.
  */
 
 type Feature = {
@@ -16,6 +16,7 @@ type Feature = {
   desc: string;
   tint: string; // text color
   bg: string; // icon bg
+  highlight?: boolean;
 };
 
 const FEATURES: Feature[] = [
@@ -40,6 +41,22 @@ const FEATURES: Feature[] = [
     tint: "text-accent-blue",
     bg: "bg-accent-blue/10 ring-accent-blue/20",
   },
+  {
+    icon: Sparkles,
+    title: "Your AI mentor",
+    desc: "Right there with you. Helping you think, not react.",
+    tint: "text-brand",
+    bg: "bg-brand/10 ring-brand/20",
+    highlight: true,
+  },
+  {
+    icon: PlayCircle,
+    title: "Simulation mode",
+    desc: "Practice decisions before real money is on the line.",
+    tint: "text-accent-cyan",
+    bg: "bg-accent-cyan/10 ring-accent-cyan/20",
+    highlight: true,
+  },
 ];
 
 export default function Slide6Building({ onNext }: SlideProps) {
@@ -56,9 +73,9 @@ export default function Slide6Building({ onNext }: SlideProps) {
           What you get
         </p>
         <h2 className="mt-2 text-[24px] font-bold leading-[1.2] tracking-tight text-text-primary">
-          Three tools.
+          A system for
           <br />
-          <span className="text-gradient-mix">One disciplined trader.</span>
+          <span className="text-gradient-mix">disciplined trading.</span>
         </h2>
       </motion.div>
 
@@ -69,15 +86,18 @@ export default function Slide6Building({ onNext }: SlideProps) {
           return (
             <motion.div
               key={f.title}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
-                duration: 0.5,
-                delay: 0.2 + i * 0.15,
-                ease: "easeOut",
+                duration: 0.45,
+                delay: 0.2 + i * 0.12,
+                ease: [0.22, 1, 0.36, 1],
               }}
-              whileHover={{ y: -2, scale: 1.02 }}
-              className="flex w-full items-center gap-3.5 rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft transition-shadow hover:shadow-md"
+              className={`flex w-full items-center gap-3.5 rounded-2xl p-3.5 ring-1 shadow-soft ${
+                f.highlight
+                  ? "bg-gradient-to-br from-brand/[0.06] to-accent-cyan/[0.05] ring-brand/25"
+                  : "bg-card ring-border"
+              }`}
             >
               <span
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ${f.bg}`}

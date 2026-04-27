@@ -108,10 +108,10 @@ export default function OnboardingFlow() {
             <motion.div
               key={slide.key}
               custom={direction}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.5, ease: "easeInOut" }}
+              initial={{ opacity: 0, x: direction === 1 ? 40 : -40, scale: 0.98 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: direction === 1 ? -40 : 40, scale: 0.98 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
               drag={swipeEnabled ? "x" : false}
               dragElastic={0.18}
               dragMomentum={false}

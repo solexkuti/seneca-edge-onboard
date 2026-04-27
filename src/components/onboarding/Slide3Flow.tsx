@@ -69,10 +69,10 @@ export default function Slide3Flow(_: SlideProps) {
       // non-blocking
     }
     setChosen(p);
-    // Fade in (300ms) + hold (400ms) → route
+    // Brief confirmation, then route into the chosen flow.
     window.setTimeout(() => {
       navigate({ to: p.route });
-    }, 700);
+    }, 650);
   };
 
   return (
@@ -151,16 +151,16 @@ export default function Slide3Flow(_: SlideProps) {
           /* Confirmation pause — short, then route */
           <motion.div
             key="confirm"
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="flex flex-col items-center gap-4 py-10 text-center"
           >
             <motion.span
-              initial={{ scale: 0.92, opacity: 0 }}
+              initial={{ scale: 0.6, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
+              transition={{ type: "spring", stiffness: 220, damping: 16 }}
               className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-mix shadow-soft"
             >
               <Check className="h-7 w-7 text-white" strokeWidth={2.6} />
