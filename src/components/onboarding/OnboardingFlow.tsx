@@ -7,6 +7,7 @@ import Slide3Flow from "@/components/onboarding/Slide3Flow";
 import Slide6Building from "@/components/onboarding/Slide6Building";
 import SlideControl from "@/components/onboarding/SlideControl";
 import SlideStrategy from "@/components/onboarding/SlideStrategy";
+import SlideTestimonials from "@/components/onboarding/SlideTestimonials";
 import SlideJournal from "@/components/onboarding/SlideJournal";
 import SlideMentor from "@/components/onboarding/SlideMentor";
 import SlideCTA from "@/components/onboarding/SlideCTA";
@@ -35,6 +36,7 @@ const slideOrder = [
   { key: "discipline", auto: 4200, Component: Slide6Building },
   { key: "control", auto: 4500, Component: SlideControl },
   { key: "strategy", auto: 5500, Component: SlideStrategy },
+  { key: "testimonials", auto: 7800, Component: SlideTestimonials },
   { key: "journal", auto: 5200, Component: SlideJournal },
   { key: "mentor", auto: 5500, Component: SlideMentor },
   { key: "cta", auto: 0, Component: SlideCTA },
