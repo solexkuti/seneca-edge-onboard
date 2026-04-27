@@ -17,6 +17,8 @@ import SlideAuth from "@/components/onboarding/SlideAuth";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
 import SegmentedProgress from "@/components/onboarding/SegmentedProgress";
 import { saveUserName, getUserName } from "@/lib/userName";
+import { supabase } from "@/integrations/supabase/client";
+import { syncProfileFromOnboarding } from "@/lib/auth";
 
 export type SlideProps = {
   onNext: () => void;
