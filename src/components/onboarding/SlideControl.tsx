@@ -189,8 +189,8 @@ function SystemIndicator() {
         className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-400"
         animate={{
           boxShadow: [
-            "0 0 0 0 rgba(52, 211, 153, 0.7)",
-            "0 0 0 6px rgba(52, 211, 153, 0)",
+            "0 0 0 0 rgba(52, 211, 153, 0.4)",
+            "0 0 0 5px rgba(52, 211, 153, 0)",
           ],
         }}
         transition={{ duration: 1.6, repeat: Infinity }}

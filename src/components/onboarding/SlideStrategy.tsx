@@ -248,8 +248,8 @@ function RuleSystem({
           className="h-2 w-2 rounded-full bg-emerald-400"
           animate={{
             boxShadow: [
-              "0 0 0 0 rgba(52,211,153,0.6)",
-              "0 0 0 6px rgba(52,211,153,0)",
+              "0 0 0 0 rgba(52,211,153,0.35)",
+              "0 0 0 5px rgba(52,211,153,0)",
             ],
           }}
           transition={{ duration: 1.6, repeat: Infinity }}
@@ -300,7 +300,7 @@ function RuleCard({
       {/* Connection node dot */}
       <motion.span
         className="absolute -right-1 -top-1 h-2 w-2 rounded-full"
-        style={{ background: t.dot, boxShadow: `0 0 8px ${t.dot}` }}
+        style={{ background: t.dot, boxShadow: `0 1px 3px rgba(30,41,59,0.12)` }}
         initial={{ scale: 0 }}
         animate={{ scale: [0, 1.4, 1] }}
         transition={{ delay: delay + 0.2, duration: 0.45 }}

@@ -39,7 +39,7 @@ export default function Slide1Hero(_props: SlideProps) {
                 background: colors[i % 3],
                 left: `calc(50% + ${x}px)`,
                 top: `calc(50% + ${y}px)`,
-                boxShadow: `0 0 10px ${colors[i % 3]}`,
+                boxShadow: `0 0 5px ${colors[i % 3]}40`,
               }}
               animate={{
                 y: [0, -12, 0],

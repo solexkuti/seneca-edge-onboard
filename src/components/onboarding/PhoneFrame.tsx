@@ -10,7 +10,7 @@ export default function PhoneFrame({
   return (
     <div
       className={`relative mx-auto aspect-[9/18.5] w-[260px] ${className}`}
-      style={{ filter: "drop-shadow(0 30px 50px rgba(108, 92, 231, 0.25))" }}
+      style={{ filter: "drop-shadow(0 24px 40px rgba(30, 41, 59, 0.12))" }}
     >
       {/* Outer body */}
       <div className="absolute inset-0 rounded-[44px] bg-gradient-to-b from-white to-[#EEF0F8] p-[6px] ring-1 ring-black/5">
