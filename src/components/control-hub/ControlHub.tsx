@@ -100,20 +100,21 @@ export default function ControlHub({ userName }: { userName?: string }) {
   // Chart copy rotation — different on each mount
   const chartCopy = useMemo(() => pickRandom(CHART_DESCRIPTIONS), []);
 
-  const coreFeatures: CoreFeature[] = [
-    {
-      key: "chart",
-      title: "Chart Analyzer",
-      text: chartCopy,
-      Icon: LineChart,
-      tone: "cyan",
-      to: "/hub/chart",
-      primary: true,
-    },
+  const primaryFeature: CoreFeature = {
+    key: "chart",
+    title: "Chart Analyzer",
+    text: chartCopy,
+    Icon: LineChart,
+    tone: "cyan",
+    to: "/hub/chart",
+    primary: true,
+  };
+
+  const secondaryFeatures: CoreFeature[] = [
     {
       key: "state",
       title: "State Check",
-      text: "Check your mental state before execution.",
+      text: "Mental state scan.",
       Icon: Activity,
       tone: "pink",
       to: "/hub/state",
@@ -121,7 +122,7 @@ export default function ControlHub({ userName }: { userName?: string }) {
     {
       key: "journal",
       title: "Trading Journal",
-      text: "Track your trades. Reveal your behavior patterns.",
+      text: "Behavior patterns.",
       Icon: BookOpenCheck,
       tone: "blue",
       to: "/hub/journal",
@@ -129,7 +130,7 @@ export default function ControlHub({ userName }: { userName?: string }) {
     {
       key: "mentor",
       title: "AI Mentor",
-      text: "Ask questions. Get structured trading guidance.",
+      text: "Structured guidance.",
       Icon: Sparkles,
       tone: "mint",
       to: "/hub/mentor",
@@ -147,41 +148,101 @@ export default function ControlHub({ userName }: { userName?: string }) {
         }}
       />
 
-      <div className="relative z-10 mx-auto w-full max-w-[440px] px-5 pt-7 pb-10">
+      <div className="relative z-10 mx-auto w-full max-w-[440px] px-5 pt-7 pb-12">
         <Header userName={userName} />
 
+        {/* SECTION: Status row (outside card) */}
+        <BehaviorStatusRow stateKey={stateKey} />
+
+        {/* SECTION: Message-only card */}
         <BehaviorInsightCard
           stateKey={stateKey}
           message={state.messages[msgIdx]}
           msgIdx={msgIdx}
         />
 
-        <CheckBeforeTradeButton />
-
-        <SectionLabel>Core</SectionLabel>
-        <div className="mt-3 space-y-3">
-          {coreFeatures.map((f, i) => (
-            <FeatureCard key={f.key} feature={f} delay={0.05 * i} />
-          ))}
+        {/* SECTION: Primary action */}
+        <div className="mt-8">
+          <CheckBeforeTradeButton />
         </div>
 
-        <SectionLabel className="mt-7">Upcoming</SectionLabel>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          {upcomingFeatures.map((f, i) => (
-            <UpcomingCard key={f.key} feature={f} delay={0.05 * i} />
-          ))}
+        {/* SECTION: Primary tool */}
+        <div className="mt-10">
+          <SectionLabel>Primary tool</SectionLabel>
+          <div className="mt-4">
+            <FeatureCard feature={primaryFeature} delay={0} />
+          </div>
         </div>
 
-        <SectionLabel className="mt-7">Recent activity</SectionLabel>
-        <RecentActivity />
+        {/* SECTION: More tools */}
+        <div className="mt-10">
+          <SectionLabel>More tools</SectionLabel>
+          <div className="mt-4 space-y-2.5">
+            {secondaryFeatures.map((f, i) => (
+              <SecondaryFeatureCard
+                key={f.key}
+                feature={f}
+                delay={0.05 * i}
+              />
+            ))}
+          </div>
+        </div>
 
-        <p className="mt-8 text-center text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary/70">
+        {/* SECTION: Upcoming */}
+        <div className="mt-10">
+          <SectionLabel>Upcoming</SectionLabel>
+          <div className="mt-4 grid grid-cols-2 gap-3 opacity-60">
+            {upcomingFeatures.map((f, i) => (
+              <UpcomingCard key={f.key} feature={f} delay={0.05 * i} />
+            ))}
+          </div>
+        </div>
+
+        {/* SECTION: Recent activity */}
+        <div className="mt-10">
+          <SectionLabel>Recent activity</SectionLabel>
+          <div className="mt-4">
+            <RecentActivity />
+          </div>
+        </div>
+
+        <p className="mt-12 text-center text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary/70">
           SenecaEdge · Behavioral system
         </p>
       </div>
 
       <LiveSignalTicker signals={state.liveSignals} tone={state.tone} />
     </div>
+  );
+}
+
+function BehaviorStatusRow({ stateKey }: { stateKey: BehaviorStateKey }) {
+  const accent = stateAccent[stateKey];
+  const state = BEHAVIOR_STATES[stateKey];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.05, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className="mt-7 flex items-center gap-2 text-[11px] font-medium tracking-tight text-text-secondary"
+    >
+      <span className="font-semibold uppercase tracking-[0.18em] text-text-secondary/80">
+        Behavior Insight
+      </span>
+      <span className="text-text-secondary/40">·</span>
+      <span className="flex items-center gap-1.5 text-text-secondary/90">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-60" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-current" />
+        </span>
+        Live
+      </span>
+      <span className="text-text-secondary/40">·</span>
+      <span className={`flex items-center gap-1.5 font-semibold ${accent.label}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${accent.dot}`} />
+        {state.label}
+      </span>
+    </motion.div>
   );
 }
 
@@ -268,46 +329,23 @@ function BehaviorInsightCard({
   msgIdx: number;
 }) {
   const accent = stateAccent[stateKey];
-  const state = BEHAVIOR_STATES[stateKey];
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      className="relative mt-5 overflow-hidden rounded-2xl p-[1.5px]"
+      className="relative mt-3 overflow-hidden rounded-2xl p-[1.5px]"
       style={{ backgroundImage: accent.bg }}
     >
-      <div className="relative rounded-[14px] bg-card p-4">
+      <div className="relative rounded-[14px] bg-card px-5 py-5">
         <div
-          className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full opacity-50 blur-2xl"
+          className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full opacity-40 blur-2xl"
           style={{
             background: `radial-gradient(closest-side, ${accent.glow}, transparent 70%)`,
           }}
         />
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
-              Behavior Insight
-            </span>
-            <span className="h-1 w-1 rounded-full bg-text-secondary/40" />
-            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-gradient-mix">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-60" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-current" />
-              </span>
-              Live
-            </span>
-          </div>
-          <div
-            className={`flex items-center gap-1.5 rounded-full bg-text-primary/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ring-1 ring-border ${accent.label}`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${accent.dot}`} />
-            {state.label}
-          </div>
-        </div>
-
-        <div className="mt-3 flex items-start gap-3">
+        <div className="flex items-start gap-3.5">
           <div
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
             style={{ backgroundImage: accent.bg }}
@@ -322,7 +360,7 @@ function BehaviorInsightCard({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                className="text-[14px] font-medium leading-snug text-text-primary"
+                className="text-[15px] font-medium leading-snug text-text-primary"
               >
                 {message}
               </motion.p>
@@ -330,8 +368,7 @@ function BehaviorInsightCard({
           </div>
         </div>
 
-        {/* Behavior pulse line */}
-        <div className="mt-3 h-[3px] w-full overflow-hidden rounded-full bg-text-secondary/10">
+        <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-text-secondary/10">
           <motion.div
             key={msgIdx}
             initial={{ x: "-100%" }}
@@ -352,28 +389,28 @@ function CheckBeforeTradeButton() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.18, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="mt-3"
     >
       <Link
         to="/hub/mind"
         preload="intent"
-        className="group relative flex w-full items-center justify-between overflow-hidden rounded-2xl bg-gradient-mix p-[1.5px] shadow-glow-primary"
+        className="group relative block w-full overflow-hidden rounded-2xl bg-gradient-mix p-[1.5px] shadow-glow-primary transition-transform active:scale-[0.99]"
       >
-        <div className="relative flex w-full items-center justify-between rounded-[14px] bg-card px-4 py-3.5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-mix shadow-glow-primary">
-              <ShieldCheck className="h-[18px] w-[18px] text-white" strokeWidth={2.2} />
+        <span className="pointer-events-none absolute -inset-1 rounded-3xl bg-gradient-mix opacity-30 blur-xl" />
+        <div className="relative flex w-full items-center justify-between rounded-[14px] bg-gradient-mix px-5 py-5">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
+              <ShieldCheck className="h-5 w-5 text-white" strokeWidth={2.3} />
             </div>
             <div className="text-left">
-              <p className="text-[14.5px] font-semibold tracking-tight text-text-primary">
+              <p className="text-[16px] font-semibold tracking-tight text-white">
                 Check Before Trade
               </p>
-              <p className="text-[11.5px] text-text-secondary">
+              <p className="text-[12px] text-white/85">
                 60-second discipline scan.
               </p>
             </div>
           </div>
-          <ArrowUpRight className="h-4 w-4 text-text-secondary/70 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-text-primary" />
+          <ArrowUpRight className="h-5 w-5 text-white transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
         </div>
       </Link>
     </motion.div>
@@ -389,11 +426,51 @@ function SectionLabel({
 }) {
   return (
     <div
-      className={`mt-6 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/80 ${className}`}
+      className={`flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/80 ${className}`}
     >
       <span>{children}</span>
       <span className="h-px flex-1 bg-gradient-to-r from-text-secondary/20 to-transparent" />
     </div>
+  );
+}
+
+function SecondaryFeatureCard({
+  feature,
+  delay,
+}: {
+  feature: CoreFeature;
+  delay: number;
+}) {
+  const tone = toneStyles[feature.tone];
+  const { Icon } = feature;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      whileTap={{ scale: 0.99 }}
+    >
+      <Link
+        to={feature.to}
+        preload="intent"
+        className="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl bg-card/90 px-3.5 py-3 ring-1 ring-border transition-all hover:bg-card hover:shadow-soft"
+      >
+        <div
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${tone.iconBg}`}
+        >
+          <Icon className="h-4 w-4 text-white" strokeWidth={2.2} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-[13.5px] font-semibold tracking-tight text-text-primary">
+            {feature.title}
+          </h3>
+          <p className="truncate text-[11.5px] text-text-secondary">
+            {feature.text}
+          </p>
+        </div>
+        <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-text-secondary/50 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-text-primary" />
+      </Link>
+    </motion.div>
   );
 }
 
