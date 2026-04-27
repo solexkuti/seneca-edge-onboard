@@ -247,6 +247,58 @@
   animation: shimmer 6s linear infinite;
 }
 
+/* ──────────────────────────────────────────────────────────────
+   Interactive glow — calm affordance for clickable elements.
+   Default: no glow. Hover/focus: soft indigo→cyan aura + 1px lift.
+   Press: tightens (less spread, slightly stronger) and dips down.
+   Designed to feel premium, never bright.
+   ────────────────────────────────────────────────────────────── */
+.interactive-glow {
+  position: relative;
+  transform: translateZ(0);
+  transition:
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (hover: hover) {
+  .interactive-glow:hover {
+    transform: translateY(-1.5px);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--brand) 8%, transparent),
+      0 8px 22px -10px color-mix(in oklab, var(--brand) 22%, transparent),
+      0 4px 14px -8px color-mix(in oklab, var(--accent-cyan) 18%, transparent);
+  }
+}
+
+.interactive-glow:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--brand) 14%, transparent),
+    0 6px 18px -10px color-mix(in oklab, var(--brand) 26%, transparent),
+    0 4px 12px -8px color-mix(in oklab, var(--accent-cyan) 20%, transparent);
+}
+
+.interactive-glow:active {
+  transform: translateY(0) scale(0.978);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--brand) 12%, transparent),
+    0 3px 10px -6px color-mix(in oklab, var(--brand) 28%, transparent),
+    0 2px 6px -4px color-mix(in oklab, var(--accent-cyan) 22%, transparent);
+  transition-duration: 120ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interactive-glow,
+  .interactive-glow:hover,
+  .interactive-glow:active,
+  .interactive-glow:focus-visible {
+    transform: none;
+    transition: box-shadow 120ms ease;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-float-slow,
   .animate-float-mid,
