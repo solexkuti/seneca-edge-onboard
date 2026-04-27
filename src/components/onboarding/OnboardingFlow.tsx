@@ -65,6 +65,20 @@ export default function OnboardingFlow() {
   const advanceTimer = useRef<number | null>(null);
   const resumeTimer = useRef<number | null>(null);
 
+  // If the user already has a session (e.g. returning from Google OAuth),
+  // sync their profile and jump straight into the control state.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (cancelled || !data.session?.user) return;
+      await syncProfileFromOnboarding(data.session.user.id);
+      if (!cancelled) navigate({ to: "/hub" });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
+
   const slide = slideOrder[index];
   const isLast = index >= slideOrder.length - 1;
 
@@ -204,7 +218,11 @@ export default function OnboardingFlow() {
                   }}
                 />
               ) : slide.key === "auth" ? (
-                <SlideAuth onNext={goNext} username={userName} />
+                <SlideAuth
+                  onNext={goNext}
+                  username={userName}
+                  onAuthed={() => navigate({ to: "/hub" })}
+                />
               ) : (
                 <Component onNext={goNext} />
               )}
