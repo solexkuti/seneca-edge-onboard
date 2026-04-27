@@ -79,6 +79,11 @@ export default function OnboardingFlow() {
 
   const goNext = () => {
     clearTimers();
+    // Advancing past the final slide (auth) → enter the control state.
+    if (slideOrder[index].key === "auth") {
+      navigate({ to: "/hub" });
+      return;
+    }
     setDirection(1);
     setIndex((i) => Math.min(i + 1, slideOrder.length - 1));
   };
