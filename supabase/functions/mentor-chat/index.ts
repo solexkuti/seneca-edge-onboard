@@ -364,7 +364,7 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: MODEL,
           stream: true,
           messages: [
             { role: "system", content: systemContent },
@@ -403,7 +403,56 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(upstream.body, {
+    // Tee the stream: one branch goes to the client, the other accumulates
+    // the assistant text so we can log analytics silently when it's done.
+    const [clientStream, captureStream] = upstream.body!.tee();
+
+    (async () => {
+      try {
+        const reader = captureStream.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let acc = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let nl: number;
+          while ((nl = buffer.indexOf("\n")) !== -1) {
+            const line = buffer.slice(0, nl).replace(/\r$/, "");
+            buffer = buffer.slice(nl + 1);
+            if (!line || line.startsWith(":") || !line.startsWith("data: ")) continue;
+            const payload = line.slice(6).trim();
+            if (payload === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(payload);
+              const delta = parsed.choices?.[0]?.delta?.content as
+                | string
+                | undefined;
+              if (delta) acc += delta;
+            } catch {
+              // partial chunk — ignore
+            }
+          }
+        }
+        const closing = extractClosing(acc);
+        await logAnalytics({
+          session_id: sessionId ?? null,
+          detected_state: detectedState,
+          spiral_triggered: spiral,
+          closing_question: closing.question,
+          closing_type: closing.type,
+          user_message_length: userText.length,
+          user_message_preview: userText.slice(0, 140),
+          assistant_message_length: acc.length,
+          model: MODEL,
+        });
+      } catch (err) {
+        console.error("analytics capture failed:", err);
+      }
+    })();
+
+    return new Response(clientStream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
