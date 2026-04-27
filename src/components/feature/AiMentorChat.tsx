@@ -271,23 +271,41 @@ export default function AiMentorChat() {
           </AnimatePresence>
         </div>
 
-        {/* Suggestion chips (only before first user message) */}
+        {/* Quick prompt pills (only before first user message) */}
         {messages.length === 1 ? (
           <div className="border-t border-border/60 px-4 py-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
               Try asking
             </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => send(s)}
-                  disabled={streaming}
-                  className="rounded-full bg-text-primary/[0.04] px-2.5 py-1 text-[11.5px] font-medium text-text-primary ring-1 ring-border transition-all hover:bg-text-primary/[0.08] disabled:opacity-40"
-                >
-                  {s}
-                </button>
-              ))}
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {QUICK_PROMPTS.map((q, i) => {
+                const Icon = q.icon;
+                return (
+                  <motion.button
+                    key={q.id}
+                    type="button"
+                    onClick={() => send(q.prompt)}
+                    disabled={streaming}
+                    title={q.prompt}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.25,
+                      delay: 0.04 * i,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    whileHover={{ y: -1.5 }}
+                    whileTap={{ scale: 0.96 }}
+                    className="group inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[12px] font-medium text-text-primary ring-1 ring-border shadow-soft transition-colors hover:bg-text-primary/[0.04] hover:ring-brand/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Icon
+                      className={`h-3.5 w-3.5 ${INTENT_STYLES[q.intent]} transition-transform group-hover:scale-110`}
+                      strokeWidth={2.2}
+                    />
+                    <span>{q.label}</span>
+                  </motion.button>
+                );
+              })}
             </div>
           </div>
         ) : null}
