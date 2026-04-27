@@ -167,6 +167,11 @@ export default function ControlHub({ userName }: { userName?: string }) {
           <CheckBeforeTradeButton />
         </div>
 
+        {/* SECTION: Check history sparkline */}
+        <div className="mt-6">
+          <CheckHistorySparkline />
+        </div>
+
         {/* SECTION: Primary tool */}
         <div className="mt-10">
           <SectionLabel>Primary tool</SectionLabel>
