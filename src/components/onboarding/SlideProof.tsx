@@ -105,7 +105,7 @@ export default function SlideProof({ onNext }: SlideProps) {
         animate={{ opacity: 1, y: 0, scale: pressing ? 0.97 : 1 }}
         transition={{ duration: 0.5, delay: 0.95, ease: [0.22, 1, 0.36, 1] }}
         whileHover={{ y: -1 }}
-        className="group mt-2 inline-flex items-center gap-2 rounded-full border border-border bg-card/40 px-6 py-3 text-[14px] font-medium text-text-primary backdrop-blur-sm transition-all hover:border-brand/40 hover:bg-card/70 hover:shadow-soft"
+        className="interactive-glow group mt-2 inline-flex items-center gap-2 rounded-full border border-border bg-card/40 px-6 py-3 text-[14px] font-medium text-text-primary backdrop-blur-sm transition-colors hover:border-brand/40 hover:bg-card/70"
       >
         Step into control
         <ArrowRight
