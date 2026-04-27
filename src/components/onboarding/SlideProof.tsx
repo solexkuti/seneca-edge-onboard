@@ -1,0 +1,94 @@
+import { motion } from "framer-motion";
+import { CheckCircle2, Quote } from "lucide-react";
+import type { SlideProps } from "./OnboardingFlow";
+
+/**
+ * Slide 4 — Soft Proof
+ * Headline reframes the promise as a virtue (consistency = edge).
+ * Three quiet trust lines + one understated testimonial card.
+ * No numbers theatre, no five-star ratings, no "X traders" hype.
+ */
+
+const PROOF_LINES = [
+  "Hundreds of trades reviewed through structured breakdowns",
+  "Built from real trader behavior patterns",
+  "Used by traders working to stay disciplined under pressure",
+];
+
+export default function SlideProof(_: SlideProps) {
+  return (
+    <div className="flex w-full max-w-md flex-col items-center gap-7 px-2">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="text-center"
+      >
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+          The real edge
+        </p>
+        <h2 className="mt-2 text-[26px] font-bold leading-[1.2] tracking-tight text-text-primary">
+          Consistency is the
+          <br />
+          <span className="text-gradient-mix">real edge.</span>
+        </h2>
+      </motion.div>
+
+      {/* Proof lines */}
+      <div className="flex w-full flex-col gap-2">
+        {PROOF_LINES.map((line, i) => (
+          <motion.div
+            key={line}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{
+              duration: 0.4,
+              delay: 0.2 + i * 0.12,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            className="flex items-start gap-2.5 rounded-xl bg-card/60 px-3.5 py-2.5 ring-1 ring-border/70"
+          >
+            <CheckCircle2
+              className="mt-0.5 h-4 w-4 shrink-0 text-brand"
+              strokeWidth={2.2}
+            />
+            <span className="text-[13px] leading-snug text-text-primary">
+              {line}
+            </span>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Testimonial card */}
+      <motion.figure
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, delay: 0.7 }}
+        className="relative w-full overflow-hidden rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft"
+      >
+        <Quote
+          className="absolute right-3 top-3 h-5 w-5 text-brand/20"
+          strokeWidth={2.2}
+        />
+        <blockquote className="text-[14px] leading-snug text-text-primary">
+          “I stopped losing on revenge trades the week I started reviewing
+          every setup here. The rules don't change — I finally do.”
+        </blockquote>
+        <figcaption className="mt-3 flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-mix text-[11px] font-bold text-white">
+            M
+          </span>
+          <div className="flex flex-col">
+            <span className="text-[12px] font-semibold text-text-primary">
+              Marco D.
+            </span>
+            <span className="text-[10.5px] text-text-secondary">
+              Swing trader · 14 months
+            </span>
+          </div>
+        </figcaption>
+      </motion.figure>
+    </div>
+  );
+}
