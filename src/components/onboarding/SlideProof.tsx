@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { CheckCircle2, Quote } from "lucide-react";
+import ContinueButton from "./ContinueButton";
 import type { SlideProps } from "./OnboardingFlow";
 
 /**
@@ -10,12 +11,12 @@ import type { SlideProps } from "./OnboardingFlow";
  */
 
 const PROOF_LINES = [
-  "Hundreds of trades reviewed through structured breakdowns",
-  "Built from real trader behavior patterns",
+  "Built from real trading behavior patterns",
   "Used by traders working to stay disciplined under pressure",
+  "Structured around how decisions actually break down",
 ];
 
-export default function SlideProof(_: SlideProps) {
+export default function SlideProof({ onNext }: SlideProps) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-7 px-2">
       {/* Header */}
@@ -28,10 +29,10 @@ export default function SlideProof(_: SlideProps) {
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
           The real edge
         </p>
-        <h2 className="mt-2 text-[26px] font-bold leading-[1.2] tracking-tight text-text-primary">
-          Consistency is the
+        <h2 className="mt-2 text-[24px] font-bold leading-[1.25] tracking-tight text-text-primary">
+          Consistency is what most
           <br />
-          <span className="text-gradient-mix">real edge.</span>
+          <span className="text-gradient-mix">traders are really chasing.</span>
         </h2>
       </motion.div>
 
@@ -89,6 +90,8 @@ export default function SlideProof(_: SlideProps) {
           </div>
         </figcaption>
       </motion.figure>
+
+      <ContinueButton onClick={onNext} delay={0.95} />
     </div>
   );
 }
