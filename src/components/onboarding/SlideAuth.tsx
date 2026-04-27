@@ -1,18 +1,61 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Mail, Lock, ArrowLeft } from "lucide-react";
+import { ArrowRight, Mail, Lock, ArrowLeft, Loader2 } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
+import {
+  signInWithGoogle,
+  signUpOrSignInWithEmail,
+  syncProfileFromOnboarding,
+} from "@/lib/auth";
 
-export default function SlideAuth({
-  onNext,
-  username,
-}: SlideProps & { username?: string }) {
+type Props = SlideProps & {
+  username?: string;
+  /** Called when authentication succeeds and profile has been synced. */
+  onAuthed: () => void;
+};
+
+export default function SlideAuth({ username, onAuthed }: Props) {
   const [mode, setMode] = useState<"choose" | "email">("choose");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState<null | "google" | "email">(null);
+  const [error, setError] = useState<string | null>(null);
 
   const canSubmitEmail =
-    email.trim().length > 3 && email.includes("@") && password.length >= 6;
+    !busy &&
+    email.trim().length > 3 &&
+    email.includes("@") &&
+    password.length >= 6;
+
+  const handleGoogle = async () => {
+    setError(null);
+    setBusy("google");
+    const res = await signInWithGoogle();
+    if (!res.ok) {
+      setError(res.error);
+      setBusy(null);
+      return;
+    }
+    // If browser was redirected, we never reach here.
+    if (res.userId) await syncProfileFromOnboarding(res.userId);
+    setBusy(null);
+    onAuthed();
+  };
+
+  const handleEmail = async () => {
+    if (!canSubmitEmail) return;
+    setError(null);
+    setBusy("email");
+    const res = await signUpOrSignInWithEmail(email.trim(), password);
+    if (!res.ok) {
+      setError(res.error);
+      setBusy(null);
+      return;
+    }
+    await syncProfileFromOnboarding(res.userId);
+    setBusy(null);
+    onAuthed();
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,14 +97,10 @@ export default function SlideAuth({
           >
             <SocialButton
               label="Continue with Google"
-              onClick={onNext}
+              onClick={handleGoogle}
               icon={<GoogleIcon />}
-            />
-            <SocialButton
-              label="Continue with Apple"
-              onClick={onNext}
-              icon={<AppleIcon />}
-              dark
+              loading={busy === "google"}
+              disabled={!!busy}
             />
 
             <div className="my-2 flex items-center gap-3">
@@ -74,8 +113,12 @@ export default function SlideAuth({
 
             <motion.button
               whileTap={{ scale: 0.97 }}
-              onClick={() => setMode("email")}
-              className="interactive-glow flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-6 py-4 text-[15px] font-semibold text-text-primary shadow-soft transition-colors hover:border-brand/40"
+              onClick={() => {
+                setError(null);
+                setMode("email");
+              }}
+              disabled={!!busy}
+              className="interactive-glow flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-6 py-4 text-[15px] font-semibold text-text-primary shadow-soft transition-colors hover:border-brand/40 disabled:opacity-60"
             >
               <Mail className="h-4 w-4 text-brand" />
               Sign up with email
@@ -95,6 +138,7 @@ export default function SlideAuth({
               <input
                 autoFocus
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@email.com"
@@ -105,8 +149,12 @@ export default function SlideAuth({
               <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-text-secondary" />
               <input
                 type="password"
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleEmail();
+                }}
                 placeholder="Password (min 6 chars)"
                 className="h-14 w-full rounded-2xl border border-border bg-card pl-12 pr-4 text-[15px] font-semibold text-text-primary shadow-soft outline-none placeholder:font-normal placeholder:text-text-secondary/60 focus:border-brand focus:shadow-glow-primary"
               />
@@ -115,23 +163,48 @@ export default function SlideAuth({
             <motion.button
               whileTap={{ scale: 0.97 }}
               disabled={!canSubmitEmail}
-              onClick={onNext}
+              onClick={handleEmail}
               animate={{ opacity: canSubmitEmail ? 1 : 0.4 }}
               className="interactive-glow group relative w-full overflow-hidden rounded-2xl bg-gradient-primary px-6 py-4 shadow-soft disabled:cursor-not-allowed"
             >
               <span className="relative flex items-center justify-center gap-2 text-[16px] font-semibold text-white">
-                Create account
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                {busy === "email" ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Creating account…
+                  </>
+                ) : (
+                  <>
+                    Create account
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </>
+                )}
               </span>
             </motion.button>
 
             <button
               onClick={() => setMode("choose")}
-              className="mx-auto flex items-center gap-1.5 text-[12px] font-semibold text-text-secondary hover:text-text-primary"
+              disabled={!!busy}
+              className="mx-auto flex items-center gap-1.5 text-[12px] font-semibold text-text-secondary hover:text-text-primary disabled:opacity-50"
             >
               <ArrowLeft className="h-3 w-3" />
               Back to options
             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.2 }}
+            role="alert"
+            className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-center text-[12.5px] font-medium text-destructive"
+          >
+            {error}
           </motion.div>
         )}
       </AnimatePresence>
@@ -148,25 +221,30 @@ function SocialButton({
   onClick,
   icon,
   dark,
+  loading,
+  disabled,
 }: {
   label: string;
   onClick: () => void;
   icon: React.ReactNode;
   dark?: boolean;
+  loading?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <motion.button
       whileTap={{ scale: 0.97 }}
-      whileHover={{ scale: 1.01 }}
+      whileHover={{ scale: disabled ? 1 : 1.01 }}
       onClick={onClick}
-      className={`interactive-glow flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-[15px] font-semibold shadow-soft transition-colors ${
+      disabled={disabled}
+      className={`interactive-glow flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-[15px] font-semibold shadow-soft transition-colors disabled:opacity-60 ${
         dark
           ? "bg-[#0F172A] text-white"
           : "border border-border bg-card text-text-primary hover:border-brand/40"
       }`}
     >
-      {icon}
-      {label}
+      {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : icon}
+      {loading ? "Connecting…" : label}
     </motion.button>
   );
 }
@@ -190,14 +268,6 @@ function GoogleIcon() {
         fill="#EA4335"
         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
       />
-    </svg>
-  );
-}
-
-function AppleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-      <path d="M17.05 12.04c-.03-2.83 2.31-4.19 2.42-4.26-1.32-1.93-3.37-2.19-4.1-2.22-1.74-.18-3.4 1.02-4.29 1.02-.89 0-2.25-1-3.7-.97-1.9.03-3.66 1.1-4.64 2.81-1.98 3.43-.51 8.5 1.42 11.28.94 1.36 2.07 2.89 3.55 2.83 1.43-.06 1.97-.92 3.7-.92 1.72 0 2.21.92 3.72.89 1.54-.03 2.51-1.39 3.45-2.76 1.09-1.59 1.54-3.13 1.57-3.21-.04-.02-3.01-1.16-3.04-4.59zM14.36 3.66c.79-.96 1.32-2.29 1.18-3.61-1.14.05-2.52.76-3.34 1.71-.73.85-1.37 2.21-1.2 3.51 1.27.1 2.57-.65 3.36-1.61z" />
     </svg>
   );
 }

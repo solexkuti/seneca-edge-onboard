@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
 import Slide1Hero from "@/components/onboarding/Slide1Hero";
@@ -17,6 +17,8 @@ import SlideAuth from "@/components/onboarding/SlideAuth";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
 import SegmentedProgress from "@/components/onboarding/SegmentedProgress";
 import { saveUserName, getUserName } from "@/lib/userName";
+import { supabase } from "@/integrations/supabase/client";
+import { syncProfileFromOnboarding } from "@/lib/auth";
 
 export type SlideProps = {
   onNext: () => void;
@@ -62,6 +64,20 @@ export default function OnboardingFlow() {
   const [userName, setUserName] = useState<string>(() => getUserName() ?? "");
   const advanceTimer = useRef<number | null>(null);
   const resumeTimer = useRef<number | null>(null);
+
+  // If the user already has a session (e.g. returning from Google OAuth),
+  // sync their profile and jump straight into the control state.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (cancelled || !data.session?.user) return;
+      await syncProfileFromOnboarding(data.session.user.id);
+      if (!cancelled) navigate({ to: "/hub" });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   const slide = slideOrder[index];
   const isLast = index >= slideOrder.length - 1;
@@ -120,7 +136,9 @@ export default function OnboardingFlow() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, paused]);
 
-  const Component = slide.Component;
+  // SlideAuth + SlideName are rendered explicitly below; this cast keeps
+  // the generic narrative/question slides callable with just `onNext`.
+  const Component = slide.Component as React.ComponentType<SlideProps>;
 
   return (
     <div
@@ -202,9 +220,16 @@ export default function OnboardingFlow() {
                   }}
                 />
               ) : slide.key === "auth" ? (
-                <SlideAuth onNext={goNext} username={userName} />
+                <SlideAuth
+                  onNext={goNext}
+                  username={userName}
+                  onAuthed={() => navigate({ to: "/hub" })}
+                />
               ) : (
-                <Component onNext={goNext} />
+                React.createElement(
+                  Component as React.ComponentType<SlideProps>,
+                  { onNext: goNext },
+                )
               )}
             </motion.div>
           </AnimatePresence>
