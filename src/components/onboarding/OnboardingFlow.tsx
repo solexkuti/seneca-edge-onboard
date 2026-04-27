@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Slide1Hero from "@/components/onboarding/Slide1Hero";
+import SlideBridge from "@/components/onboarding/SlideBridge";
 import Slide2Intelligence from "@/components/onboarding/Slide2Intelligence";
 import Slide6Building from "@/components/onboarding/Slide6Building";
 import SlideProof from "@/components/onboarding/SlideProof";
@@ -34,6 +35,7 @@ export type SlideProps = {
  */
 const slideOrder = [
   { key: "hook", auto: 0, Component: Slide1Hero },
+  { key: "bridge", auto: 0, Component: SlideBridge },
   { key: "experience", auto: 5200, Component: Slide2Intelligence },
   { key: "features", auto: 5200, Component: Slide6Building },
   { key: "proof", auto: 6200, Component: SlideProof },
