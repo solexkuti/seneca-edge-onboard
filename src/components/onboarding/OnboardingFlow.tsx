@@ -63,12 +63,23 @@ export default function OnboardingFlow() {
     setIndex((i) => Math.min(i + 1, slideOrder.length - 1));
   };
 
+  const goPrev = () => {
+    setDirection(-1);
+    setIndex((i) => Math.max(i - 1, 0));
+  };
+
   const goTo = (target: number) => {
     if (target === index) return;
     if (target > index) return; // never jump forward via dots
     setDirection(-1);
     setIndex(target);
   };
+
+  // Swipe is enabled on narrative/preview slides (auto-advancing) and on the CTA.
+  // It's disabled on selection/input slides (market, experience, struggle, goal,
+  // name, auth) to avoid conflicts with taps and typing.
+  const swipeEnabled =
+    slide.auto > 0 || slide.key === "cta" || slide.key === "success";
 
   const enterApp = () => {
     if (name.trim()) saveUserName(name.trim());
