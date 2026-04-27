@@ -9,6 +9,7 @@ import {
   pickMentorSuggestions,
   INTENT_STYLES,
 } from "@/lib/mentorSuggestions";
+import { readProfile, summarizeProfile } from "@/lib/onboardingProfile";
 import { toast } from "sonner";
 
 type Msg = {
