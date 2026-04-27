@@ -15,6 +15,7 @@ import FeatureShell from "@/components/feature/FeatureShell";
 import { useDbJournal } from "@/hooks/useDbJournal";
 import { detectBehaviorPattern } from "@/lib/behaviorPattern";
 import type { DbJournalRow } from "@/lib/dbJournal";
+import DisciplineStreakWidget from "@/components/feature/DisciplineStreakWidget";
 
 export const Route = createFileRoute("/hub/state")({
   head: () => ({
