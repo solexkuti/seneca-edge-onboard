@@ -12,14 +12,6 @@ type Msg = {
   content: string;
 };
 
-type MentorMode = "standard" | "strict" | "beginner" | "breakdown";
-
-const MODES: { id: MentorMode; label: string; hint: string }[] = [
-  { id: "standard", label: "Standard", hint: "Balanced & structured" },
-  { id: "strict", label: "Strict", hint: "Blunt corrections" },
-  { id: "beginner", label: "Beginner", hint: "Fundamentals only" },
-  { id: "breakdown", label: "Breakdown", hint: "Deeper structured teaching" },
-];
 
 const SUGGESTIONS = [
   "What is market structure?",
