@@ -2,6 +2,7 @@ import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/r
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
+import DevResetOnboarding from "@/components/dev/DevResetOnboarding";
 
 function NotFoundComponent() {
   return (
@@ -70,6 +71,7 @@ function RootComponent() {
     <>
       <Outlet />
       <Toaster position="top-center" richColors closeButton />
+      <DevResetOnboarding />
     </>
   );
 }
