@@ -29,7 +29,7 @@ export default function AiMentorChat() {
       id: "intro",
       role: "assistant",
       content:
-        "I'm Seneca. Ask me about market structure, risk, psychology, or execution. I won't give you signals — I'll help you build the discipline to find your own.",
+        "Hi, I'm Seneca. I'm here to think through trades, mindset, and execution with you. Whatever's on your mind — wins, losses, doubts, or a setup you're unsure about — we can talk it out.",
     },
   ]);
   const [draft, setDraft] = useState("");
