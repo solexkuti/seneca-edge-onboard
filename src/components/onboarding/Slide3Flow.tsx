@@ -122,8 +122,15 @@ function RuleCheckScreen() {
             r="3"
             fill="#00C6FF"
             initial={{ scale: 0 }}
-            animate={{ scale: [0, 1.5, 1] }}
-            transition={{ delay: 2.1, duration: 0.5 }}
+            animate={{ scale: [0, 1.5, 1, 1.25, 1] }}
+            transition={{
+              delay: 2.1,
+              duration: 2.6,
+              times: [0, 0.15, 0.35, 0.7, 1],
+              repeat: Infinity,
+              repeatDelay: 1.2,
+              ease: "easeInOut",
+            }}
           />
         </svg>
       </motion.div>
