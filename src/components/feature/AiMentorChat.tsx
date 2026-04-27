@@ -124,11 +124,15 @@ export default function AiMentorChat() {
     setDraft("");
     setStreaming(true);
 
-    // Build user context (only real data)
+    // Build user context (only real data). Pass startPath ONCE on the first
+    // turn so the backend can shape its first reply around the chosen path.
     const journalSummary = summarizeJournal(journal) ?? undefined;
     const ctx =
-      journalSummary
-        ? { journalSummary }
+      journalSummary || (startPath && isFirstTurn)
+        ? {
+            ...(journalSummary ? { journalSummary } : {}),
+            ...(startPath && isFirstTurn ? { startPath } : {}),
+          }
         : undefined;
 
     // Strip the intro message from what we send to the model — it's UI only.
