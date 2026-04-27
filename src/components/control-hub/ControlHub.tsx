@@ -9,10 +9,12 @@ import {
   BookOpenCheck,
   Activity,
   Sparkles,
-  
   Gamepad2,
   Plus,
+  BookOpen,
 } from "lucide-react";
+import { useJournal } from "@/hooks/useJournal";
+import { computeDiscipline, type JournalEntry } from "@/lib/tradingJournal";
 
 
 // ─────────────────────────────────────────────────────────────
@@ -466,9 +468,23 @@ function UpcomingCard() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Recent activity — single summary card.
+// Recent activity — strictly derived from Trading Journal.
+// No data → empty state. No defaults. No samples.
 // ─────────────────────────────────────────────────────────────
 function RecentActivityCard() {
+  const entries = useJournal();
+
+  if (entries.length === 0) {
+    return <RecentActivityEmpty />;
+  }
+
+  const latest: JournalEntry = entries.reduce((acc, e) =>
+    e.timestamp > acc.timestamp ? e : acc,
+  );
+  const discipline = computeDiscipline(entries);
+  const sign = latest.resultR >= 0 ? "+" : "";
+  const isWin = latest.resultR >= 0;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -483,21 +499,54 @@ function RecentActivityCard() {
             Last trade
           </p>
           <p className="mt-2 truncate text-[15px] font-semibold tracking-tight text-text-primary">
-            EUR/USD{" "}
-            <span className="font-bold text-emerald-600">+0.8R</span>
+            {latest.pair}{" "}
+            <span
+              className={
+                "font-bold " +
+                (isWin ? "text-emerald-600" : "text-rose-600")
+              }
+            >
+              {sign}
+              {latest.resultR.toFixed(1)}R
+            </span>
           </p>
         </div>
 
         {/* Subtle vertical divider */}
         <span aria-hidden className="h-9 w-px bg-border/80" />
 
-        {/* Discipline */}
+        {/* Discipline — only shown when derivable from journal */}
         <div className="min-w-0 text-right">
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/70">
             Discipline
           </p>
           <p className="mt-2 text-[15px] font-semibold tracking-tight text-text-primary">
-            72%
+            {discipline === null ? "—" : `${discipline}%`}
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function RecentActivityEmpty() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="rounded-2xl bg-card/70 px-5 py-5 ring-1 ring-dashed ring-border"
+    >
+      <div className="flex items-start gap-3.5">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-text-secondary">
+          <BookOpen className="h-4 w-4" strokeWidth={2} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13.5px] font-semibold tracking-tight text-text-primary">
+            No trades logged yet
+          </p>
+          <p className="mt-1 text-[12px] leading-snug text-text-secondary">
+            Your activity will appear here after your first journal entry.
           </p>
         </div>
       </div>
