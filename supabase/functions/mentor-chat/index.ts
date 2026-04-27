@@ -316,10 +316,16 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { messages, context } = (await req.json()) as {
+    const { messages, context, sessionId } = (await req.json()) as {
       messages: Msg[];
       context?: UserContext;
+      sessionId?: string;
     };
+
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const userText = lastUser?.content ?? "";
+    const { state: detectedState, spiral } = detectState(userText);
+    const MODEL = "google/gemini-2.5-flash";
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
