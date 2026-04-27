@@ -23,7 +23,7 @@ export default function ContinueButton({
       transition={{ duration: 0.5, delay }}
       whileHover={{ y: -1 }}
       whileTap={{ scale: 0.97 }}
-      className="group inline-flex items-center gap-2 rounded-2xl bg-gradient-primary px-7 py-3.5 text-[15px] font-semibold text-white shadow-soft"
+      className="interactive-glow group inline-flex items-center gap-2 rounded-2xl bg-gradient-primary px-7 py-3.5 text-[15px] font-semibold text-white shadow-soft"
     >
       {label}
       <ArrowRight

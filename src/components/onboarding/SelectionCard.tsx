@@ -18,7 +18,7 @@ export default function SelectionCard({
       whileTap={{ scale: 0.98 }}
       whileHover={{ y: -1 }}
       onClick={onClick}
-      className={`group relative w-full overflow-hidden rounded-2xl p-4 text-left transition-all duration-300 ${
+      className={`interactive-glow group relative w-full overflow-hidden rounded-2xl p-4 text-left transition-all duration-300 ${
         selected
           ? "shadow-card ring-1 ring-brand/50"
           : "shadow-soft ring-1 ring-border hover:ring-brand/25 hover:shadow-card"
