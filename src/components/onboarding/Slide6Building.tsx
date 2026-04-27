@@ -1,13 +1,13 @@
 import { motion } from "framer-motion";
-import { LineChart, Settings2, ShieldCheck } from "lucide-react";
+import { LineChart, Settings2, ShieldCheck, Sparkles, PlayCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import ContinueButton from "./ContinueButton";
 import type { SlideProps } from "./OnboardingFlow";
 
 /**
  * Slide 3 — Feature Experience
- * Three clean cards. Icon + label + one-liner. No buttons.
- * Auto-advances. Spacing intentionally generous = premium feel.
+ * Five clean cards. Icon + label + one-liner. No buttons.
+ * AI mentor and Simulation are visually highlighted as differentiators.
  */
 
 type Feature = {
@@ -16,6 +16,7 @@ type Feature = {
   desc: string;
   tint: string; // text color
   bg: string; // icon bg
+  highlight?: boolean;
 };
 
 const FEATURES: Feature[] = [
@@ -39,6 +40,22 @@ const FEATURES: Feature[] = [
     desc: "Track behavior, not just results.",
     tint: "text-accent-blue",
     bg: "bg-accent-blue/10 ring-accent-blue/20",
+  },
+  {
+    icon: Sparkles,
+    title: "Your AI mentor",
+    desc: "Right there with you. Helping you think, not react.",
+    tint: "text-brand",
+    bg: "bg-brand/10 ring-brand/20",
+    highlight: true,
+  },
+  {
+    icon: PlayCircle,
+    title: "Simulation mode",
+    desc: "Practice decisions before real money is on the line.",
+    tint: "text-accent-cyan",
+    bg: "bg-accent-cyan/10 ring-accent-cyan/20",
+    highlight: true,
   },
 ];
 
