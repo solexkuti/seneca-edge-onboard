@@ -7,21 +7,18 @@ import { useEffect, useRef } from "react";
  * - Total progress = (completed slides + active dwell) / total slides
  * - Auto-fills smoothly during the active slide's dwell (`duration` ms)
  * - Snaps instantly on swipe / jump (driven by `active` change)
- * - Pauses fill when `paused` is true
  * - Click anywhere on the track to jump back to the nearest past slide
  */
 export default function SegmentedProgress({
   count,
   active,
   duration,
-  paused,
   onSelect,
 }: {
   count: number;
   active: number;
   /** ms — 0 means no auto-advance (bar holds at the slide's start position) */
   duration: number;
-  paused: boolean;
   onSelect?: (i: number) => void;
 }) {
   const controls = useAnimationControls();
@@ -34,16 +31,16 @@ export default function SegmentedProgress({
 
   useEffect(() => {
     baseRef.current = base;
-    // Snap to the slide's starting position immediately on slide change / pause / resume.
+    // Snap to the slide's starting position immediately on slide change.
     controls.set({ width: `${base * 100}%` });
 
-    if (duration > 0 && !paused) {
+    if (duration > 0) {
       controls.start({
         width: `${target * 100}%`,
         transition: { duration: duration / 1000, ease: "linear" },
       });
     }
-  }, [active, duration, paused, base, target, controls]);
+  }, [active, duration, base, target, controls]);
 
   const handleTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onSelect) return;
