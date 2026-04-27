@@ -18,6 +18,7 @@ import { Route as HubMentorRouteImport } from './routes/hub.mentor'
 import { Route as HubJournalRouteImport } from './routes/hub.journal'
 import { Route as HubChartRouteImport } from './routes/hub.chart'
 import { Route as DevResetRouteImport } from './routes/dev.reset'
+import { Route as HubJournalHistoryRouteImport } from './routes/hub.journal.history'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -64,40 +65,48 @@ const DevResetRoute = DevResetRouteImport.update({
   path: '/dev/reset',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HubJournalHistoryRoute = HubJournalHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => HubJournalRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dev/reset': typeof DevResetRoute
   '/hub/chart': typeof HubChartRoute
-  '/hub/journal': typeof HubJournalRoute
+  '/hub/journal': typeof HubJournalRouteWithChildren
   '/hub/mentor': typeof HubMentorRoute
   '/hub/mind': typeof HubMindRoute
   '/hub/state': typeof HubStateRoute
   '/hub/strategy': typeof HubStrategyRoute
   '/hub/': typeof HubIndexRoute
+  '/hub/journal/history': typeof HubJournalHistoryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dev/reset': typeof DevResetRoute
   '/hub/chart': typeof HubChartRoute
-  '/hub/journal': typeof HubJournalRoute
+  '/hub/journal': typeof HubJournalRouteWithChildren
   '/hub/mentor': typeof HubMentorRoute
   '/hub/mind': typeof HubMindRoute
   '/hub/state': typeof HubStateRoute
   '/hub/strategy': typeof HubStrategyRoute
   '/hub': typeof HubIndexRoute
+  '/hub/journal/history': typeof HubJournalHistoryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dev/reset': typeof DevResetRoute
   '/hub/chart': typeof HubChartRoute
-  '/hub/journal': typeof HubJournalRoute
+  '/hub/journal': typeof HubJournalRouteWithChildren
   '/hub/mentor': typeof HubMentorRoute
   '/hub/mind': typeof HubMindRoute
   '/hub/state': typeof HubStateRoute
   '/hub/strategy': typeof HubStrategyRoute
   '/hub/': typeof HubIndexRoute
+  '/hub/journal/history': typeof HubJournalHistoryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/hub/state'
     | '/hub/strategy'
     | '/hub/'
+    | '/hub/journal/history'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/hub/state'
     | '/hub/strategy'
     | '/hub'
+    | '/hub/journal/history'
   id:
     | '__root__'
     | '/'
@@ -133,13 +144,14 @@ export interface FileRouteTypes {
     | '/hub/state'
     | '/hub/strategy'
     | '/hub/'
+    | '/hub/journal/history'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DevResetRoute: typeof DevResetRoute
   HubChartRoute: typeof HubChartRoute
-  HubJournalRoute: typeof HubJournalRoute
+  HubJournalRoute: typeof HubJournalRouteWithChildren
   HubMentorRoute: typeof HubMentorRoute
   HubMindRoute: typeof HubMindRoute
   HubStateRoute: typeof HubStateRoute
@@ -212,14 +224,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevResetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hub/journal/history': {
+      id: '/hub/journal/history'
+      path: '/history'
+      fullPath: '/hub/journal/history'
+      preLoaderRoute: typeof HubJournalHistoryRouteImport
+      parentRoute: typeof HubJournalRoute
+    }
   }
 }
+
+interface HubJournalRouteChildren {
+  HubJournalHistoryRoute: typeof HubJournalHistoryRoute
+}
+
+const HubJournalRouteChildren: HubJournalRouteChildren = {
+  HubJournalHistoryRoute: HubJournalHistoryRoute,
+}
+
+const HubJournalRouteWithChildren = HubJournalRoute._addFileChildren(
+  HubJournalRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DevResetRoute: DevResetRoute,
   HubChartRoute: HubChartRoute,
-  HubJournalRoute: HubJournalRoute,
+  HubJournalRoute: HubJournalRouteWithChildren,
   HubMentorRoute: HubMentorRoute,
   HubMindRoute: HubMindRoute,
   HubStateRoute: HubStateRoute,
@@ -229,12 +260,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

@@ -94,7 +94,7 @@ function HistoryPage() {
 
   const update = (patch: Partial<typeof search>) => {
     playFeedback("tap");
-    navigate({ search: (prev) => ({ ...prev, ...patch }) as any });
+    navigate({ search: (prev: typeof search) => ({ ...prev, ...patch }) });
   };
 
   const reset = () => {
