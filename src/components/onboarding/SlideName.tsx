@@ -20,12 +20,16 @@ export default function SlideName({
     onNext();
   };
 
+  // Shared easing matches the OnboardingFlow slide transition so the
+  // entrance feels like a continuation of the previous step's exit.
+  const ease = [0.22, 1, 0.36, 1] as const;
+
   return (
     <div className="flex flex-col gap-7">
       <motion.div
-        initial={{ opacity: 0, y: 14 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.45, ease }}
         className="text-center"
       >
         <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1">
@@ -43,10 +47,12 @@ export default function SlideName({
         </p>
       </motion.div>
 
+      {/* Input rises from below — visually catches the momentum of the
+          option cards that just lifted off the previous slide. */}
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
+        initial={{ opacity: 0, y: 28, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ delay: 0.12, duration: 0.55, ease }}
         className="relative"
       >
         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary">
@@ -67,10 +73,15 @@ export default function SlideName({
       </motion.div>
 
       <motion.button
+        initial={{ opacity: 0, y: 18 }}
+        animate={{
+          opacity: name.trim().length === 0 ? 0.4 : 1,
+          y: 0,
+        }}
+        transition={{ delay: 0.24, duration: 0.5, ease }}
         whileTap={{ scale: 0.97 }}
         disabled={name.trim().length === 0}
         onClick={handleSubmit}
-        animate={{ opacity: name.trim().length === 0 ? 0.4 : 1 }}
         className="interactive-glow group relative w-full overflow-hidden rounded-2xl bg-gradient-primary px-6 py-4 shadow-soft disabled:cursor-not-allowed"
       >
         <span className="relative flex items-center justify-center gap-2 text-[16px] font-semibold text-white">
