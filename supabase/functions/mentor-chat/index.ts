@@ -208,6 +208,8 @@ type Msg = { role: "user" | "assistant"; content: string };
 type UserContext = {
   journalSummary?: string;
   systemRules?: string;
+  /** Onboarding path the user picked on Slide 5. Sent only on the first turn. */
+  startPath?: "learn" | "review" | "plan";
 };
 
 // ── Hidden analytics helpers ───────────────────────────────────────────────
