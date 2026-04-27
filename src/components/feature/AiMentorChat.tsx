@@ -24,7 +24,6 @@ const MENTOR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mentor-cha
 
 export default function AiMentorChat() {
   const journal = useJournal();
-  const [mode, setMode] = useState<MentorMode>("standard");
   const [messages, setMessages] = useState<Msg[]>([
     {
       id: "intro",
