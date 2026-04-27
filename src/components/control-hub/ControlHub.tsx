@@ -211,10 +211,42 @@ function MentalSignalCard({
       transition={{ delay: 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       className="relative overflow-hidden rounded-2xl bg-gradient-mix p-5 shadow-glow-primary"
     >
-      <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
+      {/* Slow rotating conic highlight — sweeps across surface */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute -inset-1/4 opacity-40 mix-blend-soft-light"
+        style={{
+          background:
+            "conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.55) 60deg, transparent 140deg, transparent 360deg)",
+        }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 22, ease: "linear", repeat: Infinity }}
+      />
+
+      {/* Slow breathing glow — top-right halo shifts opacity & scale */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/20 blur-2xl"
+        animate={{ opacity: [0.35, 0.6, 0.35], scale: [1, 1.12, 1] }}
+        transition={{ duration: 7, ease: "easeInOut", repeat: Infinity }}
+      />
+
+      {/* Counter-breathing glow — bottom-left, opposite phase */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-white/15 blur-2xl"
+        animate={{ opacity: [0.5, 0.25, 0.5], scale: [1.05, 0.95, 1.05] }}
+        transition={{ duration: 9, ease: "easeInOut", repeat: Infinity }}
+      />
+
       <div className="relative flex items-start gap-3.5">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
-          <Eye className="h-4.5 w-4.5 text-white" strokeWidth={2.2} />
+          <motion.div
+            animate={{ opacity: [0.85, 1, 0.85] }}
+            transition={{ duration: 4, ease: "easeInOut", repeat: Infinity }}
+          >
+            <Eye className="h-4.5 w-4.5 text-white" strokeWidth={2.2} />
+          </motion.div>
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
