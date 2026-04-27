@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  ArrowRight,
   Bitcoin,
   CandlestickChart,
   DollarSign,
