@@ -1,89 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  ArrowUp,
-  Sparkles,
-  BookOpen,
-  Shield,
-  Brain,
-  Flame,
-  LineChart,
-  HelpCircle,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowUp, Sparkles } from "lucide-react";
 import FeatureShell from "./FeatureShell";
 import { useJournal } from "@/hooks/useJournal";
 import { summarizeJournal } from "@/lib/journalSummary";
+import {
+  detectMentorState,
+  pickMentorSuggestions,
+  INTENT_STYLES,
+} from "@/lib/mentorSuggestions";
 import { toast } from "sonner";
 
 type Msg = {
   id: string;
   role: "user" | "assistant";
   content: string;
-};
-
-
-type QuickPrompt = {
-  id: string;
-  label: string;
-  prompt: string;
-  icon: LucideIcon;
-  intent: "learn" | "risk" | "mindset" | "urgent" | "analyze" | "help";
-};
-
-const QUICK_PROMPTS: QuickPrompt[] = [
-  {
-    id: "structure",
-    label: "Market structure",
-    prompt: "What is market structure and how do I read it?",
-    icon: BookOpen,
-    intent: "learn",
-  },
-  {
-    id: "risk",
-    label: "Risk per trade",
-    prompt: "How should I size my risk per trade?",
-    icon: Shield,
-    intent: "risk",
-  },
-  {
-    id: "after-win",
-    label: "Losing after wins",
-    prompt: "I keep losing after a win. Why does this happen?",
-    icon: Brain,
-    intent: "mindset",
-  },
-  {
-    id: "revenge",
-    label: "Revenge trade urge",
-    prompt: "I want to revenge trade right now. Help me slow down.",
-    icon: Flame,
-    intent: "urgent",
-  },
-  {
-    id: "review",
-    label: "Review my last trade",
-    prompt: "Can you help me review my last trade step by step?",
-    icon: LineChart,
-    intent: "analyze",
-  },
-  {
-    id: "stuck",
-    label: "I feel stuck",
-    prompt: "I feel stuck with my trading. Where do I even start?",
-    icon: HelpCircle,
-    intent: "help",
-  },
-];
-
-// Subtle accent colors per intent — desaturated, no neon
-const INTENT_STYLES: Record<QuickPrompt["intent"], string> = {
-  learn: "text-accent-blue",
-  risk: "text-emerald-600",
-  mindset: "text-brand",
-  urgent: "text-highlight-pink",
-  analyze: "text-accent-cyan",
-  help: "text-text-secondary",
 };
 
 const MENTOR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mentor-chat`;
@@ -104,7 +35,43 @@ export default function AiMentorChat() {
   ]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [recentSuggestionIds, setRecentSuggestionIds] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Last user message drives the detected emotional state.
+  const lastUserMessage = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") return messages[i].content;
+    }
+    return "";
+  }, [messages]);
+
+  const detectedState = useMemo(
+    () => detectMentorState(lastUserMessage),
+    [lastUserMessage],
+  );
+
+  // Build suggestions: state-aware + journal-personalized + anti-repeat.
+  const suggestions = useMemo(
+    () =>
+      pickMentorSuggestions({
+        state: detectedState,
+        journal,
+        recentlyShownIds: recentSuggestionIds,
+      }),
+    [detectedState, journal, recentSuggestionIds],
+  );
+
+  // Track suggestions we've shown so we don't repeat them every turn.
+  useEffect(() => {
+    if (!suggestions.length) return;
+    setRecentSuggestionIds((prev) => {
+      const ids = suggestions.map((s) => s.id);
+      const merged = [...ids, ...prev.filter((id) => !ids.includes(id))];
+      return merged.slice(0, 8); // remember last ~2 turns
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastUserMessage, detectedState]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -271,41 +238,45 @@ export default function AiMentorChat() {
           </AnimatePresence>
         </div>
 
-        {/* Quick prompt pills (only before first user message) */}
-        {messages.length === 1 ? (
+        {/* Dynamic state-aware suggestion pills — refreshed after every message */}
+        {!streaming && suggestions.length > 0 ? (
           <div className="border-t border-border/60 px-4 py-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-              Try asking
+              {messages.length === 1 ? "Try asking" : "What's next"}
             </p>
             <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {QUICK_PROMPTS.map((q, i) => {
-                const Icon = q.icon;
-                return (
-                  <motion.button
-                    key={q.id}
-                    type="button"
-                    onClick={() => send(q.prompt)}
-                    disabled={streaming}
-                    title={q.prompt}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      duration: 0.25,
-                      delay: 0.04 * i,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
-                    whileHover={{ y: -1.5 }}
-                    whileTap={{ scale: 0.96 }}
-                    className="group inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[12px] font-medium text-text-primary ring-1 ring-border shadow-soft transition-colors hover:bg-text-primary/[0.04] hover:ring-brand/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <Icon
-                      className={`h-3.5 w-3.5 ${INTENT_STYLES[q.intent]} transition-transform group-hover:scale-110`}
-                      strokeWidth={2.2}
-                    />
-                    <span>{q.label}</span>
-                  </motion.button>
-                );
-              })}
+              <AnimatePresence mode="popLayout" initial={false}>
+                {suggestions.map((q, i) => {
+                  const Icon = q.icon;
+                  return (
+                    <motion.button
+                      key={`${detectedState}-${q.id}`}
+                      type="button"
+                      onClick={() => send(q.prompt)}
+                      disabled={streaming}
+                      title={q.prompt}
+                      layout
+                      initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -4, scale: 0.96 }}
+                      transition={{
+                        duration: 0.22,
+                        delay: 0.04 * i,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                      whileHover={{ y: -1.5 }}
+                      whileTap={{ scale: 0.96 }}
+                      className="group inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[12px] font-medium text-text-primary ring-1 ring-border shadow-soft transition-colors hover:bg-text-primary/[0.04] hover:ring-brand/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Icon
+                        className={`h-3.5 w-3.5 ${INTENT_STYLES[q.intent]} transition-transform group-hover:scale-110`}
+                        strokeWidth={2.2}
+                      />
+                      <span>{q.label}</span>
+                    </motion.button>
+                  );
+                })}
+              </AnimatePresence>
             </div>
           </div>
         ) : null}
