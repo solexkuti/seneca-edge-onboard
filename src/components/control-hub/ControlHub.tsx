@@ -100,20 +100,21 @@ export default function ControlHub({ userName }: { userName?: string }) {
   // Chart copy rotation — different on each mount
   const chartCopy = useMemo(() => pickRandom(CHART_DESCRIPTIONS), []);
 
-  const coreFeatures: CoreFeature[] = [
-    {
-      key: "chart",
-      title: "Chart Analyzer",
-      text: chartCopy,
-      Icon: LineChart,
-      tone: "cyan",
-      to: "/hub/chart",
-      primary: true,
-    },
+  const primaryFeature: CoreFeature = {
+    key: "chart",
+    title: "Chart Analyzer",
+    text: chartCopy,
+    Icon: LineChart,
+    tone: "cyan",
+    to: "/hub/chart",
+    primary: true,
+  };
+
+  const secondaryFeatures: CoreFeature[] = [
     {
       key: "state",
       title: "State Check",
-      text: "Check your mental state before execution.",
+      text: "Mental state scan.",
       Icon: Activity,
       tone: "pink",
       to: "/hub/state",
@@ -121,7 +122,7 @@ export default function ControlHub({ userName }: { userName?: string }) {
     {
       key: "journal",
       title: "Trading Journal",
-      text: "Track your trades. Reveal your behavior patterns.",
+      text: "Behavior patterns.",
       Icon: BookOpenCheck,
       tone: "blue",
       to: "/hub/journal",
@@ -129,7 +130,7 @@ export default function ControlHub({ userName }: { userName?: string }) {
     {
       key: "mentor",
       title: "AI Mentor",
-      text: "Ask questions. Get structured trading guidance.",
+      text: "Structured guidance.",
       Icon: Sparkles,
       tone: "mint",
       to: "/hub/mentor",
@@ -147,41 +148,101 @@ export default function ControlHub({ userName }: { userName?: string }) {
         }}
       />
 
-      <div className="relative z-10 mx-auto w-full max-w-[440px] px-5 pt-7 pb-10">
+      <div className="relative z-10 mx-auto w-full max-w-[440px] px-5 pt-7 pb-12">
         <Header userName={userName} />
 
+        {/* SECTION: Status row (outside card) */}
+        <BehaviorStatusRow stateKey={stateKey} />
+
+        {/* SECTION: Message-only card */}
         <BehaviorInsightCard
           stateKey={stateKey}
           message={state.messages[msgIdx]}
           msgIdx={msgIdx}
         />
 
-        <CheckBeforeTradeButton />
-
-        <SectionLabel>Core</SectionLabel>
-        <div className="mt-3 space-y-3">
-          {coreFeatures.map((f, i) => (
-            <FeatureCard key={f.key} feature={f} delay={0.05 * i} />
-          ))}
+        {/* SECTION: Primary action */}
+        <div className="mt-8">
+          <CheckBeforeTradeButton />
         </div>
 
-        <SectionLabel className="mt-7">Upcoming</SectionLabel>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          {upcomingFeatures.map((f, i) => (
-            <UpcomingCard key={f.key} feature={f} delay={0.05 * i} />
-          ))}
+        {/* SECTION: Primary tool */}
+        <div className="mt-10">
+          <SectionLabel>Primary tool</SectionLabel>
+          <div className="mt-4">
+            <FeatureCard feature={primaryFeature} delay={0} />
+          </div>
         </div>
 
-        <SectionLabel className="mt-7">Recent activity</SectionLabel>
-        <RecentActivity />
+        {/* SECTION: More tools */}
+        <div className="mt-10">
+          <SectionLabel>More tools</SectionLabel>
+          <div className="mt-4 space-y-2.5">
+            {secondaryFeatures.map((f, i) => (
+              <SecondaryFeatureCard
+                key={f.key}
+                feature={f}
+                delay={0.05 * i}
+              />
+            ))}
+          </div>
+        </div>
 
-        <p className="mt-8 text-center text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary/70">
+        {/* SECTION: Upcoming */}
+        <div className="mt-10">
+          <SectionLabel>Upcoming</SectionLabel>
+          <div className="mt-4 grid grid-cols-2 gap-3 opacity-60">
+            {upcomingFeatures.map((f, i) => (
+              <UpcomingCard key={f.key} feature={f} delay={0.05 * i} />
+            ))}
+          </div>
+        </div>
+
+        {/* SECTION: Recent activity */}
+        <div className="mt-10">
+          <SectionLabel>Recent activity</SectionLabel>
+          <div className="mt-4">
+            <RecentActivity />
+          </div>
+        </div>
+
+        <p className="mt-12 text-center text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary/70">
           SenecaEdge · Behavioral system
         </p>
       </div>
 
       <LiveSignalTicker signals={state.liveSignals} tone={state.tone} />
     </div>
+  );
+}
+
+function BehaviorStatusRow({ stateKey }: { stateKey: BehaviorStateKey }) {
+  const accent = stateAccent[stateKey];
+  const state = BEHAVIOR_STATES[stateKey];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.05, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className="mt-7 flex items-center gap-2 text-[11px] font-medium tracking-tight text-text-secondary"
+    >
+      <span className="font-semibold uppercase tracking-[0.18em] text-text-secondary/80">
+        Behavior Insight
+      </span>
+      <span className="text-text-secondary/40">·</span>
+      <span className="flex items-center gap-1.5 text-text-secondary/90">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-60" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-current" />
+        </span>
+        Live
+      </span>
+      <span className="text-text-secondary/40">·</span>
+      <span className={`flex items-center gap-1.5 font-semibold ${accent.label}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${accent.dot}`} />
+        {state.label}
+      </span>
+    </motion.div>
   );
 }
 
