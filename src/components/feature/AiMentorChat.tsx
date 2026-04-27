@@ -154,7 +154,7 @@ export default function AiMentorChat() {
     <FeatureShell
       eyebrow="AI Mentor"
       title="Seneca."
-      subtitle="A disciplined trading mentor. Honest, structured, and aware of how you trade."
+      subtitle="A calm, supportive trading partner. Here to think things through with you."
     >
       <div className="flex h-[calc(100svh-220px)] min-h-[480px] flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-border shadow-soft">
         {/* Mentor identity */}
