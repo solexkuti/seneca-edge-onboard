@@ -1,14 +1,19 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Activity } from "lucide-react";
-import { readCheckHistory, type CheckRecord } from "@/lib/behaviorLog";
+import {
+  readCheckHistory,
+  CHECK_HISTORY_EVENT,
+  CHECK_HISTORY_KEY,
+  type CheckRecord,
+} from "@/lib/behaviorLog";
 
 /**
  * Compact sparkline visualizing the user's recent Check Before Trade history.
  * Two overlaid lines:
  *   - Risk %  (cyan/blue) — quantitative
  *   - Emotional bias (magenta) — binary, plotted as 0/1 area
- * Reads from localStorage; safe on SSR (renders empty state until mounted).
+ * Reads from localStorage; safe on SSR (renders skeleton until mounted).
  */
 
 const W = 280;
@@ -21,17 +26,32 @@ export default function CheckHistorySparkline() {
   const [history, setHistory] = useState<CheckRecord[] | null>(null);
 
   useEffect(() => {
-    setHistory(readCheckHistory());
+    const refresh = () => setHistory(readCheckHistory());
+    refresh();
 
-    // Refresh when the tab regains focus (likely after a check was completed)
-    const onFocus = () => setHistory(readCheckHistory());
+    const onFocus = () => refresh();
+    const onLogged = () => refresh();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === CHECK_HISTORY_KEY) refresh();
+    };
+
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    window.addEventListener(CHECK_HISTORY_EVENT, onLogged as EventListener);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener(CHECK_HISTORY_EVENT, onLogged as EventListener);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
-  // Render skeleton on SSR / first paint
+  // Animated skeleton on SSR / first paint
   if (history === null) {
-    return <Card>{null}</Card>;
+    return (
+      <Card>
+        <SkeletonState />
+      </Card>
+    );
   }
 
   // Empty state
