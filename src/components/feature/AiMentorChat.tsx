@@ -12,14 +12,6 @@ type Msg = {
   content: string;
 };
 
-type MentorMode = "standard" | "strict" | "beginner" | "breakdown";
-
-const MODES: { id: MentorMode; label: string; hint: string }[] = [
-  { id: "standard", label: "Standard", hint: "Balanced & structured" },
-  { id: "strict", label: "Strict", hint: "Blunt corrections" },
-  { id: "beginner", label: "Beginner", hint: "Fundamentals only" },
-  { id: "breakdown", label: "Breakdown", hint: "Deeper structured teaching" },
-];
 
 const SUGGESTIONS = [
   "What is market structure?",
@@ -32,13 +24,12 @@ const MENTOR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mentor-cha
 
 export default function AiMentorChat() {
   const journal = useJournal();
-  const [mode, setMode] = useState<MentorMode>("standard");
   const [messages, setMessages] = useState<Msg[]>([
     {
       id: "intro",
       role: "assistant",
       content:
-        "I'm Seneca. Ask me about market structure, risk, psychology, or execution. I won't give you signals — I'll help you build the discipline to find your own.",
+        "Hi, I'm Seneca. I'm here to think through trades, mindset, and execution with you. Whatever's on your mind — wins, losses, doubts, or a setup you're unsure about — we can talk it out.",
     },
   ]);
   const [draft, setDraft] = useState("");
@@ -92,7 +83,7 @@ export default function AiMentorChat() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: wireMessages, context: ctx, mode }),
+        body: JSON.stringify({ messages: wireMessages, context: ctx }),
       });
 
       if (!resp.ok || !resp.body) {
@@ -163,7 +154,7 @@ export default function AiMentorChat() {
     <FeatureShell
       eyebrow="AI Mentor"
       title="Seneca."
-      subtitle="A disciplined trading mentor. Honest, structured, and aware of how you trade."
+      subtitle="A calm, supportive trading partner. Here to think things through with you."
     >
       <div className="flex h-[calc(100svh-220px)] min-h-[480px] flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-border shadow-soft">
         {/* Mentor identity */}
@@ -180,32 +171,6 @@ export default function AiMentorChat() {
                 : "No journal data — answers will be general"}
             </p>
           </div>
-        </div>
-
-        {/* Mode selector */}
-        <div className="flex items-center gap-1.5 border-b border-border/60 px-3 py-2 overflow-x-auto">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary mr-1 shrink-0">
-            Mode
-          </span>
-          {MODES.map((m) => {
-            const active = mode === m.id;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setMode(m.id)}
-                title={m.hint}
-                aria-pressed={active}
-                className={
-                  active
-                    ? "shrink-0 rounded-full bg-text-primary/[0.08] px-2.5 py-1 text-[11.5px] font-semibold text-text-primary ring-1 ring-border"
-                    : "shrink-0 rounded-full px-2.5 py-1 text-[11.5px] font-medium text-text-secondary ring-1 ring-transparent transition-colors hover:text-text-primary hover:bg-text-primary/[0.04]"
-                }
-              >
-                {m.label}
-              </button>
-            );
-          })}
         </div>
 
         {/* Messages */}
