@@ -1,8 +1,8 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Brain,
   LineChart,
   Activity,
   BookOpenCheck,
@@ -11,71 +11,39 @@ import {
   Gamepad2,
   ArrowUpRight,
   Lock,
+  ShieldCheck,
+  Eye,
 } from "lucide-react";
+import {
+  BEHAVIOR_STATES,
+  CHART_DESCRIPTIONS,
+  MOCK_METRICS,
+  deriveBehaviorState,
+  pickRandom,
+  type BehaviorStateKey,
+} from "@/lib/behaviorState";
 
 type CoreFeature = {
   key: string;
   title: string;
   text: string;
-  Icon: typeof Brain;
+  Icon: typeof LineChart;
   tone: "violet" | "cyan" | "pink" | "blue" | "mint";
   to: "/hub/mind" | "/hub/chart" | "/hub/state" | "/hub/journal" | "/hub/mentor";
+  primary?: boolean;
 };
-
-const coreFeatures: CoreFeature[] = [
-  {
-    key: "mind",
-    title: "Train Your Mind",
-    text: "Check your mental state before trading.",
-    Icon: Brain,
-    tone: "violet",
-    to: "/hub/mind",
-  },
-  {
-    key: "chart",
-    title: "Chart Analyzer",
-    text: "Upload your chart and get insight based on your strategy.",
-    Icon: LineChart,
-    tone: "cyan",
-    to: "/hub/chart",
-  },
-  {
-    key: "state",
-    title: "State Check",
-    text: "Stay disciplined during live trades.",
-    Icon: Activity,
-    tone: "pink",
-    to: "/hub/state",
-  },
-  {
-    key: "journal",
-    title: "Trading Journal",
-    text: "Track your trades and discover your patterns.",
-    Icon: BookOpenCheck,
-    tone: "blue",
-    to: "/hub/journal",
-  },
-  {
-    key: "mentor",
-    title: "AI Mentor",
-    text: "Ask questions and get real-time trading guidance.",
-    Icon: Sparkles,
-    tone: "mint",
-    to: "/hub/mentor",
-  },
-];
 
 const upcomingFeatures = [
   {
     key: "strategy",
     title: "Strategy Builder",
-    text: "Build and structure your trading system with precision.",
+    text: "Structure and refine your trading system.",
     Icon: LayoutTemplate,
   },
   {
     key: "sim",
     title: "Simulator",
-    text: "Train your decision-making in simulated trading scenarios.",
+    text: "Train your decisions in controlled scenarios.",
     Icon: Gamepad2,
   },
 ];
@@ -91,8 +59,8 @@ const toneStyles: Record<
   },
   cyan: {
     iconBg: "from-[#00C6FF] to-[#0072FF]",
-    glow: "shadow-[0_18px_40px_-22px_rgba(0,198,255,0.55)]",
-    ring: "group-hover:ring-[#00C6FF]/30",
+    glow: "shadow-[0_22px_50px_-20px_rgba(0,198,255,0.65)]",
+    ring: "group-hover:ring-[#00C6FF]/40",
   },
   pink: {
     iconBg: "from-[#FF7AF5] to-[#6C5CE7]",
@@ -112,9 +80,64 @@ const toneStyles: Record<
 };
 
 export default function ControlHub({ userName }: { userName?: string }) {
+  // Behavior state derived from mock metrics
+  const stateKey: BehaviorStateKey = useMemo(
+    () => deriveBehaviorState(MOCK_METRICS),
+    [],
+  );
+  const state = BEHAVIOR_STATES[stateKey];
+
+  // Rotating insight message — refreshes every 7s
+  const [msgIdx, setMsgIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(
+      () => setMsgIdx((i) => (i + 1) % state.messages.length),
+      7000,
+    );
+    return () => clearInterval(id);
+  }, [state.messages.length]);
+
+  // Chart copy rotation — different on each mount
+  const chartCopy = useMemo(() => pickRandom(CHART_DESCRIPTIONS), []);
+
+  const coreFeatures: CoreFeature[] = [
+    {
+      key: "chart",
+      title: "Chart Analyzer",
+      text: chartCopy,
+      Icon: LineChart,
+      tone: "cyan",
+      to: "/hub/chart",
+      primary: true,
+    },
+    {
+      key: "state",
+      title: "State Check",
+      text: "Check your mental state before execution.",
+      Icon: Activity,
+      tone: "pink",
+      to: "/hub/state",
+    },
+    {
+      key: "journal",
+      title: "Trading Journal",
+      text: "Track your trades. Reveal your behavior patterns.",
+      Icon: BookOpenCheck,
+      tone: "blue",
+      to: "/hub/journal",
+    },
+    {
+      key: "mentor",
+      title: "AI Mentor",
+      text: "Ask questions. Get structured trading guidance.",
+      Icon: Sparkles,
+      tone: "mint",
+      to: "/hub/mentor",
+    },
+  ];
+
   return (
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
-      {/* Soft ambient glow */}
       <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-90" />
       <div
         className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[420px] -translate-x-1/2 rounded-full opacity-60 blur-3xl"
@@ -125,13 +148,16 @@ export default function ControlHub({ userName }: { userName?: string }) {
       />
 
       <div className="relative z-10 mx-auto w-full max-w-[440px] px-5 pt-7 pb-10">
-        {/* TOP — System Status */}
         <Header userName={userName} />
 
-        {/* Today's Focus */}
-        <FocusCard />
+        <BehaviorInsightCard
+          stateKey={stateKey}
+          message={state.messages[msgIdx]}
+          msgIdx={msgIdx}
+        />
 
-        {/* Core */}
+        <CheckBeforeTradeButton />
+
         <SectionLabel>Core</SectionLabel>
         <div className="mt-3 space-y-3">
           {coreFeatures.map((f, i) => (
@@ -139,7 +165,6 @@ export default function ControlHub({ userName }: { userName?: string }) {
           ))}
         </div>
 
-        {/* Upcoming */}
         <SectionLabel className="mt-7">Upcoming</SectionLabel>
         <div className="mt-3 grid grid-cols-2 gap-3">
           {upcomingFeatures.map((f, i) => (
@@ -147,14 +172,15 @@ export default function ControlHub({ userName }: { userName?: string }) {
           ))}
         </div>
 
-        {/* Recent activity */}
         <SectionLabel className="mt-7">Recent activity</SectionLabel>
         <RecentActivity />
 
         <p className="mt-8 text-center text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary/70">
-          SenecaEdge · Decision system
+          SenecaEdge · Behavioral system
         </p>
       </div>
+
+      <LiveSignalTicker signals={state.liveSignals} tone={state.tone} />
     </div>
   );
 }
@@ -167,7 +193,7 @@ function Header({ userName }: { userName?: string }) {
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       className="flex items-start justify-between"
     >
-      <div>
+      <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2.5 w-2.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22c55e] opacity-60" />
@@ -180,12 +206,15 @@ function Header({ userName }: { userName?: string }) {
         <h1 className="mt-1.5 text-[26px] font-bold leading-[1.1] tracking-tight text-text-primary">
           Control Hub
         </h1>
-        <p className="mt-1 text-[13px] text-text-secondary">
-          {userName ? `Welcome back, ${userName}.` : "Welcome back."}{" "}
-          <span className="text-text-primary/80">
-            Focus on execution, not impulse.
-          </span>
+        <p className="mt-1 text-[12.5px] text-text-secondary">
+          System is learning your behavior.
         </p>
+        {userName && (
+          <p className="mt-0.5 text-[12.5px] text-text-primary/80">
+            Welcome back,{" "}
+            <span className="font-semibold text-text-primary">{userName}</span>.
+          </p>
+        )}
       </div>
 
       <div className="relative h-11 w-11 shrink-0 rounded-2xl bg-gradient-primary p-[2px] shadow-glow-primary">
@@ -199,43 +228,154 @@ function Header({ userName }: { userName?: string }) {
   );
 }
 
-function FocusCard() {
+const stateAccent: Record<
+  BehaviorStateKey,
+  { bg: string; dot: string; label: string; glow: string }
+> = {
+  new: {
+    bg: "var(--gradient-mix)",
+    dot: "bg-[#94a3b8]",
+    label: "text-text-secondary",
+    glow: "rgba(108,92,231,0.35)",
+  },
+  controlled: {
+    bg: "linear-gradient(135deg,#22c55e 0%,#00C6FF 100%)",
+    dot: "bg-emerald-500",
+    label: "text-emerald-600",
+    glow: "rgba(34,197,94,0.35)",
+  },
+  warning: {
+    bg: "linear-gradient(135deg,#F59E0B 0%,#FF7AF5 100%)",
+    dot: "bg-amber-500",
+    label: "text-amber-600",
+    glow: "rgba(245,158,11,0.4)",
+  },
+  danger: {
+    bg: "linear-gradient(135deg,#EF4444 0%,#FF7AF5 100%)",
+    dot: "bg-red-500",
+    label: "text-red-600",
+    glow: "rgba(239,68,68,0.45)",
+  },
+};
+
+function BehaviorInsightCard({
+  stateKey,
+  message,
+  msgIdx,
+}: {
+  stateKey: BehaviorStateKey;
+  message: string;
+  msgIdx: number;
+}) {
+  const accent = stateAccent[stateKey];
+  const state = BEHAVIOR_STATES[stateKey];
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       className="relative mt-5 overflow-hidden rounded-2xl p-[1.5px]"
-      style={{ backgroundImage: "var(--gradient-mix)" }}
+      style={{ backgroundImage: accent.bg }}
     >
       <div className="relative rounded-[14px] bg-card p-4">
         <div
-          className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full opacity-40 blur-2xl"
+          className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full opacity-50 blur-2xl"
           style={{
-            background:
-              "radial-gradient(closest-side, rgba(0,198,255,0.5), transparent 70%)",
+            background: `radial-gradient(closest-side, ${accent.glow}, transparent 70%)`,
           }}
         />
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-mix shadow-glow-primary">
-            <Brain className="h-5 w-5 text-white" strokeWidth={2.2} />
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+              Behavior Insight
+            </span>
+            <span className="h-1 w-1 rounded-full bg-text-secondary/40" />
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-gradient-mix">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-60" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-current" />
+              </span>
+              Live
+            </span>
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-                Today's Focus
-              </span>
-              <span className="h-1 w-1 rounded-full bg-text-secondary/40" />
-              <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-gradient-mix">
-                Live
-              </span>
-            </div>
-            <p className="mt-1 text-[14px] font-medium leading-snug text-text-primary">
-              Based on your behavior, stay patient and avoid overtrading.
-            </p>
+          <div
+            className={`flex items-center gap-1.5 rounded-full bg-text-primary/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ring-1 ring-border ${accent.label}`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${accent.dot}`} />
+            {state.label}
           </div>
         </div>
+
+        <div className="mt-3 flex items-start gap-3">
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+            style={{ backgroundImage: accent.bg }}
+          >
+            <Eye className="h-5 w-5 text-white" strokeWidth={2.2} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={msgIdx}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                className="text-[14px] font-medium leading-snug text-text-primary"
+              >
+                {message}
+              </motion.p>
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Behavior pulse line */}
+        <div className="mt-3 h-[3px] w-full overflow-hidden rounded-full bg-text-secondary/10">
+          <motion.div
+            key={msgIdx}
+            initial={{ x: "-100%" }}
+            animate={{ x: "100%" }}
+            transition={{ duration: 7, ease: "linear" }}
+            className="h-full w-1/3"
+            style={{ backgroundImage: accent.bg }}
+          />
+        </div>
       </div>
+    </motion.div>
+  );
+}
+
+function CheckBeforeTradeButton() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.18, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="mt-3"
+    >
+      <Link
+        to="/hub/mind"
+        preload="intent"
+        className="group relative flex w-full items-center justify-between overflow-hidden rounded-2xl bg-gradient-mix p-[1.5px] shadow-glow-primary"
+      >
+        <div className="relative flex w-full items-center justify-between rounded-[14px] bg-card px-4 py-3.5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-mix shadow-glow-primary">
+              <ShieldCheck className="h-[18px] w-[18px] text-white" strokeWidth={2.2} />
+            </div>
+            <div className="text-left">
+              <p className="text-[14.5px] font-semibold tracking-tight text-text-primary">
+                Check Before Trade
+              </p>
+              <p className="text-[11.5px] text-text-secondary">
+                60-second discipline scan.
+              </p>
+            </div>
+          </div>
+          <ArrowUpRight className="h-4 w-4 text-text-secondary/70 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-text-primary" />
+        </div>
+      </Link>
     </motion.div>
   );
 }
@@ -266,6 +406,8 @@ function FeatureCard({
 }) {
   const tone = toneStyles[feature.tone];
   const { Icon } = feature;
+  const isPrimary = !!feature.primary;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -273,24 +415,45 @@ function FeatureCard({
       transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       whileTap={{ scale: 0.985 }}
       whileHover={{ y: -2 }}
+      className={isPrimary ? "scale-[1.015]" : ""}
     >
       <Link
         to={feature.to}
         preload="intent"
-        className={`group relative flex w-full items-center gap-3.5 overflow-hidden rounded-2xl bg-card p-3.5 text-left ring-1 ring-border transition-all hover:shadow-card-premium ${tone.ring}`}
+        className={`group relative flex w-full items-center gap-3.5 overflow-hidden rounded-2xl bg-card p-3.5 text-left ring-1 ring-border transition-all hover:shadow-card-premium ${tone.ring} ${
+          isPrimary
+            ? "shadow-[0_22px_55px_-22px_rgba(0,198,255,0.55)] ring-[#00C6FF]/25"
+            : ""
+        }`}
       >
+        {isPrimary && (
+          <>
+            <span className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#00C6FF]/15 blur-2xl" />
+            <span className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-[#00C6FF]/[0.04] to-transparent" />
+            <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-gradient-mix px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-white shadow-glow-cyan">
+              Primary
+            </span>
+          </>
+        )}
         <div
-          className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${tone.iconBg} ${tone.glow}`}
+          className={`relative flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${tone.iconBg} ${tone.glow} ${
+            isPrimary ? "h-[52px] w-[52px]" : "h-12 w-12"
+          }`}
         >
-          <Icon className="h-5 w-5 text-white" strokeWidth={2.2} />
+          <Icon
+            className={isPrimary ? "h-[22px] w-[22px] text-white" : "h-5 w-5 text-white"}
+            strokeWidth={2.2}
+          />
           <FeatureMicroAnim featureKey={feature.key} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <h3 className="truncate text-[15px] font-semibold tracking-tight text-text-primary">
-              {feature.title}
-            </h3>
-          </div>
+          <h3
+            className={`truncate font-semibold tracking-tight text-text-primary ${
+              isPrimary ? "text-[15.5px]" : "text-[15px]"
+            }`}
+          >
+            {feature.title}
+          </h3>
           <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-snug text-text-secondary">
             {feature.text}
           </p>
@@ -302,16 +465,6 @@ function FeatureCard({
 }
 
 function FeatureMicroAnim({ featureKey }: { featureKey: string }) {
-  // Tiny looping decoration on the icon tile.
-  if (featureKey === "mind") {
-    return (
-      <motion.span
-        className="absolute inset-0 rounded-xl ring-2 ring-white/40"
-        animate={{ opacity: [0, 0.5, 0], scale: [0.95, 1.05, 0.95] }}
-        transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-      />
-    );
-  }
   if (featureKey === "chart") {
     return (
       <svg
@@ -390,7 +543,6 @@ function UpcomingCard({
       onClick={() => toast("Coming soon", { description: feature.title })}
       className="group relative flex flex-col items-start gap-2.5 overflow-hidden rounded-2xl bg-card/80 p-3.5 text-left ring-1 ring-dashed ring-border/80 backdrop-blur"
     >
-      {/* Faint grid */}
       <svg
         className="pointer-events-none absolute inset-0 h-full w-full opacity-40"
         viewBox="0 0 100 100"
@@ -473,5 +625,70 @@ function RecentActivity() {
         />
       </div>
     </motion.div>
+  );
+}
+
+// Floating micro live-feedback ticker — appears every ~12s, fades out.
+function LiveSignalTicker({
+  signals,
+  tone,
+}: {
+  signals: string[];
+  tone: "neutral" | "calm" | "warning" | "danger";
+}) {
+  const [idx, setIdx] = useState(0);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const showCycle = () => {
+      if (!mounted) return;
+      setVisible(true);
+      setTimeout(() => {
+        if (!mounted) return;
+        setVisible(false);
+        setIdx((i) => (i + 1) % signals.length);
+      }, 4200);
+    };
+    // first one after 2s, then every 12s
+    const first = setTimeout(showCycle, 2000);
+    const id = setInterval(showCycle, 12000);
+    return () => {
+      mounted = false;
+      clearTimeout(first);
+      clearInterval(id);
+    };
+  }, [signals.length]);
+
+  const toneClass =
+    tone === "danger"
+      ? "ring-red-500/30 text-red-600 bg-red-50"
+      : tone === "warning"
+        ? "ring-amber-500/30 text-amber-700 bg-amber-50"
+        : tone === "calm"
+          ? "ring-emerald-500/25 text-emerald-700 bg-emerald-50"
+          : "ring-border text-text-secondary bg-card";
+
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-5">
+      <AnimatePresence>
+        {visible && (
+          <motion.div
+            key={`${idx}-${signals[idx]}`}
+            initial={{ opacity: 0, y: 14, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-[11.5px] font-semibold tracking-tight shadow-soft ring-1 backdrop-blur ${toneClass}`}
+          >
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-50" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-current" />
+            </span>
+            {signals[idx]}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
