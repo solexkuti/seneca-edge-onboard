@@ -148,7 +148,8 @@ export async function fetchJournal(): Promise<DbJournalRow[]> {
       `id, trade_id, followed_entry, followed_exit, followed_risk,
        followed_behavior, discipline_score, emotional_state, notes,
        trade:trades!inner (
-         id, market, direction, result, rr, executed_at
+         id, market, direction, result, rr, executed_at, strategy_id,
+         strategy:strategies ( id, name, entry_rule, exit_rule, risk_rule, behavior_rule )
        )`,
     )
     .eq("user_id", userData.user.id)
