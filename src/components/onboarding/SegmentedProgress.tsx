@@ -60,13 +60,27 @@ export default function SegmentedProgress({
       aria-valuemax={count}
       aria-valuenow={active + 1}
       onClick={handleTrackClick}
-      className="relative h-[3px] w-full cursor-pointer overflow-hidden rounded-full bg-text-secondary/15"
+      className="relative h-[3px] w-full cursor-pointer rounded-full bg-text-secondary/15"
     >
+      {/* Filled portion — drives both the bar and the leading-edge bloom */}
       <motion.span
         animate={controls}
         initial={{ width: `${base * 100}%` }}
         className="absolute inset-y-0 left-0 rounded-full bg-gradient-primary"
-      />
+      >
+        {/* Soft outward bloom riding the fill edge */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute right-0 top-1/2 h-3 w-6 -translate-y-1/2 translate-x-1/2 rounded-full bg-gradient-primary opacity-60 blur-md"
+        />
+        {/* Crisp glowing tip dot for definition */}
+        <motion.span
+          aria-hidden
+          animate={{ opacity: [0.85, 1, 0.85], scale: [1, 1.15, 1] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+          className="pointer-events-none absolute right-0 top-1/2 h-[7px] w-[7px] -translate-y-1/2 translate-x-1/2 rounded-full bg-gradient-primary shadow-[0_0_8px_rgba(108,92,231,0.55)]"
+        />
+      </motion.span>
     </div>
   );
 }
