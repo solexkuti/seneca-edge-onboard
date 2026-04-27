@@ -58,6 +58,14 @@ export function rowsToJson(rows: DbJournalRow[]): string {
     direction: r.direction,
     result: r.result,
     rr: r.rr,
+    strategy: {
+      id: r.strategy_id,
+      name: r.strategy_name,
+      entry_rule: r.entry_rule,
+      exit_rule: r.exit_rule,
+      risk_rule: r.risk_rule,
+      behavior_rule: r.behavior_rule,
+    },
     discipline: {
       followed_entry: r.followed_entry,
       followed_exit: r.followed_exit,
