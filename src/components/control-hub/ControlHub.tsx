@@ -184,8 +184,8 @@ function Header({ userName, initial }: { userName?: string; initial: string }) {
         <h1 className="text-[26px] font-bold leading-[1.1] tracking-tight text-text-primary">
           Control State
         </h1>
-        <p className="mt-2 text-[13.5px] leading-snug text-text-secondary">
-          You don’t trade the market. You manage yourself.
+        <p className="mt-2 text-[13.5px] font-semibold leading-snug text-text-primary/85">
+          Control the process. Ignore the outcome.
         </p>
         {userName && (
           <p className="mt-2 text-[12px] text-text-secondary/80">
