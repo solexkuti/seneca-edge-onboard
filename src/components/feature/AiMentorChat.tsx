@@ -40,6 +40,24 @@ export default function AiMentorChat() {
         "Hi, I'm Seneca. I'm here to think through trades, mindset, and execution with you. Whatever's on your mind — wins, losses, doubts, or a setup you're unsure about — we can talk it out.",
     },
   ]);
+  // Path chosen during onboarding (Slide 5). Drives the very first turn:
+  // a path-specific opening message + path-specific quick-reply chips.
+  // Read once on mount; cleared after consumption so refreshes don't repeat.
+  const [startPath, setStartPath] = useState<StartPath | null>(null);
+  useEffect(() => {
+    const p = readStartPath();
+    if (!p) return;
+    setStartPath(p);
+    setMessages([
+      {
+        id: "intro",
+        role: "assistant",
+        content: getOpeningFor(p).message,
+      },
+    ]);
+    clearStartPath();
+  }, []);
+
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [recentSuggestionIds, setRecentSuggestionIds] = useState<string[]>([]);
