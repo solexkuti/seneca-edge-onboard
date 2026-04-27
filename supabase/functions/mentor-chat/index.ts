@@ -24,15 +24,15 @@ CORE PERSONALITY
 - Normalize the struggle without encouraging bad habits.
 
 TONE RULES (non-negotiable)
-- Friendly and conversational. Natural human phrasing.
-- Never harsh, aggressive, dismissive, condescending, or robotic.
-- No "you are wrong" language. No harsh corrections. No robotic disclaimers.
+- Never harsh, aggressive, dismissive, or condescending.
+- Never directly criticize the user or their character.
+- Never make statements that feel like personal attacks.
 - No emojis. No hype. No fake enthusiasm. Stay grounded and warm.
-- Replace "That is incorrect" → "That's a common situation, let's look at it more closely."
-- Replace "You broke your rules again" → "I understand why that trade was tempting. Let's look at what triggered it."
-- Replace "You are not disciplined" → "It sounds like execution is being driven by emotion rather than structure right now."
-- Replace "That is wrong" → "That's a common path, but it usually leads to a tricky spot. Here's why…"
-- Banned closings: "Let me know if you need help" and any generic catch-all sign-off.
+
+REPLACE JUDGMENT WITH OBSERVATION
+- BAD: "You are not disciplined." → GOOD: "It sounds like execution is being driven by emotion rather than structure right now."
+- BAD: "That is wrong." → GOOD: "That's a common path, but it usually leads to a tricky spot. Here's why…"
+- BAD: "You broke your rules again." → GOOD: "I understand why that trade was tempting. Let's look at what triggered it."
 
 EMOTIONAL INTELLIGENCE LAYER (apply to every response)
 1. Acknowledge the user's situation or feeling, briefly and genuinely.
@@ -208,8 +208,8 @@ type Msg = { role: "user" | "assistant"; content: string };
 type UserContext = {
   journalSummary?: string;
   systemRules?: string;
-  /** Onboarding path the user picked on Slide 5. Sent only on the first turn. */
-  startPath?: "learn" | "review" | "plan";
+  /** From the 4-step onboarding personalization (market, experience, challenge, goal). */
+  profileSummary?: string;
 };
 
 // ── Hidden analytics helpers ───────────────────────────────────────────────
@@ -341,33 +341,27 @@ Deno.serve(async (req) => {
     }
 
     // Build a USER CONTEXT block only when real data exists.
+    const hasContext = !!(
+      context &&
+      (context.journalSummary || context.systemRules || context.profileSummary)
+    );
     let contextBlock = "";
-    if (context && (context.journalSummary || context.systemRules)) {
+    if (hasContext) {
       contextBlock = "\n\nUSER CONTEXT (real data — weave in gently when it helps the user see themselves clearly):";
-      if (context.journalSummary) {
-        contextBlock += `\n\n[Trading Journal]\n${context.journalSummary}`;
+      if (context!.profileSummary) {
+        // Profile from onboarding: market, experience, biggest struggle, goal.
+        // Use it to tune depth, vocabulary, and emphasis — never quote it back as a list.
+        contextBlock += `\n\n[Trader Profile]\n${context!.profileSummary}`;
       }
-      if (context.systemRules) {
-        contextBlock += `\n\n[User's Trading System]\n${context.systemRules}`;
+      if (context!.journalSummary) {
+        contextBlock += `\n\n[Trading Journal]\n${context!.journalSummary}`;
+      }
+      if (context!.systemRules) {
+        contextBlock += `\n\n[User's Trading System]\n${context!.systemRules}`;
       }
     } else {
       contextBlock =
         "\n\nUSER CONTEXT: none yet. Offer warm, general guidance. Do NOT mention missing data. Do NOT refuse. Invite the user to share more about their situation through your soft closing.";
-    }
-
-    // Path-aware first-turn nudge. The UI already showed a path-specific
-    // opening message + chips; the user's first reply is a response to that.
-    // Stay inside the chosen path on this turn — do not switch topics.
-    if (context?.startPath) {
-      const PATH_NUDGE: Record<NonNullable<UserContext["startPath"]>, string> = {
-        learn:
-          "FIRST-TURN PATH: LEARN. The user picked the 'Learn the basics' path on onboarding. Their first message answers: 'What confuses you the most when you're trading?' Acknowledge warmly, normalize that this confusion is common, then explain the ONE concept they named in plain language (no jargon). Close with a soft reflective question that invites them deeper into THAT specific topic. Do not pivot to other features.",
-        review:
-          "FIRST-TURN PATH: REVIEW. The user picked the 'Review my trades' path. Their first message describes a recent trade. If they sound hesitant or call it 'messy', remind them gently that messy trades are usually the most useful to learn from. Reflect what you heard, ask the smallest clarifying question needed (entry reason, exit reason, or how it felt), and keep the door open without lecturing.",
-        plan:
-          "FIRST-TURN PATH: PLAN. The user picked the 'Build my plan' path. Their first message answers: 'How do you currently enter trades?' Acknowledge their answer without judgment (instinct is welcome, 'not sure' is welcome). Reflect it back in one sentence, then ask the next building-block question — usually about what tells them a setup is invalid, or what they look at before clicking. One step at a time.",
-      };
-      contextBlock += `\n\n${PATH_NUDGE[context.startPath]}`;
     }
 
     const systemContent = SYSTEM_PROMPT + contextBlock;

@@ -1,18 +1,19 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Target, Coins, Award, Sparkles } from "lucide-react";
+import { Target, Crosshair, Shield, Settings2 } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import type { SlideProps } from "./OnboardingFlow";
+import { patchProfile, type GoalChoice } from "@/lib/onboardingProfile";
 
-const goals = [
-  { id: "consistency", label: "Become consistently profitable", icon: <Target className="h-5 w-5" /> },
-  { id: "income", label: "Build full-time income", icon: <Coins className="h-5 w-5" /> },
-  { id: "funded", label: "Pass a funded challenge", icon: <Award className="h-5 w-5" /> },
-  { id: "control", label: "Master my own discipline", icon: <Sparkles className="h-5 w-5" /> },
+const goals: { id: GoalChoice; label: string; icon: React.ReactNode }[] = [
+  { id: "consistency", label: "Consistency", icon: <Target className="h-5 w-5" /> },
+  { id: "better-entries", label: "Better entries", icon: <Crosshair className="h-5 w-5" /> },
+  { id: "risk-control", label: "Better risk control", icon: <Shield className="h-5 w-5" /> },
+  { id: "build-system", label: "Build a solid system", icon: <Settings2 className="h-5 w-5" /> },
 ];
 
 export default function SlideGoal({ onNext }: SlideProps) {
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<GoalChoice | null>(null);
 
   return (
     <div className="flex flex-col gap-6">
@@ -29,7 +30,8 @@ export default function SlideGoal({ onNext }: SlideProps) {
           </span>
         </div>
         <h1 className="mt-3 text-[26px] font-bold leading-[1.15] tracking-tight text-text-primary">
-          What's your <span className="text-gradient-mix">main goal?</span>
+          What are you trying to{" "}
+          <span className="text-gradient-mix">improve right now?</span>
         </h1>
       </motion.div>
 
@@ -47,6 +49,7 @@ export default function SlideGoal({ onNext }: SlideProps) {
               selected={selected === m.id}
               onClick={() => {
                 setSelected(m.id);
+                patchProfile({ goal: m.id });
                 window.setTimeout(onNext, 200);
               }}
             />

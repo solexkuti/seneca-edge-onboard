@@ -1,18 +1,18 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Sprout, TrendingUp, Trophy, Crown } from "lucide-react";
+import { Sprout, TrendingUp, Crown } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import type { SlideProps } from "./OnboardingFlow";
+import { patchProfile, type ExperienceLevel } from "@/lib/onboardingProfile";
 
-const levels = [
-  { id: "new", label: "New · Less than 1 year", icon: <Sprout className="h-5 w-5" /> },
-  { id: "growing", label: "Growing · 1–3 years", icon: <TrendingUp className="h-5 w-5" /> },
-  { id: "experienced", label: "Experienced · 3–5 years", icon: <Trophy className="h-5 w-5" /> },
-  { id: "pro", label: "Pro · 5+ years", icon: <Crown className="h-5 w-5" /> },
+const levels: { id: ExperienceLevel; label: string; icon: React.ReactNode }[] = [
+  { id: "beginner", label: "Beginner", icon: <Sprout className="h-5 w-5" /> },
+  { id: "intermediate", label: "Intermediate", icon: <TrendingUp className="h-5 w-5" /> },
+  { id: "advanced", label: "Advanced", icon: <Crown className="h-5 w-5" /> },
 ];
 
 export default function SlideExperience({ onNext }: SlideProps) {
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ExperienceLevel | null>(null);
 
   return (
     <div className="flex flex-col gap-6">
@@ -29,8 +29,8 @@ export default function SlideExperience({ onNext }: SlideProps) {
           </span>
         </div>
         <h1 className="mt-3 text-[26px] font-bold leading-[1.15] tracking-tight text-text-primary">
-          How long have you{" "}
-          <span className="text-gradient-primary">been trading?</span>
+          How would you describe your{" "}
+          <span className="text-gradient-primary">trading experience?</span>
         </h1>
       </motion.div>
 
@@ -48,6 +48,7 @@ export default function SlideExperience({ onNext }: SlideProps) {
               selected={selected === m.id}
               onClick={() => {
                 setSelected(m.id);
+                patchProfile({ experience: m.id });
                 window.setTimeout(onNext, 200);
               }}
             />

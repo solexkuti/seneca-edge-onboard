@@ -1,18 +1,19 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Flame, Repeat, Timer, ShieldOff } from "lucide-react";
+import { LogIn, LogOut, Shield, Brain } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import type { SlideProps } from "./OnboardingFlow";
+import { patchProfile, type ChallengeChoice } from "@/lib/onboardingProfile";
 
-const struggles = [
-  { id: "emotion", label: "Emotional decisions", icon: <Flame className="h-5 w-5" /> },
-  { id: "revenge", label: "Revenge trading", icon: <Repeat className="h-5 w-5" /> },
-  { id: "overtrade", label: "Overtrading", icon: <Timer className="h-5 w-5" /> },
-  { id: "rules", label: "Breaking my own rules", icon: <ShieldOff className="h-5 w-5" /> },
+const struggles: { id: ChallengeChoice; label: string; icon: React.ReactNode }[] = [
+  { id: "entries", label: "Entries", icon: <LogIn className="h-5 w-5" /> },
+  { id: "exits", label: "Exits", icon: <LogOut className="h-5 w-5" /> },
+  { id: "risk", label: "Risk management", icon: <Shield className="h-5 w-5" /> },
+  { id: "discipline", label: "Discipline / emotions", icon: <Brain className="h-5 w-5" /> },
 ];
 
 export default function SlideStruggle({ onNext }: SlideProps) {
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ChallengeChoice | null>(null);
 
   return (
     <div className="flex flex-col gap-6">
@@ -22,15 +23,15 @@ export default function SlideStruggle({ onNext }: SlideProps) {
         transition={{ duration: 0.5 }}
         className="text-center"
       >
-        <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-highlight/15 px-3 py-1">
+        <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1">
           <span className="h-1.5 w-1.5 rounded-full bg-gradient-mix" />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
             Step 3 of 4
           </span>
         </div>
         <h1 className="mt-3 text-[26px] font-bold leading-[1.15] tracking-tight text-text-primary">
-          What breaks your{" "}
-          <span className="text-gradient-mix">discipline most?</span>
+          What do you struggle with{" "}
+          <span className="text-gradient-mix">the most?</span>
         </h1>
       </motion.div>
 
@@ -48,6 +49,7 @@ export default function SlideStruggle({ onNext }: SlideProps) {
               selected={selected === m.id}
               onClick={() => {
                 setSelected(m.id);
+                patchProfile({ challenge: m.id });
                 window.setTimeout(onNext, 200);
               }}
             />
