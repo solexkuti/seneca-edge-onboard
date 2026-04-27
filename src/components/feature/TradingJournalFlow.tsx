@@ -24,6 +24,7 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import FeatureShell from "./FeatureShell";
+import { playFeedback } from "@/lib/feedback";
 import {
   submitJournalEntry,
   type EmotionalState,
@@ -109,9 +110,11 @@ export default function TradingJournalFlow() {
 
   const handleNext = async () => {
     if (step < 3) {
+      playFeedback("step");
       setStep((s) => (s + 1) as 0 | 1 | 2 | 3);
       return;
     }
+    playFeedback("press");
     await handleSubmit();
   };
 
