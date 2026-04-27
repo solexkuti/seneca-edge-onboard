@@ -22,7 +22,7 @@ import Slide7Success from "@/components/onboarding/Slide7Success";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
 import ProgressDots from "@/components/onboarding/ProgressDots";
 import { saveUserName } from "@/lib/userName";
-
+import Logo from "@/components/brand/Logo";
 
 export type SlideProps = {
   onNext: () => void;
