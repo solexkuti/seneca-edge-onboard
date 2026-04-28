@@ -63,13 +63,24 @@ function computeControlState(score: number): ControlState {
 }
 
 function computeChecklist(input: {
-  discipline_score: number;
+  discipline_score: number | null;
+  discipline_score_available: boolean;
   last_20_trades_count: number;
   current_streak: number;
   behavior_patterns: string[];
 }): Computed {
-  const score = Math.max(0, Math.min(100, Math.round(input.discipline_score)));
-  const state = computeControlState(score);
+  // SAFETY: When discipline data is missing/unavailable, default to "at_risk".
+  // We never assume "in_control" without evidence, and we never silently
+  // collapse to "out_of_control" (which would suggest broken discipline that
+  // never actually happened). "at_risk" is the conservative middle ground.
+  const hasScore =
+    input.discipline_score_available &&
+    typeof input.discipline_score === "number" &&
+    Number.isFinite(input.discipline_score);
+  const score = hasScore
+    ? Math.max(0, Math.min(100, Math.round(input.discipline_score as number)))
+    : 0;
+  const state: ControlState = hasScore ? computeControlState(score) : "at_risk";
   const allowed_tiers =
     state === "in_control"
       ? ["A+", "B+", "C"]
