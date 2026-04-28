@@ -271,11 +271,20 @@ function ClassificationCard({ cls, score }: { cls: DisciplineClass; score: numbe
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease }}
-      className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 ring-1 ${s.bg} ${s.ring}`}
+      transition={{ duration: 0.45, ease }}
+      whileHover={{ y: -1 }}
+      className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 ring-1 transition-shadow duration-500 ${s.bg} ${s.ring} ${s.glow}`}
     >
       <div className="flex items-center gap-2.5 min-w-0">
-        <span className={`h-2 w-2 shrink-0 rounded-full ${s.dot}`} />
+        <span className="relative flex h-2 w-2 shrink-0 items-center justify-center">
+          <motion.span
+            aria-hidden
+            className={`absolute inset-0 rounded-full ${s.dot} opacity-50`}
+            animate={{ scale: [1, 2.2, 1], opacity: [0.5, 0, 0.5] }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <span className={`relative h-2 w-2 rounded-full ${s.dot}`} />
+        </span>
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
             Discipline state
