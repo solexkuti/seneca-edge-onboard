@@ -8,7 +8,7 @@
 // Real-time recheck: subscribes to TRADER_STATE — when the user fixes their
 // state, this component automatically unmounts (no refresh required).
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
@@ -20,7 +20,26 @@ import {
   AlertTriangle,
   XCircle,
   CheckCircle2,
+  Sparkles,
+  MinusCircle,
 } from "lucide-react";
+
+const REDUCE_MOTION_KEY = "seneca.lock.reduceMotion";
+
+function readInitialReduceMotion(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const stored = window.localStorage.getItem(REDUCE_MOTION_KEY);
+    if (stored === "1") return true;
+    if (stored === "0") return false;
+  } catch {
+    /* ignore */
+  }
+  return (
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
 import { useTraderState } from "@/hooks/useTraderState";
 import { logLockAttempt, type LockAttemptReason } from "@/lib/lockAttempts";
 
