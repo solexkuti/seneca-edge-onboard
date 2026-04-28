@@ -242,6 +242,12 @@ type UserContext = {
     brokenRules: string[];
     mistakeTag: string | null;
   }>;
+  /** The user's locked/active strategy blueprint (rules they will be graded against). */
+  activeStrategy?: {
+    name: string;
+    locked: boolean;
+    rules: string;
+  };
 };
 
 const STRICT_MODE_ADDENDUM = `
