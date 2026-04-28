@@ -162,7 +162,7 @@ export async function detectAndStorePatterns(
         message: p.message,
         severity: p.severity,
         trade_ids: p.trade_ids,
-        meta: p.meta,
+        meta: p.meta as any,
       })),
     )
     .select("id, kind, message, severity, trade_ids, meta, detected_at");
