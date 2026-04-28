@@ -12,7 +12,7 @@ import {
 } from "@/lib/dbStrategyBlueprints";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/hub/strategy")({
+export const Route = createFileRoute("/hub/strategy/")({
   head: () => ({
     meta: [
       { title: "Strategy Builder — SenecaEdge" },
