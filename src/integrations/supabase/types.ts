@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      behavior_patterns: {
+        Row: {
+          created_at: string
+          detected_at: string
+          id: string
+          kind: Database["public"]["Enums"]["behavior_pattern_kind"]
+          message: string
+          meta: Json
+          severity: number
+          trade_ids: string[]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          detected_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["behavior_pattern_kind"]
+          message: string
+          meta?: Json
+          severity?: number
+          trade_ids?: string[]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          detected_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["behavior_pattern_kind"]
+          message?: string
+          meta?: Json
+          severity?: number
+          trade_ids?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
       discipline_logs: {
         Row: {
           created_at: string
@@ -279,6 +315,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      behavior_pattern_kind:
+        | "emotional_repetition"
+        | "consecutive_losses_after_break"
+        | "undisciplined_streak"
+        | "rule_breaking"
+        | "revenge"
+        | "overtrading"
       emotional_state:
         | "frustrated"
         | "fearful"
@@ -415,6 +458,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      behavior_pattern_kind: [
+        "emotional_repetition",
+        "consecutive_losses_after_break",
+        "undisciplined_streak",
+        "rule_breaking",
+        "revenge",
+        "overtrading",
+      ],
       emotional_state: [
         "frustrated",
         "fearful",
