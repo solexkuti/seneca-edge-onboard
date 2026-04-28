@@ -168,9 +168,9 @@ export async function syncWithRetry(
       if (opts.showToast && nextAttempts >= MAX_SYNC_ATTEMPTS) {
         toast.error("Sync failed — tap to retry", { description: res.error });
       }
-    } catch {
+    } catch (error) {
       const message = "Unexpected error while syncing journal entry.";
-      console.error(message);
+      console.error(error);
       const nextAttempts = totalAttempts + 1;
       updatePending(id, {
         attempts: nextAttempts,
@@ -227,7 +227,7 @@ export async function retryNow(): Promise<{ remaining: number; synced: number }>
   let synced = 0;
   try {
     for (const entry of before) {
-      const ok = await syncWithRetry(entry.id, entry.payload, { showToast: false });
+      const ok = await syncWithRetry(entry.id, entry.payload, { showToast: false, force: true });
       if (ok) synced++;
     }
   } finally {
