@@ -21,6 +21,7 @@ import {
   Loader2,
   ArrowRight,
   Save,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 import FeatureShell from "./FeatureShell";
