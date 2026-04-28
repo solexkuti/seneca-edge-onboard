@@ -93,7 +93,18 @@ function DailyChecklistPage() {
       if (error) throw error;
       const r = data as GenResult;
       setResult(r);
-      toast.success("Daily checklist ready.");
+      saveDailyChecklist({
+        generated_for: r.generated_for,
+        control_state: r.control_state,
+        discipline_score: r.discipline_score,
+        allowed_tiers: r.allowed_tiers,
+        applied_restrictions: r.applied_restrictions,
+        weak_categories: r.weak_categories ?? [],
+        focus: r.focus ?? [],
+        suggest_no_trade_day: r.suggest_no_trade_day,
+        strategy_name: r.strategy_name,
+      });
+      toast.success("Today's checklist is active.");
     } catch (err) {
       console.error(err);
       const msg =
