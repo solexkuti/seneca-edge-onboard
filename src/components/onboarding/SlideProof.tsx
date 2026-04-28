@@ -1,7 +1,43 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Quote } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
+
+type Testimonial = {
+  quote: string;
+  initial: string;
+  name: string;
+  meta?: string;
+};
+
+const TESTIMONIALS: Testimonial[] = [
+  {
+    quote: "I stopped entering trades I couldn't explain.",
+    initial: "M",
+    name: "Marco D.",
+    meta: "Swing trader · 14 months",
+  },
+  {
+    quote: "It didn't change my strategy. It changed how I follow it.",
+    initial: "A",
+    name: "Aisha R.",
+    meta: "Forex · 5 years",
+  },
+  {
+    quote: "I realized most of my losses were decisions, not setups.",
+    initial: "K",
+    name: "Kenji T.",
+    meta: "Crypto · 2 years",
+  },
+  {
+    quote: "Tracking my behavior made it harder to lie to myself.",
+    initial: "S",
+    name: "Sara L.",
+    meta: "Indices · 3 years",
+  },
+];
+
+const ROTATE_MS = 5000;
 
 /**
  * Slide 4 — Soft Proof
@@ -18,6 +54,16 @@ const PROOF_LINES = [
 
 export default function SlideProof({ onNext }: SlideProps) {
   const [pressing, setPressing] = useState(false);
+  const [tIndex, setTIndex] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(
+      () => setTIndex((i) => (i + 1) % TESTIMONIALS.length),
+      ROTATE_MS,
+    );
+    return () => window.clearInterval(id);
+  }, []);
+
   const handleStep = () => {
     setPressing(true);
     window.setTimeout(() => onNext(), 350);
@@ -67,8 +113,8 @@ export default function SlideProof({ onNext }: SlideProps) {
         ))}
       </div>
 
-      {/* Testimonial card */}
-      <motion.figure
+      {/* Auto-rotating testimonial */}
+      <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, delay: 0.7 }}
@@ -78,24 +124,37 @@ export default function SlideProof({ onNext }: SlideProps) {
           className="absolute right-3 top-3 h-5 w-5 text-brand/20"
           strokeWidth={2.2}
         />
-        <blockquote className="text-[14px] leading-snug text-text-primary">
-          “I stopped losing on revenge trades the week I started reviewing
-          every setup here. The rules don't change — I finally do.”
-        </blockquote>
-        <figcaption className="mt-3 flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-mix text-[11px] font-bold text-white">
-            M
-          </span>
-          <div className="flex flex-col">
-            <span className="text-[12px] font-semibold text-text-primary">
-              Marco D.
-            </span>
-            <span className="text-[10.5px] text-text-secondary">
-              Swing trader · 14 months
-            </span>
-          </div>
-        </figcaption>
-      </motion.figure>
+        <div className="relative min-h-[92px]">
+          <AnimatePresence mode="wait">
+            <motion.figure
+              key={tIndex}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <blockquote className="text-[14px] leading-snug text-text-primary">
+                “{TESTIMONIALS[tIndex].quote}”
+              </blockquote>
+              <figcaption className="mt-3 flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-mix text-[11px] font-bold text-white">
+                  {TESTIMONIALS[tIndex].initial}
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-[12px] font-semibold text-text-primary">
+                    {TESTIMONIALS[tIndex].name}
+                  </span>
+                  {TESTIMONIALS[tIndex].meta && (
+                    <span className="text-[10.5px] text-text-secondary">
+                      {TESTIMONIALS[tIndex].meta}
+                    </span>
+                  )}
+                </div>
+              </figcaption>
+            </motion.figure>
+          </AnimatePresence>
+        </div>
+      </motion.div>
 
       {/* Quiet, intentional CTA — only one button in the entire narrative flow */}
       <motion.button
