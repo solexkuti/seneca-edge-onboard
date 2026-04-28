@@ -233,6 +233,7 @@ export default function ChartAnalyzer() {
     setStep(0);
     setResult(null);
     setInvalidReason("");
+    setInvalidDetails([]);
     if (execInputRef.current) execInputRef.current.value = "";
     if (higherInputRef.current) higherInputRef.current.value = "";
   }
