@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      analyzer_events: {
+        Row: {
+          analysis_id: string | null
+          blueprint_id: string | null
+          created_at: string
+          id: string
+          reason: string | null
+          score_delta: number
+          user_id: string
+          verdict: string
+          violations: Json
+        }
+        Insert: {
+          analysis_id?: string | null
+          blueprint_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          score_delta?: number
+          user_id: string
+          verdict: string
+          violations?: Json
+        }
+        Update: {
+          analysis_id?: string | null
+          blueprint_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          score_delta?: number
+          user_id?: string
+          verdict?: string
+          violations?: Json
+        }
+        Relationships: []
+      }
       behavior_patterns: {
         Row: {
           created_at: string
@@ -545,7 +581,20 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      recent_decisions: {
+        Row: {
+          analysis_id: string | null
+          created_at: string | null
+          id: string | null
+          score_delta: number | null
+          source: string | null
+          trade_id: string | null
+          user_id: string | null
+          verdict: string | null
+          violations: Json | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       compute_identity_label: { Args: { streak: number }; Returns: string }
