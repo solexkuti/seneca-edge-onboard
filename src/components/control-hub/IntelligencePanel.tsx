@@ -3,9 +3,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, Flame, ShieldCheck, Activity } from "lucide-react";
+import { AlertTriangle, Flame, ShieldCheck, Activity, Gauge } from "lucide-react";
 import { useDbJournal } from "@/hooks/useDbJournal";
-import { computeIntelligence } from "@/lib/intelligence";
+import {
+  computeIntelligence,
+  DISCIPLINE_CLASS_LABEL,
+  type DisciplineClass,
+} from "@/lib/intelligence";
 import {
   fetchRecentPatterns,
   PATTERN_LABEL,
@@ -35,6 +39,8 @@ export default function IntelligencePanel() {
     <div className="space-y-2.5">
       {intel.twoUndisciplinedInARow ? <WarningBanner /> : null}
 
+      {intel.disciplineClass ? <ClassificationCard cls={intel.disciplineClass} score={intel.disciplineScore ?? 0} /> : null}
+
       <div className="grid grid-cols-2 gap-2.5">
         <StatCard
           label="Discipline streak"
@@ -56,22 +62,39 @@ export default function IntelligencePanel() {
         />
       </div>
 
-      {intel.mostCommonMistake ? (
+      {intel.mostCommonMistake || intel.mostCommonMistakeTag ? (
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease }}
-          className="rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft"
+          className="space-y-3 rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft"
         >
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
-            Most common mistake
-          </p>
-          <p className="mt-1 text-[14px] font-semibold leading-snug text-text-primary">
-            {intel.mostCommonMistake.label}
-          </p>
-          <p className="mt-1 text-[11.5px] text-text-secondary">
-            Broken in {intel.mostCommonMistake.count} of your last {intel.windowSize} trade{intel.windowSize === 1 ? "" : "s"}.
-          </p>
+          {intel.mostCommonMistake ? (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+                Most common rule break
+              </p>
+              <p className="mt-1 text-[14px] font-semibold leading-snug text-text-primary">
+                {intel.mostCommonMistake.label}
+              </p>
+              <p className="mt-1 text-[11.5px] text-text-secondary">
+                Broken in {intel.mostCommonMistake.count} of your last {intel.windowSize} trade{intel.windowSize === 1 ? "" : "s"}.
+              </p>
+            </div>
+          ) : null}
+          {intel.mostCommonMistakeTag ? (
+            <div className={intel.mostCommonMistake ? "border-t border-border/60 pt-3" : ""}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+                Most common behavioral mistake
+              </p>
+              <p className="mt-1 text-[14px] font-semibold leading-snug text-text-primary">
+                {intel.mostCommonMistakeTag.label}
+              </p>
+              <p className="mt-1 text-[11.5px] text-text-secondary">
+                Tagged on {intel.mostCommonMistakeTag.count} of your last {intel.windowSize} trade{intel.windowSize === 1 ? "" : "s"}.
+              </p>
+            </div>
+          ) : null}
         </motion.div>
       ) : null}
 
