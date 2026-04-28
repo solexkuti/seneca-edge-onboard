@@ -522,6 +522,83 @@ function UnlockReasonTicker({
   );
 }
 
+// ── UnlockSteps ─────────────────────────────────────────────────────────
+// Deterministic remediation list. For every gate that is currently
+// failing, render the exact action the user must take to satisfy it.
+// No animation, no AI — pure derivation from props.
+function UnlockSteps({
+  checklistConfirmed,
+  disciplineState,
+  score,
+}: {
+  checklistConfirmed: boolean;
+  disciplineState: string;
+  score: number;
+}) {
+  const steps: { key: string; title: string; detail: string }[] = [];
+
+  if (!checklistConfirmed) {
+    steps.push({
+      key: "checklist",
+      title: "Confirm today’s checklist",
+      detail:
+        "Open Daily → run through every item → tap Confirm. The gate releases the moment the day is marked confirmed.",
+    });
+  }
+
+  if (disciplineState === "locked") {
+    steps.push({
+      key: "recovery",
+      title: "Complete the recovery plan",
+      detail:
+        "Open Recovery → finish the prescribed cooldown and reflection steps. State will exit ‘Out of Control’ once the plan is closed.",
+    });
+  }
+
+  if (score < 40) {
+    const gap = 40 - score;
+    steps.push({
+      key: "score",
+      title: `Rebuild discipline score by ${gap} pts (need ≥ 40)`,
+      detail:
+        "Score is recency-weighted across your last 10 analyzer events and trades. Log clean, rule-following actions — each one lifts the score until you cross the 40 threshold.",
+    });
+  }
+
+  if (steps.length === 0) return null;
+
+  return (
+    <div className="mt-4 rounded-xl bg-card/60 p-3 ring-1 ring-border">
+      <div className="flex items-center gap-2">
+        <ShieldCheck className="h-3.5 w-3.5 flex-none text-foreground/60" aria-hidden />
+        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground/70">
+          How to unlock
+        </div>
+        <div className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">
+          {steps.length} {steps.length === 1 ? "step" : "steps"}
+        </div>
+      </div>
+      <ol className="mt-2 space-y-2">
+        {steps.map((s, i) => (
+          <li key={s.key} className="flex items-start gap-2.5">
+            <span className="mt-0.5 inline-flex h-5 w-5 flex-none items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary ring-1 ring-primary/20">
+              {i + 1}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-medium text-foreground">
+                {s.title}
+              </div>
+              <div className="mt-0.5 text-[11px] leading-relaxed text-foreground/65">
+                {s.detail}
+              </div>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 // ── helpers ─────────────────────────────────────────────────────────────
 
 function prettyState(s: string): string {
