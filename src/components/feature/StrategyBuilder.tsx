@@ -580,6 +580,7 @@ function StepParse({
             max_drawdown_pct: bp.max_drawdown_pct,
           },
           refinementHistory: bp.refinement_history ?? [],
+          tierRules: bp.tier_rules,
         },
       });
       if (error) throw error;
