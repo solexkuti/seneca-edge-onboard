@@ -69,6 +69,20 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  // Recover any unsynced journal submissions on app load and when the
+  // tab regains focus / comes back online.
+  useEffect(() => {
+    void flushPending();
+    const onFocus = () => void flushPending();
+    const onOnline = () => void flushPending();
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("online", onOnline);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("online", onOnline);
+    };
+  }, []);
+
   return (
     <>
       <Outlet />
