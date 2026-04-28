@@ -37,6 +37,12 @@ export default function TraderStateGate({
 }: Props) {
   const { state } = useTraderState();
   const navigate = useNavigate();
+  const bypass = enforcementDisabled();
+  // When enforcement is disabled, only the no_strategy gate stays active —
+  // it is the redirect into onboarding, not a punitive lock.
+  const effectiveEnforce = bypass
+    ? enforce.filter((e) => e === "no_strategy")
+    : enforce;
 
   // Hard redirect: no strategy → builder. Per spec, this is not a soft block.
   useEffect(() => {
