@@ -184,7 +184,8 @@ export default function AnalyzerLockScreen({ children }: Props) {
 function prettyState(s: string): string {
   if (s === "locked") return "Out of Control";
   if (s === "at_risk") return "At Risk";
-  if (s === "optimal") return "In Control";
+  if (s === "slipping") return "Slipping";
+  if (s === "in_control") return "In Control";
   return s;
 }
 

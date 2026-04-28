@@ -27,6 +27,11 @@ import {
   type RecentDecision,
 } from "@/lib/analyzerEvents";
 import {
+  loadDisciplineBreakdown,
+  type DisciplineBreakdown,
+  type DisciplineState as RawDisciplineState,
+} from "@/lib/disciplineScore";
+import {
   getActiveRecoverySession,
   evaluateProbation,
   RECOVERY_EVENT,
@@ -34,13 +39,15 @@ import {
   type ProbationStatus,
 } from "@/lib/recovery";
 
-export type DisciplineState = "optimal" | "at_risk" | "locked";
+export type DisciplineState = RawDisciplineState; // in_control | slipping | at_risk | locked
 
 export type DisciplineSummary = {
-  score: number;            // 0–100, rolling
+  score: number;            // 0–100, final
   state: DisciplineState;
   consecutive_breaks: number;
   recent: RecentDecision[];
+  /** Full transparent breakdown — drives the score breakdown UI. */
+  breakdown: DisciplineBreakdown;
 };
 
 export type SessionSummary = {
@@ -68,11 +75,25 @@ export type TraderState = {
   };
 };
 
+const EMPTY_BREAKDOWN: DisciplineBreakdown = {
+  score: 50,
+  state: "at_risk",
+  decision_score: 50,
+  decision_sample: 0,
+  decision_contributions: [],
+  execution_score: 50,
+  execution_sample: 0,
+  execution_contributions: [],
+  penalties: [],
+  execution_neutral: true,
+};
+
 export const EMPTY_DISCIPLINE: DisciplineSummary = {
   score: 50,
   state: "at_risk",
   consecutive_breaks: 0,
   recent: [],
+  breakdown: EMPTY_BREAKDOWN,
 };
 
 export const EMPTY_STATE: TraderState = {
@@ -104,47 +125,58 @@ export const EMPTY_STATE: TraderState = {
 };
 
 /**
- * Compute discipline from a rolling window of recent decisions.
- * Both analyzer events and execution logs contribute via score_delta.
+ * Adapt the deterministic breakdown into the legacy DisciplineSummary shape
+ * that the rest of the app already consumes. The breakdown is the source of
+ * truth — `score`, `state`, and `consecutive_breaks` are derived from it.
  */
-export function computeDiscipline(recent: RecentDecision[]): DisciplineSummary {
+function summarize(
+  breakdown: DisciplineBreakdown,
+  recent: RecentDecision[],
+): DisciplineSummary {
   const window = recent.slice(0, 20);
-  // Start at neutral 50, apply deltas (already signed).
-  let score = 50;
-  for (const d of window) score += d.score_delta;
-  score = Math.max(0, Math.min(100, score));
-
-  // Consecutive breaks (most-recent-first).
   let streak = 0;
   for (const d of window) {
     if (d.verdict === "invalid") streak += 1;
     else break;
   }
+  return {
+    score: breakdown.score,
+    state: breakdown.state,
+    consecutive_breaks: streak,
+    recent: window,
+    breakdown,
+  };
+}
 
-  let state: DisciplineState = "optimal";
-  if (score < 50) state = "locked";
-  else if (score < 80) state = "at_risk";
-
-  return { score, state, consecutive_breaks: streak, recent: window };
+/**
+ * @deprecated Use `loadDisciplineBreakdown()` from `@/lib/disciplineScore`.
+ * Kept as a back-compat shim that wraps the new deterministic scorer.
+ */
+export function computeDiscipline(recent: RecentDecision[]): DisciplineSummary {
+  // The new scorer needs raw rows; if a caller only has `recent_decisions`,
+  // fall back to a neutral breakdown — they should migrate to the new API.
+  return summarize(EMPTY_BREAKDOWN, recent);
 }
 
 export async function loadTraderState(): Promise<TraderState> {
-  const [strategy, lock, recent, activeRecovery, probation] = await Promise.all([
-    loadActiveStrategyContext().catch(() => null),
-    fetchTradeLockState().catch(() => null),
-    fetchRecentDecisions(20).catch(() => [] as RecentDecision[]),
-    getActiveRecoverySession().catch(() => null),
-    evaluateProbation().catch(() => ({
-      active: false,
-      passed: false,
-      failed: false,
-      decisions_required: 2,
-      decisions_seen: 0,
-      last_session_id: null,
-    })),
-  ]);
+  const [strategy, lock, recent, breakdown, activeRecovery, probation] =
+    await Promise.all([
+      loadActiveStrategyContext().catch(() => null),
+      fetchTradeLockState().catch(() => null),
+      fetchRecentDecisions(20).catch(() => [] as RecentDecision[]),
+      loadDisciplineBreakdown().catch(() => EMPTY_BREAKDOWN),
+      getActiveRecoverySession().catch(() => null),
+      evaluateProbation().catch(() => ({
+        active: false,
+        passed: false,
+        failed: false,
+        decisions_required: 2,
+        decisions_seen: 0,
+        last_session_id: null,
+      })),
+    ]);
 
-  const discipline = computeDiscipline(recent);
+  const discipline = summarize(breakdown, recent);
   const checklist_confirmed = !!lock && !lock.trade_lock;
   const has_strategy = !!strategy?.blueprint;
   const discipline_locked = discipline.state === "locked";
