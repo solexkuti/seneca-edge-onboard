@@ -168,6 +168,7 @@ export default function ChartAnalyzer() {
       const breakdown = evaluateChartAgainstStrategy(
         features,
         activeStrategy.structured_rules as never,
+        Number(data.confidence ?? 0),
       );
 
       // Save to DB
