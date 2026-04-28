@@ -268,6 +268,29 @@ type UserContext = {
     suggest_no_trade_day: boolean;
     strategy_name: string;
   };
+  /**
+   * The exact rules the user TICKED and locked in today, with the original
+   * timestamp of that confirmation. Mentor cites these verbatim when the
+   * user breaks one — "you broke rule entry-2 you confirmed at 09:14".
+   */
+  confirmedRules?: {
+    confirmed_at: string;
+    generated_for: string;
+    rules: Array<{ id: string; label: string; category: string }>;
+  };
+  /**
+   * The most recent broken trade logged AFTER today's confirmation. This
+   * is the trade that the mentor calls out as the trigger.
+   */
+  triggeringBrokenTrade?: {
+    logged_at: string;
+    market: string | null;
+    direction: string | null;
+    result: string | null;
+    broken_categories: string[];
+    mistake_tag: string | null;
+    discipline_score: number;
+  };
 };
 
 const STRICT_MODE_ADDENDUM = `
