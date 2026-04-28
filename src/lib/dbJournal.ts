@@ -6,6 +6,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { JournalEntry } from "@/lib/tradingJournal";
 import { JOURNAL_EVENT, readJournal as readLocalJournal } from "@/lib/tradingJournal";
+import { fetchTradeLockState, broadcastLockChange } from "@/lib/tradeLock";
 
 export type EmotionalState =
   | "calm"
