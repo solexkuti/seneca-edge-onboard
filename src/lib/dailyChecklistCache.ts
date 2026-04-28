@@ -23,7 +23,9 @@ export type DailyChecklistCache = {
   strategy_name: string;
 };
 
-const KEY = "seneca.dailyChecklist.v1";
+import { userKey } from "@/lib/userScopedStorage";
+
+const SUFFIX = "dailyChecklist.v1";
 
 function todayLabel(): string {
   return new Date().toISOString().slice(0, 10);
@@ -32,7 +34,7 @@ function todayLabel(): string {
 export function saveDailyChecklist(c: DailyChecklistCache): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(c));
+    window.localStorage.setItem(userKey(SUFFIX), JSON.stringify(c));
   } catch {
     // ignore — quota or private mode
   }
@@ -41,7 +43,7 @@ export function saveDailyChecklist(c: DailyChecklistCache): void {
 export function getDailyChecklist(): DailyChecklistCache | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = window.localStorage.getItem(userKey(SUFFIX));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as DailyChecklistCache;
     // Hard expiry: must match today's date.
@@ -57,7 +59,7 @@ export function getDailyChecklist(): DailyChecklistCache | null {
 export function clearDailyChecklist(): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(KEY);
+    window.localStorage.removeItem(userKey(SUFFIX));
   } catch {
     // ignore
   }

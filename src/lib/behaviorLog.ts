@@ -13,12 +13,14 @@ export type CheckRecord = {
   decision: "proceeded" | "reconsidered";
 };
 
-const KEY = "seneca_check_history";
+import { userKey } from "@/lib/userScopedStorage";
+
+const SUFFIX = "check_history";
 
 function safeRead(): CheckRecord[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = window.localStorage.getItem(userKey(SUFFIX));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -36,7 +38,7 @@ export function logCheck(record: Omit<CheckRecord, "id" | "timestamp">) {
   };
   const all = safeRead();
   all.unshift(entry);
-  window.localStorage.setItem(KEY, JSON.stringify(all.slice(0, 50)));
+  window.localStorage.setItem(userKey(SUFFIX), JSON.stringify(all.slice(0, 50)));
   try {
     window.dispatchEvent(new CustomEvent("seneca:check-logged", { detail: entry }));
   } catch {
@@ -45,7 +47,8 @@ export function logCheck(record: Omit<CheckRecord, "id" | "timestamp">) {
 }
 
 export const CHECK_HISTORY_EVENT = "seneca:check-logged";
-export const CHECK_HISTORY_KEY = KEY;
+/** @deprecated use userKey('check_history') from userScopedStorage. */
+export const CHECK_HISTORY_KEY = "seneca_check_history";
 
 export function readCheckHistory(): CheckRecord[] {
   return safeRead();

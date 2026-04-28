@@ -25,13 +25,15 @@ export type JournalEntry = {
   };
 };
 
-const KEY = "seneca_trading_journal";
+import { userKey } from "@/lib/userScopedStorage";
+
+const SUFFIX = "trading_journal";
 export const JOURNAL_EVENT = "seneca:journal-updated";
 
 function safeRead(): JournalEntry[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = window.localStorage.getItem(userKey(SUFFIX));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -62,7 +64,7 @@ export function logJournalEntry(
   if (typeof window === "undefined") return full;
   const all = safeRead();
   all.unshift(full);
-  window.localStorage.setItem(KEY, JSON.stringify(all.slice(0, 200)));
+  window.localStorage.setItem(userKey(SUFFIX), JSON.stringify(all.slice(0, 200)));
   try {
     window.dispatchEvent(new CustomEvent(JOURNAL_EVENT, { detail: full }));
   } catch {
