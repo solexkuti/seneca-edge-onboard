@@ -180,7 +180,7 @@ export default function StrategyBuilder({
       cancelled = true;
       window.clearTimeout(timeoutTimer);
     };
-  }, [blueprintId, navigate]);
+  }, [blueprintId]);
 
   const startFresh = async () => {
     try {
