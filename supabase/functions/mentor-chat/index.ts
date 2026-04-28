@@ -248,6 +248,18 @@ type UserContext = {
     locked: boolean;
     rules: string;
   };
+  /** Today's adaptive Daily Checklist — the enforced rules for this session. */
+  dailyChecklist?: {
+    generated_for: string;
+    control_state: "in_control" | "at_risk" | "out_of_control";
+    discipline_score: number;
+    allowed_tiers: string[];
+    applied_restrictions: string[];
+    weak_categories: string[];
+    focus: string[];
+    suggest_no_trade_day: boolean;
+    strategy_name: string;
+  };
 };
 
 const STRICT_MODE_ADDENDUM = `
