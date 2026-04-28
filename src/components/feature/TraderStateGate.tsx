@@ -6,7 +6,8 @@
 // Every trading surface (Chart Analyzer, Trade Gate, Journal logging) must
 // wrap its content in this gate. There is no bypass.
 
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { Lock, ShieldAlert, ArrowRight, Loader2, Target } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTraderState } from "@/hooks/useTraderState";
@@ -34,6 +35,18 @@ export default function TraderStateGate({
   enforce = ["no_strategy", "not_confirmed", "discipline_locked"],
 }: Props) {
   const { state } = useTraderState();
+  const navigate = useNavigate();
+
+  // Hard redirect: no strategy → builder. Per spec, this is not a soft block.
+  useEffect(() => {
+    if (
+      !state.loading &&
+      enforce.includes("no_strategy") &&
+      state.blocks.no_strategy
+    ) {
+      void navigate({ to: "/hub/strategy/new", replace: true });
+    }
+  }, [state.loading, state.blocks.no_strategy, enforce, navigate]);
 
   let block: Block = "ok";
   if (state.loading) block = "loading";
