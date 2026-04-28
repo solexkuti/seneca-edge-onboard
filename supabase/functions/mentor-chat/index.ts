@@ -210,7 +210,15 @@ HARD RULES
 - NEVER say "I don't have enough information." Offer your best general guidance, then invite the user to share more.
 - NEVER give live trade signals (entry/SL/TP). If asked: "I won't give you a signal — but I'm happy to think through the setup with you so you can decide."
 - NEVER guarantee outcomes or returns.
-- NEVER criticize the user as a person. Always separate the behavior from their identity.`;
+- NEVER criticize the user as a person. Always separate the behavior from their identity.
+
+DAILY CHECKLIST — TODAY'S ENFORCED RULES (highest-priority context when present)
+- The [Today's Daily Checklist] block, when present, is the enforced execution context for THIS trading session. It is generated each morning from the user's strategy + their last 20 trades + behavior patterns. It is not advisory — the user committed to it.
+- Whenever the user asks about taking a trade, evaluating a setup, "should I…", "is this okay", "i'm thinking of…", or anything related to live execution, you MUST reference today's rules first. Cite the control state, the allowed tiers, and any applied restriction that touches the situation. Example: "Today is AT RISK — only A+ and B+ setups, and you committed to a 5-minute pause before entry. Does this one clear that bar?"
+- If today's checklist forbids what the user is considering (e.g. it's a no-trade day, the setup is below allowed tiers, or an applied restriction blocks it), you do not soften it. Name the restriction directly, then ask one process question. You stay warm but you do not negotiate against today's rules.
+- If [Today's Daily Checklist] is missing, gently remind the user once that the day's checklist hasn't been generated yet — and suggest they generate it before trading. Do not invent rules to fill the gap.
+- The Daily Checklist's "focus" lines are the user's chosen focus for the day. When closing the conversation, you may echo or build on one of them — never contradict them.
+- Never propose new trading rules outside what's already in the active strategy or today's checklist. Your job is to enforce, clarify, and help reflect — not to add discretion.`;
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -247,6 +255,18 @@ type UserContext = {
     name: string;
     locked: boolean;
     rules: string;
+  };
+  /** Today's adaptive Daily Checklist — the enforced rules for this session. */
+  dailyChecklist?: {
+    generated_for: string;
+    control_state: "in_control" | "at_risk" | "out_of_control";
+    discipline_score: number;
+    allowed_tiers: string[];
+    applied_restrictions: string[];
+    weak_categories: string[];
+    focus: string[];
+    suggest_no_trade_day: boolean;
+    strategy_name: string;
   };
 };
 
@@ -402,11 +422,32 @@ Deno.serve(async (req) => {
         context.intelligence ||
         (context.recentPatterns && context.recentPatterns.length > 0) ||
         (context.lastTwoTrades && context.lastTwoTrades.length > 0) ||
-        context.activeStrategy)
+        context.activeStrategy ||
+        context.dailyChecklist)
     );
     let contextBlock = "";
     if (hasContext) {
       contextBlock = "\n\nUSER CONTEXT (real data — weave in gently when it helps the user see themselves clearly):";
+      if (context!.dailyChecklist) {
+        const d = context!.dailyChecklist;
+        const stateLabel =
+          d.control_state === "in_control"
+            ? "IN CONTROL"
+            : d.control_state === "at_risk"
+              ? "AT RISK"
+              : "OUT OF CONTROL";
+        const restrictions =
+          d.applied_restrictions.length > 0
+            ? d.applied_restrictions.map((r) => `  - ${r}`).join("\n")
+            : "  - (none today)";
+        const focus =
+          d.focus.length > 0
+            ? d.focus.map((f) => `  - ${f}`).join("\n")
+            : "  - (none)";
+        const weak =
+          d.weak_categories.length > 0 ? d.weak_categories.join(", ") : "none";
+        contextBlock += `\n\n[Today's Daily Checklist — ACTIVE for ${d.generated_for}]\nThis is the ENFORCED rule set for this session. Reference it before discussing any setup or trade.\n- Strategy: ${d.strategy_name}\n- Control state: ${stateLabel}\n- Discipline score: ${d.discipline_score}/100\n- Allowed setups today: ${d.allowed_tiers.join(", ")}\n- Weak rule categories: ${weak}\n- No-trade-day suggested: ${d.suggest_no_trade_day ? "YES" : "no"}\n- Today's focus:\n${focus}\n- Adaptive restrictions in force today:\n${restrictions}`;
+      }
       if (context!.activeStrategy) {
         const s = context!.activeStrategy;
         contextBlock += `\n\n[Active Strategy${s.locked ? " — LOCKED" : ""}: ${s.name}]\nThe user is committed to these rules. Reference them when relevant. NEVER suggest rules outside this set.\n${s.rules}`;

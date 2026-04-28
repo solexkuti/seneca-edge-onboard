@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Loader2, Download, ShieldAlert, ShieldCheck, Shield } from "lucide-react";
 import RequireAuth from "@/components/auth/RequireAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { saveDailyChecklist } from "@/lib/dailyChecklistCache";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/hub/daily")({
@@ -31,7 +32,11 @@ type GenResult = {
   discipline_score: number;
   allowed_tiers: string[];
   applied_restrictions: string[];
+  weak_categories: string[];
+  focus: string[];
   suggest_no_trade_day: boolean;
+  strategy_name: string;
+  generated_for: string;
   pdf_base64: string;
   filename: string;
 };
@@ -88,7 +93,18 @@ function DailyChecklistPage() {
       if (error) throw error;
       const r = data as GenResult;
       setResult(r);
-      toast.success("Daily checklist ready.");
+      saveDailyChecklist({
+        generated_for: r.generated_for,
+        control_state: r.control_state,
+        discipline_score: r.discipline_score,
+        allowed_tiers: r.allowed_tiers,
+        applied_restrictions: r.applied_restrictions,
+        weak_categories: r.weak_categories ?? [],
+        focus: r.focus ?? [],
+        suggest_no_trade_day: r.suggest_no_trade_day,
+        strategy_name: r.strategy_name,
+      });
+      toast.success("Today's checklist is active.");
     } catch (err) {
       console.error(err);
       const msg =

@@ -20,6 +20,7 @@ import {
   summarizeRulesForAI,
   type ActiveStrategyContext,
 } from "@/lib/activeStrategy";
+import { getDailyChecklist } from "@/lib/dailyChecklistCache";
 import { toast } from "sonner";
 
 type Msg = {
@@ -174,8 +175,9 @@ export default function AiMentorChat() {
           rules: summarizeRulesForAI(activeStrategy.rules),
         }
       : undefined;
+    const dailyChecklistPayload = getDailyChecklist() ?? undefined;
     const ctx =
-      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload
+      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload || dailyChecklistPayload
         ? {
             ...(journalSummary ? { journalSummary } : {}),
             ...(profileSummary ? { profileSummary } : {}),
@@ -183,6 +185,7 @@ export default function AiMentorChat() {
             ...(recentPatternsPayload ? { recentPatterns: recentPatternsPayload } : {}),
             ...(lastTwoPayload ? { lastTwoTrades: lastTwoPayload } : {}),
             ...(strategyPayload ? { activeStrategy: strategyPayload } : {}),
+            ...(dailyChecklistPayload ? { dailyChecklist: dailyChecklistPayload } : {}),
           }
         : undefined;
 
