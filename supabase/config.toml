@@ -2,3 +2,12 @@ project_id = "rziqoacxwzmnbswgzrfz"
 
 [functions.mentor-chat]
 verify_jwt = false
+
+[functions.parse-strategy]
+verify_jwt = false
+
+[functions.generate-strategy-output]
+verify_jwt = false
+
+[functions.export-strategy-pdf]
+verify_jwt = false
