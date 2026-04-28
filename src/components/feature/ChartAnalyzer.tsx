@@ -59,12 +59,16 @@ export default function ChartAnalyzer() {
   const [phase, setPhase] = useState<Phase>("setup");
   const [step, setStep] = useState(0);
   const [invalidReason, setInvalidReason] = useState<string>("");
+  const [invalidDetails, setInvalidDetails] = useState<string[]>([]);
   const [result, setResult] = useState<{
     row: ChartAnalysisRow;
     breakdown: RuleBreakdown;
     insight: string;
     execPreview: string;
     higherPreview: string | null;
+    modelUsed: "primary" | "fallback";
+    pipelineConfidence: number; // 0–1
+    warnings: string[];
   } | null>(null);
 
   const execInputRef = useRef<HTMLInputElement>(null);
