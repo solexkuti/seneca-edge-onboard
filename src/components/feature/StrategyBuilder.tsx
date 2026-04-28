@@ -279,7 +279,7 @@ export default function StrategyBuilder({
             <button
               key={s.key}
               type="button"
-              onClick={() => setStepIdx(i)}
+              onClick={() => void goToStep(i)}
               className={`h-1.5 flex-1 rounded-full transition-colors ${
                 i <= stepIdx ? "bg-primary" : "bg-border"
               }`}
@@ -333,7 +333,7 @@ export default function StrategyBuilder({
         <div className="mt-5 flex items-center justify-between">
           <button
             type="button"
-            onClick={() => setStepIdx((i) => Math.max(0, i - 1))}
+            onClick={() => void goToStep(stepIdx - 1)}
             disabled={stepIdx === 0}
             className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-foreground/80 hover:bg-card disabled:opacity-40"
           >
@@ -342,7 +342,7 @@ export default function StrategyBuilder({
           {stepIdx < STEPS.length - 1 ? (
             <button
               type="button"
-              onClick={() => setStepIdx((i) => Math.min(STEPS.length - 1, i + 1))}
+              onClick={() => void goToStep(stepIdx + 1)}
               disabled={!canAdvance || busy}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-soft transition hover:opacity-95 disabled:opacity-40"
             >
