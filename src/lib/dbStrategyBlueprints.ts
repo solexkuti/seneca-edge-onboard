@@ -97,12 +97,25 @@ export async function listBlueprints(): Promise<StrategyBlueprint[]> {
 }
 
 export async function getBlueprint(id: string): Promise<StrategyBlueprint | null> {
+  const { data: userRes, error: userErr } = await supabase.auth.getUser();
+  if (userErr) throw userErr;
+  const uid = userRes.user?.id;
+  if (!uid) throw new Error("Not authenticated");
+
+  // eslint-disable-next-line no-console
+  console.log("[blueprints] fetch by id", { strategyId: id, userId: uid });
   const { data, error } = await supabase
     .from("strategy_blueprints")
     .select("*")
     .eq("id", id)
+    .eq("user_id", uid)
     .maybeSingle();
-  if (error) throw error;
+  if (error) {
+    console.error("[blueprints] fetch by id failed", { strategyId: id, error });
+    throw error;
+  }
+  // eslint-disable-next-line no-console
+  console.log("[blueprints] fetch by id result", { strategyId: id, found: !!data });
   return (data ?? null) as unknown as StrategyBlueprint | null;
 }
 
