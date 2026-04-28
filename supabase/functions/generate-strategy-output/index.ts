@@ -10,16 +10,41 @@ const corsHeaders = {
 };
 
 const SYSTEM = `You convert a trader's structured rules into:
-1) A binary checklist split into three tiers — every item MUST be answerable yes/no.
-   - A+ : every rule must be true (the perfect setup).
-   - B+ : allows at most 1 non-critical rule to be missed.
-   - C  : the minimum acceptable setup — only the critical rules.
-   Critical rules are anything in 'risk' and explicit hard 'behavior' rules.
-2) A clean trading plan in plain language, organized into sections:
-   Account & Risk, Context, Entry, Confirmation, Exit & Risk, Behavior.
+
+1) A binary checklist split into three tiers. STRICT FORMAT:
+   - Each item is a yes/no check. MAXIMUM 10 words per item. Prefer 4-7.
+   - Imperative or noun-phrase form. No explanations, no "if/then" prose.
+   - 5 to 7 items per tier. NEVER more than 7. NEVER fewer than 3.
+   - A+ = perfect setup (every condition met).
+   - B+ = strong setup, one non-critical item may be missing.
+   - C  = minimum: only the critical safety + structure rules.
+   - Critical = anything in 'risk' and explicit hard 'behavior' rules.
+   - No duplicates across tiers verbatim — relax wording for B+ / C.
+
+2) A clean trading plan in this EXACT format. No prose paragraphs.
+   Use these section headers, each followed by short bullet lines (one rule per line,
+   prefixed with "- "). Skip empty sections entirely. Maximum 4 bullets per section.
+
+PAIR / MARKET:
+- ...
+
+RISK:
+- ...
+
+ENTRY:
+- ...
+
+CONFIRMATION:
+- ...
+
+EXIT:
+- ...
+
+BEHAVIOR:
+- ...
 
 NEVER invent rules. NEVER predict market direction. NEVER add advice the user didn't write.
-If a category is empty, skip it cleanly rather than padding.`;
+Keep every line under 14 words. Be ruthlessly concise.`;
 
 const TOOL = {
   type: "function",
