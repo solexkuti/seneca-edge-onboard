@@ -32,7 +32,11 @@ type GenResult = {
   discipline_score: number;
   allowed_tiers: string[];
   applied_restrictions: string[];
+  weak_categories: string[];
+  focus: string[];
   suggest_no_trade_day: boolean;
+  strategy_name: string;
+  generated_for: string;
   pdf_base64: string;
   filename: string;
 };
