@@ -15,6 +15,11 @@ import {
   INTENT_STYLES,
 } from "@/lib/mentorSuggestions";
 import { readProfile, summarizeProfile } from "@/lib/onboardingProfile";
+import {
+  loadActiveStrategyContext,
+  summarizeRulesForAI,
+  type ActiveStrategyContext,
+} from "@/lib/activeStrategy";
 import { toast } from "sonner";
 
 type Msg = {
