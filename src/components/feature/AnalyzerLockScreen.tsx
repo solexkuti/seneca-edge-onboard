@@ -18,6 +18,8 @@ import {
   ArrowRight,
   Brain,
   AlertTriangle,
+  XCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { useTraderState } from "@/hooks/useTraderState";
 import { logLockAttempt, type LockAttemptReason } from "@/lib/lockAttempts";
