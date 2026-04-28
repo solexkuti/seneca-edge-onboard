@@ -190,6 +190,17 @@ export default function AnalyzerLockScreen({ children }: Props) {
             {subtitle}
           </p>
 
+          {/* Unlock-reason micro-animation — deterministic. Walks through
+             the three gates (Checklist → Discipline state → Score) and
+             dwells on the one currently failing so the user can see, at
+             a glance, what is keeping the lock active. CTA copy unchanged. */}
+          <UnlockReasonTicker
+            checklistConfirmed={state.session.checklist_confirmed}
+            disciplineState={state.discipline.state}
+            score={state.discipline.score}
+            reduceMotion={reduceMotion}
+          />
+
           {/* State indicators */}
           <div className="mt-5 grid grid-cols-2 gap-2">
             <Indicator
