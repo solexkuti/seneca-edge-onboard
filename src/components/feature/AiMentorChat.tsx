@@ -38,10 +38,15 @@ export default function AiMentorChat() {
   const { rows, entries: journal } = useDbJournal();
   const intelligence = useMemo(() => computeIntelligence(rows), [rows]);
   const [recentPatterns, setRecentPatterns] = useState<DbBehaviorPattern[]>([]);
+  const [activeStrategy, setActiveStrategy] =
+    useState<ActiveStrategyContext | null>(null);
   useEffect(() => {
     let cancelled = false;
     fetchRecentPatterns(3).then((p) => {
       if (!cancelled) setRecentPatterns(p);
+    });
+    loadActiveStrategyContext().then((s) => {
+      if (!cancelled) setActiveStrategy(s);
     });
     return () => {
       cancelled = true;
