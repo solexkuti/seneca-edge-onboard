@@ -219,7 +219,29 @@ type UserContext = {
   systemRules?: string;
   /** From the 4-step onboarding personalization (market, experience, challenge, goal). */
   profileSummary?: string;
+  /** Live intelligence snapshot derived from the last 20 trades. */
+  intelligence?: {
+    disciplineScore: number | null;
+    windowSize: number;
+    mostCommonMistake: string | null;
+    disciplineStreak: number;
+    twoUndisciplinedInARow: boolean;
+  };
+  /** Most recent persisted behavior patterns (kind + message + when). */
+  recentPatterns?: Array<{ kind: string; message: string; detected_at: string }>;
 };
+
+const STRICT_MODE_ADDENDUM = `
+
+STRICT MODE — ACTIVE THIS TURN
+The user has just logged two or more undisciplined trades in a row. Their system is breaking down right now. For this reply only, shift tone:
+- Stay warm but firm. No softening words like "totally fine", "no worries", "that's okay".
+- Name the pattern out loud in one sentence ("Two trades in a row broke the plan — that's the actual problem to address.").
+- If a recent mistake_tag exists, call it out specifically.
+- Refuse to discuss new setups, market views, or "next trade" thinking. Redirect every attempt back to a cooldown.
+- Close with a hard, single question that forces a process answer (not a feeling answer).
+- Stay under 110 words. No grounding-action paragraph. No spiral fallback. This overrides the normal structure.
+`;
 
 // ── Hidden analytics helpers ───────────────────────────────────────────────
 type EmotionalState =
@@ -352,15 +374,33 @@ Deno.serve(async (req) => {
     // Build a USER CONTEXT block only when real data exists.
     const hasContext = !!(
       context &&
-      (context.journalSummary || context.systemRules || context.profileSummary)
+      (context.journalSummary ||
+        context.systemRules ||
+        context.profileSummary ||
+        context.intelligence ||
+        (context.recentPatterns && context.recentPatterns.length > 0))
     );
     let contextBlock = "";
     if (hasContext) {
       contextBlock = "\n\nUSER CONTEXT (real data — weave in gently when it helps the user see themselves clearly):";
       if (context!.profileSummary) {
-        // Profile from onboarding: market, experience, biggest struggle, goal.
-        // Use it to tune depth, vocabulary, and emphasis — never quote it back as a list.
         contextBlock += `\n\n[Trader Profile]\n${context!.profileSummary}`;
+      }
+      if (context!.intelligence) {
+        const i = context!.intelligence;
+        const lines = [
+          `Discipline score (last ${i.windowSize} trades): ${i.disciplineScore ?? "n/a"}%`,
+          `Current discipline streak: ${i.disciplineStreak} clean trade${i.disciplineStreak === 1 ? "" : "s"}`,
+          i.mostCommonMistake ? `Most common mistake right now: ${i.mostCommonMistake}` : null,
+          i.twoUndisciplinedInARow ? `WARNING: last two trades both broke the plan.` : null,
+        ].filter(Boolean);
+        contextBlock += `\n\n[Intelligence Snapshot]\n${lines.join("\n")}`;
+      }
+      if (context!.recentPatterns && context!.recentPatterns.length > 0) {
+        contextBlock += `\n\n[Recent Behavior Patterns]\n` +
+          context!.recentPatterns
+            .map((p) => `- ${p.kind}: ${p.message}`)
+            .join("\n");
       }
       if (context!.journalSummary) {
         contextBlock += `\n\n[Trading Journal]\n${context!.journalSummary}`;
@@ -373,7 +413,9 @@ Deno.serve(async (req) => {
         "\n\nUSER CONTEXT: none yet. Offer warm, general guidance. Do NOT mention missing data. Do NOT refuse. Invite the user to share more about their situation through your soft closing.";
     }
 
-    const systemContent = SYSTEM_PROMPT + contextBlock;
+    const strictMode = !!context?.intelligence?.twoUndisciplinedInARow;
+    const systemContent =
+      SYSTEM_PROMPT + contextBlock + (strictMode ? STRICT_MODE_ADDENDUM : "");
 
     const upstream = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
