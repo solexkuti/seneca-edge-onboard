@@ -11,8 +11,9 @@ import {
   submitJournalEntry,
   type NewJournalSubmission,
 } from "@/lib/dbJournal";
+import { userKey } from "@/lib/userScopedStorage";
 
-const PENDING_KEY = "journal_pending_submissions_v1";
+const PENDING_SUFFIX = "journal_pending_submissions_v1";
 const MAX_SYNC_ATTEMPTS = 3;
 
 export type PendingEntry = {
@@ -27,7 +28,7 @@ export type PendingEntry = {
 function readQueue(): PendingEntry[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(PENDING_KEY);
+    const raw = window.localStorage.getItem(userKey(PENDING_SUFFIX));
     return raw ? (JSON.parse(raw) as PendingEntry[]) : [];
   } catch {
     return [];
@@ -37,7 +38,7 @@ function readQueue(): PendingEntry[] {
 function writeQueue(list: PendingEntry[]) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+    window.localStorage.setItem(userKey(PENDING_SUFFIX), JSON.stringify(list));
   } catch {
     /* quota exceeded — best effort */
   }
@@ -62,7 +63,7 @@ export function subscribePending(listener: Listener): () => void {
   listeners.add(listener);
   // Also reflect storage edits from other tabs.
   const onStorage = (e: StorageEvent) => {
-    if (e.key === PENDING_KEY) listener();
+    if (e.key && e.key.endsWith(`:${PENDING_SUFFIX}`)) listener();
   };
   if (typeof window !== "undefined") {
     window.addEventListener("storage", onStorage);
