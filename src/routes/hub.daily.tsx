@@ -173,7 +173,30 @@ function DailyChecklistPage() {
         "generate-daily-checklist",
         { headers: { Accept: "application/json" } },
       );
-      if (error) throw error;
+      if (error) {
+        // Try to extract structured error body (e.g. STRATEGY_REQUIRED 409)
+        let body: { code?: string; error?: string; next_action?: string } | null = null;
+        try {
+          const ctx = (error as { context?: Response }).context;
+          if (ctx && typeof ctx.json === "function") {
+            body = await ctx.clone().json();
+          }
+        } catch {
+          /* ignore parse errors */
+        }
+        if (body?.code === "STRATEGY_REQUIRED" || body?.code === "STRATEGY_RULES_EMPTY") {
+          toast.error(body.error ?? "Build a strategy first.", {
+            action: {
+              label: "Open Builder",
+              onClick: () => {
+                window.location.href = "/hub/strategy";
+              },
+            },
+          });
+          return;
+        }
+        throw new Error(body?.error ?? error.message ?? "Could not generate checklist.");
+      }
       const r = data as GenResult;
       setResult(r);
       setStreak(r.streak);
