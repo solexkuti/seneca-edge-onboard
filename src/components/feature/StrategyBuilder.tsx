@@ -87,29 +87,55 @@ export default function StrategyBuilder({
   const [bp, setBp] = useState<StrategyBlueprint | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
   const step = STEPS[stepIdx];
 
-  // Bootstrap: load existing or create new.
+  // Guard against React StrictMode / re-renders creating multiple blueprints.
+  const bootstrappedRef = useRef(false);
+
+  // Bootstrap: load existing or create new — exactly once per mount.
   useEffect(() => {
+    if (bootstrappedRef.current) return;
+    bootstrappedRef.current = true;
+
     let cancelled = false;
     (async () => {
       try {
         if (blueprintId) {
           const existing = await getBlueprint(blueprintId);
-          if (existing && !cancelled) setBp(existing);
-        } else {
-          const created = await createBlueprint();
-          if (!cancelled) {
-            setBp(created);
-            void navigate({
-              to: "/hub/strategy/$id",
-              params: { id: created.id },
-              replace: true,
-            });
+          if (cancelled) return;
+          if (!existing) {
+            setBootError("Strategy not found.");
+            return;
           }
+          // Initialize step from persisted session (NEVER reset to 0).
+          const idx = Math.max(
+            0,
+            STEPS.findIndex((s) => s.key === (existing.current_step ?? "account")),
+          );
+          setStepIdx(idx === -1 ? 0 : idx);
+          setBp(existing);
+          // eslint-disable-next-line no-console
+          console.log("[StrategyBuilder] SESSION resumed:", existing.id, "STEP:", existing.current_step);
+        } else {
+          // "Preparing your system…" splash before creating the session.
+          await new Promise((r) => setTimeout(r, 500));
+          const created = await createBlueprint();
+          if (cancelled) return;
+          // eslint-disable-next-line no-console
+          console.log("[StrategyBuilder] SESSION created:", created.id, "STEP:", created.current_step);
+          // Hand off to the persistent /$id route. `replace` so back button
+          // doesn't bounce the user back into a fresh-create loop.
+          void navigate({
+            to: "/hub/strategy/$id",
+            params: { id: created.id },
+            replace: true,
+          });
         }
       } catch (err) {
-        console.error("bootstrap blueprint failed", err);
+        console.error("[StrategyBuilder] bootstrap failed", err);
+        const msg = err instanceof Error ? err.message : "Could not start a new strategy.";
+        setBootError(msg);
         toast.error("Could not load strategy. Are you signed in?");
       }
     })();
@@ -127,6 +153,24 @@ export default function StrategyBuilder({
     } catch (err) {
       console.error("update failed", err);
       toast.error("Could not save changes.");
+    }
+  };
+
+  // Single source of truth for step transitions: updates state AND persists.
+  const goToStep = async (nextIdx: number) => {
+    if (!bp) return;
+    const clamped = Math.max(0, Math.min(STEPS.length - 1, nextIdx));
+    const nextKey = STEPS[clamped].key;
+    setStepIdx(clamped);
+    // eslint-disable-next-line no-console
+    console.log("[StrategyBuilder] STEP →", nextKey);
+    if (bp.current_step !== nextKey) {
+      try {
+        const updated = await updateBlueprint(bp.id, { current_step: nextKey });
+        setBp(updated);
+      } catch (err) {
+        console.error("step persistence failed", err);
+      }
     }
   };
 
