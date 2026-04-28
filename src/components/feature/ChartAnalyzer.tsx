@@ -747,7 +747,14 @@ function ResultView({
         })}
       </div>
 
-      {/* AI Insight */}
+      {/* Structured AI Explanation */}
+      <ExplanationCard
+        loading={result.explanationLoading}
+        error={result.explanationError}
+        explanation={result.explanation}
+      />
+
+      {/* AI Insight (legacy short observation, only if present) */}
       {result.insight && (
         <div className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
           <div className="flex items-center gap-2">
