@@ -21,6 +21,10 @@ import {
   type ActiveStrategyContext,
 } from "@/lib/activeStrategy";
 import { getDailyChecklist } from "@/lib/dailyChecklistCache";
+import {
+  fetchTodayConfirmation,
+  fetchPostConfirmationBreak,
+} from "@/lib/checklistConfirmation";
 import { toast } from "sonner";
 
 type Msg = {
