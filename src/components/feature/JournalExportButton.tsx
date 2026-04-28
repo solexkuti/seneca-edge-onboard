@@ -44,7 +44,9 @@ export default function JournalExportButton({ rows, label, triggerLabel = "Expor
     if (busy) return;
     playFeedback("tap");
     setBusy(fmt);
-    const result = await exportJournal(fmt, { from, to });
+    const result = rows
+      ? await exportJournal(fmt, { rows, label })
+      : await exportJournal(fmt, { range: { from, to } });
     setBusy(null);
     if (result.ok) {
       toast.success(
