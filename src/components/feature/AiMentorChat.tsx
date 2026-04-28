@@ -22,6 +22,8 @@ import {
 } from "@/lib/activeStrategy";
 import { getDailyChecklist } from "@/lib/dailyChecklistCache";
 import { toast } from "sonner";
+import MentorRecoveryChecklist from "./MentorRecoveryChecklist";
+import { useTraderState } from "@/hooks/useTraderState";
 
 type Msg = {
   id: string;
