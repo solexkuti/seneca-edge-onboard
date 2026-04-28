@@ -173,7 +173,33 @@ function DailyChecklistPage() {
         "generate-daily-checklist",
         { headers: { Accept: "application/json" } },
       );
-      if (error) throw error;
+      if (error) {
+        // Try to extract structured error code from the response body.
+        let code: string | undefined;
+        let message: string | undefined;
+        try {
+          const ctx = (error as { context?: Response }).context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            code = body?.code;
+            message = body?.error;
+          }
+        } catch {
+          /* fall through to generic */
+        }
+        if (code === "STRATEGY_REQUIRED" || code === "STRATEGY_RULES_EMPTY") {
+          toast.error(message ?? "Build a strategy first.", {
+            action: {
+              label: "Open Builder",
+              onClick: () => {
+                window.location.href = "/hub/strategy";
+              },
+            },
+          });
+          return;
+        }
+        throw new Error(message ?? error.message);
+      }
       const r = data as GenResult;
       setResult(r);
       setStreak(r.streak);
