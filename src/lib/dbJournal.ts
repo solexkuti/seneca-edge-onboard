@@ -169,8 +169,30 @@ export async function submitJournalEntry(
     .single();
 
   if (logError || !log) {
-    // Roll back the trade insert so state stays consistent.
-    await supabase.from("trades").delete().eq("id", trade.id);
+    // 23505 = unique_violation on (trade_id) → a parallel submission already
+    // wrote this log. Treat as success and return the existing row.
+    if ((logError as any)?.code === "23505") {
+      const { data: existing } = await supabase
+        .from("discipline_logs")
+        .select(
+          `id, trade_id, followed_entry, followed_exit, followed_risk,
+           followed_behavior, discipline_score, emotional_state, notes,
+           trade:trades!inner (
+             id, market, direction, result, rr, executed_at, strategy_id,
+             strategy:strategies ( id, name, entry_rule, exit_rule, risk_rule, behavior_rule )
+           )`,
+        )
+        .eq("trade_id", trade.id)
+        .maybeSingle();
+      if (existing) {
+        const row = combine(existing.trade as any, existing as any);
+        return { ok: true, row };
+      }
+    }
+    // Only roll back the trade if we created it on this call.
+    if (!duplicateTrade) {
+      await supabase.from("trades").delete().eq("id", trade.id);
+    }
     return {
       ok: false,
       error: logError?.message ?? "Failed to save behavior log.",
