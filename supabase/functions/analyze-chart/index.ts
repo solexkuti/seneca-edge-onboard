@@ -249,6 +249,13 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // ── HARD LOCK ENFORCEMENT ────────────────────────────────────────────
+    // Mirror the client-side TRADER_STATE: refuse to analyze if the caller
+    // is in lock state. This is defense-in-depth against direct API calls
+    // that bypass the AnalyzerLockScreen.
+    const lockResp = await enforceAnalyzerLock(req);
+    if (lockResp) return lockResp;
+
     const { exec_image_url, higher_image_url } = await req.json();
     if (!exec_image_url || typeof exec_image_url !== "string") {
       return new Response(JSON.stringify({ error: "exec_image_url required" }), {
