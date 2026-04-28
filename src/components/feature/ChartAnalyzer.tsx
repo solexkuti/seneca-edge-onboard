@@ -158,8 +158,10 @@ export default function ChartAnalyzer() {
       });
       if (error) throw new Error(error.message || "Analysis failed");
 
-      if (!data?.is_chart) {
+      // Pipeline rejected the image — show details from validation stage
+      if (data?.status === "rejected" || data?.is_chart === false) {
         setInvalidReason(data?.reason || "This is not a valid chart.");
+        setInvalidDetails(Array.isArray(data?.details) ? data.details : []);
         setPhase("invalid");
         return;
       }
@@ -169,13 +171,25 @@ export default function ChartAnalyzer() {
         exec: data.features?.exec ?? {},
         higher: data.features?.higher ?? null,
       };
+      // Pipeline confidence is 0–1; rule engine expects 0–100 chart confidence.
+      const pipelineConf: number = Number(data?.confidence ?? 0);
+      const validationConfPct: number = Number(
+        data?.confidence_pct ?? Math.round(pipelineConf * 100),
+      );
+
       const breakdown = evaluateChartAgainstStrategy(
         features,
         activeStrategy.structured_rules as never,
-        Number(data.confidence ?? 0),
+        validationConfPct,
       );
 
-      // Save to DB
+      const warnings: string[] = Array.isArray(data?.warnings)
+        ? [...data.warnings]
+        : [];
+      const modelUsed: "primary" | "fallback" =
+        data?.model_used === "fallback" ? "fallback" : "primary";
+
+      // Save to DB (back-compat shape preserved)
       const row = await saveChartAnalysis({
         blueprint_id: activeStrategy.id,
         strategy_name: activeStrategy.name,
@@ -184,7 +198,7 @@ export default function ChartAnalyzer() {
         exec_image_path: execPath,
         higher_image_path: higherPath,
         is_chart: true,
-        chart_confidence: Number(data.confidence ?? 0),
+        chart_confidence: validationConfPct,
         chart_reason: data.reason ?? null,
         features,
         rule_breakdown: breakdown,
@@ -199,6 +213,9 @@ export default function ChartAnalyzer() {
         insight: data.ai_insight ?? "",
         execPreview,
         higherPreview,
+        modelUsed,
+        pipelineConfidence: pipelineConf,
+        warnings,
       });
       setPhase("result");
     } catch (e) {
