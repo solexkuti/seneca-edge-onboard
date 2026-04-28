@@ -9,6 +9,7 @@ import JournalExportButton from "@/components/feature/JournalExportButton";
 import JournalSyncStatus from "@/components/feature/JournalSyncStatus";
 import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 import { playFeedback } from "@/lib/feedback";
+import RequireAuth from "@/components/auth/RequireAuth";
 
 const EMOTIONAL_STATES = ["all", "calm", "fearful", "frustrated", "overconfident", "confused"] as const;
 const SORTS = ["recent", "oldest", "discipline_high", "discipline_low"] as const;
@@ -39,7 +40,11 @@ export const Route = createFileRoute("/hub/journal/history")({
     );
   },
   notFoundComponent: () => <div className="p-6">Not found</div>,
-  component: HistoryPage,
+  component: () => (
+    <RequireAuth>
+      <HistoryPage />
+    </RequireAuth>
+  ),
 });
 
 function HistoryPage() {

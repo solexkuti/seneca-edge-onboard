@@ -3,6 +3,7 @@ import { History } from "lucide-react";
 import TradingJournalFlow from "@/components/feature/TradingJournalFlow";
 import JournalExportButton from "@/components/feature/JournalExportButton";
 import JournalSyncStatus from "@/components/feature/JournalSyncStatus";
+import RequireAuth from "@/components/auth/RequireAuth";
 
 export const Route = createFileRoute("/hub/journal")({
   head: () => ({
@@ -15,7 +16,11 @@ export const Route = createFileRoute("/hub/journal")({
       },
     ],
   }),
-  component: JournalRoute,
+  component: () => (
+    <RequireAuth>
+      <JournalRoute />
+    </RequireAuth>
+  ),
 });
 
 function JournalRoute() {

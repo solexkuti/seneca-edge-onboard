@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import AiMentorChat from "@/components/feature/AiMentorChat";
+import RequireAuth from "@/components/auth/RequireAuth";
 
 export const Route = createFileRoute("/hub/mentor")({
   head: () => ({
@@ -12,5 +13,9 @@ export const Route = createFileRoute("/hub/mentor")({
       },
     ],
   }),
-  component: AiMentorChat,
+  component: () => (
+    <RequireAuth>
+      <AiMentorChat />
+    </RequireAuth>
+  ),
 });
