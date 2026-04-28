@@ -14,7 +14,7 @@
 //
 // Safety: AI never predicts direction; only restructures the user's own words.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -92,23 +92,26 @@ export default function StrategyBuilder({
   const [slowLoad, setSlowLoad] = useState(false);
   const step = STEPS[stepIdx];
 
-  // Guard against React StrictMode double-invoke creating multiple blueprints.
-  // Keyed by blueprintId so navigating from /new -> /$id (which reuses this
-  // component instance at the same tree position) re-runs the bootstrap.
-  const bootstrappedRef = useRef<string | "__new__" | null>(null);
-
   // Bootstrap: load existing or create new — exactly once per (blueprintId).
   useEffect(() => {
-    const key = blueprintId ?? "__new__";
-    if (bootstrappedRef.current === key) return;
-    bootstrappedRef.current = key;
+    setBp(null);
+    setBootError(null);
     setSlowLoad(false);
 
     let cancelled = false;
-    // 3s failsafe — surface a "Start fresh" CTA if we're still spinning.
-    const slowTimer = window.setTimeout(() => {
-      if (!cancelled) setSlowLoad(true);
-    }, 3000);
+    const timeoutMs = blueprintId ? 3000 : 5000;
+    const timeoutTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      console.error("[StrategyBuilder] Strategy load timed out", { strategyId: blueprintId });
+      setSlowLoad(true);
+      setBootError("Strategy load timed out. Please retry or start fresh.");
+      setBp(null);
+      cancelled = true;
+    }, timeoutMs);
+
+    const finish = () => {
+      window.clearTimeout(timeoutTimer);
+    };
 
     // Hard timeout helper — DB calls must NEVER hang the bootstrap.
     const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
@@ -122,32 +125,20 @@ export default function StrategyBuilder({
     (async () => {
       try {
         if (blueprintId) {
+          // eslint-disable-next-line no-console
+          console.log("[StrategyBuilder] fetch existing strategy", { strategyId: blueprintId });
           const existing = await withTimeout(
             getBlueprint(blueprintId),
-            5000,
+            3000,
             "getBlueprint",
-          ).catch((err) => {
-            console.error("[StrategyBuilder] getBlueprint failed", err);
-            return null;
-          });
+          );
           if (cancelled) return;
+          finish();
+          // eslint-disable-next-line no-console
+          console.log("[StrategyBuilder] fetch existing result", { strategyId: blueprintId, found: !!existing });
           if (!existing) {
-            // Don't dead-end the user — reuse an empty draft if one exists.
-            console.warn(
-              "[StrategyBuilder] blueprint missing/timed out, finding draft:",
-              blueprintId,
-            );
-            const created = await withTimeout(
-              findOrCreateDraft(),
-              5000,
-              "findOrCreateDraft",
-            );
-            if (cancelled) return;
-            void navigate({
-              to: "/hub/strategy/$id",
-              params: { id: created.id },
-              replace: true,
-            });
+            console.error("[StrategyBuilder] strategy not found", { strategyId: blueprintId });
+            setBootError("Strategy not found or you do not have access to it.");
             return;
           }
           const idx = Math.max(
@@ -168,6 +159,7 @@ export default function StrategyBuilder({
             "findOrCreateDraft",
           );
           if (cancelled) return;
+          finish();
           // eslint-disable-next-line no-console
           console.log("[StrategyBuilder] SESSION ready:", created.id, "STEP:", created.current_step);
           void navigate({
@@ -177,19 +169,18 @@ export default function StrategyBuilder({
           });
         }
       } catch (err) {
+        finish();
         console.error("[StrategyBuilder] Strategy load failed", err);
         const msg = err instanceof Error ? err.message : "Could not start a new strategy.";
         setBootError(msg);
         toast.error("Couldn't load existing strategy. Start fresh.");
-      } finally {
-        window.clearTimeout(slowTimer);
       }
     })();
     return () => {
       cancelled = true;
-      window.clearTimeout(slowTimer);
+      window.clearTimeout(timeoutTimer);
     };
-  }, [blueprintId, navigate]);
+  }, [blueprintId]);
 
   const startFresh = async () => {
     try {
