@@ -17,6 +17,15 @@ export type EmotionalState =
 export type TradeDirection = "long" | "short";
 export type TradeResult = "win" | "loss" | "breakeven";
 
+export type MistakeTagValue =
+  | "fomo"
+  | "revenge"
+  | "overleveraged"
+  | "early_exit"
+  | "late_entry"
+  | "no_setup"
+  | "emotional";
+
 export type NewJournalSubmission = {
   user_id?: string;
   executed_at?: string;
@@ -37,6 +46,7 @@ export type NewJournalSubmission = {
   };
   emotional_state: EmotionalState;
   notes?: string;
+  mistake_tag?: MistakeTagValue | null;
 };
 
 export type DbJournalRow = {
@@ -56,6 +66,7 @@ export type DbJournalRow = {
   resultR: number;       // signed R for legacy compatibility
   emotional_state: EmotionalState;
   notes: string | null;
+  mistake_tag: MistakeTagValue | null;
   strategy_id: string | null;
   strategy_name: string | null;
   entry_rule: string | null;
