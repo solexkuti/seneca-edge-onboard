@@ -735,6 +735,7 @@ function StepRefine({
             max_drawdown_pct: bp.max_drawdown_pct,
           },
           refinementHistory: history.filter((h) => h.accepted),
+          tierRules: bp.tier_rules,
         },
       });
       if (error) throw error;
