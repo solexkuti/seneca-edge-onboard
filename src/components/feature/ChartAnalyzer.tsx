@@ -821,6 +821,9 @@ function ResultView({
         </span>
       </div>
 
+      {/* Transparent Decision Score math — refreshed after every analyzer event. */}
+      <ScoreCalculationTrace />
+
       {result.modelUsed === "fallback" && (
         <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
