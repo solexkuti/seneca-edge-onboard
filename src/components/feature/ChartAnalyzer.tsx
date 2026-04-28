@@ -589,6 +589,46 @@ const VERDICT_STYLES: Record<
   },
 };
 
+// Suggest a concrete next action when a strategy rule fails.
+// Keeps language strict: never tells the user to take the trade.
+function nextActionFor(
+  section: "entry" | "structure" | "risk" | "timing",
+  rule: string,
+): string {
+  const r = rule.toLowerCase();
+  if (section === "entry") {
+    if (r.includes("liquidity") || r.includes("sweep"))
+      return "Wait for a clean liquidity sweep before considering entry.";
+    if (r.includes("confirm") || r.includes("close"))
+      return "Wait for confirmation candle close in your direction.";
+    if (r.includes("retest") || r.includes("pullback"))
+      return "Wait for price to retest the level before entering.";
+    return "Do not enter. Wait for this entry condition to actually appear.";
+  }
+  if (section === "structure") {
+    if (r.includes("trend"))
+      return "Skip until trend direction is unambiguous on this timeframe.";
+    if (r.includes("range") || r.includes("consolidat"))
+      return "Avoid trading mid-range. Wait for a clean break or reclaim.";
+    return "Structure is unclear. Re-check on a higher timeframe before acting.";
+  }
+  if (section === "risk") {
+    if (r.includes("stop") || r.includes("sl"))
+      return "Do not widen stop. Skip the trade if invalidation is too far.";
+    if (r.includes("rr") || r.includes("reward"))
+      return "Skip — reward-to-risk does not meet your minimum.";
+    if (r.includes("volatil"))
+      return "Volatility is off. Reduce size or wait for conditions to normalize.";
+    return "Risk profile does not match your rules. Stand down.";
+  }
+  // timing
+  if (r.includes("higher") || r.includes("htf") || r.includes("alignment"))
+    return "Wait for higher-timeframe alignment before taking this setup.";
+  if (r.includes("session") || r.includes("hour") || r.includes("time"))
+    return "Outside your session window. Wait for your defined trading hours.";
+  return "Timing is off. Do not force this trade.";
+}
+
 function ResultView({
   result,
   onReset,
