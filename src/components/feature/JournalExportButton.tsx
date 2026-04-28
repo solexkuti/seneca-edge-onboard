@@ -22,9 +22,19 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { exportJournal, type ExportFormat } from "@/lib/journalExport";
+import type { DbJournalRow } from "@/lib/dbJournal";
 import { playFeedback } from "@/lib/feedback";
 
-export default function JournalExportButton() {
+type Props = {
+  /** When provided, exports exactly these rows (e.g. filtered view). */
+  rows?: DbJournalRow[];
+  /** Filename hint, e.g. "filtered". */
+  label?: string;
+  /** Trigger button label. Defaults to "Export". */
+  triggerLabel?: string;
+};
+
+export default function JournalExportButton({ rows, label, triggerLabel = "Export" }: Props = {}) {
   const [busy, setBusy] = useState<ExportFormat | null>(null);
   const [from, setFrom] = useState<Date | undefined>();
   const [to, setTo] = useState<Date | undefined>();
