@@ -617,8 +617,12 @@ Deno.serve(async (req) => {
     }
 
     const strictMode = !!context?.intelligence?.strictModeActive;
+    const hasTraderState = !!context?.traderState;
     const systemContent =
-      SYSTEM_PROMPT + contextBlock + (strictMode ? STRICT_MODE_ADDENDUM : "");
+      SYSTEM_PROMPT +
+      contextBlock +
+      (hasTraderState ? AWARENESS_LAYER_ADDENDUM : "") +
+      (strictMode ? STRICT_MODE_ADDENDUM : "");
 
     const upstream = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
