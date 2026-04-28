@@ -473,6 +473,65 @@ Deno.serve(async (req) => {
           d.weak_categories.length > 0 ? d.weak_categories.join(", ") : "none";
         contextBlock += `\n\n[Today's Daily Checklist — ACTIVE for ${d.generated_for}]\nThis is the ENFORCED rule set for this session. Reference it before discussing any setup or trade.\n- Strategy: ${d.strategy_name}\n- Control state: ${stateLabel}\n- Discipline score: ${d.discipline_score}/100\n- Allowed setups today: ${d.allowed_tiers.join(", ")}\n- Weak rule categories: ${weak}\n- No-trade-day suggested: ${d.suggest_no_trade_day ? "YES" : "no"}\n- Today's focus:\n${focus}\n- Adaptive restrictions in force today:\n${restrictions}`;
       }
+
+      // Confirmed rules — what the user PERSONALLY ticked and locked in.
+      // The mentor cites these by id + label + the original confirm time.
+      if (context!.confirmedRules && context!.confirmedRules.rules.length > 0) {
+        const cr = context!.confirmedRules;
+        const confirmedAtLabel = (() => {
+          try {
+            const dt = new Date(cr.confirmed_at);
+            return dt.toLocaleString(undefined, {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          } catch {
+            return cr.confirmed_at;
+          }
+        })();
+        const grouped: Record<string, string[]> = {};
+        for (const r of cr.rules) {
+          const cat = r.category || "rule";
+          if (!grouped[cat]) grouped[cat] = [];
+          grouped[cat].push(`  - [${r.id}] ${r.label}`);
+        }
+        const block = Object.entries(grouped)
+          .map(([cat, lines]) => `${cat.toUpperCase()}\n${lines.join("\n")}`)
+          .join("\n");
+        contextBlock += `\n\n[Confirmed Rules — locked in by the user at ${confirmedAtLabel}]\nThe user personally ticked and committed to every rule below. They are the binding promise the mentor enforces. Cite by id (e.g. [entry-2]) and reference the confirmation time when calling out a break.\n${block}`;
+      }
+
+      // The latest broken trade AFTER today's confirmation. This is the
+      // trigger the mentor is allowed to call out: "you confirmed your
+      // checklist at 09:14 and broke entry on the next trade at 09:42".
+      if (context!.triggeringBrokenTrade) {
+        const t = context!.triggeringBrokenTrade;
+        const loggedAtLabel = (() => {
+          try {
+            const dt = new Date(t.logged_at);
+            return dt.toLocaleString(undefined, {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          } catch {
+            return t.logged_at;
+          }
+        })();
+        const broken =
+          t.broken_categories.length > 0
+            ? t.broken_categories.join(", ")
+            : "(none)";
+        const market = t.market ?? "—";
+        const direction = (t.direction ?? "").toUpperCase() || "—";
+        const result = t.result ?? "—";
+        const tag = t.mistake_tag ? ` | tag: ${t.mistake_tag}` : "";
+        contextBlock += `\n\n[Triggering Broken Trade — logged AFTER today's confirmation]\nThis trade is the one that breaks the commitment the user made today. When the user is in denial, evasive, or asks "why are you bringing this up", lead with this entry.\n- [${loggedAtLabel}] ${market} ${direction} | ${result} | broke: ${broken}${tag} | score ${t.discipline_score}/100`;
+      }
+
       if (context!.activeStrategy) {
         const s = context!.activeStrategy;
         contextBlock += `\n\n[Active Strategy${s.locked ? " — LOCKED" : ""}: ${s.name}]\nThe user is committed to these rules. Reference them when relevant. NEVER suggest rules outside this set.\n${s.rules}`;
