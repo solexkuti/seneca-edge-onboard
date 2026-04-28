@@ -594,29 +594,62 @@ async function loadInputs(supabase: any, userId: string) {
     scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
   let current_streak = 0;
+  let consecutive_breaks = 0;
+  let countingBreaks = true;
   for (const t of tradesArr) {
     const dl = Array.isArray(t.discipline_logs) ? t.discipline_logs[0] : t.discipline_logs;
-    if (dl && dl.followed_entry && dl.followed_exit && dl.followed_risk && dl.followed_behavior) {
+    const clean =
+      dl && dl.followed_entry && dl.followed_exit && dl.followed_risk && dl.followed_behavior;
+    if (clean) {
       current_streak += 1;
-    } else break;
+      countingBreaks = false;
+    } else {
+      // Streak ends at the first non-clean trade.
+      // consecutive_breaks counts how many of the most recent trades broke the plan.
+      if (countingBreaks) consecutive_breaks += 1;
+      else break;
+    }
+    if (current_streak > 0 && !clean) break;
   }
 
-  // Behavior patterns -> normalized kinds
+  // Behavior patterns -> normalized kinds + repeat detection.
   const behavior_patterns: string[] = [];
   const seen = new Set<string>();
+  let has_repeat_pattern = false;
   for (const p of patterns ?? []) {
     const key = (p.pattern_type || p.kind || "").toString();
     if (key && !seen.has(key)) {
       seen.add(key);
       behavior_patterns.push(key);
     }
+    // pg trigger_count can be exposed later; for now infer repeats by duplicates
   }
+  // Pull a fresh "repeat" signal: any pattern with >1 trigger
+  const { data: repeats } = await supabase
+    .from("behavior_patterns")
+    .select("trigger_count")
+    .eq("user_id", userId)
+    .gt("trigger_count", 1)
+    .limit(1);
+  has_repeat_pattern = (repeats?.length ?? 0) > 0;
+
+  // Streak from server table (authoritative; trigger maintains it)
+  const { data: streakRow } = await supabase
+    .from("daily_streaks")
+    .select("current_streak,longest_streak,identity_label,last_break_date")
+    .eq("user_id", userId)
+    .maybeSingle();
 
   return {
     blueprint: bp as ActiveStrategyRow | undefined,
     discipline_score,
     last_20_trades_count: tradesArr.length,
-    current_streak,
+    current_streak: streakRow?.current_streak ?? current_streak,
+    longest_streak: streakRow?.longest_streak ?? current_streak,
+    identity_label: streakRow?.identity_label ?? "starting fresh",
+    last_break_date: streakRow?.last_break_date ?? null,
+    consecutive_breaks,
+    has_repeat_pattern,
     behavior_patterns,
   };
 }
