@@ -226,8 +226,43 @@ export default function ChartAnalyzer() {
         modelUsed,
         pipelineConfidence: pipelineConf,
         warnings,
+        explanation: null,
+        explanationLoading: true,
+        explanationError: null,
       });
       setPhase("result");
+
+      // Fire-and-update: fetch the structured mentor explanation.
+      void (async () => {
+        try {
+          const { data: exp, error: expErr } = await supabase.functions.invoke(
+            "explain-chart",
+            {
+              body: {
+                strategy_name: activeStrategy.name,
+                strategy_rules: activeStrategy.structured_rules,
+                chart_features: features,
+                rule_breakdown: breakdown,
+              },
+            },
+          );
+          if (expErr) throw new Error(expErr.message);
+          const explanation = (exp as { explanation?: ChartExplanation } | null)
+            ?.explanation;
+          if (!explanation) throw new Error("No explanation returned");
+          setResult((prev) =>
+            prev ? { ...prev, explanation, explanationLoading: false } : prev,
+          );
+        } catch (err) {
+          const m = err instanceof Error ? err.message : "Explanation failed";
+          console.error("[chart-analyzer] explanation failed:", err);
+          setResult((prev) =>
+            prev
+              ? { ...prev, explanationLoading: false, explanationError: m }
+              : prev,
+          );
+        }
+      })();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Analysis failed";
       console.error("[chart-analyzer] failed:", e);
