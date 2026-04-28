@@ -180,6 +180,9 @@ function Header({ userName, initial }: { userName?: string; initial: string }) {
             <span className="font-semibold text-text-primary">{userName}</span>.
           </p>
         )}
+        <div className="mt-3">
+          <TradeLockBadge />
+        </div>
       </div>
 
       <div
