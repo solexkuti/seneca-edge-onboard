@@ -731,8 +731,12 @@ async function loadInputs(supabase: any, userId: string) {
     const dl = Array.isArray(t.discipline_logs) ? t.discipline_logs[0] : t.discipline_logs;
     if (dl && typeof dl.discipline_score === "number") scores.push(dl.discipline_score);
   }
-  const discipline_score =
-    scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+  // If no scored discipline logs exist, mark score as unavailable.
+  // Downstream defaults the control_state to "at_risk" (safer than assuming "in_control").
+  const discipline_score_available = scores.length > 0;
+  const discipline_score = discipline_score_available
+    ? scores.reduce((a, b) => a + b, 0) / scores.length
+    : null;
 
   let current_streak = 0;
   let consecutive_breaks = 0;
