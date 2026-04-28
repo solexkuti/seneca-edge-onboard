@@ -323,6 +323,15 @@ export default function AnalyzerLockScreen({ children }: Props) {
             );
           })()}
 
+          {/* How to unlock — deterministic, ordered remediation steps for
+             every gate that is currently failing. Mirrors the same gate
+             evaluation as the lock-reason trace above. */}
+          <UnlockSteps
+            checklistConfirmed={state.session.checklist_confirmed}
+            disciplineState={state.discipline.state}
+            score={state.discipline.score}
+          />
+
           {/* CTAs */}
           <div className="mt-6 flex flex-col gap-2">
             <button
