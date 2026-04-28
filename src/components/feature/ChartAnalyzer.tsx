@@ -651,10 +651,20 @@ function ResultView({
       {/* Actions */}
       <div className="grid grid-cols-2 gap-2.5">
         <button
-          onClick={() => navigate({ to: "/hub/mind" })}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-mix px-4 py-3 text-[13.5px] font-semibold text-white shadow-soft hover:shadow-card-premium"
+          onClick={() => {
+            if (result.breakdown.overall === "invalid") {
+              toast.error("Setup is invalid — does not match strategy. Do not trade this.");
+              return;
+            }
+            if (result.breakdown.overall === "weak") {
+              toast.warning("Proceeding with a weak setup — review carefully.");
+            }
+            navigate({ to: "/hub/mind" });
+          }}
+          disabled={result.breakdown.overall === "invalid"}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-mix px-4 py-3 text-[13.5px] font-semibold text-white shadow-soft hover:shadow-card-premium disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Trade Gate
+          {result.breakdown.overall === "invalid" ? "Blocked" : "Trade Gate"}
           <ArrowRight className="h-4 w-4" />
         </button>
         <button
