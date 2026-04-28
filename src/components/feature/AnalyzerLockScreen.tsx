@@ -26,6 +26,40 @@ import { logLockAttempt, type LockAttemptReason } from "@/lib/lockAttempts";
 
 type Props = { children: React.ReactNode };
 
+// Single structured reason row: shows expected vs actual and whether
+// this gate is the one that failed.
+function ReasonBullet({
+  failed,
+  label,
+  expected,
+  actual,
+}: {
+  failed: boolean;
+  label: string;
+  expected: string;
+  actual: string;
+}) {
+  const Icon = failed ? XCircle : CheckCircle2;
+  const tone = failed ? "text-red-700" : "text-emerald-700";
+  const valueTone = failed ? "text-red-900" : "text-foreground/80";
+  return (
+    <li className="flex items-start gap-2">
+      <Icon className={`mt-0.5 h-3.5 w-3.5 flex-none ${tone}`} aria-hidden />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-xs font-medium text-foreground">{label}</span>
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            {expected}
+          </span>
+        </div>
+        <div className={`text-[11px] leading-relaxed ${valueTone}`}>
+          {actual}
+        </div>
+      </div>
+    </li>
+  );
+}
+
 export default function AnalyzerLockScreen({ children }: Props) {
   const { state } = useTraderState();
   const navigate = useNavigate();
