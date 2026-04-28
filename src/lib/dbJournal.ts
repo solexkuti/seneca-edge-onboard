@@ -216,6 +216,15 @@ export async function submitJournalEntry(
         full: tradeError,
         payload: tradePayload,
       });
+      // Surface the trigger's TRADING_LOCKED message cleanly.
+      if (tradeError?.message?.includes("TRADING_LOCKED")) {
+        broadcastLockChange();
+        return {
+          ok: false,
+          error:
+            "TRADING_LOCKED: Checklist confirmation required before trading. Open Daily Checklist.",
+        };
+      }
       return { ok: false, error: formatDbError(tradeError, "Failed to save trade.") };
     }
     console.log("[journal] trade inserted:", inserted.id);
@@ -284,11 +293,13 @@ export async function submitJournalEntry(
     };
   }
 
-  // Notify any subscribers (Control Hub, Mentor) to refresh.
+  // Notify any subscribers (Control Hub, Mentor, Trade Lock) to refresh.
   try {
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent(JOURNAL_EVENT));
     }
+    // The new discipline log may have flipped the re-lock condition.
+    broadcastLockChange();
   } catch {
     // ignore
   }
