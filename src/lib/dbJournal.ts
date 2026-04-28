@@ -164,48 +164,71 @@ export async function submitJournalEntry(
   if (duplicateTrade) {
     trade = duplicateTrade as any;
   } else {
+    const tradePayload = {
+      user_id: userId,
+      executed_at: executedAt,
+      market: input.trade.market,
+      direction: input.trade.direction,
+      entry_price: input.trade.entry_price ?? null,
+      stop_loss: input.trade.stop_loss ?? null,
+      take_profit: input.trade.take_profit ?? null,
+      result: input.trade.result ?? null,
+      rr: input.trade.rr ?? null,
+    };
+    console.log("[journal] inserting trade payload:", tradePayload);
+
     const { data: inserted, error: tradeError } = await supabase
       .from("trades")
-      .insert({
-        user_id: userId,
-        executed_at: executedAt,
-        market: input.trade.market,
-        direction: input.trade.direction,
-        entry_price: input.trade.entry_price ?? null,
-        stop_loss: input.trade.stop_loss ?? null,
-        take_profit: input.trade.take_profit ?? null,
-        result: input.trade.result ?? null,
-        rr: input.trade.rr ?? null,
-      })
+      .insert(tradePayload)
       .select()
       .single();
 
     if (tradeError || !inserted) {
-      if (tradeError) console.error(tradeError);
+      console.error("[journal] trades insert FAILED:", {
+        message: tradeError?.message,
+        details: tradeError?.details,
+        hint: tradeError?.hint,
+        code: tradeError?.code,
+        full: tradeError,
+        payload: tradePayload,
+      });
       return { ok: false, error: formatDbError(tradeError, "Failed to save trade.") };
     }
+    console.log("[journal] trade inserted:", inserted.id);
     trade = inserted as any;
   }
 
 
   // 2) Insert discipline log
+  const logPayload = {
+    user_id: userId,
+    trade_id: trade.id,
+    followed_entry: input.discipline.followed_entry,
+    followed_exit: input.discipline.followed_exit,
+    followed_risk: input.discipline.followed_risk,
+    followed_behavior: input.discipline.followed_behavior,
+    emotional_state: input.emotional_state,
+    notes: input.notes?.trim() ? input.notes.trim() : null,
+  };
+  console.log("[journal] inserting discipline_log payload:", logPayload);
+
   const { data: log, error: logError } = await supabase
     .from("discipline_logs")
-    .insert({
-      user_id: userId,
-      trade_id: trade.id,
-      followed_entry: input.discipline.followed_entry,
-      followed_exit: input.discipline.followed_exit,
-      followed_risk: input.discipline.followed_risk,
-      followed_behavior: input.discipline.followed_behavior,
-      emotional_state: input.emotional_state,
-      notes: input.notes?.trim() ? input.notes.trim() : null,
-    })
+    .insert(logPayload)
     .select()
     .single();
 
   if (logError || !log) {
-    if (logError) console.error(logError);
+    if (logError) {
+      console.error("[journal] discipline_logs insert FAILED:", {
+        message: logError.message,
+        details: logError.details,
+        hint: logError.hint,
+        code: logError.code,
+        full: logError,
+        payload: logPayload,
+      });
+    }
     // 23505 = unique_violation on (trade_id) → a parallel submission already
     // wrote this log. Treat as success and return the existing row.
     if ((logError as any)?.code === "23505") {
