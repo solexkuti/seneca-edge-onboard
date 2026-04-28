@@ -341,6 +341,37 @@ export default function AnalyzerLockScreen({ children }: Props) {
             feature. The lock will lift automatically the moment your state
             recovers — no refresh needed.
           </p>
+
+          {/* Reduce-motion toggle — purely presentational. Does not change
+             copy, CTA targets, or unlock logic. */}
+          <div className="mt-4 flex items-center justify-between rounded-xl bg-muted/30 px-3 py-2 ring-1 ring-border">
+            <div className="flex items-center gap-2 text-[11px] text-foreground/75">
+              {reduceMotion ? (
+                <MinusCircle className="h-3.5 w-3.5 text-foreground/55" aria-hidden />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 text-foreground/55" aria-hidden />
+              )}
+              <span>Reduce motion</span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={reduceMotion}
+              aria-label="Reduce motion on this screen"
+              onClick={() => setReduceMotion((v) => !v)}
+              className={[
+                "relative inline-flex h-5 w-9 flex-none items-center rounded-full transition-colors",
+                reduceMotion ? "bg-primary" : "bg-foreground/20",
+              ].join(" ")}
+            >
+              <span
+                className={[
+                  "inline-block h-4 w-4 transform rounded-full bg-background shadow transition-transform",
+                  reduceMotion ? "translate-x-4" : "translate-x-0.5",
+                ].join(" ")}
+              />
+            </button>
+          </div>
         </motion.div>
       </div>
     </div>
