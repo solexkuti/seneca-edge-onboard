@@ -51,6 +51,90 @@ export async function fetchTodayConfirmation(): Promise<ChecklistConfirmation | 
   return data ? (data as unknown as ChecklistConfirmation) : null;
 }
 
+// The most recent discipline log recorded AFTER the user locked today's
+// checklist that broke the plan. This is the trade that the Mentor cites
+// when calling the user out: "you broke rule X you confirmed at HH:MM".
+export type PostConfirmationBreak = {
+  trade_id: string;
+  logged_at: string; // ISO
+  followed_entry: boolean;
+  followed_exit: boolean;
+  followed_risk: boolean;
+  followed_behavior: boolean;
+  broken_categories: Array<"entry" | "exit" | "risk" | "behavior">;
+  mistake_tag: string | null;
+  discipline_score: number;
+  market: string | null;
+  direction: string | null;
+  result: string | null;
+};
+
+export async function fetchPostConfirmationBreak(
+  confirmedAtIso: string,
+): Promise<PostConfirmationBreak | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) return null;
+
+  // Pull the most recent undisciplined log created after the confirmation.
+  const { data: logs, error } = await supabase
+    .from("discipline_logs")
+    .select(
+      "trade_id,created_at,followed_entry,followed_exit,followed_risk,followed_behavior,mistake_tag,discipline_score",
+    )
+    .eq("user_id", uid)
+    .gte("created_at", confirmedAtIso)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  if (error || !logs?.length) return null;
+
+  const broken = logs.find(
+    (l) =>
+      !(l.followed_entry && l.followed_exit && l.followed_risk && l.followed_behavior),
+  );
+  if (!broken) return null;
+
+  // Fetch the parent trade for context (market/direction/result).
+  let market: string | null = null;
+  let direction: string | null = null;
+  let result: string | null = null;
+  try {
+    const { data: trade } = await supabase
+      .from("trades")
+      .select("market,direction,result")
+      .eq("id", broken.trade_id)
+      .maybeSingle();
+    if (trade) {
+      market = trade.market ?? null;
+      direction = trade.direction ?? null;
+      result = trade.result ?? null;
+    }
+  } catch {
+    // non-fatal
+  }
+
+  const broken_categories: PostConfirmationBreak["broken_categories"] = [];
+  if (!broken.followed_entry) broken_categories.push("entry");
+  if (!broken.followed_exit) broken_categories.push("exit");
+  if (!broken.followed_risk) broken_categories.push("risk");
+  if (!broken.followed_behavior) broken_categories.push("behavior");
+
+  return {
+    trade_id: broken.trade_id,
+    logged_at: broken.created_at,
+    followed_entry: broken.followed_entry,
+    followed_exit: broken.followed_exit,
+    followed_risk: broken.followed_risk,
+    followed_behavior: broken.followed_behavior,
+    broken_categories,
+    mistake_tag: broken.mistake_tag ?? null,
+    discipline_score: broken.discipline_score ?? 0,
+    market,
+    direction,
+    result,
+  };
+}
+
 export type ConfirmationInput = {
   control_state: ChecklistConfirmation["control_state"];
   discipline_score: number;
