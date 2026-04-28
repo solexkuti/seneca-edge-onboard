@@ -88,8 +88,13 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { rawInput, accountTypes, riskProfile, refinementHistory } =
-      await req.json();
+    const {
+      rawInput,
+      accountTypes,
+      riskProfile,
+      refinementHistory,
+      tierRules,
+    } = await req.json();
     if (!rawInput || typeof rawInput !== "string") {
       return new Response(JSON.stringify({ error: "rawInput is required" }), {
         status: 400,
@@ -117,6 +122,10 @@ Deno.serve(async (req: Request) => {
       "RAW STRATEGY INPUT:",
       rawInput,
       "",
+      tierRules &&
+      (tierRules.a_plus || tierRules.b_plus || tierRules.c)
+        ? `TIER DEFINITIONS (user-supplied):\nA+: ${tierRules.a_plus || "(none)"}\nB+: ${tierRules.b_plus || "(none)"}\nC : ${tierRules.c || "(none)"}`
+        : "",
       Array.isArray(refinementHistory) && refinementHistory.length
         ? "PRIOR REFINEMENT Q&A (treat answers as authoritative):\n" +
           refinementHistory

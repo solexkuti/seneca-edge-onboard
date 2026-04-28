@@ -39,6 +39,7 @@ import {
   type AmbiguityFlag,
   type RefinementQA,
   type ChecklistByTier,
+  type TierRules,
   EMPTY_RULES,
   createBlueprint,
   getBlueprint,
@@ -387,6 +388,7 @@ function StepRisk({
       hint: "Account-wide cap",
     },
   ];
+  const overCap = (bp.risk_per_trade_pct ?? 0) > 5;
   return (
     <div className="space-y-4">
       <Header
@@ -417,6 +419,15 @@ function StepRisk({
             <div className="mt-1 text-xs text-muted-foreground">{f.hint}</div>
           </div>
         ))}
+        {overCap && (
+          <div className="flex items-start gap-2 rounded-xl bg-amber-500/5 p-3 ring-1 ring-amber-500/30 text-xs text-amber-700 dark:text-amber-400">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              Risking more than 5% per trade is outside any sane discipline
+              envelope. Consider lowering this before locking.
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -461,36 +472,79 @@ function StepTiers({
   patch: (p: Partial<StrategyBlueprint>) => Promise<void>;
 }) {
   const t = bp.tier_strictness ?? { a_plus: 100, b_plus: 80, c: 60 };
-  const update = (k: keyof typeof t, v: number) =>
+  const r: TierRules = bp.tier_rules ?? { a_plus: "", b_plus: "", c: "" };
+  const updateStrict = (k: keyof typeof t, v: number) =>
     void patch({ tier_strictness: { ...t, [k]: v } });
+  const updateRule = (k: keyof TierRules, v: string) =>
+    void patch({ tier_rules: { ...r, [k]: v } });
+
+  const tiers: Array<{
+    k: keyof TierRules;
+    title: string;
+    sub: string;
+    placeholder: string;
+  }> = [
+    {
+      k: "a_plus",
+      title: "A+ — Perfect execution only",
+      sub: "Every condition met. No tolerance.",
+      placeholder:
+        "e.g. HTF bias aligned, key level reaction, volume confirmation, news clear, R:R ≥ 2.5",
+    },
+    {
+      k: "b_plus",
+      title: "B+ — One tolerated flaw",
+      sub: "Strong setup, missing one non-critical item.",
+      placeholder:
+        "e.g. all A+ except either volume confirmation OR news clear can be missing",
+    },
+    {
+      k: "c",
+      title: "C — Minimum acceptable",
+      sub: "Bare baseline. Below this you stand down.",
+      placeholder:
+        "e.g. HTF bias aligned + key level + R:R ≥ 1.5 — anything less = no trade",
+    },
+  ];
+
   return (
     <div className="space-y-4">
       <Header
         eyebrow="Step 4"
-        title="Tier strictness"
-        sub="A+ is the perfect setup. C is the bare minimum. Tighter sliders = stricter grading."
+        title="Define your standards"
+        sub="Strictness controls how rigidly each tier is enforced."
       />
-      {(
-        [
-          ["a_plus", "A+ — Perfect"],
-          ["b_plus", "B+ — Acceptable"],
-          ["c", "C — Minimum"],
-        ] as const
-      ).map(([k, label]) => (
-        <div key={k}>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-foreground/90">{label}</span>
-            <span className="text-muted-foreground">{t[k]}%</span>
+      {tiers.map(({ k, title, sub, placeholder }) => (
+        <div
+          key={k}
+          className="rounded-xl bg-background p-3 ring-1 ring-border space-y-2"
+        >
+          <div>
+            <div className="text-sm font-medium text-foreground">{title}</div>
+            <div className="text-xs text-muted-foreground">{sub}</div>
           </div>
-          <input
-            type="range"
-            min={20}
-            max={100}
-            step={5}
-            value={t[k]}
-            onChange={(e) => update(k, Number(e.target.value))}
-            className="mt-2 w-full accent-primary"
+          <textarea
+            value={r[k] ?? ""}
+            onChange={(e) => updateRule(k, e.target.value)}
+            rows={2}
+            placeholder={placeholder}
+            className="w-full rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
           />
+          <div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Strictness</span>
+              <span className="font-medium text-foreground/90">{t[k]}%</span>
+            </div>
+            <input
+              type="range"
+              min={20}
+              max={100}
+              step={5}
+              value={t[k]}
+              onChange={(e) => updateStrict(k, Number(e.target.value))}
+              className="mt-1 w-full accent-primary"
+            />
+          </div>
         </div>
       ))}
     </div>
@@ -526,6 +580,7 @@ function StepParse({
             max_drawdown_pct: bp.max_drawdown_pct,
           },
           refinementHistory: bp.refinement_history ?? [],
+          tierRules: bp.tier_rules,
         },
       });
       if (error) throw error;
@@ -633,6 +688,7 @@ function StepParse({
 }
 
 /* -------------------------- Step 6: Refinement ----------------------- */
+// One question per screen. Vague answers are rejected by AI before acceptance.
 function StepRefine({
   bp,
   patch,
@@ -645,26 +701,58 @@ function StepRefine({
   busy: boolean;
 }) {
   const history = bp.refinement_history ?? [];
+  const firstUnansweredIdx = history.findIndex((h) => !h.accepted);
+  const activeIdx = firstUnansweredIdx === -1 ? history.length - 1 : firstUnansweredIdx;
+  const active = history[activeIdx];
+  const answeredCount = history.filter((h) => h.accepted).length;
 
-  const setAnswer = (i: number, answer: string) => {
-    const next = history.map((h, idx) => (idx === i ? { ...h, answer } : h));
-    void patch({ refinement_history: next });
-  };
-  const accept = (i: number) => {
-    const item = history[i];
-    if (!item) return;
-    if (
-      !item.answer ||
-      item.answer.trim().length < 4 ||
-      /^(yes|no|idk|maybe|sure|nope)\.?$/i.test(item.answer.trim())
-    ) {
-      toast.error("Be specific — vague answers don't count.");
+  const [draft, setDraft] = useState(active?.answer ?? "");
+  const [rejection, setRejection] = useState<string | null>(null);
+  const [validating, setValidating] = useState(false);
+
+  // Reset draft whenever the active question changes
+  useEffect(() => {
+    setDraft(active?.answer ?? "");
+    setRejection(null);
+  }, [activeIdx, active?.question]);
+
+  const submitAnswer = async () => {
+    if (!active) return;
+    const trimmed = draft.trim();
+    if (trimmed.length < 4) {
+      setRejection("This answer is not precise enough. Be specific.");
       return;
     }
-    const next = history.map((h, idx) =>
-      idx === i ? { ...h, accepted: true } : h,
-    );
-    void patch({ refinement_history: next });
+    setValidating(true);
+    setRejection(null);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "validate-refinement-answer",
+        { body: { question: active.question, answer: trimmed } },
+      );
+      if (error) throw error;
+      if (!data?.accept) {
+        setRejection(
+          data?.followup ||
+            data?.reason ||
+            "This answer is not precise enough. Be specific.",
+        );
+        return;
+      }
+      const next = history.map((h, idx) =>
+        idx === activeIdx ? { ...h, answer: trimmed, accepted: true } : h,
+      );
+      await patch({ refinement_history: next });
+    } catch (err) {
+      console.error("validate answer failed", err);
+      // Fall back to permissive accept on infra error so user isn't blocked
+      const next = history.map((h, idx) =>
+        idx === activeIdx ? { ...h, answer: trimmed, accepted: true } : h,
+      );
+      await patch({ refinement_history: next });
+    } finally {
+      setValidating(false);
+    }
   };
 
   const reparse = async () => {
@@ -680,6 +768,7 @@ function StepRefine({
             max_drawdown_pct: bp.max_drawdown_pct,
           },
           refinementHistory: history.filter((h) => h.accepted),
+          tierRules: bp.tier_rules,
         },
       });
       if (error) throw error;
@@ -697,63 +786,110 @@ function StepRefine({
     }
   };
 
+  if (history.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Header
+          eyebrow="Step 6"
+          title="Refine the gaps"
+          sub="Run the AI parse step first to generate questions."
+        />
+      </div>
+    );
+  }
+
+  const allAccepted = firstUnansweredIdx === -1;
+
   return (
     <div className="space-y-4">
       <Header
         eyebrow="Step 6"
-        title="Refine the gaps"
-        sub="Answer precisely. Vague answers will be rejected."
+        title={allAccepted ? "All questions answered" : "Your logic is incomplete."}
+        sub={
+          allAccepted
+            ? "Apply your answers to update your structured rules."
+            : "Answer precisely. No skipping. Vague answers will be rejected."
+        }
       />
-      {history.length === 0 ? (
-        <div className="text-sm text-muted-foreground">
-          No questions yet — run the parse step first.
+
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          Question {Math.min(activeIdx + 1, history.length)} of {history.length}
+        </span>
+        <span>{answeredCount} accepted</span>
+      </div>
+      <div className="flex items-center gap-1">
+        {history.map((h, i) => (
+          <div
+            key={i}
+            className={`h-1 flex-1 rounded-full ${
+              h.accepted
+                ? "bg-primary"
+                : i === activeIdx
+                  ? "bg-primary/40"
+                  : "bg-border"
+            }`}
+          />
+        ))}
+      </div>
+
+      {!allAccepted && active && (
+        <div className="rounded-xl bg-background p-3 ring-1 ring-border">
+          <div className="text-sm font-medium text-foreground">
+            {active.question}
+          </div>
+          <textarea
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (rejection) setRejection(null);
+            }}
+            rows={3}
+            placeholder="Be specific — name a number, candle, time, or pattern."
+            className="mt-2 w-full rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+          />
+          {rejection && (
+            <div className="mt-2 flex items-start gap-2 rounded-lg bg-rose-500/5 p-2 ring-1 ring-rose-500/30 text-xs text-rose-700 dark:text-rose-400">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{rejection}</span>
+            </div>
+          )}
+          <div className="mt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={submitAnswer}
+              disabled={validating || draft.trim().length < 4}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-95 disabled:opacity-50"
+            >
+              {validating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              )}
+              Submit answer
+            </button>
+          </div>
         </div>
-      ) : (
-        <div className="space-y-3">
+      )}
+
+      {allAccepted && (
+        <div className="space-y-2">
           {history.map((h, i) => (
             <div
               key={i}
-              className={`rounded-xl p-3 ring-1 ${
-                h.accepted
-                  ? "bg-primary/5 ring-primary/30"
-                  : "bg-background ring-border"
-              }`}
+              className="rounded-xl bg-primary/5 p-3 ring-1 ring-primary/30"
             >
-              <div className="text-sm font-medium text-foreground">
+              <div className="text-xs font-medium text-foreground/80">
                 {h.question}
               </div>
-              <textarea
-                value={h.answer}
-                onChange={(e) => setAnswer(i, e.target.value)}
-                rows={2}
-                placeholder="Your precise answer…"
-                disabled={h.accepted}
-                className="mt-2 w-full rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70 resize-none"
-              />
-              <div className="mt-2 flex justify-end">
-                {h.accepted ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Accepted
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => accept(i)}
-                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-95"
-                  >
-                    Accept answer
-                  </button>
-                )}
-              </div>
+              <div className="mt-1 text-sm text-foreground">{h.answer}</div>
             </div>
           ))}
           <button
             type="button"
             onClick={reparse}
-            disabled={
-              busy || history.filter((h) => h.accepted).length === 0
-            }
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-card px-4 py-2.5 text-sm font-medium text-foreground ring-1 ring-border hover:bg-background disabled:opacity-50"
+            disabled={busy}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -983,7 +1119,19 @@ function StepLock({
   setBp: (b: StrategyBlueprint) => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const toggle = async () => {
+  const [confirming, setConfirming] = useState<"lock" | "unlock" | null>(null);
+  const [confirmText, setConfirmText] = useState("");
+
+  const requiredWord = bp.locked ? "UNLOCK" : "LOCK";
+  const canConfirm = confirmText.trim().toUpperCase() === requiredWord;
+
+  const startConfirm = () => {
+    setConfirming(bp.locked ? "unlock" : "lock");
+    setConfirmText("");
+  };
+
+  const apply = async () => {
+    if (!canConfirm) return;
     setBusy(true);
     try {
       const next = bp.locked
@@ -991,6 +1139,8 @@ function StepLock({
         : await lockBlueprint(bp.id);
       setBp(next);
       toast.success(next.locked ? "Strategy locked." : "Strategy unlocked.");
+      setConfirming(null);
+      setConfirmText("");
     } catch (err) {
       console.error(err);
       toast.error("Could not change lock state.");
@@ -998,6 +1148,7 @@ function StepLock({
       setBusy(false);
     }
   };
+
   return (
     <div className="space-y-4">
       <Header
@@ -1010,29 +1161,74 @@ function StepLock({
           <ShieldAlert className="h-5 w-5 text-primary" />
           <div className="text-sm text-foreground/90">
             Locking prevents casual edits. You can unlock at any time, but every
-            unlock is a deliberate choice.
+            unlock is a deliberate choice — type the keyword to confirm.
           </div>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={toggle}
-        disabled={busy}
-        className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-soft hover:opacity-95 disabled:opacity-50 ${
-          bp.locked
-            ? "bg-card text-foreground ring-1 ring-border"
-            : "bg-primary text-primary-foreground"
-        }`}
-      >
-        {busy ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : bp.locked ? (
-          <LockOpen className="h-4 w-4" />
-        ) : (
-          <Lock className="h-4 w-4" />
-        )}
-        {bp.locked ? "Unlock strategy" : "Lock strategy"}
-      </button>
+
+      {confirming === null ? (
+        <button
+          type="button"
+          onClick={startConfirm}
+          disabled={busy}
+          className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-soft hover:opacity-95 disabled:opacity-50 ${
+            bp.locked
+              ? "bg-card text-foreground ring-1 ring-border"
+              : "bg-primary text-primary-foreground"
+          }`}
+        >
+          {bp.locked ? (
+            <LockOpen className="h-4 w-4" />
+          ) : (
+            <Lock className="h-4 w-4" />
+          )}
+          {bp.locked ? "Unlock strategy" : "Lock strategy"}
+        </button>
+      ) : (
+        <div className="rounded-xl bg-background p-3 ring-1 ring-border space-y-3">
+          <div className="text-sm text-foreground/90">
+            Type{" "}
+            <span className="font-mono font-semibold text-foreground">
+              {requiredWord}
+            </span>{" "}
+            to confirm.
+          </div>
+          <input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder={requiredWord}
+            className="w-full rounded-lg bg-card px-3 py-2 text-sm font-mono ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40"
+            autoFocus
+          />
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setConfirming(null);
+                setConfirmText("");
+              }}
+              className="rounded-lg px-3 py-1.5 text-xs font-medium text-foreground/80 hover:bg-card"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={apply}
+              disabled={!canConfirm || busy}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-95 disabled:opacity-40"
+            >
+              {busy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : bp.locked ? (
+                <LockOpen className="h-3.5 w-3.5" />
+              ) : (
+                <Lock className="h-3.5 w-3.5" />
+              )}
+              Confirm {bp.locked ? "unlock" : "lock"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

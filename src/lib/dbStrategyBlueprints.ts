@@ -30,6 +30,12 @@ export type TierStrictness = {
   c: number;
 };
 
+export type TierRules = {
+  a_plus: string;
+  b_plus: string;
+  c: string;
+};
+
 export type ChecklistByTier = {
   a_plus: string[];
   b_plus: string[];
@@ -47,6 +53,7 @@ export type StrategyBlueprint = {
   max_drawdown_pct: number | null;
   raw_input: string | null;
   tier_strictness: TierStrictness;
+  tier_rules: TierRules;
   structured_rules: Partial<StructuredRules>;
   ambiguity_flags: AmbiguityFlag[];
   refinement_history: RefinementQA[];
