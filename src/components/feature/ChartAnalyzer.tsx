@@ -190,7 +190,7 @@ export default function ChartAnalyzer() {
       if (data?.status === "locked") {
         toast.error(data?.reason || "Analyzer is locked.");
         void refreshTraderState();
-        setPhase("idle");
+        setPhase("setup");
         return;
       }
 
