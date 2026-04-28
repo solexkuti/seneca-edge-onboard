@@ -185,6 +185,15 @@ export default function ChartAnalyzer() {
       });
       if (error) throw new Error(error.message || "Analysis failed");
 
+      // Server-side lock enforcement (403). Force a state refresh so the
+      // <AnalyzerLockScreen /> takes over on next render.
+      if (data?.status === "locked") {
+        toast.error(data?.reason || "Analyzer is locked.");
+        void refreshTraderState();
+        setPhase("idle");
+        return;
+      }
+
       // Pipeline rejected the image — show details from validation stage
       if (data?.status === "rejected" || data?.is_chart === false) {
         setInvalidReason(data?.reason || "This is not a valid chart.");
