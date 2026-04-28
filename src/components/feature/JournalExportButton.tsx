@@ -84,46 +84,59 @@ export default function JournalExportButton({ rows, label, triggerLabel = "Expor
         ) : (
           <Download className="h-4 w-4" />
         )}
-        Export
+        {triggerLabel}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-4 space-y-4">
-        <div>
-          <p className="text-sm font-medium text-foreground">Date range</p>
-          <p className="text-xs text-muted-foreground">
-            Leave empty to export everything.
-          </p>
-        </div>
+        {rows ? (
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              Export filtered view
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {rows.length} {rows.length === 1 ? "entry" : "entries"} match your current filters.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div>
+              <p className="text-sm font-medium text-foreground">Date range</p>
+              <p className="text-xs text-muted-foreground">
+                Leave empty to export everything.
+              </p>
+            </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { label: "7d", days: 7 },
-            { label: "30d", days: 30 },
-            { label: "90d", days: 90 },
-          ].map((p) => (
-            <button
-              key={p.label}
-              type="button"
-              onClick={() => setPreset(p.days)}
-              className="rounded-full border border-border/60 px-2.5 py-1 text-xs text-foreground/70 hover:bg-muted/50"
-            >
-              Last {p.label}
-            </button>
-          ))}
-          {(from || to) && (
-            <button
-              type="button"
-              onClick={clearRange}
-              className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-3 w-3" /> Clear
-            </button>
-          )}
-        </div>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { label: "7d", days: 7 },
+                { label: "30d", days: 30 },
+                { label: "90d", days: 90 },
+              ].map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => setPreset(p.days)}
+                  className="rounded-full border border-border/60 px-2.5 py-1 text-xs text-foreground/70 hover:bg-muted/50"
+                >
+                  Last {p.label}
+                </button>
+              ))}
+              {(from || to) && (
+                <button
+                  type="button"
+                  onClick={clearRange}
+                  className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3 w-3" /> Clear
+                </button>
+              )}
+            </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <DateField label="From" value={from} onChange={setFrom} max={to} />
-          <DateField label="To" value={to} onChange={setTo} min={from} />
-        </div>
+            <div className="grid grid-cols-2 gap-2">
+              <DateField label="From" value={from} onChange={setFrom} max={to} />
+              <DateField label="To" value={to} onChange={setTo} min={from} />
+            </div>
+          </>
+        )}
 
         <div className="flex gap-2 pt-1">
           <Button
