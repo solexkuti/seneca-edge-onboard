@@ -267,7 +267,7 @@ export default function AiMentorChat() {
             <Sparkles className="h-4 w-4 text-white" strokeWidth={2.2} />
             <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-text-primary">Seneca</p>
             <p className="text-[11px] text-text-secondary">
               {journal.length > 0
@@ -275,7 +275,29 @@ export default function AiMentorChat() {
                 : "No journal data — answers will be general"}
             </p>
           </div>
+          {intelligence.strictModeActive ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              title="Two undisciplined trades in a row — Seneca is firmer until you log two clean trades."
+              className="flex shrink-0 items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 ring-1 ring-rose-500/25"
+            >
+              <AlertTriangle className="h-3 w-3 text-rose-700" strokeWidth={2.6} />
+              <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-rose-800">
+                Strict mode
+              </span>
+            </motion.div>
+          ) : null}
         </div>
+
+        {intelligence.strictModeActive ? (
+          <div className="border-b border-rose-500/15 bg-rose-500/[0.04] px-4 py-2">
+            <p className="text-[11.5px] leading-snug text-rose-900/85">
+              Two undisciplined trades in a row. Seneca's tone is firmer this turn — log two clean trades to lift it.
+            </p>
+          </div>
+        ) : null}
 
         {/* Messages */}
         <div
