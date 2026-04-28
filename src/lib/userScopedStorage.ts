@@ -94,11 +94,14 @@ export function installUserScopedStorage() {
   // Always clear legacy keys on boot so a returning user never sees leftovers.
   clearLegacyUnscopedKeys();
 
-  supabase.auth.onAuthStateChange((_event, session) => {
+  supabase.auth.onAuthStateChange((event, session) => {
     const next = session?.user?.id ?? null;
     if (next !== cachedUserId) {
+      const prev = cachedUserId;
       cachedUserId = next;
       clearLegacyUnscopedKeys();
+      if (prev && prev !== next) clearScopedKeysFor(prev);
     }
+    if (event === "SIGNED_OUT") clearLegacyUnscopedKeys();
   });
 }
