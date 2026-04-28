@@ -248,11 +248,9 @@ export default function StrategyBuilder({
           (a) => Array.isArray(a) && a.length > 0,
         );
       case "refine":
-        // require all ambiguity flags addressed OR at least 3 accepted answers
-        return (
-          (bp.refinement_history?.filter((r) => r.accepted).length ?? 0) >= 3 ||
-          (bp.ambiguity_flags?.length ?? 0) === 0
-        );
+        // Non-blocking: any forward progress is allowed. The system handles
+        // ambiguity in the background — the user is never gated here.
+        return true;
       case "output":
         return !!bp.trading_plan && (bp.checklist?.a_plus?.length ?? 0) > 0;
       case "export":
