@@ -840,8 +840,18 @@ Deno.serve(async (req: Request) => {
     }
     const userId = userData.user.id;
 
-    const { blueprint, discipline_score, last_20_trades_count, current_streak, behavior_patterns } =
-      await loadInputs(supabase, userId);
+    const {
+      blueprint,
+      discipline_score,
+      last_20_trades_count,
+      current_streak,
+      longest_streak,
+      identity_label,
+      last_break_date,
+      consecutive_breaks,
+      has_repeat_pattern,
+      behavior_patterns,
+    } = await loadInputs(supabase, userId);
 
     if (!blueprint) {
       return new Response(
@@ -875,7 +885,31 @@ Deno.serve(async (req: Request) => {
       behavior_patterns,
     });
 
-    const focus = await generateFocus(computed, computed.weak_categories);
+    const escalation = computeEscalation({
+      consecutive_breaks,
+      has_repeat_pattern,
+    });
+
+    // Escalation can FORCE tighter restrictions on top of the score-based state.
+    if (escalation.level >= 2 && computed.allowed_tiers.length > 1) {
+      computed.allowed_tiers = ["A+"];
+    }
+    if (escalation.level === 3 && !computed.suggest_no_trade_day) {
+      computed.suggest_no_trade_day = true;
+    }
+
+    const [focus, interpretation] = await Promise.all([
+      generateFocus(computed, computed.weak_categories),
+      generateBehaviorInterpretation({
+        control_state: computed.control_state,
+        consecutive_breaks,
+        behavior_patterns,
+        weak_categories: computed.weak_categories,
+        current_streak,
+      }),
+    ]);
+
+    const rules = buildRuleList(strategy_rules, computed);
 
     const today = new Date();
     const todayLabel = today.toISOString().slice(0, 10);
@@ -890,7 +924,6 @@ Deno.serve(async (req: Request) => {
 
     const wantJson = (req.headers.get("Accept") || "").includes("application/json");
     if (wantJson) {
-      // Return base64 + metadata
       const b64 = btoa(String.fromCharCode(...new Uint8Array(bytes)));
       return new Response(
         JSON.stringify({
@@ -903,6 +936,15 @@ Deno.serve(async (req: Request) => {
           suggest_no_trade_day: computed.suggest_no_trade_day,
           strategy_name: blueprint.name || "Strategy",
           generated_for: todayLabel,
+          rules,
+          escalation,
+          streak: {
+            current: current_streak,
+            longest: longest_streak,
+            identity: identity_label,
+            last_break_date,
+          },
+          interpretation,
           pdf_base64: b64,
           filename: `daily-checklist-${todayLabel}.pdf`,
         }),
