@@ -446,7 +446,9 @@ Deno.serve(async (req) => {
         (context.recentPatterns && context.recentPatterns.length > 0) ||
         (context.lastTwoTrades && context.lastTwoTrades.length > 0) ||
         context.activeStrategy ||
-        context.dailyChecklist)
+        context.dailyChecklist ||
+        (context.confirmedRules && context.confirmedRules.rules.length > 0) ||
+        context.triggeringBrokenTrade)
     );
     let contextBlock = "";
     if (hasContext) {
