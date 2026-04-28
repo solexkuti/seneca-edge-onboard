@@ -57,9 +57,9 @@ const TOOL = {
         checklist: {
           type: "object",
           properties: {
-            a_plus: { type: "array", items: { type: "string" } },
-            b_plus: { type: "array", items: { type: "string" } },
-            c: { type: "array", items: { type: "string" } },
+            a_plus: { type: "array", minItems: 3, maxItems: 7, items: { type: "string", maxLength: 80 } },
+            b_plus: { type: "array", minItems: 3, maxItems: 7, items: { type: "string", maxLength: 80 } },
+            c: { type: "array", minItems: 3, maxItems: 7, items: { type: "string", maxLength: 80 } },
           },
           required: ["a_plus", "b_plus", "c"],
           additionalProperties: false,
