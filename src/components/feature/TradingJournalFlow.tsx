@@ -9,7 +9,7 @@
 //
 // Calm, premium tone. Minimal typing. Full submission stays under ~20s.
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
