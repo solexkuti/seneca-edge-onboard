@@ -664,6 +664,45 @@ function ResultView({
     { key: "timing", title: "Timing alignment", subtitle: "Higher-timeframe alignment" },
   ];
 
+  // Active citation: which rule/region is currently highlighted on the charts.
+  const [activeCitation, setActiveCitation] = useState<{
+    section: "entry" | "structure" | "risk" | "timing";
+    checkIdx: number;
+    regionIdx: number;
+    region: ChartRegion;
+  } | null>(null);
+
+  const execChartRef = useRef<HTMLDivElement | null>(null);
+  const higherChartRef = useRef<HTMLDivElement | null>(null);
+
+  function onCite(
+    section: "entry" | "structure" | "risk" | "timing",
+    checkIdx: number,
+    regionIdx: number,
+    region: ChartRegion,
+  ) {
+    // Toggle off if the same chip is clicked again.
+    setActiveCitation((prev) =>
+      prev &&
+      prev.section === section &&
+      prev.checkIdx === checkIdx &&
+      prev.regionIdx === regionIdx
+        ? null
+        : { section, checkIdx, regionIdx, region },
+    );
+    const target = region.chart === "higher" ? higherChartRef.current : execChartRef.current;
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  const execActive =
+    activeCitation && activeCitation.region.chart === "exec"
+      ? activeCitation.region
+      : null;
+  const higherActive =
+    activeCitation && activeCitation.region.chart === "higher"
+      ? activeCitation.region
+      : null;
+
   return (
     <motion.div
       key="result"
@@ -673,12 +712,26 @@ function ResultView({
       className="space-y-4"
     >
       {/* Charts */}
-      <div className="overflow-hidden rounded-2xl bg-card p-1 ring-1 ring-border shadow-soft">
-        <img src={result.execPreview} alt="Execution chart" className="h-44 w-full rounded-[14px] object-cover" />
+      <div ref={execChartRef}>
+        <CitedChart
+          src={result.execPreview}
+          alt="Execution chart"
+          label="Execution chart"
+          heightClass="h-44"
+          activeRegion={execActive}
+          onClear={() => setActiveCitation(null)}
+        />
       </div>
       {result.higherPreview && (
-        <div className="overflow-hidden rounded-2xl bg-card p-1 ring-1 ring-border shadow-soft">
-          <img src={result.higherPreview} alt="Higher TF chart" className="h-32 w-full rounded-[14px] object-cover" />
+        <div ref={higherChartRef}>
+          <CitedChart
+            src={result.higherPreview}
+            alt="Higher TF chart"
+            label="Higher timeframe"
+            heightClass="h-32"
+            activeRegion={higherActive}
+            onClear={() => setActiveCitation(null)}
+          />
         </div>
       )}
 
