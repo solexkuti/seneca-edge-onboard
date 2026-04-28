@@ -36,6 +36,7 @@ import {
   evaluateChartAgainstStrategy,
   type ChartFeaturesPair,
   type RuleBreakdown,
+  type ChartRegion,
 } from "@/lib/chartRuleCheck";
 import { supabase } from "@/integrations/supabase/client";
 
