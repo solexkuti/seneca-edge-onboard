@@ -128,6 +128,7 @@ function timingCheck(
 export function evaluateChartAgainstStrategy(
   features: ChartFeaturesPair,
   rules: StructuredRules,
+  chartConfidence = 100,
 ): RuleBreakdown {
   const exec = features.exec ?? {};
   const higher = features.higher ?? null;
@@ -147,5 +148,18 @@ export function evaluateChartAgainstStrategy(
   else if (score >= 50) overall = "weak";
   else overall = "invalid";
 
-  return { entry, structure, risk, timing, overall, score };
+  // Confidence handling — never upgrade to "valid" when inputs are unclear.
+  const conf = isLowConfidence(features, chartConfidence);
+  if (conf.low && overall === "valid") overall = "weak";
+
+  return {
+    entry,
+    structure,
+    risk,
+    timing,
+    overall,
+    score,
+    low_confidence: conf.low,
+    confidence_note: conf.note,
+  };
 }
