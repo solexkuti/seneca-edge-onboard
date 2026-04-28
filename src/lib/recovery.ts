@@ -363,33 +363,34 @@ export async function completeCooldown(
 }
 
 /**
- * Insert a synthetic positive analyzer_event so the rolling score recovers
- * from "locked" up to "at_risk" (>= 50). Capped — never enough to reach
- * "in_control" (>= 80) on its own. The user must earn that with real trades.
+ * Insert synthetic positive analyzer_events so the rolling decision score
+ * lifts the user from "locked" (<40) up into "at_risk" (40–59). Capped so
+ * the user can never reach "in_control" via recovery alone — that must be
+ * earned with real trades.
+ *
+ * Each synthetic event uses the new event_score scale (verdict=valid → +5).
+ * We insert UP TO 4 events, just enough to clear the locked threshold.
  */
 async function applyRecoveryBoost(): Promise<void> {
   const u = await uid();
   if (!u) return;
 
-  const recent = await fetchRecentDecisions(20);
-  let score = 50;
-  for (const d of recent.slice(0, 20)) score += d.score_delta;
-  score = Math.max(0, Math.min(100, score));
+  const { loadDisciplineBreakdown } = await import("@/lib/disciplineScore");
+  const before = await loadDisciplineBreakdown();
+  if (before.score >= 40) return; // already out of locked
 
-  const needed = Math.max(0, 50 - score);
-  if (needed <= 0) return;
-
-  const boost = Math.min(needed, 25); // cap so probation still matters
-
-  const { error } = await supabase.from("analyzer_events").insert({
+  // Insert up to 4 valid events. Recency weighting + 40% decision weight
+  // means this is enough to escape "locked" but not enough to hit 80.
+  const rows = Array.from({ length: 4 }, () => ({
     user_id: u,
     analysis_id: null,
     blueprint_id: null,
-    verdict: "weak",
+    verdict: "valid" as const,
     violations: [],
-    score_delta: boost,
+    score_delta: 5,
     reason: "recovery_completed",
-  } as never);
+  }));
+  const { error } = await supabase.from("analyzer_events").insert(rows as never);
   if (error) {
     console.error("[recovery] boost failed", error);
   }
