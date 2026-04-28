@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HubIndexRouteImport } from './routes/hub.index'
+import { Route as HubStrategyRouteImport } from './routes/hub.strategy'
 import { Route as HubStateRouteImport } from './routes/hub.state'
 import { Route as HubRecoveryRouteImport } from './routes/hub.recovery'
 import { Route as HubMindRouteImport } from './routes/hub.mind'
@@ -32,6 +33,11 @@ const IndexRoute = IndexRouteImport.update({
 const HubIndexRoute = HubIndexRouteImport.update({
   id: '/hub/',
   path: '/hub/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HubStrategyRoute = HubStrategyRouteImport.update({
+  id: '/hub/strategy',
+  path: '/hub/strategy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HubStateRoute = HubStateRouteImport.update({
@@ -75,9 +81,9 @@ const DevResetRoute = DevResetRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const HubStrategyIndexRoute = HubStrategyIndexRouteImport.update({
-  id: '/hub/strategy/',
-  path: '/hub/strategy/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => HubStrategyRoute,
 } as any)
 const HubStrategyNewRoute = HubStrategyNewRouteImport.update({
   id: '/new',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/hub/mind': typeof HubMindRoute
   '/hub/recovery': typeof HubRecoveryRoute
   '/hub/state': typeof HubStateRoute
+  '/hub/strategy': typeof HubStrategyRouteWithChildren
   '/hub/': typeof HubIndexRoute
   '/hub/journal/history': typeof HubJournalHistoryRoute
   '/hub/strategy/$id': typeof HubStrategyIdRoute
@@ -138,6 +145,7 @@ export interface FileRoutesById {
   '/hub/mind': typeof HubMindRoute
   '/hub/recovery': typeof HubRecoveryRoute
   '/hub/state': typeof HubStateRoute
+  '/hub/strategy': typeof HubStrategyRouteWithChildren
   '/hub/': typeof HubIndexRoute
   '/hub/journal/history': typeof HubJournalHistoryRoute
   '/hub/strategy/$id': typeof HubStrategyIdRoute
@@ -156,6 +164,7 @@ export interface FileRouteTypes {
     | '/hub/mind'
     | '/hub/recovery'
     | '/hub/state'
+    | '/hub/strategy'
     | '/hub/'
     | '/hub/journal/history'
     | '/hub/strategy/$id'
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/hub/mind'
     | '/hub/recovery'
     | '/hub/state'
+    | '/hub/strategy'
     | '/hub/'
     | '/hub/journal/history'
     | '/hub/strategy/$id'
@@ -205,8 +215,8 @@ export interface RootRouteChildren {
   HubMindRoute: typeof HubMindRoute
   HubRecoveryRoute: typeof HubRecoveryRoute
   HubStateRoute: typeof HubStateRoute
+  HubStrategyRoute: typeof HubStrategyRouteWithChildren
   HubIndexRoute: typeof HubIndexRoute
-  HubStrategyIndexRoute: typeof HubStrategyIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -223,6 +233,13 @@ declare module '@tanstack/react-router' {
       path: '/hub'
       fullPath: '/hub/'
       preLoaderRoute: typeof HubIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hub/strategy': {
+      id: '/hub/strategy'
+      path: '/hub/strategy'
+      fullPath: '/hub/strategy'
+      preLoaderRoute: typeof HubStrategyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hub/state': {
@@ -283,10 +300,10 @@ declare module '@tanstack/react-router' {
     }
     '/hub/strategy/': {
       id: '/hub/strategy/'
-      path: '/hub/strategy'
+      path: '/'
       fullPath: '/hub/strategy/'
       preLoaderRoute: typeof HubStrategyIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof HubStrategyRoute
     }
     '/hub/strategy/new': {
       id: '/hub/strategy/new'
@@ -324,6 +341,22 @@ const HubJournalRouteWithChildren = HubJournalRoute._addFileChildren(
   HubJournalRouteChildren,
 )
 
+interface HubStrategyRouteChildren {
+  HubStrategyIdRoute: typeof HubStrategyIdRoute
+  HubStrategyNewRoute: typeof HubStrategyNewRoute
+  HubStrategyIndexRoute: typeof HubStrategyIndexRoute
+}
+
+const HubStrategyRouteChildren: HubStrategyRouteChildren = {
+  HubStrategyIdRoute: HubStrategyIdRoute,
+  HubStrategyNewRoute: HubStrategyNewRoute,
+  HubStrategyIndexRoute: HubStrategyIndexRoute,
+}
+
+const HubStrategyRouteWithChildren = HubStrategyRoute._addFileChildren(
+  HubStrategyRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DevResetRoute: DevResetRoute,
@@ -334,8 +367,8 @@ const rootRouteChildren: RootRouteChildren = {
   HubMindRoute: HubMindRoute,
   HubRecoveryRoute: HubRecoveryRoute,
   HubStateRoute: HubStateRoute,
+  HubStrategyRoute: HubStrategyRouteWithChildren,
   HubIndexRoute: HubIndexRoute,
-  HubStrategyIndexRoute: HubStrategyIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
