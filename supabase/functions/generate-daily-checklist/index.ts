@@ -788,6 +788,7 @@ async function loadInputs(supabase: any, userId: string) {
   return {
     blueprint: bp as ActiveStrategyRow | undefined,
     discipline_score,
+    discipline_score_available,
     last_20_trades_count: tradesArr.length,
     current_streak: streakRow?.current_streak ?? current_streak,
     longest_streak: streakRow?.longest_streak ?? current_streak,
