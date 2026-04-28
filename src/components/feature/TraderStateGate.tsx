@@ -82,7 +82,7 @@ export default function TraderStateGate({
       eyebrow: `${surface} unavailable`,
       title: "Build your strategy first.",
       body: "Every module in SenecaEdge runs against your defined rules. You must lock a strategy before the system will let you analyze charts, log trades, or run the daily checklist.",
-      cta: { label: "Open Strategy Builder", to: "/hub/strategy" },
+      cta: { label: "Open Strategy Builder", to: "/hub/strategy/new" },
       icon: Target,
       tone: "indigo",
     },
