@@ -480,7 +480,7 @@ function DailyChecklistPage() {
               </div>
             </div>
 
-            {/* Confirm + secondary actions */}
+            {/* Final commitment + confirm */}
             <div className="rounded-2xl bg-card p-5 ring-1 ring-border shadow-soft">
               {alreadyConfirmed ? (
                 <div className="flex items-center gap-2 text-sm text-emerald-700">
@@ -488,22 +488,66 @@ function DailyChecklistPage() {
                   <span>
                     Plan locked at{" "}
                     {new Date(alreadyConfirmed.confirmed_at).toLocaleTimeString()}.
-                    Mentor and Trade Check are now enforcing it.
+                    Trading is unlocked. Mentor is enforcing.
                   </span>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={confirm}
-                  disabled={!allTicked || confirming}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-50"
-                >
-                  {confirming ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Locking…</>
-                  ) : (
-                    <><Lock className="h-4 w-4" /> Lock today's plan</>
+                <>
+                  {/* Strict-mode extra commitment */}
+                  {requiresStrictAck && (
+                    <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-red-600/5 p-3 ring-1 ring-red-600/20">
+                      <input
+                        type="checkbox"
+                        checked={strictAck}
+                        onChange={(e) => setStrictAck(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-primary"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-red-700">
+                          Strict mode commitment
+                        </div>
+                        <div className="mt-0.5 text-sm text-foreground">
+                          I understand I am currently not in control. I will only
+                          take A+ setups today.
+                        </div>
+                      </div>
+                    </label>
                   )}
-                </button>
+
+                  {/* Final commitment quote */}
+                  <label
+                    className={`mt-3 flex cursor-pointer items-start gap-3 rounded-xl p-3 ring-1 ${
+                      finalAck
+                        ? "bg-emerald-600/5 ring-emerald-600/20"
+                        : "bg-background ring-border"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={finalAck}
+                      onChange={(e) => setFinalAck(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-primary"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium leading-snug text-foreground">
+                        I confirm I will follow my system. Not my emotions.
+                      </div>
+                    </div>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={confirm}
+                    disabled={!canConfirm || confirming}
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-50"
+                  >
+                    {confirming ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Unlocking…</>
+                    ) : (
+                      <><Lock className="h-4 w-4" /> Confirm & Unlock Trading</>
+                    )}
+                  </button>
+                </>
               )}
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -526,10 +570,13 @@ function DailyChecklistPage() {
                   )}
                 </button>
               </div>
-              {!alreadyConfirmed && !allTicked && (
+              {!alreadyConfirmed && !canConfirm && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Tick every rule to unlock the confirm button. Confirmation is binary —
-                  partial commitment isn't commitment.
+                  {!allTicked
+                    ? "Tick every rule, then accept the commitment to unlock trading."
+                    : requiresStrictAck && !strictAck
+                      ? "Accept the strict-mode commitment to continue."
+                      : "Accept the final commitment to unlock trading."}
                 </p>
               )}
             </div>
