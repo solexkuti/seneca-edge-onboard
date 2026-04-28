@@ -394,7 +394,8 @@ Deno.serve(async (req) => {
         context.systemRules ||
         context.profileSummary ||
         context.intelligence ||
-        (context.recentPatterns && context.recentPatterns.length > 0))
+        (context.recentPatterns && context.recentPatterns.length > 0) ||
+        (context.lastTwoTrades && context.lastTwoTrades.length > 0))
     );
     let contextBlock = "";
     if (hasContext) {
@@ -405,12 +406,26 @@ Deno.serve(async (req) => {
       if (context!.intelligence) {
         const i = context!.intelligence;
         const lines = [
-          `Discipline score (last ${i.windowSize} trades): ${i.disciplineScore ?? "n/a"}%`,
+          `Discipline score (last ${i.windowSize} trades, % with score >= 75): ${i.disciplineScore ?? "n/a"}%`,
+          i.disciplineClass ? `Discipline classification: ${i.disciplineClass}` : null,
           `Current discipline streak: ${i.disciplineStreak} clean trade${i.disciplineStreak === 1 ? "" : "s"}`,
-          i.mostCommonMistake ? `Most common mistake right now: ${i.mostCommonMistake}` : null,
+          i.mostCommonMistake ? `Most common rule break: ${i.mostCommonMistake}` : null,
+          i.mostCommonMistakeTag ? `Most common behavioral mistake: ${i.mostCommonMistakeTag}` : null,
           i.twoUndisciplinedInARow ? `WARNING: last two trades both broke the plan.` : null,
+          i.strictModeActive ? `STRICT MODE: active.` : null,
         ].filter(Boolean);
         contextBlock += `\n\n[Intelligence Snapshot]\n${lines.join("\n")}`;
+      }
+      if (context!.lastTwoTrades && context!.lastTwoTrades.length > 0) {
+        contextBlock += `\n\n[Last Two Trades]\n` +
+          context!.lastTwoTrades
+            .map((t, idx) => {
+              const broken = t.brokenRules.length > 0 ? `broke: ${t.brokenRules.join(", ")}` : "plan followed";
+              const tag = t.mistakeTag ? ` | tag: ${t.mistakeTag}` : "";
+              const res = t.result ?? "—";
+              return `${idx + 1}. [${t.when}] ${t.market} ${t.direction.toUpperCase()} | ${res} | ${broken}${tag}`;
+            })
+            .join("\n");
       }
       if (context!.recentPatterns && context!.recentPatterns.length > 0) {
         contextBlock += `\n\n[Recent Behavior Patterns]\n` +
@@ -429,7 +444,7 @@ Deno.serve(async (req) => {
         "\n\nUSER CONTEXT: none yet. Offer warm, general guidance. Do NOT mention missing data. Do NOT refuse. Invite the user to share more about their situation through your soft closing.";
     }
 
-    const strictMode = !!context?.intelligence?.twoUndisciplinedInARow;
+    const strictMode = !!context?.intelligence?.strictModeActive;
     const systemContent =
       SYSTEM_PROMPT + contextBlock + (strictMode ? STRICT_MODE_ADDENDUM : "");
 
