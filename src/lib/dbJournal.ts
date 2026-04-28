@@ -403,6 +403,7 @@ function combine(trade: any, log: any): DbJournalRow {
     resultR,
     emotional_state: log.emotional_state ?? "calm",
     notes: log.notes ?? null,
+    mistake_tag: (log.mistake_tag ?? null) as MistakeTagValue | null,
     strategy_id: trade.strategy_id ?? strategy?.id ?? null,
     strategy_name: strategy?.name ?? null,
     entry_rule: strategy?.entry_rule ?? null,
