@@ -48,6 +48,23 @@ export default function TraderStateGate({
     }
   }, [state.loading, state.blocks.no_strategy, enforce, navigate]);
 
+  // Hard redirect: discipline locked OR active recovery session → forced recovery flow.
+  useEffect(() => {
+    if (
+      !state.loading &&
+      enforce.includes("discipline_locked") &&
+      (state.blocks.discipline_locked || state.blocks.in_recovery)
+    ) {
+      void navigate({ to: "/hub/recovery", replace: true });
+    }
+  }, [
+    state.loading,
+    state.blocks.discipline_locked,
+    state.blocks.in_recovery,
+    enforce,
+    navigate,
+  ]);
+
   let block: Block = "ok";
   if (state.loading) block = "loading";
   else if (enforce.includes("no_strategy") && state.blocks.no_strategy)
@@ -56,7 +73,7 @@ export default function TraderStateGate({
     block = "not_confirmed";
   else if (
     enforce.includes("discipline_locked") &&
-    state.blocks.discipline_locked
+    (state.blocks.discipline_locked || state.blocks.in_recovery)
   )
     block = "discipline_locked";
 
