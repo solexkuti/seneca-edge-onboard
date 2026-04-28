@@ -246,29 +246,51 @@ export default function StrategyBuilder({
     return (
       <div className="flex min-h-[60svh] flex-col items-center justify-center gap-4 px-6 text-center">
         <AlertTriangle className="h-6 w-6 text-amber-500" />
-        <p className="max-w-sm text-sm text-text-primary">{bootError}</p>
-        <button
-          type="button"
-          onClick={() => {
-            bootstrappedRef.current = false;
-            setBootError(null);
-            void navigate({ to: "/hub/strategy", replace: true });
-          }}
-          className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95"
-        >
-          Back to strategies
-        </button>
+        <p className="max-w-sm text-sm text-text-primary">
+          Couldn't load existing strategy. Start fresh.
+        </p>
+        <p className="max-w-sm text-xs text-muted-foreground">{bootError}</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={startFresh}
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95"
+          >
+            Start fresh
+          </button>
+          <button
+            type="button"
+            onClick={() => void navigate({ to: "/hub", replace: true })}
+            className="rounded-xl bg-card px-4 py-2 text-sm font-medium text-text-primary ring-1 ring-border shadow-soft hover:opacity-95"
+          >
+            Back to hub
+          </button>
+        </div>
       </div>
     );
   }
 
   if (!bp) {
     return (
-      <div className="flex min-h-[60svh] flex-col items-center justify-center gap-3">
+      <div className="flex min-h-[60svh] flex-col items-center justify-center gap-3 px-6 text-center">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Preparing your system…
         </p>
+        {slowLoad && (
+          <div className="mt-3 flex flex-col items-center gap-2">
+            <p className="max-w-xs text-sm text-text-primary">
+              Couldn't load existing strategy. Start fresh.
+            </p>
+            <button
+              type="button"
+              onClick={startFresh}
+              className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95"
+            >
+              Start a new strategy
+            </button>
+          </div>
+        )}
       </div>
     );
   }
