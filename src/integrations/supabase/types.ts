@@ -487,6 +487,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
+      is_trade_unlocked: { Args: { p_user_id: string }; Returns: boolean }
     }
     Enums: {
       behavior_pattern_kind:
