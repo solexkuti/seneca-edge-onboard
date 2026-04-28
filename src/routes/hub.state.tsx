@@ -90,41 +90,8 @@ function ControlStatePage() {
         <EmptyState />
       ) : (
         <div className="space-y-4">
-          {/* Discipline score */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease }}
-            className="relative overflow-hidden rounded-2xl bg-gradient-mix p-5 text-white shadow-glow-primary"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/75">
-                  Discipline score
-                </p>
-                <p className="mt-1 text-[44px] font-bold leading-none">
-                  {stats.score}
-                  <span className="ml-1 text-[18px] text-white/75">/100</span>
-                </p>
-                <p className="mt-2 text-[12.5px] text-white/85">
-                  Average across your last {stats.windowSize} trade
-                  {stats.windowSize === 1 ? "" : "s"}.
-                </p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
-                {stats.inControl ? (
-                  <Shield className="h-5 w-5 text-white" strokeWidth={2.3} />
-                ) : (
-                  <AlertTriangle className="h-5 w-5 text-white" strokeWidth={2.3} />
-                )}
-              </div>
-            </div>
-
-            <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ring-1 ring-white/20">
-              <Activity className="h-3 w-3" strokeWidth={2.6} />
-              {stats.inControl ? "In control" : "Slipping"}
-            </div>
-          </motion.div>
+          {/* Deterministic discipline score — single source of truth. */}
+          <DisciplineScoreBreakdown />
 
           {/* Most recent trade — rule-by-rule breakdown */}
           <LastTradeCard row={rows[0]} />
