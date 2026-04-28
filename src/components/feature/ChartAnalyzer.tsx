@@ -389,11 +389,25 @@ export default function ChartAnalyzer() {
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20">
                   <XCircle className="h-4 w-4" strokeWidth={2.4} />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-[14px] font-semibold text-text-primary">
-                    This is not a valid chart
+                    Upload a valid trading chart
                   </p>
-                  <p className="mt-1 text-[12.5px] text-text-secondary">{invalidReason}</p>
+                  <p className="mt-1 text-[12.5px] text-text-secondary">
+                    {invalidReason} Candles, price axis, and time axis are required.
+                  </p>
+                  {invalidDetails.length > 0 && (
+                    <ul className="mt-2 space-y-1 pl-4">
+                      {invalidDetails.map((d, i) => (
+                        <li
+                          key={i}
+                          className="list-disc text-[12px] leading-snug text-rose-700/90"
+                        >
+                          {d}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
             </div>
