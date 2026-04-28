@@ -9,7 +9,7 @@
 //
 // Calm, premium tone. Minimal typing. Full submission stays under ~20s.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -24,8 +24,16 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import FeatureShell from "./FeatureShell";
+import PreTradeIntercept from "./PreTradeIntercept";
 import { playFeedback } from "@/lib/feedback";
 import { supabase } from "@/integrations/supabase/client";
+import { useTraderState } from "@/hooks/useTraderState";
+import {
+  bumpPressureEscalation,
+  evaluatePressure,
+  logPressureEvent,
+  type PressureEvaluation,
+} from "@/lib/pressure";
 import type {
   EmotionalState,
   MistakeTagValue,
