@@ -1,4 +1,14 @@
-import { useRef, useState } from "react";
+// Chart Analyzer — production flow:
+// 1) Require strategy (redirect to builder if none)
+// 2) Strategy + timeframe selection
+// 3) Upload exec (required) + higher (optional) chart images
+// 4) Pre-validation via AI (is this even a chart?)
+// 5) AI feature extraction (observable structure only)
+// 6) Deterministic rule check vs strategy
+// 7) Display verdict + breakdown + AI insight + actions
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Upload,
@@ -6,359 +16,647 @@ import {
   Sparkles,
   CheckCircle2,
   AlertTriangle,
-  Target,
-  Shield,
-  TrendingUp,
+  XCircle,
   RefreshCw,
+  Loader2,
+  ArrowRight,
+  Save,
 } from "lucide-react";
+import { toast } from "sonner";
 import FeatureShell from "./FeatureShell";
+import { listBlueprints, type StrategyBlueprint } from "@/lib/dbStrategyBlueprints";
+import {
+  uploadChartImage,
+  signedUrl,
+  saveChartAnalysis,
+  type ChartAnalysisRow,
+} from "@/lib/dbChartAnalyses";
+import {
+  evaluateChartAgainstStrategy,
+  type ChartFeaturesPair,
+  type RuleBreakdown,
+} from "@/lib/chartRuleCheck";
+import { supabase } from "@/integrations/supabase/client";
 
-type Phase = "idle" | "analyzing" | "result";
+const TIMEFRAMES = ["1m", "5m", "15m", "1H", "4H", "1D", "1W"] as const;
 
-const checks = [
-  "Reading price structure",
-  "Cross-checking with your strategy",
-  "Scoring trade quality",
+type Phase = "setup" | "analyzing" | "result" | "invalid";
+
+const STEP_LABELS = [
+  "Validating image",
+  "Extracting market structure",
+  "Checking against your strategy",
 ];
-
-const insights = [
-  {
-    Icon: CheckCircle2,
-    label: "Setup",
-    value: "Trend continuation",
-    tone: "good",
-  },
-  {
-    Icon: Target,
-    label: "Entry",
-    value: "Wait for retest of 1.0842",
-    tone: "neutral",
-  },
-  {
-    Icon: Shield,
-    label: "Invalidation",
-    value: "Below 1.0820",
-    tone: "warn",
-  },
-  {
-    Icon: TrendingUp,
-    label: "Target",
-    value: "1.0905 (1:2.5 R:R)",
-    tone: "good",
-  },
-];
-
-const toneClass: Record<string, string> = {
-  good: "text-emerald-600 bg-emerald-500/10 ring-emerald-500/20",
-  warn: "text-amber-600 bg-amber-500/10 ring-amber-500/20",
-  neutral: "text-text-primary bg-text-primary/5 ring-border",
-};
 
 export default function ChartAnalyzer() {
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [preview, setPreview] = useState<string | null>(null);
-  const [stepIdx, setStepIdx] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+  const [strategies, setStrategies] = useState<StrategyBlueprint[] | null>(null);
+  const [strategyId, setStrategyId] = useState<string>("");
+  const [execTf, setExecTf] = useState<string>("15m");
+  const [higherTf, setHigherTf] = useState<string>("");
+  const [execFile, setExecFile] = useState<File | null>(null);
+  const [higherFile, setHigherFile] = useState<File | null>(null);
+  const [phase, setPhase] = useState<Phase>("setup");
+  const [step, setStep] = useState(0);
+  const [invalidReason, setInvalidReason] = useState<string>("");
+  const [result, setResult] = useState<{
+    row: ChartAnalysisRow;
+    breakdown: RuleBreakdown;
+    insight: string;
+    execPreview: string;
+    higherPreview: string | null;
+  } | null>(null);
 
-  const handleFile = (file: File) => {
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    setPhase("analyzing");
-    setStepIdx(0);
-    // Simulated analysis pipeline
-    const t1 = window.setTimeout(() => setStepIdx(1), 900);
-    const t2 = window.setTimeout(() => setStepIdx(2), 1800);
-    const t3 = window.setTimeout(() => setPhase("result"), 2900);
+  const execInputRef = useRef<HTMLInputElement>(null);
+  const higherInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let alive = true;
+    listBlueprints()
+      .then((list) => {
+        if (!alive) return;
+        setStrategies(list);
+        if (list.length > 0) {
+          const locked = list.find((s) => s.locked);
+          setStrategyId((locked ?? list[0]).id);
+        }
+      })
+      .catch(() => alive && setStrategies([]));
     return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-      window.clearTimeout(t3);
+      alive = false;
     };
-  };
+  }, []);
 
-  const reset = () => {
-    setPhase("idle");
-    setPreview(null);
-    setStepIdx(0);
-    if (inputRef.current) inputRef.current.value = "";
-  };
+  const activeStrategy = useMemo(
+    () => strategies?.find((s) => s.id === strategyId) ?? null,
+    [strategies, strategyId],
+  );
+
+  // Strategy gate
+  if (strategies !== null && strategies.length === 0) {
+    return (
+      <FeatureShell
+        eyebrow="Chart Analyzer"
+        title="Build a strategy first."
+        subtitle="Chart analysis runs against YOUR rules. Define them once."
+      >
+        <div className="rounded-2xl bg-card p-5 ring-1 ring-border shadow-soft">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20">
+              <AlertTriangle className="h-4 w-4" strokeWidth={2.4} />
+            </div>
+            <p className="text-[13px] leading-snug text-text-primary">
+              No strategy found. Create and lock one in the Strategy Builder before analyzing charts.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate({ to: "/hub/strategy" })}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-mix px-4 py-3 text-[13.5px] font-semibold text-white shadow-soft transition hover:shadow-card-premium"
+          >
+            Open Strategy Builder
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </FeatureShell>
+    );
+  }
+
+  const canAnalyze = !!activeStrategy && !!execFile && !!execTf;
+
+  async function handleAnalyze() {
+    if (!activeStrategy || !execFile) return;
+    setPhase("analyzing");
+    setStep(0);
+    setResult(null);
+
+    const execPreview = URL.createObjectURL(execFile);
+    const higherPreview = higherFile ? URL.createObjectURL(higherFile) : null;
+
+    try {
+      // Upload images first (in parallel)
+      const [execPath, higherPath] = await Promise.all([
+        uploadChartImage(execFile, "exec"),
+        higherFile ? uploadChartImage(higherFile, "higher") : Promise.resolve<string | null>(null),
+      ]);
+      setStep(1);
+
+      const [execUrl, higherUrl] = await Promise.all([
+        signedUrl(execPath),
+        higherPath ? signedUrl(higherPath) : Promise.resolve<string | null>(null),
+      ]);
+
+      // Call analyze-chart edge function
+      const { data, error } = await supabase.functions.invoke("analyze-chart", {
+        body: {
+          exec_image_url: execUrl,
+          higher_image_url: higherUrl,
+        },
+      });
+      if (error) throw new Error(error.message || "Analysis failed");
+
+      if (!data?.is_chart) {
+        setInvalidReason(data?.reason || "This is not a valid chart.");
+        setPhase("invalid");
+        return;
+      }
+      setStep(2);
+
+      const features: ChartFeaturesPair = {
+        exec: data.features?.exec ?? {},
+        higher: data.features?.higher ?? null,
+      };
+      const breakdown = evaluateChartAgainstStrategy(
+        features,
+        activeStrategy.structured_rules as never,
+      );
+
+      // Save to DB
+      const row = await saveChartAnalysis({
+        blueprint_id: activeStrategy.id,
+        strategy_name: activeStrategy.name,
+        exec_timeframe: execTf,
+        higher_timeframe: higherTf || null,
+        exec_image_path: execPath,
+        higher_image_path: higherPath,
+        is_chart: true,
+        chart_confidence: Number(data.confidence ?? 0),
+        chart_reason: data.reason ?? null,
+        features,
+        rule_breakdown: breakdown,
+        verdict: breakdown.overall,
+        ai_insight: data.ai_insight ?? null,
+        trade_id: null,
+      });
+
+      setResult({
+        row,
+        breakdown,
+        insight: data.ai_insight ?? "",
+        execPreview,
+        higherPreview,
+      });
+      setPhase("result");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Analysis failed";
+      console.error("[chart-analyzer] failed:", e);
+      toast.error(msg);
+      setPhase("setup");
+    }
+  }
+
+  function reset() {
+    setPhase("setup");
+    setExecFile(null);
+    setHigherFile(null);
+    setStep(0);
+    setResult(null);
+    setInvalidReason("");
+    if (execInputRef.current) execInputRef.current.value = "";
+    if (higherInputRef.current) higherInputRef.current.value = "";
+  }
 
   return (
     <FeatureShell
       eyebrow="Chart Analyzer"
-      title="Drop your chart."
-      subtitle="Get instant insight based on how YOU trade."
+      title="Analyze against YOUR strategy."
+      subtitle="Validates chart structure, rules, and timeframe alignment."
     >
       <input
-        ref={inputRef}
+        ref={execInputRef}
         type="file"
         accept="image/*"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) handleFile(f);
+          if (f) setExecFile(f);
+        }}
+      />
+      <input
+        ref={higherInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) setHigherFile(f);
         }}
       />
 
       <AnimatePresence mode="wait">
-        {phase === "idle" ? (
+        {phase === "setup" && (
           <motion.div
-            key="idle"
+            key="setup"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.35 }}
+            className="space-y-4"
           >
-            <DropZone onPick={() => inputRef.current?.click()} />
-            <StrategyChips />
+            {/* Strategy */}
+            <Field label="Strategy">
+              <select
+                value={strategyId}
+                onChange={(e) => setStrategyId(e.target.value)}
+                className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[13.5px] font-medium text-text-primary outline-none ring-1 ring-transparent transition focus:ring-brand/40"
+              >
+                {(strategies ?? []).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} {s.locked ? "🔒" : ""}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            {/* Timeframes */}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Execution TF (required)">
+                <TfSelect value={execTf} onChange={setExecTf} />
+              </Field>
+              <Field label="Higher TF (optional)">
+                <TfSelect value={higherTf} onChange={setHigherTf} allowEmpty />
+              </Field>
+            </div>
+
+            {/* Uploads */}
+            <UploadCard
+              label="Execution chart *"
+              file={execFile}
+              onPick={() => execInputRef.current?.click()}
+              onClear={() => {
+                setExecFile(null);
+                if (execInputRef.current) execInputRef.current.value = "";
+              }}
+            />
+            <UploadCard
+              label="Higher timeframe chart"
+              file={higherFile}
+              optional
+              onPick={() => higherInputRef.current?.click()}
+              onClear={() => {
+                setHigherFile(null);
+                if (higherInputRef.current) higherInputRef.current.value = "";
+              }}
+            />
+
+            <button
+              onClick={handleAnalyze}
+              disabled={!canAnalyze}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-mix px-4 py-3.5 text-[14px] font-semibold text-white shadow-soft transition hover:shadow-card-premium disabled:opacity-40"
+            >
+              <Sparkles className="h-4 w-4" />
+              Analyze chart
+            </button>
           </motion.div>
-        ) : phase === "analyzing" ? (
+        )}
+
+        {phase === "analyzing" && (
           <motion.div
             key="analyzing"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.35 }}
+            className="space-y-3"
           >
-            <ChartPreview src={preview} analyzing />
-            <div className="mt-5 space-y-2.5">
-              {checks.map((label, i) => {
-                const done = stepIdx > i;
-                const active = stepIdx === i;
-                return (
-                  <motion.div
-                    key={label}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: active || done ? 1 : 0.45, x: 0 }}
-                    className="flex items-center gap-3 rounded-xl bg-card px-3 py-2.5 ring-1 ring-border shadow-soft"
-                  >
-                    <div
-                      className={`flex h-7 w-7 items-center justify-center rounded-full transition-all ${
-                        done
-                          ? "bg-gradient-primary"
-                          : active
-                            ? "bg-gradient-mix animate-pulse-glow"
-                            : "bg-text-secondary/15"
-                      }`}
-                    >
-                      {done ? (
-                        <CheckCircle2
-                          className="h-4 w-4 text-white"
-                          strokeWidth={3}
-                        />
-                      ) : (
-                        <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                      )}
-                    </div>
-                    <span className="text-[13px] font-medium text-text-primary">
-                      {label}
-                    </span>
-                  </motion.div>
-                );
-              })}
+            <div className="rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-5 w-5 animate-spin text-brand" />
+                <p className="text-[13.5px] font-semibold text-text-primary">
+                  Analyzing your chart…
+                </p>
+              </div>
             </div>
+            {STEP_LABELS.map((label, i) => {
+              const done = step > i;
+              const active = step === i;
+              return (
+                <div
+                  key={label}
+                  className="flex items-center gap-3 rounded-xl bg-card px-3 py-2.5 ring-1 ring-border shadow-soft"
+                  style={{ opacity: done || active ? 1 : 0.45 }}
+                >
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-full ${
+                      done ? "bg-emerald-500" : active ? "bg-gradient-mix animate-pulse" : "bg-text-secondary/15"
+                    }`}
+                  >
+                    {done ? (
+                      <CheckCircle2 className="h-4 w-4 text-white" strokeWidth={3} />
+                    ) : (
+                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <span className="text-[13px] font-medium text-text-primary">{label}</span>
+                </div>
+              );
+            })}
           </motion.div>
-        ) : (
+        )}
+
+        {phase === "invalid" && (
           <motion.div
-            key="result"
+            key="invalid"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.4 }}
+            className="space-y-4"
           >
-            <ChartPreview src={preview} />
-
-            {/* Score */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.5 }}
-              className="mt-5 overflow-hidden rounded-2xl p-[1.5px]"
-              style={{ backgroundImage: "var(--gradient-mix)" }}
-            >
-              <div className="rounded-[14px] bg-card p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-                      Trade Quality
-                    </p>
-                    <p className="mt-1 text-[26px] font-bold leading-none text-gradient-mix">
-                      82<span className="text-[16px]">/100</span>
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 ring-1 ring-emerald-500/20">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    <span className="text-[11px] font-semibold text-emerald-700">
-                      A-grade setup
-                    </span>
-                  </div>
+            <div className="rounded-2xl bg-card p-5 ring-1 ring-rose-500/30 shadow-soft">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20">
+                  <XCircle className="h-4 w-4" strokeWidth={2.4} />
                 </div>
-                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-text-secondary/10">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: "82%" }}
-                    transition={{ delay: 0.3, duration: 0.9, ease: "easeOut" }}
-                    className="h-full bg-gradient-mix"
-                  />
+                <div>
+                  <p className="text-[14px] font-semibold text-text-primary">
+                    This is not a valid chart
+                  </p>
+                  <p className="mt-1 text-[12.5px] text-text-secondary">{invalidReason}</p>
                 </div>
               </div>
-            </motion.div>
-
-            {/* Insights */}
-            <div className="mt-4 space-y-2.5">
-              {insights.map((ins, i) => (
-                <motion.div
-                  key={ins.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 + i * 0.07, duration: 0.45 }}
-                  className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft"
-                >
-                  <div
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ${toneClass[ins.tone]}`}
-                  >
-                    <ins.Icon className="h-4 w-4" strokeWidth={2.2} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-                      {ins.label}
-                    </p>
-                    <p className="mt-0.5 text-[13.5px] font-medium text-text-primary">
-                      {ins.value}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
             </div>
-
-            {/* Mentor note */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
-              className="mt-4 flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-mix shadow-glow-primary">
-                <Sparkles className="h-4 w-4 text-white" strokeWidth={2.2} />
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-                  Mentor note
-                </p>
-                <p className="mt-0.5 text-[13px] leading-snug text-text-primary">
-                  Don't chase. Wait for confirmation at the retest. Skip if
-                  candle closes below 1.0830.
-                </p>
-              </div>
-            </motion.div>
-
-            {/* Reset */}
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               onClick={reset}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-card px-4 py-3 text-[13.5px] font-semibold text-text-primary ring-1 ring-border shadow-soft transition-all hover:shadow-card-premium"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-card px-4 py-3 text-[13.5px] font-semibold text-text-primary ring-1 ring-border shadow-soft hover:shadow-card-premium"
             >
-              <RefreshCw className="h-4 w-4" strokeWidth={2.2} />
-              Analyze another chart
-            </motion.button>
+              <RefreshCw className="h-4 w-4" />
+              Upload a different image
+            </button>
           </motion.div>
+        )}
+
+        {phase === "result" && result && (
+          <ResultView result={result} onReset={reset} navigate={navigate} />
         )}
       </AnimatePresence>
     </FeatureShell>
   );
 }
 
-function DropZone({ onPick }: { onPick: () => void }) {
+// ── subcomponents ──────────────────────────────────────────────────────────
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <motion.button
-      whileTap={{ scale: 0.99 }}
-      onClick={onPick}
-      className="group relative flex w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl border border-dashed border-brand/40 bg-card/70 px-6 py-12 text-center backdrop-blur transition-all hover:border-brand/70 hover:shadow-card-premium"
-    >
-      <div
-        className="pointer-events-none absolute inset-0 opacity-50"
-        style={{ background: "var(--gradient-bg-glow)" }}
-      />
-      <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-mix shadow-glow-primary">
-        <Upload className="h-6 w-6 text-white" strokeWidth={2.2} />
-      </div>
-      <div className="relative">
-        <p className="text-[15px] font-semibold text-text-primary">
-          Upload your chart
-        </p>
-        <p className="mt-1 text-[12px] text-text-secondary">
-          PNG or JPG · TradingView screenshot works best
-        </p>
-      </div>
-      <div className="relative mt-1 flex items-center gap-1.5 rounded-full bg-text-primary/5 px-3 py-1 text-[11px] font-semibold text-text-primary ring-1 ring-border">
-        <ImageIcon className="h-3 w-3" strokeWidth={2.4} />
-        Tap to choose image
-      </div>
-    </motion.button>
+    <label className="block">
+      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+        {label}
+      </span>
+      {children}
+    </label>
   );
 }
 
-function StrategyChips() {
-  const tags = ["Trend following", "Smart money", "1:2 R:R minimum"];
-  return (
-    <div className="mt-4 rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
-      <div className="flex items-center gap-2">
-        <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-          Analyzing through your strategy
-        </p>
-      </div>
-      <div className="mt-2.5 flex flex-wrap gap-1.5">
-        {tags.map((t) => (
-          <span
-            key={t}
-            className="rounded-full bg-text-primary/5 px-2.5 py-1 text-[11px] font-medium text-text-primary ring-1 ring-border"
-          >
-            {t}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ChartPreview({
-  src,
-  analyzing,
+function TfSelect({
+  value,
+  onChange,
+  allowEmpty,
 }: {
-  src: string | null;
-  analyzing?: boolean;
+  value: string;
+  onChange: (v: string) => void;
+  allowEmpty?: boolean;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-card p-1 ring-1 ring-border shadow-soft">
-      <div className="relative aspect-[16/10] overflow-hidden rounded-[14px] bg-gradient-to-br from-text-primary/5 to-text-primary/10">
-        {src ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt="Chart" className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <ImageIcon className="h-8 w-8 text-text-secondary/40" />
-          </div>
-        )}
-        {analyzing ? (
-          <>
-            <motion.div
-              className="absolute inset-x-0 h-[2px] bg-gradient-mix shadow-glow-cyan"
-              animate={{ top: ["0%", "100%", "0%"] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-card/40 via-transparent to-card/20" />
-          </>
-        ) : (
-          <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-card/90 px-2 py-0.5 text-[10px] font-semibold text-text-primary ring-1 ring-border backdrop-blur">
-            <AlertTriangle className="h-3 w-3 text-amber-500" />
-            Wait for retest
-          </div>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[13.5px] font-medium text-text-primary outline-none ring-1 ring-transparent transition focus:ring-brand/40"
+    >
+      {allowEmpty && <option value="">—</option>}
+      {TIMEFRAMES.map((tf) => (
+        <option key={tf} value={tf}>
+          {tf}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function UploadCard({
+  label,
+  file,
+  optional,
+  onPick,
+  onClear,
+}: {
+  label: string;
+  file: File | null;
+  optional?: boolean;
+  onPick: () => void;
+  onClear: () => void;
+}) {
+  const preview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  return (
+    <div className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+          {label}
+        </span>
+        {optional && (
+          <span className="text-[10px] font-medium text-text-secondary/70">optional</span>
         )}
       </div>
+      {preview ? (
+        <div className="relative overflow-hidden rounded-xl">
+          <img src={preview} alt={label} className="h-40 w-full object-cover" />
+          <button
+            onClick={onClear}
+            className="absolute right-2 top-2 rounded-full bg-card/90 px-2 py-0.5 text-[11px] font-semibold text-text-primary ring-1 ring-border backdrop-blur"
+          >
+            Replace
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={onPick}
+          className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-brand/40 bg-card/70 px-4 py-7 transition hover:border-brand/70"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-mix">
+            <Upload className="h-4 w-4 text-white" />
+          </div>
+          <span className="text-[12px] font-medium text-text-primary">Tap to upload</span>
+          <span className="text-[10.5px] text-text-secondary">PNG / JPG · TradingView works best</span>
+        </button>
+      )}
     </div>
+  );
+}
+
+const VERDICT_STYLES: Record<
+  RuleBreakdown["overall"],
+  { label: string; ring: string; bg: string; fg: string; Icon: typeof CheckCircle2 }
+> = {
+  valid: {
+    label: "Valid setup",
+    ring: "ring-emerald-500/30",
+    bg: "bg-emerald-500/10",
+    fg: "text-emerald-700",
+    Icon: CheckCircle2,
+  },
+  weak: {
+    label: "Weak — review carefully",
+    ring: "ring-amber-500/30",
+    bg: "bg-amber-500/10",
+    fg: "text-amber-700",
+    Icon: AlertTriangle,
+  },
+  invalid: {
+    label: "Invalid — does not match strategy",
+    ring: "ring-rose-500/30",
+    bg: "bg-rose-500/10",
+    fg: "text-rose-700",
+    Icon: XCircle,
+  },
+};
+
+function ResultView({
+  result,
+  onReset,
+  navigate,
+}: {
+  result: {
+    row: ChartAnalysisRow;
+    breakdown: RuleBreakdown;
+    insight: string;
+    execPreview: string;
+    higherPreview: string | null;
+  };
+  onReset: () => void;
+  navigate: ReturnType<typeof useNavigate>;
+}) {
+  const v = VERDICT_STYLES[result.breakdown.overall];
+  const sections: Array<{ key: keyof RuleBreakdown; title: string }> = [
+    { key: "entry", title: "Entry" },
+    { key: "structure", title: "Structure" },
+    { key: "risk", title: "Risk" },
+    { key: "timing", title: "Timing" },
+  ];
+
+  return (
+    <motion.div
+      key="result"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      className="space-y-4"
+    >
+      {/* Charts */}
+      <div className="overflow-hidden rounded-2xl bg-card p-1 ring-1 ring-border shadow-soft">
+        <img src={result.execPreview} alt="Execution chart" className="h-44 w-full rounded-[14px] object-cover" />
+      </div>
+      {result.higherPreview && (
+        <div className="overflow-hidden rounded-2xl bg-card p-1 ring-1 ring-border shadow-soft">
+          <img src={result.higherPreview} alt="Higher TF chart" className="h-32 w-full rounded-[14px] object-cover" />
+        </div>
+      )}
+
+      {/* Verdict */}
+      <div className={`rounded-2xl p-4 ring-1 shadow-soft ${v.bg} ${v.ring}`}>
+        <div className="flex items-center gap-3">
+          <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-card ring-1 ring-border ${v.fg}`}>
+            <v.Icon className="h-4 w-4" strokeWidth={2.4} />
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+              Verdict
+            </p>
+            <p className={`text-[14.5px] font-semibold ${v.fg}`}>{v.label}</p>
+          </div>
+          <div className="ml-auto text-right">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+              Score
+            </p>
+            <p className="text-[18px] font-bold text-text-primary">{result.breakdown.score}/100</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Strategy mismatch warning */}
+      {result.breakdown.overall !== "valid" && (
+        <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <p className="text-[12.5px] leading-snug text-text-primary">
+            This setup does not fully match your strategy. Do not force it.
+          </p>
+        </div>
+      )}
+
+      {/* Breakdown */}
+      <div className="space-y-2.5">
+        {sections.map((s) => {
+          const cell = result.breakdown[s.key] as { passed: boolean; reasons: string[] };
+          return (
+            <div
+              key={s.key}
+              className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft"
+            >
+              <div className="flex items-center gap-2">
+                {cell.passed ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" strokeWidth={2.4} />
+                ) : (
+                  <XCircle className="h-4 w-4 text-rose-600" strokeWidth={2.4} />
+                )}
+                <span className="text-[13px] font-semibold text-text-primary">{s.title}</span>
+                <span
+                  className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${
+                    cell.passed
+                      ? "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20"
+                      : "bg-rose-500/10 text-rose-700 ring-rose-500/20"
+                  }`}
+                >
+                  {cell.passed ? "PASS" : "FAIL"}
+                </span>
+              </div>
+              <ul className="mt-2 space-y-1 pl-6">
+                {cell.reasons.map((r, idx) => (
+                  <li
+                    key={idx}
+                    className="list-disc text-[12px] leading-snug text-text-secondary"
+                  >
+                    {r}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* AI Insight */}
+      {result.insight && (
+        <div className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+              AI Insight · general market analysis
+            </span>
+          </div>
+          <p className="mt-2 text-[13px] leading-snug text-text-primary">{result.insight}</p>
+          <p className="mt-2 text-[10.5px] italic text-text-secondary/80">
+            Observation only. Does not override your rules.
+          </p>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <button
+          onClick={() => navigate({ to: "/hub/mind" })}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-mix px-4 py-3 text-[13.5px] font-semibold text-white shadow-soft hover:shadow-card-premium"
+        >
+          Trade Gate
+          <ArrowRight className="h-4 w-4" />
+        </button>
+        <button
+          onClick={onReset}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-card px-4 py-3 text-[13.5px] font-semibold text-text-primary ring-1 ring-border shadow-soft hover:shadow-card-premium"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Re-analyze
+        </button>
+      </div>
+      <div className="flex items-center justify-center gap-2 rounded-xl bg-card/60 px-3 py-2 ring-1 ring-border">
+        <Save className="h-3.5 w-3.5 text-text-secondary" />
+        <p className="text-[11.5px] text-text-secondary">Saved · ID {result.row.id.slice(0, 8)}</p>
+      </div>
+    </motion.div>
   );
 }
