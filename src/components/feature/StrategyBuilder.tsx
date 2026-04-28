@@ -388,6 +388,7 @@ function StepRisk({
       hint: "Account-wide cap",
     },
   ];
+  const overCap = (bp.risk_per_trade_pct ?? 0) > 5;
   return (
     <div className="space-y-4">
       <Header
@@ -418,6 +419,15 @@ function StepRisk({
             <div className="mt-1 text-xs text-muted-foreground">{f.hint}</div>
           </div>
         ))}
+        {overCap && (
+          <div className="flex items-start gap-2 rounded-xl bg-amber-500/5 p-3 ring-1 ring-amber-500/30 text-xs text-amber-700 dark:text-amber-400">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              Risking more than 5% per trade is outside any sane discipline
+              envelope. Consider lowering this before locking.
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
