@@ -507,11 +507,47 @@ Deno.serve(async (req) => {
         (context.recentPatterns && context.recentPatterns.length > 0) ||
         (context.lastTwoTrades && context.lastTwoTrades.length > 0) ||
         context.activeStrategy ||
-        context.dailyChecklist)
+        context.dailyChecklist ||
+        context.traderState)
     );
     let contextBlock = "";
     if (hasContext) {
       contextBlock = "\n\nUSER CONTEXT (real data — weave in gently when it helps the user see themselves clearly):";
+
+      // [TRADER_STATE] — highest priority, read-only awareness payload.
+      // Mentor must consult this for every restriction, score, or "why"
+      // question. Rendered first so it anchors the rest of the context.
+      if (context!.traderState) {
+        const t = context!.traderState;
+        const stateLabel = t.discipline.state.toUpperCase();
+        const tradingAllowed = t.session.trading_allowed ? "YES" : "NO";
+        const checklist = t.session.checklist_confirmed ? "confirmed" : "NOT confirmed";
+        const strategyLine = t.strategy.exists
+          ? `defined${t.strategy.locked ? " · LOCKED" : ""}${t.strategy.name ? ` · "${t.strategy.name}"` : ""}`
+          : "NOT defined";
+        const lastEv = t.last_analyzer_event
+          ? `${t.last_analyzer_event.verdict}${t.last_analyzer_event.score_delta !== 0 ? ` (${t.last_analyzer_event.score_delta > 0 ? "+" : ""}${t.last_analyzer_event.score_delta})` : ""}${t.last_analyzer_event.reason ? ` — ${t.last_analyzer_event.reason}` : ""}`
+          : "none";
+        const lastDelta = t.discipline.last_score_delta;
+        const lastReason = t.discipline.last_reason;
+        const lastMove =
+          lastDelta !== null
+            ? `${lastDelta > 0 ? "+" : ""}${lastDelta}${lastReason ? ` — ${lastReason}` : ""}${t.discipline.last_source ? ` [${t.discipline.last_source}]` : ""}`
+            : "no recent move";
+        const blocks: string[] = [];
+        if (t.blocks.no_strategy) blocks.push("no_strategy");
+        if (t.blocks.not_confirmed) blocks.push("not_confirmed");
+        if (t.blocks.discipline_locked) blocks.push("discipline_locked");
+        if (t.blocks.in_recovery) blocks.push("in_recovery");
+        const blockLine = blocks.length ? blocks.join(", ") : "none";
+        const recoveryLine = t.recovery.active
+          ? `ACTIVE${t.recovery.step ? ` · step=${t.recovery.step}` : ""}${t.recovery.probation_active ? " · probation_active" : ""}`
+          : t.recovery.probation_active
+            ? "probation_active"
+            : "none";
+        contextBlock += `\n\n[TRADER_STATE — system source of truth, read-only]\nUse this to answer ANY question about the system: why a feature is locked, why the score moved, what's allowed today, what to do next. Cite numbers verbatim. Never override.\n- Strategy: ${strategyLine}\n- Discipline: score=${t.discipline.score}/100 · state=${stateLabel} · consecutive_breaks=${t.discipline.consecutive_breaks}\n- Last score move: ${lastMove}\n- Session: checklist ${checklist} · trading_allowed=${tradingAllowed}\n- Last analyzer event: ${lastEv}\n- Active blocks: ${blockLine}\n- Recovery: ${recoveryLine}`;
+      }
+
       if (context!.dailyChecklist) {
         const d = context!.dailyChecklist;
         const stateLabel =
