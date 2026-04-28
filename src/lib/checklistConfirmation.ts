@@ -47,7 +47,7 @@ export async function fetchTodayConfirmation(): Promise<ChecklistConfirmation | 
     console.error("[checklist-confirm] fetch failed:", error);
     return null;
   }
-  return (data as ChecklistConfirmation) ?? null;
+  return data ? (data as unknown as ChecklistConfirmation) : null;
 }
 
 export type ConfirmationInput = {
