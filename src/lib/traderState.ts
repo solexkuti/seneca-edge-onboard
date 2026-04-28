@@ -86,6 +86,7 @@ const EMPTY_BREAKDOWN: DisciplineBreakdown = {
   execution_contributions: [],
   penalties: [],
   execution_neutral: true,
+  decision_neutral: true,
 };
 
 export const EMPTY_DISCIPLINE: DisciplineSummary = {
