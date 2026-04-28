@@ -98,30 +98,54 @@ function triggerDownload(content: string, mime: string, filename: string) {
 
 export type ExportRange = { from?: Date | null; to?: Date | null };
 
+export type ExportOptions = {
+  range?: ExportRange;
+  /** Pre-filtered rows. When provided, skips fetch + range filtering. */
+  rows?: DbJournalRow[];
+  /** Filename hint, e.g. "filtered". */
+  label?: string;
+};
+
 export async function exportJournal(
   format: ExportFormat,
-  range?: ExportRange,
+  options?: ExportOptions | ExportRange,
 ): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
   try {
-    let rows = await fetchJournal();
-    const fromMs = range?.from ? new Date(range.from).setHours(0, 0, 0, 0) : null;
-    const toMs = range?.to ? new Date(range.to).setHours(23, 59, 59, 999) : null;
-    if (fromMs !== null) rows = rows.filter((r) => r.timestamp >= fromMs);
-    if (toMs !== null) rows = rows.filter((r) => r.timestamp <= toMs);
+    // Backwards-compat: previously the second arg was a range directly.
+    const opts: ExportOptions =
+      options && ("rows" in options || "range" in options || "label" in options)
+        ? (options as ExportOptions)
+        : { range: options as ExportRange | undefined };
+
+    let rows: DbJournalRow[];
+    let suffix = "";
+
+    if (opts.rows) {
+      rows = opts.rows;
+    } else {
+      rows = await fetchJournal();
+      const fromMs = opts.range?.from ? new Date(opts.range.from).setHours(0, 0, 0, 0) : null;
+      const toMs = opts.range?.to ? new Date(opts.range.to).setHours(23, 59, 59, 999) : null;
+      if (fromMs !== null) rows = rows.filter((r) => r.timestamp >= fromMs);
+      if (toMs !== null) rows = rows.filter((r) => r.timestamp <= toMs);
+      if (fromMs !== null || toMs !== null) {
+        suffix = `-${opts.range?.from ? new Date(opts.range.from).toISOString().slice(0, 10) : "start"}_to_${opts.range?.to ? new Date(opts.range.to).toISOString().slice(0, 10) : "now"}`;
+      }
+    }
+
+    if (opts.label) suffix = `-${opts.label}${suffix}`;
+
     if (rows.length === 0) {
       return {
         ok: false,
-        error:
-          fromMs !== null || toMs !== null
+        error: opts.rows
+          ? "No entries match the current filters."
+          : suffix
             ? "No journal entries in that date range."
             : "No journal entries to export yet.",
       };
     }
     const stamp = new Date().toISOString().slice(0, 10);
-    const suffix =
-      fromMs !== null || toMs !== null
-        ? `-${range?.from ? new Date(range.from).toISOString().slice(0, 10) : "start"}_to_${range?.to ? new Date(range.to).toISOString().slice(0, 10) : "now"}`
-        : "";
     if (format === "csv") {
       triggerDownload(rowsToCsv(rows), "text/csv;charset=utf-8", `journal-${stamp}${suffix}.csv`);
     } else {

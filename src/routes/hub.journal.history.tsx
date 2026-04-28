@@ -258,7 +258,19 @@ function HistoryPage() {
         </div>
 
         {/* Results */}
-        <div className="mt-5 space-y-2.5">
+        <div className="mt-5 flex items-center justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
+            Results
+          </span>
+          {filtered.length > 0 && (
+            <JournalExportButton
+              rows={filtered}
+              label="filtered"
+              triggerLabel={`Export ${filtered.length}`}
+            />
+          )}
+        </div>
+        <div className="mt-3 space-y-2.5">
           {rows === null && (
             <div className="rounded-2xl bg-card ring-1 ring-border p-6 text-center text-sm text-text-secondary">
               Loading entries…
