@@ -54,11 +54,17 @@ export type TraderState = {
   strategy: ActiveStrategyContext | null;
   discipline: DisciplineSummary;
   session: SessionSummary;
+  recovery: {
+    active_session: RecoverySession | null;
+    probation: ProbationStatus;
+  };
   /** Hard-block flags. If any is true, the matching surface MUST refuse to operate. */
   blocks: {
     no_strategy: boolean;
     not_confirmed: boolean;
     discipline_locked: boolean;
+    /** True whenever the user must complete recovery before doing anything else. */
+    in_recovery: boolean;
   };
 };
 
@@ -78,10 +84,22 @@ export const EMPTY_STATE: TraderState = {
     trade_lock: null,
     trading_allowed: false,
   },
+  recovery: {
+    active_session: null,
+    probation: {
+      active: false,
+      passed: false,
+      failed: false,
+      decisions_required: 2,
+      decisions_seen: 0,
+      last_session_id: null,
+    },
+  },
   blocks: {
     no_strategy: true,
     not_confirmed: true,
     discipline_locked: false,
+    in_recovery: false,
   },
 };
 
