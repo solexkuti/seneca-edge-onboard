@@ -209,7 +209,7 @@ export default function TradingJournalFlow() {
           </div>
 
           <p className="mt-5 text-[13.5px] leading-snug text-text-secondary">
-            Saved to your journal. Seneca and your Control State are updated.
+            Saved locally. Sync status updates above.
           </p>
 
           <div className="mt-6 flex gap-2.5">
