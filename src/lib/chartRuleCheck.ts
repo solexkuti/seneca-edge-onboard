@@ -193,18 +193,21 @@ function riskCheck(rules: string[], f: ChartFeatures): SectionResult {
     };
     return { passed: true, reasons: [`✓ ${c.rule} — ${c.reason}`], checks: [c] };
   }
+  const stopRegions = pickRegions(f, "exec", ["stop_tp", "key_zone"]);
   const checks: RuleCheck[] = rules.map((r) => {
     if (f.volatility === "high") {
       return {
         rule: r,
         passed: false,
         reason: "High volatility — recheck stop placement against this rule",
+        regions: stopRegions.length ? stopRegions : undefined,
       };
     }
     return {
       rule: r,
       passed: true,
       reason: "Volatility looks normal — risk plausible from chart",
+      regions: stopRegions.length ? stopRegions : undefined,
     };
   });
   const passed = checks.every((c) => c.passed);
