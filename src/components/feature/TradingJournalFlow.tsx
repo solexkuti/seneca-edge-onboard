@@ -177,6 +177,7 @@ export default function TradingJournalFlow() {
 
     // 3. Sync in the background with silent retries.
     void syncWithRetry(pendingId, payload, { showToast: true });
+    setSubmitting(false);
   };
 
   // ───────── confirmation screen ─────────
