@@ -6,6 +6,7 @@ import appCss from "../styles.css?url";
 import DevResetOnboarding from "@/components/dev/DevResetOnboarding";
 import { flushPending } from "@/lib/journalPendingQueue";
 import { TraderStateProvider } from "@/hooks/useTraderState";
+import { installUserScopedStorage } from "@/lib/userScopedStorage";
 
 function NotFoundComponent() {
   return (
@@ -73,6 +74,10 @@ function RootComponent() {
   // Recover any unsynced journal submissions on app load and when the
   // tab regains focus / comes back online.
   useEffect(() => {
+    // CRITICAL: scope all client caches by user id and wipe legacy unscoped
+    // localStorage so a previous user's journal/checklist/name can't leak
+    // to the next account signed in on this browser.
+    installUserScopedStorage();
     void flushPending();
     const onFocus = () => void flushPending();
     const onOnline = () => void flushPending();
