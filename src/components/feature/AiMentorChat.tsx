@@ -323,6 +323,16 @@ export default function AiMentorChat() {
           </div>
         ) : null}
 
+        {/* Mini interactive recovery checklist — only shown while the
+           Analyzer is gated (locked discipline OR checklist not confirmed).
+           Each completed step inserts a synthetic positive analyzer_event
+           and broadcasts, which progressively lifts the lock in real time. */}
+        {(traderState.discipline.state === "locked" ||
+          traderState.discipline.state === "at_risk" ||
+          !traderState.session.checklist_confirmed) && (
+          <MentorRecoveryChecklist />
+        )}
+
         {/* Messages */}
         <div
           ref={scrollRef}
