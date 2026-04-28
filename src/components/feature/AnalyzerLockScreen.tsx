@@ -198,12 +198,14 @@ export default function AnalyzerLockScreen({ children }: Props) {
               tone={isDiscipline ? "red" : "muted"}
               icon={ShieldAlert}
               meta={`${state.discipline.score}/100`}
+              reduceMotion={reduceMotion}
             />
             <Indicator
               label="Checklist"
               value={state.session.checklist_confirmed ? "Confirmed" : "Not confirmed"}
               tone={state.session.checklist_confirmed ? "ok" : "red"}
               icon={state.session.checklist_confirmed ? ShieldCheck : Lock}
+              reduceMotion={reduceMotion}
             />
           </div>
 
