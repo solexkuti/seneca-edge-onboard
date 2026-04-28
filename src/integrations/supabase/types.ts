@@ -314,6 +314,39 @@ export type Database = {
         }
         Relationships: []
       }
+      lock_attempt_events: {
+        Row: {
+          checklist_confirmed: boolean
+          created_at: string
+          discipline_score: number
+          discipline_state: string
+          id: string
+          reason: string
+          surface: string
+          user_id: string
+        }
+        Insert: {
+          checklist_confirmed?: boolean
+          created_at?: string
+          discipline_score?: number
+          discipline_state: string
+          id?: string
+          reason: string
+          surface?: string
+          user_id: string
+        }
+        Update: {
+          checklist_confirmed?: boolean
+          created_at?: string
+          discipline_score?: number
+          discipline_state?: string
+          id?: string
+          reason?: string
+          surface?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mentor_analytics: {
         Row: {
           assistant_message_length: number | null

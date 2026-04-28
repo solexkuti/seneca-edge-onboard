@@ -87,7 +87,7 @@ export default function ChartAnalyzer() {
 
   const execInputRef = useRef<HTMLInputElement>(null);
   const higherInputRef = useRef<HTMLInputElement>(null);
-  const { refresh: refreshTraderState } = useTraderState();
+  const { state: traderState, refresh: refreshTraderState } = useTraderState();
 
   useEffect(() => {
     let alive = true;
@@ -140,10 +140,22 @@ export default function ChartAnalyzer() {
     );
   }
 
-  const canAnalyze = !!activeStrategy && !!execFile && !!execTf;
+  const isLocked =
+    traderState.blocks.discipline_locked || traderState.blocks.not_confirmed;
+  const canAnalyze = !!activeStrategy && !!execFile && !!execTf && !isLocked;
 
   async function handleAnalyze() {
     if (!activeStrategy || !execFile) return;
+    // Defense-in-depth: refuse to even attempt the API call if the session
+    // entered lock state mid-flow. The lock screen will mount on next render.
+    if (isLocked) {
+      toast.error(
+        traderState.blocks.discipline_locked
+          ? "Discipline locked. Reflect with the mentor before analyzing again."
+          : "Confirm today's checklist before analyzing.",
+      );
+      return;
+    }
     setPhase("analyzing");
     setStep(0);
     setResult(null);
@@ -172,6 +184,15 @@ export default function ChartAnalyzer() {
         },
       });
       if (error) throw new Error(error.message || "Analysis failed");
+
+      // Server-side lock enforcement (403). Force a state refresh so the
+      // <AnalyzerLockScreen /> takes over on next render.
+      if (data?.status === "locked") {
+        toast.error(data?.reason || "Analyzer is locked.");
+        void refreshTraderState();
+        setPhase("setup");
+        return;
+      }
 
       // Pipeline rejected the image — show details from validation stage
       if (data?.status === "rejected" || data?.is_chart === false) {
