@@ -270,7 +270,7 @@ function HistoryPage() {
             />
           )}
         </div>
-        <div className="mt-3 space-y-2.5">
+        <div className="mt-3 space-y-5">
           {rows === null && (
             <div className="rounded-2xl bg-card ring-1 ring-border p-6 text-center text-sm text-text-secondary">
               Loading entries…
@@ -281,8 +281,16 @@ function HistoryPage() {
               No entries match these filters.
             </div>
           )}
-          {filtered.map((r) => (
-            <EntryCard key={r.id} row={r} />
+          {groupByDay(filtered).map((group) => (
+            <section key={group.key} className="space-y-2.5">
+              <h2 className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+                {group.label}
+                <span className="ml-2 text-text-secondary/60">{group.rows.length}</span>
+              </h2>
+              {group.rows.map((r) => (
+                <EntryCard key={r.id} row={r} />
+              ))}
+            </section>
           ))}
         </div>
       </div>
