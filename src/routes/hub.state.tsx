@@ -16,6 +16,7 @@ import { useDbJournal } from "@/hooks/useDbJournal";
 import { detectBehaviorPattern } from "@/lib/behaviorPattern";
 import type { DbJournalRow } from "@/lib/dbJournal";
 import DisciplineStreakWidget from "@/components/feature/DisciplineStreakWidget";
+import RequireAuth from "@/components/auth/RequireAuth";
 
 export const Route = createFileRoute("/hub/state")({
   head: () => ({
@@ -28,7 +29,11 @@ export const Route = createFileRoute("/hub/state")({
       },
     ],
   }),
-  component: ControlStatePage,
+  component: () => (
+    <RequireAuth>
+      <ControlStatePage />
+    </RequireAuth>
+  ),
 });
 
 const ease = [0.22, 1, 0.36, 1] as const;
