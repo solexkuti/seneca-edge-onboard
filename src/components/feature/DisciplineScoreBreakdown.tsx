@@ -225,7 +225,15 @@ function ContributionGroup({
       <p className="text-[11px] font-semibold text-foreground">{label}</p>
       <ul className="mt-1 space-y-1">
         {items.map((c) => {
-          const positive = c.value >= 50;
+          // Decision: positive when raw > 0. Execution: positive when ≥ 50.
+          const positive =
+            c.source === "decision" ? c.raw > 0 : c.value >= 50;
+          // Show explicit delta for decision events (+2 / 0 / -5 / -10),
+          // normalized score for execution.
+          const delta =
+            c.source === "decision"
+              ? `${c.raw > 0 ? "+" : ""}${c.raw}`
+              : `${Math.round(c.value)}`;
           return (
             <li
               key={c.id}
@@ -235,7 +243,9 @@ function ContributionGroup({
                 className={`mt-0.5 inline-flex h-4 w-4 flex-none items-center justify-center rounded-full ring-1 ${
                   positive
                     ? "bg-emerald-500/10 text-emerald-700 ring-emerald-500/25"
-                    : "bg-red-600/10 text-red-700 ring-red-600/25"
+                    : c.raw === 0 && c.source === "decision"
+                      ? "bg-muted text-muted-foreground ring-border"
+                      : "bg-red-600/10 text-red-700 ring-red-600/25"
                 }`}
               >
                 {positive ? (
@@ -246,7 +256,7 @@ function ContributionGroup({
               </span>
               <span className="min-w-0 flex-1 truncate">{c.reason}</span>
               <span className="font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                {Math.round(c.value)} · w{c.weight.toFixed(2)}
+                {delta} · w{c.weight.toFixed(2)}
               </span>
             </li>
           );
