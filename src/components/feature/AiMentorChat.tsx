@@ -20,6 +20,7 @@ import {
   summarizeRulesForAI,
   type ActiveStrategyContext,
 } from "@/lib/activeStrategy";
+import { getDailyChecklist } from "@/lib/dailyChecklistCache";
 import { toast } from "sonner";
 
 type Msg = {
