@@ -18,6 +18,8 @@ import {
   ArrowRight,
   Brain,
   AlertTriangle,
+  XCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { useTraderState } from "@/hooks/useTraderState";
 import { logLockAttempt, type LockAttemptReason } from "@/lib/lockAttempts";
@@ -71,9 +73,7 @@ export default function AnalyzerLockScreen({ children }: Props) {
   const title = "Trading Locked";
   const subtitle =
     "You are not in a controlled state to analyze or execute trades.";
-  const reasonLine = isDiscipline
-    ? `Your discipline score has dropped to ${state.discipline.score}/100. The system has forced a cooldown.`
-    : "You have not confirmed today's checklist. Trading is blocked until you do.";
+  // (Reason copy is now rendered as structured bullets below.)
 
   const fixTarget = isDiscipline ? "/hub/recovery" : "/hub/daily";
   const fixLabel = isDiscipline
@@ -142,15 +142,29 @@ export default function AnalyzerLockScreen({ children }: Props) {
             />
           </div>
 
-          {/* Reason */}
-          <div className="mt-4 flex items-start gap-2 rounded-xl bg-red-600/5 p-3 ring-1 ring-red-600/20">
-            <AlertTriangle
-              className="mt-0.5 h-4 w-4 flex-none text-red-700"
-              aria-hidden
-            />
-            <p className="text-xs leading-relaxed text-red-900/85">
-              {reasonLine}
-            </p>
+          {/* Structured lock reasons — one bullet per gate, showing
+             expected vs actual so the user knows exactly what changed. */}
+          <div className="mt-4 rounded-xl bg-red-600/5 p-3 ring-1 ring-red-600/20">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 flex-none text-red-700" aria-hidden />
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-700">
+                Why you're locked
+              </div>
+            </div>
+            <ul className="mt-2 space-y-1.5">
+              <ReasonBullet
+                failed={state.discipline.score < 40 || state.discipline.state === "locked"}
+                label="Discipline score"
+                expected="≥ 40 required"
+                actual={`${state.discipline.score}/100 · ${prettyState(state.discipline.state)}`}
+              />
+              <ReasonBullet
+                failed={!state.session.checklist_confirmed}
+                label="Daily checklist"
+                expected="Must be confirmed"
+                actual={state.session.checklist_confirmed ? "Confirmed" : "Not confirmed today"}
+              />
+            </ul>
           </div>
 
           {/* CTAs */}
@@ -297,5 +311,39 @@ function TechParticles() {
         />
       ))}
     </div>
+  );
+}
+
+// Single structured reason row: shows expected vs actual and whether
+// this gate is the one that failed.
+function ReasonBullet({
+  failed,
+  label,
+  expected,
+  actual,
+}: {
+  failed: boolean;
+  label: string;
+  expected: string;
+  actual: string;
+}) {
+  const Icon = failed ? XCircle : CheckCircle2;
+  const tone = failed ? "text-red-700" : "text-emerald-700";
+  const valueTone = failed ? "text-red-900" : "text-foreground/80";
+  return (
+    <li className="flex items-start gap-2">
+      <Icon className={`mt-0.5 h-3.5 w-3.5 flex-none ${tone}`} aria-hidden />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-xs font-medium text-foreground">{label}</span>
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            {expected}
+          </span>
+        </div>
+        <div className={`text-[11px] leading-relaxed ${valueTone}`}>
+          {actual}
+        </div>
+      </div>
+    </li>
   );
 }
