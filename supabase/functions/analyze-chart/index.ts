@@ -312,20 +312,48 @@ async function enforceAnalyzerLock(req: Request): Promise<Response | null> {
     );
   }
 
-  // 2) Discipline lock — recompute score from recent_decisions to mirror
-  //    the client-side computeDiscipline() exactly (start at 50, sum deltas).
-  const { data: recent } = await admin
-    .from("recent_decisions")
-    .select("score_delta,verdict,created_at")
-    .eq("user_id", uid)
-    .order("created_at", { ascending: false })
-    .limit(20);
+  // 2) Discipline lock — mirror the deterministic scoring system in
+  //    src/lib/disciplineScore.ts. Decision (40%) + Execution (60%),
+  //    each weighted-averaged over the last 10 events with recency decay.
+  //    Lock threshold: final score < 40 ("locked" state).
+  const RECENCY = [1.0, 0.85, 0.7, 0.6, 0.5, 0.42, 0.35, 0.3, 0.25, 0.2];
+  const normEvent = (s: number) => ((Math.max(-20, Math.min(5, s)) + 20) / 25) * 100;
+  const wavg = (vals: number[], wts: number[]) => {
+    let s = 0, w = 0;
+    for (let i = 0; i < vals.length; i++) {
+      s += vals[i] * (wts[i] ?? 0);
+      w += wts[i] ?? 0;
+    }
+    return w > 0 ? s / w : 0;
+  };
 
-  let score = 50;
-  for (const r of recent ?? []) score += Number(r.score_delta ?? 0);
-  score = Math.max(0, Math.min(100, score));
+  const [{ data: events }, { data: trades }] = await Promise.all([
+    admin
+      .from("analyzer_events")
+      .select("score_delta,verdict,created_at")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(10),
+    admin
+      .from("discipline_logs")
+      .select("discipline_score,created_at")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(10),
+  ]);
 
-  if (score < 50) {
+  const evVals = (events ?? []).map((e: { score_delta: number | null }) =>
+    normEvent(Number(e.score_delta ?? 0)),
+  );
+  const trVals = (trades ?? []).map((t: { discipline_score: number }) =>
+    Math.max(0, Math.min(100, Number(t.discipline_score ?? 0))),
+  );
+
+  const decision = evVals.length === 0 ? 50 : wavg(evVals, RECENCY);
+  const execution = trVals.length === 0 ? 50 : wavg(trVals, RECENCY);
+  const score = Math.round(decision * 0.4 + execution * 0.6);
+
+  if (score < 40) {
     return lockedResponse(
       `Discipline score ${score}/100 — cooldown required.`,
       { code: "discipline_locked", discipline_score: score },
