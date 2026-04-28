@@ -38,6 +38,13 @@ import {
 } from "@/lib/chartRuleCheck";
 import { supabase } from "@/integrations/supabase/client";
 
+type ChartExplanation = {
+  summary: string;
+  aligns: string[];
+  misaligns: string[];
+  final_assessment: string;
+};
+
 const TIMEFRAMES = ["1m", "5m", "15m", "1H", "4H", "1D", "1W"] as const;
 
 type Phase = "setup" | "analyzing" | "result" | "invalid";
@@ -69,6 +76,9 @@ export default function ChartAnalyzer() {
     modelUsed: "primary" | "fallback";
     pipelineConfidence: number; // 0–1
     warnings: string[];
+    explanation: ChartExplanation | null;
+    explanationLoading: boolean;
+    explanationError: string | null;
   } | null>(null);
 
   const execInputRef = useRef<HTMLInputElement>(null);
@@ -216,8 +226,43 @@ export default function ChartAnalyzer() {
         modelUsed,
         pipelineConfidence: pipelineConf,
         warnings,
+        explanation: null,
+        explanationLoading: true,
+        explanationError: null,
       });
       setPhase("result");
+
+      // Fire-and-update: fetch the structured mentor explanation.
+      void (async () => {
+        try {
+          const { data: exp, error: expErr } = await supabase.functions.invoke(
+            "explain-chart",
+            {
+              body: {
+                strategy_name: activeStrategy.name,
+                strategy_rules: activeStrategy.structured_rules,
+                chart_features: features,
+                rule_breakdown: breakdown,
+              },
+            },
+          );
+          if (expErr) throw new Error(expErr.message);
+          const explanation = (exp as { explanation?: ChartExplanation } | null)
+            ?.explanation;
+          if (!explanation) throw new Error("No explanation returned");
+          setResult((prev) =>
+            prev ? { ...prev, explanation, explanationLoading: false } : prev,
+          );
+        } catch (err) {
+          const m = err instanceof Error ? err.message : "Explanation failed";
+          console.error("[chart-analyzer] explanation failed:", err);
+          setResult((prev) =>
+            prev
+              ? { ...prev, explanationLoading: false, explanationError: m }
+              : prev,
+          );
+        }
+      })();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Analysis failed";
       console.error("[chart-analyzer] failed:", e);
@@ -558,6 +603,9 @@ function ResultView({
     modelUsed: "primary" | "fallback";
     pipelineConfidence: number;
     warnings: string[];
+    explanation: ChartExplanation | null;
+    explanationLoading: boolean;
+    explanationError: string | null;
   };
   onReset: () => void;
   navigate: ReturnType<typeof useNavigate>;
@@ -699,7 +747,14 @@ function ResultView({
         })}
       </div>
 
-      {/* AI Insight */}
+      {/* Structured AI Explanation */}
+      <ExplanationCard
+        loading={result.explanationLoading}
+        error={result.explanationError}
+        explanation={result.explanation}
+      />
+
+      {/* AI Insight (legacy short observation, only if present) */}
       {result.insight && (
         <div className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
           <div className="flex items-center gap-2">
@@ -747,5 +802,131 @@ function ResultView({
         <p className="text-[11.5px] text-text-secondary">Saved · ID {result.row.id.slice(0, 8)}</p>
       </div>
     </motion.div>
+  );
+}
+
+function ExplanationCard({
+  loading,
+  error,
+  explanation,
+}: {
+  loading: boolean;
+  error: string | null;
+  explanation: ChartExplanation | null;
+}) {
+  if (loading) {
+    return (
+      <div className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-brand" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+            Mentor explanation · generating
+          </span>
+        </div>
+        <div className="mt-3 space-y-2">
+          <div className="h-3 w-3/4 animate-pulse rounded bg-text-secondary/15" />
+          <div className="h-3 w-2/3 animate-pulse rounded bg-text-secondary/15" />
+          <div className="h-3 w-1/2 animate-pulse rounded bg-text-secondary/15" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !explanation) {
+    return (
+      <div className="rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
+        <div className="flex items-start gap-2">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <p className="text-[12.5px] leading-snug text-text-primary">
+            Mentor explanation unavailable. Rule breakdown above is authoritative.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2.5">
+      {/* Summary */}
+      <div className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+            Summary
+          </span>
+        </div>
+        <p className="mt-2 text-[13px] leading-snug text-text-primary">
+          {explanation.summary}
+        </p>
+      </div>
+
+      {/* Aligns */}
+      <div className="rounded-2xl bg-card p-3.5 ring-1 ring-emerald-500/25 shadow-soft">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" strokeWidth={2.4} />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+            What aligns with strategy
+          </span>
+        </div>
+        {explanation.aligns.length === 0 ? (
+          <p className="mt-2 text-[12.5px] italic text-text-secondary">
+            Nothing in this setup aligns with your strategy.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-1 pl-6">
+            {explanation.aligns.map((a, i) => (
+              <li
+                key={i}
+                className="list-disc text-[12.5px] leading-snug text-text-primary"
+              >
+                {a}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Misaligns */}
+      <div className="rounded-2xl bg-card p-3.5 ring-1 ring-rose-500/25 shadow-soft">
+        <div className="flex items-center gap-2">
+          <XCircle className="h-4 w-4 text-rose-600" strokeWidth={2.4} />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+            What does NOT align
+          </span>
+        </div>
+        {explanation.misaligns.length === 0 ? (
+          <p className="mt-2 text-[12.5px] italic text-text-secondary">
+            No misalignments detected against your strategy.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-1 pl-6">
+            {explanation.misaligns.map((m, i) => (
+              <li
+                key={i}
+                className="list-disc text-[12.5px] leading-snug text-text-primary"
+              >
+                {m}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Final Assessment */}
+      <div className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+            Final assessment
+          </span>
+        </div>
+        <p className="mt-2 text-[13px] font-medium leading-snug text-text-primary">
+          {explanation.final_assessment}
+        </p>
+        <p className="mt-2 text-[10.5px] italic text-text-secondary/80">
+          Explanation only. Does not override the rule breakdown above.
+        </p>
+      </div>
+    </div>
   );
 }
