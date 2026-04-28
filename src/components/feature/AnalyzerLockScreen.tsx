@@ -190,6 +190,17 @@ export default function AnalyzerLockScreen({ children }: Props) {
             {subtitle}
           </p>
 
+          {/* Unlock-reason micro-animation — deterministic. Walks through
+             the three gates (Checklist → Discipline state → Score) and
+             dwells on the one currently failing so the user can see, at
+             a glance, what is keeping the lock active. CTA copy unchanged. */}
+          <UnlockReasonTicker
+            checklistConfirmed={state.session.checklist_confirmed}
+            disciplineState={state.discipline.state}
+            score={state.discipline.score}
+            reduceMotion={reduceMotion}
+          />
+
           {/* State indicators */}
           <div className="mt-5 grid grid-cols-2 gap-2">
             <Indicator
@@ -373,6 +384,130 @@ export default function AnalyzerLockScreen({ children }: Props) {
             </button>
           </div>
         </motion.div>
+      </div>
+    </div>
+  );
+}
+
+// ── UnlockReasonTicker ──────────────────────────────────────────────────
+// Deterministic micro-animation that surfaces *why* the lock is still
+// active. Computes the failing gates from props (no AI, no randomness),
+// then either cycles focus across the 3 gates (motion on) or renders a
+// single static row pinned to the primary blocker (motion off).
+type GateKey = "checklist" | "state" | "score";
+
+function UnlockReasonTicker({
+  checklistConfirmed,
+  disciplineState,
+  score,
+  reduceMotion,
+}: {
+  checklistConfirmed: boolean;
+  disciplineState: string;
+  score: number;
+  reduceMotion: boolean;
+}) {
+  const gates = useMemo(
+    () => {
+      const checklistFail = !checklistConfirmed;
+      const stateFail = disciplineState === "locked";
+      const scoreFail = score < 40;
+      return [
+        {
+          key: "checklist" as GateKey,
+          failed: checklistFail,
+          label: "Daily checklist not confirmed",
+          hint: "Confirm today’s checklist to release this gate.",
+        },
+        {
+          key: "state" as GateKey,
+          failed: stateFail,
+          label: "Discipline state is Out of Control",
+          hint: "Run a recovery cycle to leave the locked band.",
+        },
+        {
+          key: "score" as GateKey,
+          failed: scoreFail,
+          label: `Discipline score below 40 (currently ${score})`,
+          hint: "Score must climb back above 40 to unlock.",
+        },
+      ];
+    },
+    [checklistConfirmed, disciplineState, score],
+  );
+
+  const failing = gates.filter((g) => g.failed);
+  const primary = failing[0] ?? gates[0];
+  const [idx, setIdx] = useState(0);
+
+  // Deterministic cycle: 2.4s per gate, only across failing gates.
+  useEffect(() => {
+    if (reduceMotion || failing.length <= 1) {
+      setIdx(0);
+      return;
+    }
+    const id = window.setInterval(() => {
+      setIdx((i) => (i + 1) % failing.length);
+    }, 2400);
+    return () => window.clearInterval(id);
+  }, [reduceMotion, failing.length]);
+
+  const active = failing.length > 0 ? failing[idx % failing.length] : primary;
+
+  return (
+    <div
+      className="mt-3 flex items-start gap-2 rounded-xl bg-red-600/5 px-3 py-2 ring-1 ring-red-600/15"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <span className="relative mt-1 inline-flex h-2 w-2 flex-none">
+        {!reduceMotion && (
+          <motion.span
+            aria-hidden
+            className="absolute inline-flex h-full w-full rounded-full bg-red-500/70"
+            animate={{ scale: [1, 2, 1], opacity: [0.7, 0, 0.7] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
+          />
+        )}
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-700">
+          Why it’s still locked
+        </div>
+        <motion.div
+          key={`${active.key}-${reduceMotion ? "static" : "anim"}`}
+          initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.28, ease: "easeOut" }}
+          className="mt-0.5"
+        >
+          <div className="text-sm font-medium text-foreground">
+            {active.label}
+          </div>
+          <div className="text-[11px] leading-snug text-foreground/65">
+            {active.hint}
+          </div>
+        </motion.div>
+
+        {/* Step dots — only render when there's more than one failing gate.
+           Highlights the currently focused step. */}
+        {failing.length > 1 && (
+          <div className="mt-1.5 flex items-center gap-1">
+            {failing.map((g, i) => (
+              <span
+                key={g.key}
+                className={[
+                  "h-1 rounded-full transition-all",
+                  i === idx % failing.length
+                    ? "w-4 bg-red-600/80"
+                    : "w-1.5 bg-red-600/25",
+                ].join(" ")}
+                aria-hidden
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
