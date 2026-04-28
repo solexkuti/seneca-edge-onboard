@@ -96,5 +96,5 @@ export async function recordConfirmation(
     console.error("[checklist-confirm] insert failed:", error);
     return { ok: false, error: error?.message ?? "Could not lock checklist." };
   }
-  return { ok: true, row: data as ChecklistConfirmation };
+  return { ok: true, row: data as unknown as ChecklistConfirmation };
 }
