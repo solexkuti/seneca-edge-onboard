@@ -60,81 +60,155 @@ export function isLowConfidence(
 
 const lc = (s: string) => s.toLowerCase();
 
-function entryCheck(rules: string[], f: ChartFeatures): { passed: boolean; reasons: string[] } {
-  if (rules.length === 0) return { passed: true, reasons: ["No entry rules defined"] };
-  const reasons: string[] = [];
-  let pass = true;
+function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
+  if (rules.length === 0) {
+    return {
+      passed: true,
+      reasons: ["No entry rules defined"],
+      checks: [
+        { rule: "No entry rules defined", passed: true, reason: "Nothing to evaluate" },
+      ],
+    };
+  }
+  const checks: RuleCheck[] = [];
   for (const r of rules) {
     const t = lc(r);
+    let passed = true;
+    const subReasons: string[] = [];
+
     if (t.includes("bos") || t.includes("break of structure")) {
       if (f.structure !== "break_of_structure") {
-        pass = false;
-        reasons.push(`Entry needs Break of Structure — chart shows ${f.structure ?? "unknown"}`);
-      } else reasons.push("Break of Structure visible");
+        passed = false;
+        subReasons.push(
+          `Needs Break of Structure — chart shows ${f.structure ?? "unknown"}`,
+        );
+      } else {
+        subReasons.push("Break of Structure visible on chart");
+      }
     }
     if (t.includes("retest")) {
       if (f.structure !== "consolidation" && f.structure !== "break_of_structure") {
-        pass = false;
-        reasons.push("Retest condition not visible");
+        passed = false;
+        subReasons.push("Retest condition not visible");
+      } else {
+        subReasons.push("Retest condition plausible");
       }
     }
     if (t.includes("liquidity") || t.includes("sweep")) {
       if (f.liquidity === "none" || f.liquidity === "unclear") {
-        pass = false;
-        reasons.push("Liquidity condition not visible");
+        passed = false;
+        subReasons.push("Liquidity sweep not visible");
+      } else {
+        subReasons.push("Liquidity condition visible");
       }
     }
+
+    if (subReasons.length === 0) {
+      // No keyword hit — can't deterministically verify from chart alone.
+      checks.push({
+        rule: r,
+        passed: true,
+        reason: "Not directly observable on chart — confirm manually",
+      });
+    } else {
+      checks.push({ rule: r, passed, reason: subReasons.join("; ") });
+    }
   }
-  if (reasons.length === 0) reasons.push("Entry rules not directly observable on chart");
-  return { passed: pass, reasons };
+  const passed = checks.every((c) => c.passed);
+  const reasons = checks.map((c) => `${c.passed ? "✓" : "✗"} ${c.rule} — ${c.reason}`);
+  return { passed, reasons, checks };
 }
 
-function structureCheck(f: ChartFeatures): { passed: boolean; reasons: string[] } {
-  if (f.quality === "messy" || f.quality === "unclear") {
-    return { passed: false, reasons: ["Chart structure is unclear or messy"] };
-  }
-  if (f.structure === "none") {
-    return { passed: false, reasons: ["No clear structure on the execution timeframe"] };
-  }
-  return { passed: true, reasons: ["Structure is readable"] };
+function structureCheck(f: ChartFeatures): SectionResult {
+  const checks: RuleCheck[] = [
+    {
+      rule: "Chart structure must be readable",
+      passed: !(f.quality === "messy" || f.quality === "unclear"),
+      reason:
+        f.quality === "messy" || f.quality === "unclear"
+          ? `Chart quality is ${f.quality}`
+          : "Chart quality is clear",
+    },
+    {
+      rule: "Visible market structure on execution timeframe",
+      passed: f.structure !== "none" && f.structure !== "unclear",
+      reason:
+        f.structure === "none"
+          ? "No clear structure detected"
+          : f.structure === "unclear"
+            ? "Structure unclear"
+            : `Structure: ${f.structure}`,
+    },
+  ];
+  const passed = checks.every((c) => c.passed);
+  const reasons = checks.map((c) => `${c.passed ? "✓" : "✗"} ${c.rule} — ${c.reason}`);
+  return { passed, reasons, checks };
 }
 
-function riskCheck(rules: string[], f: ChartFeatures): { passed: boolean; reasons: string[] } {
+function riskCheck(rules: string[], f: ChartFeatures): SectionResult {
   if (rules.length === 0) {
-    return { passed: true, reasons: ["No explicit risk rules — confirm SL/TP manually"] };
-  }
-  if (f.volatility === "high") {
-    return {
-      passed: false,
-      reasons: ["High volatility — recheck stop placement against risk rule"],
+    const c: RuleCheck = {
+      rule: "No explicit risk rules defined",
+      passed: true,
+      reason: "Confirm SL/TP placement manually",
     };
+    return { passed: true, reasons: [`✓ ${c.rule} — ${c.reason}`], checks: [c] };
   }
-  return { passed: true, reasons: ["Risk conditions plausible from chart"] };
+  const checks: RuleCheck[] = rules.map((r) => {
+    if (f.volatility === "high") {
+      return {
+        rule: r,
+        passed: false,
+        reason: "High volatility — recheck stop placement against this rule",
+      };
+    }
+    return {
+      rule: r,
+      passed: true,
+      reason: "Volatility looks normal — risk plausible from chart",
+    };
+  });
+  const passed = checks.every((c) => c.passed);
+  const reasons = checks.map((c) => `${c.passed ? "✓" : "✗"} ${c.rule} — ${c.reason}`);
+  return { passed, reasons, checks };
 }
 
 function timingCheck(
   exec: ChartFeatures,
   higher?: ChartFeatures | null,
-): { passed: boolean; reasons: string[] } {
+): SectionResult {
   if (!higher) {
-    return {
+    const c: RuleCheck = {
+      rule: "Higher timeframe alignment",
       passed: true,
-      reasons: ["No higher timeframe provided — alignment not enforced"],
+      reason: "No higher timeframe provided — alignment not enforced",
     };
+    return { passed: true, reasons: [`✓ ${c.rule} — ${c.reason}`], checks: [c] };
   }
-  if (exec.trend === "unclear" || higher.trend === "unclear") {
-    return { passed: false, reasons: ["Trend unclear on one of the timeframes"] };
-  }
-  if (
+  const checks: RuleCheck[] = [];
+  const trendClear = exec.trend !== "unclear" && higher.trend !== "unclear";
+  checks.push({
+    rule: "Trend must be readable on both timeframes",
+    passed: trendClear,
+    reason: trendClear
+      ? `Exec ${exec.trend}, higher ${higher.trend}`
+      : "Trend unclear on one of the timeframes",
+  });
+  const conflict =
     (exec.trend === "uptrend" && higher.trend === "downtrend") ||
-    (exec.trend === "downtrend" && higher.trend === "uptrend")
-  ) {
-    return {
-      passed: false,
-      reasons: [`Timeframes mismatched: exec ${exec.trend} vs higher ${higher.trend}`],
-    };
-  }
-  return { passed: true, reasons: [`Aligned: ${exec.trend} on both timeframes`] };
+    (exec.trend === "downtrend" && higher.trend === "uptrend");
+  checks.push({
+    rule: "Execution trend aligned with higher timeframe",
+    passed: trendClear && !conflict,
+    reason: !trendClear
+      ? "Cannot confirm — trend unclear"
+      : conflict
+        ? `Mismatched: exec ${exec.trend} vs higher ${higher.trend}`
+        : `Aligned: ${exec.trend} on both timeframes`,
+  });
+  const passed = checks.every((c) => c.passed);
+  const reasons = checks.map((c) => `${c.passed ? "✓" : "✗"} ${c.rule} — ${c.reason}`);
+  return { passed, reasons, checks };
 }
 
 export function evaluateChartAgainstStrategy(
