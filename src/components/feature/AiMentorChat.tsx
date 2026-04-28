@@ -2,8 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUp, Sparkles } from "lucide-react";
 import FeatureShell from "./FeatureShell";
-import { useJournal } from "@/hooks/useJournal";
+import { useDbJournal } from "@/hooks/useDbJournal";
 import { summarizeJournal } from "@/lib/journalSummary";
+import { computeIntelligence } from "@/lib/intelligence";
+import {
+  fetchRecentPatterns,
+  type DbBehaviorPattern,
+} from "@/lib/dbBehaviorPatterns";
 import {
   detectMentorState,
   pickMentorSuggestions,
@@ -25,7 +30,19 @@ const SESSION_ID =
     : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 export default function AiMentorChat() {
-  const journal = useJournal();
+  const { rows, entries: journal } = useDbJournal();
+  const intelligence = useMemo(() => computeIntelligence(rows), [rows]);
+  const [recentPatterns, setRecentPatterns] = useState<DbBehaviorPattern[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetchRecentPatterns(3).then((p) => {
+      if (!cancelled) setRecentPatterns(p);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [rows.length]);
+
   const [messages, setMessages] = useState<Msg[]>([
     {
       id: "intro",
@@ -95,14 +112,32 @@ export default function AiMentorChat() {
     setDraft("");
     setStreaming(true);
 
-    // Build user context from real signals: trading journal + onboarding profile.
+    // Build user context from real signals: trading journal + onboarding profile + intelligence + patterns.
     const journalSummary = summarizeJournal(journal) ?? undefined;
     const profileSummary = summarizeProfile(readProfile()) ?? undefined;
+    const intelligencePayload = intelligence.windowSize > 0
+      ? {
+          disciplineScore: intelligence.disciplineScore,
+          windowSize: intelligence.windowSize,
+          mostCommonMistake: intelligence.mostCommonMistake?.label ?? null,
+          disciplineStreak: intelligence.disciplineStreak,
+          twoUndisciplinedInARow: intelligence.twoUndisciplinedInARow,
+        }
+      : undefined;
+    const recentPatternsPayload = recentPatterns.length > 0
+      ? recentPatterns.map((p) => ({
+          kind: p.kind,
+          message: p.message,
+          detected_at: p.detected_at,
+        }))
+      : undefined;
     const ctx =
-      journalSummary || profileSummary
+      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload
         ? {
             ...(journalSummary ? { journalSummary } : {}),
             ...(profileSummary ? { profileSummary } : {}),
+            ...(intelligencePayload ? { intelligence: intelligencePayload } : {}),
+            ...(recentPatternsPayload ? { recentPatterns: recentPatternsPayload } : {}),
           }
         : undefined;
 
