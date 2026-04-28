@@ -381,6 +381,29 @@ Deno.serve(async (req) => {
       range: "ranging",
       unknown: "unclear",
     };
+    const sanitizeRegions = (rs?: ChartRegion[]) =>
+      Array.isArray(rs)
+        ? rs
+            .filter(
+              (r) =>
+                r &&
+                typeof r.x === "number" &&
+                typeof r.y === "number" &&
+                typeof r.w === "number" &&
+                typeof r.h === "number" &&
+                r.w > 0 &&
+                r.h > 0,
+            )
+            .map((r) => ({
+              kind: r.kind,
+              label: r.label || r.kind,
+              x: Math.max(0, Math.min(1, r.x)),
+              y: Math.max(0, Math.min(1, r.y)),
+              w: Math.max(0, Math.min(1, r.w)),
+              h: Math.max(0, Math.min(1, r.h)),
+            }))
+        : [];
+
     const toLegacy = (e: ChartExtraction | null) =>
       !e
         ? {}
@@ -394,6 +417,7 @@ Deno.serve(async (req) => {
             liquidity: e.liquidity_sweep ? "both" : "none",
             volatility: "normal",
             quality: e.quality,
+            regions: sanitizeRegions(e.regions),
           };
 
     return new Response(
