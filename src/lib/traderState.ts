@@ -26,6 +26,13 @@ import {
   ANALYZER_EVENT_LOGGED,
   type RecentDecision,
 } from "@/lib/analyzerEvents";
+import {
+  getActiveRecoverySession,
+  evaluateProbation,
+  RECOVERY_EVENT,
+  type RecoverySession,
+  type ProbationStatus,
+} from "@/lib/recovery";
 
 export type DisciplineState = "optimal" | "at_risk" | "locked";
 
