@@ -59,6 +59,81 @@ export type Database = {
         }
         Relationships: []
       }
+      checklist_confirmations: {
+        Row: {
+          allowed_tiers: Json
+          applied_restrictions: Json
+          confirmed_at: string
+          control_state: string
+          created_at: string
+          discipline_score: number
+          focus: Json
+          generated_for: string
+          id: string
+          rule_acknowledgements: Json
+          strategy_name: string | null
+          user_id: string
+        }
+        Insert: {
+          allowed_tiers?: Json
+          applied_restrictions?: Json
+          confirmed_at?: string
+          control_state: string
+          created_at?: string
+          discipline_score?: number
+          focus?: Json
+          generated_for: string
+          id?: string
+          rule_acknowledgements?: Json
+          strategy_name?: string | null
+          user_id: string
+        }
+        Update: {
+          allowed_tiers?: Json
+          applied_restrictions?: Json
+          confirmed_at?: string
+          control_state?: string
+          created_at?: string
+          discipline_score?: number
+          focus?: Json
+          generated_for?: string
+          id?: string
+          rule_acknowledgements?: Json
+          strategy_name?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      daily_streaks: {
+        Row: {
+          current_streak: number
+          identity_label: string
+          last_break_date: string | null
+          last_clean_date: string | null
+          longest_streak: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          current_streak?: number
+          identity_label?: string
+          last_break_date?: string | null
+          last_clean_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          current_streak?: number
+          identity_label?: string
+          last_break_date?: string | null
+          last_clean_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       discipline_logs: {
         Row: {
           created_at: string
@@ -407,6 +482,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compute_identity_label: { Args: { streak: number }; Returns: string }
       detect_behavior_patterns: {
         Args: { p_user_id: string }
         Returns: undefined
