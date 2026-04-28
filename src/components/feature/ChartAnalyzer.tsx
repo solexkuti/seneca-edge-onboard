@@ -41,6 +41,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { logAnalyzerEvent, type AnalyzerVerdict } from "@/lib/analyzerEvents";
 import { useTraderState } from "@/hooks/useTraderState";
+import ScoreCalculationTrace from "./ScoreCalculationTrace";
 
 type ChartExplanation = {
   summary: string;
