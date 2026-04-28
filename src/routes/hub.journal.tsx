@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { History } from "lucide-react";
 import TradingJournalFlow from "@/components/feature/TradingJournalFlow";
 import JournalExportButton from "@/components/feature/JournalExportButton";
+import JournalSyncStatus from "@/components/feature/JournalSyncStatus";
 
 export const Route = createFileRoute("/hub/journal")({
   head: () => ({
