@@ -603,6 +603,9 @@ function ResultView({
     modelUsed: "primary" | "fallback";
     pipelineConfidence: number;
     warnings: string[];
+    explanation: ChartExplanation | null;
+    explanationLoading: boolean;
+    explanationError: string | null;
   };
   onReset: () => void;
   navigate: ReturnType<typeof useNavigate>;
