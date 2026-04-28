@@ -21,6 +21,7 @@ import {
   Loader2,
   ArrowRight,
   Save,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 import FeatureShell from "./FeatureShell";
@@ -35,6 +36,7 @@ import {
   evaluateChartAgainstStrategy,
   type ChartFeaturesPair,
   type RuleBreakdown,
+  type ChartRegion,
 } from "@/lib/chartRuleCheck";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -662,6 +664,45 @@ function ResultView({
     { key: "timing", title: "Timing alignment", subtitle: "Higher-timeframe alignment" },
   ];
 
+  // Active citation: which rule/region is currently highlighted on the charts.
+  const [activeCitation, setActiveCitation] = useState<{
+    section: "entry" | "structure" | "risk" | "timing";
+    checkIdx: number;
+    regionIdx: number;
+    region: ChartRegion;
+  } | null>(null);
+
+  const execChartRef = useRef<HTMLDivElement | null>(null);
+  const higherChartRef = useRef<HTMLDivElement | null>(null);
+
+  function onCite(
+    section: "entry" | "structure" | "risk" | "timing",
+    checkIdx: number,
+    regionIdx: number,
+    region: ChartRegion,
+  ) {
+    // Toggle off if the same chip is clicked again.
+    setActiveCitation((prev) =>
+      prev &&
+      prev.section === section &&
+      prev.checkIdx === checkIdx &&
+      prev.regionIdx === regionIdx
+        ? null
+        : { section, checkIdx, regionIdx, region },
+    );
+    const target = region.chart === "higher" ? higherChartRef.current : execChartRef.current;
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  const execActive =
+    activeCitation && activeCitation.region.chart === "exec"
+      ? activeCitation.region
+      : null;
+  const higherActive =
+    activeCitation && activeCitation.region.chart === "higher"
+      ? activeCitation.region
+      : null;
+
   return (
     <motion.div
       key="result"
@@ -671,12 +712,26 @@ function ResultView({
       className="space-y-4"
     >
       {/* Charts */}
-      <div className="overflow-hidden rounded-2xl bg-card p-1 ring-1 ring-border shadow-soft">
-        <img src={result.execPreview} alt="Execution chart" className="h-44 w-full rounded-[14px] object-cover" />
+      <div ref={execChartRef}>
+        <CitedChart
+          src={result.execPreview}
+          alt="Execution chart"
+          label="Execution chart"
+          heightClass="h-44"
+          activeRegion={execActive}
+          onClear={() => setActiveCitation(null)}
+        />
       </div>
       {result.higherPreview && (
-        <div className="overflow-hidden rounded-2xl bg-card p-1 ring-1 ring-border shadow-soft">
-          <img src={result.higherPreview} alt="Higher TF chart" className="h-32 w-full rounded-[14px] object-cover" />
+        <div ref={higherChartRef}>
+          <CitedChart
+            src={result.higherPreview}
+            alt="Higher TF chart"
+            label="Higher timeframe"
+            heightClass="h-32"
+            activeRegion={higherActive}
+            onClear={() => setActiveCitation(null)}
+          />
         </div>
       )}
 
@@ -916,6 +971,33 @@ function ResultView({
                         <p className="mt-1 text-[11.5px] leading-snug text-text-secondary">
                           {c.reason}
                         </p>
+                        {c.regions && c.regions.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {c.regions.map((rg, ri) => {
+                              const isActive =
+                                activeCitation?.section === s.key &&
+                                activeCitation?.checkIdx === idx &&
+                                activeCitation?.regionIdx === ri;
+                              return (
+                                <button
+                                  key={ri}
+                                  type="button"
+                                  onClick={() => onCite(s.key, idx, ri, rg)}
+                                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold ring-1 transition ${
+                                    isActive
+                                      ? "bg-brand/15 text-brand ring-brand/40"
+                                      : "bg-card text-text-secondary ring-border hover:ring-brand/30 hover:text-brand"
+                                  }`}
+                                  aria-label={`Show ${rg.label} on ${rg.chart === "exec" ? "execution" : "higher-timeframe"} chart`}
+                                >
+                                  <MapPin className="h-3 w-3" strokeWidth={2.6} />
+                                  Show on {rg.chart === "exec" ? "exec" : "higher"} chart
+                                  <span className="opacity-70">· {rg.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </li>
@@ -1105,6 +1187,81 @@ function ExplanationCard({
         <p className="mt-2 text-[10.5px] italic text-text-secondary/80">
           Explanation only. Does not override the rule breakdown above.
         </p>
+      </div>
+    </div>
+  );
+}
+
+// Renders a chart preview with an optional highlighted citation rectangle.
+// `activeRegion` uses normalized 0..1 coordinates relative to the image.
+function CitedChart({
+  src,
+  alt,
+  label,
+  heightClass,
+  activeRegion,
+  onClear,
+}: {
+  src: string;
+  alt: string;
+  label: string;
+  heightClass: string;
+  activeRegion: ChartRegion | null;
+  onClear: () => void;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl bg-card p-1 ring-1 ring-border shadow-soft">
+      <div className="relative">
+        <img
+          src={src}
+          alt={alt}
+          className={`${heightClass} w-full rounded-[14px] object-cover`}
+        />
+        {activeRegion && (
+          <>
+            {/* Dim everything outside the citation box */}
+            <div
+              className="pointer-events-none absolute inset-0 rounded-[14px]"
+              style={{
+                background: "rgba(15, 23, 42, 0.35)",
+                clipPath: `polygon(
+                  0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
+                  ${activeRegion.x * 100}% ${activeRegion.y * 100}%,
+                  ${activeRegion.x * 100}% ${(activeRegion.y + activeRegion.h) * 100}%,
+                  ${(activeRegion.x + activeRegion.w) * 100}% ${(activeRegion.y + activeRegion.h) * 100}%,
+                  ${(activeRegion.x + activeRegion.w) * 100}% ${activeRegion.y * 100}%,
+                  ${activeRegion.x * 100}% ${activeRegion.y * 100}%
+                )`,
+              }}
+            />
+            {/* Highlight box */}
+            <div
+              className="pointer-events-none absolute rounded-md ring-2 ring-brand shadow-[0_0_0_2px_rgba(255,255,255,0.6)]"
+              style={{
+                left: `${activeRegion.x * 100}%`,
+                top: `${activeRegion.y * 100}%`,
+                width: `${activeRegion.w * 100}%`,
+                height: `${activeRegion.h * 100}%`,
+              }}
+            />
+            {/* Floating label + clear button */}
+            <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-card/95 px-2 py-1 text-[10.5px] font-semibold text-text-primary ring-1 ring-border shadow-soft">
+              <MapPin className="h-3 w-3 text-brand" strokeWidth={2.6} />
+              {activeRegion.label}
+              <button
+                type="button"
+                onClick={onClear}
+                className="ml-1 rounded-full px-1.5 text-text-secondary hover:text-text-primary"
+                aria-label="Clear citation"
+              >
+                ×
+              </button>
+            </div>
+          </>
+        )}
+        <div className="absolute right-2 top-2 rounded-full bg-card/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary ring-1 ring-border">
+          {label}
+        </div>
       </div>
     </div>
   );

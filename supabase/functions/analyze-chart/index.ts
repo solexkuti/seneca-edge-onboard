@@ -129,13 +129,37 @@ const EXTRACT_SYSTEM_PRIMARY = `You analyze a trading chart and extract observab
 - Do NOT predict or recommend.
 - If anything is unclear, lower confidence_score.
 - If no structure is visible, set structure_detected=false and trend="range".
-- confidence_score reflects how clearly the chart supports your answer (0–1).`;
+- confidence_score reflects how clearly the chart supports your answer (0–1).
+
+For each feature you DO detect (BOS, liquidity sweep, key zone, stop/TP area, dominant trend),
+also return ONE bounding box in "regions" using NORMALIZED image coordinates:
+- x, y are the TOP-LEFT corner; w, h are width/height; all values 0..1.
+- Cover only the relevant area on the chart (not the whole image).
+- If you did not detect a feature, omit its region. Never invent a region.`;
 
 const EXTRACT_SYSTEM_FALLBACK = `You are a STRICT, CAUTIOUS chart analyst acting as a second opinion.
 The first model produced low-confidence output. Be conservative:
 - Default to trend="range" and structure_detected=false unless clearly visible.
 - Set confidence_score honestly — do not inflate it.
-- Never invent BOS, sweeps, or zones that are not clearly on the chart.`;
+- Never invent BOS, sweeps, or zones that are not clearly on the chart.
+- Only return a region for a feature you are confident is visible. Otherwise omit it.`;
+
+const REGION_SCHEMA = {
+  type: "object",
+  properties: {
+    kind: {
+      type: "string",
+      enum: ["bos", "sweep", "key_zone", "stop_tp", "trend"],
+    },
+    label: { type: "string" },
+    x: { type: "number", minimum: 0, maximum: 1 },
+    y: { type: "number", minimum: 0, maximum: 1 },
+    w: { type: "number", minimum: 0, maximum: 1 },
+    h: { type: "number", minimum: 0, maximum: 1 },
+  },
+  required: ["kind", "label", "x", "y", "w", "h"],
+  additionalProperties: false,
+};
 
 const EXTRACT_SCHEMA = {
   type: "object",
@@ -148,6 +172,12 @@ const EXTRACT_SCHEMA = {
     fib_alignment: { type: "boolean" },
     quality: { type: "string", enum: ["clear", "messy", "unclear"] },
     confidence_score: { type: "number", minimum: 0, maximum: 1 },
+    regions: {
+      type: "array",
+      items: REGION_SCHEMA,
+      description:
+        "Bounding boxes (normalized 0..1) for detected features. Omit features not visible.",
+    },
   },
   required: [
     "trend",
@@ -162,6 +192,15 @@ const EXTRACT_SCHEMA = {
   additionalProperties: false,
 };
 
+type ChartRegion = {
+  kind: "bos" | "sweep" | "key_zone" | "stop_tp" | "trend";
+  label: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
 type ChartExtraction = {
   trend: "bullish" | "bearish" | "range" | "unknown";
   structure_detected: boolean;
@@ -171,6 +210,7 @@ type ChartExtraction = {
   fib_alignment: boolean;
   quality: "clear" | "messy" | "unclear";
   confidence_score: number;
+  regions?: ChartRegion[];
 };
 
 function needsFallback(r: ChartExtraction | null): boolean {
@@ -341,6 +381,29 @@ Deno.serve(async (req) => {
       range: "ranging",
       unknown: "unclear",
     };
+    const sanitizeRegions = (rs?: ChartRegion[]) =>
+      Array.isArray(rs)
+        ? rs
+            .filter(
+              (r) =>
+                r &&
+                typeof r.x === "number" &&
+                typeof r.y === "number" &&
+                typeof r.w === "number" &&
+                typeof r.h === "number" &&
+                r.w > 0 &&
+                r.h > 0,
+            )
+            .map((r) => ({
+              kind: r.kind,
+              label: r.label || r.kind,
+              x: Math.max(0, Math.min(1, r.x)),
+              y: Math.max(0, Math.min(1, r.y)),
+              w: Math.max(0, Math.min(1, r.w)),
+              h: Math.max(0, Math.min(1, r.h)),
+            }))
+        : [];
+
     const toLegacy = (e: ChartExtraction | null) =>
       !e
         ? {}
@@ -354,6 +417,7 @@ Deno.serve(async (req) => {
             liquidity: e.liquidity_sweep ? "both" : "none",
             volatility: "normal",
             quality: e.quality,
+            regions: sanitizeRegions(e.regions),
           };
 
     return new Response(

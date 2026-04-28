@@ -4,12 +4,27 @@
 
 import type { StructuredRules } from "@/lib/dbStrategyBlueprints";
 
+// Citation: a normalized rectangle on a chart image (0–1 coords).
+// `chart` selects which image the box belongs to.
+// `kind` is the semantic feature label so the UI can color/label it.
+export type ChartRegion = {
+  chart: "exec" | "higher";
+  kind: "bos" | "sweep" | "key_zone" | "stop_tp" | "trend";
+  label: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
 export type ChartFeatures = {
   trend?: "uptrend" | "downtrend" | "ranging" | "unclear";
   structure?: "break_of_structure" | "consolidation" | "none" | "unclear";
   liquidity?: "above_highs" | "below_lows" | "both" | "none" | "unclear";
   volatility?: "high" | "normal" | "low" | "unclear";
   quality?: "clear" | "messy" | "unclear";
+  // Optional AI-supplied citations on this chart image.
+  regions?: ChartRegion[];
 };
 
 export type ChartFeaturesPair = {
@@ -21,6 +36,8 @@ export type RuleCheck = {
   rule: string; // the user's actual strategy rule text (or a synthetic label)
   passed: boolean;
   reason: string;
+  // Optional citations into the chart image(s) backing this check.
+  regions?: ChartRegion[];
 };
 
 export type SectionResult = {
@@ -28,6 +45,7 @@ export type SectionResult = {
   reasons: string[];
   checks: RuleCheck[]; // per-rule breakdown referencing strategy rules
 };
+
 
 export type RuleBreakdown = {
   entry: SectionResult;
@@ -60,6 +78,19 @@ export function isLowConfidence(
 
 const lc = (s: string) => s.toLowerCase();
 
+// Pull regions of given kinds from a chart, tagging the chart label so the UI
+// knows which preview to overlay.
+function pickRegions(
+  f: ChartFeatures,
+  chart: "exec" | "higher",
+  kinds: ChartRegion["kind"][],
+): ChartRegion[] {
+  const all = f.regions ?? [];
+  return all
+    .filter((r) => kinds.includes(r.kind))
+    .map((r) => ({ ...r, chart }));
+}
+
 function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
   if (rules.length === 0) {
     return {
@@ -75,8 +106,10 @@ function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
     const t = lc(r);
     let passed = true;
     const subReasons: string[] = [];
+    const kinds: ChartRegion["kind"][] = [];
 
     if (t.includes("bos") || t.includes("break of structure")) {
+      kinds.push("bos");
       if (f.structure !== "break_of_structure") {
         passed = false;
         subReasons.push(
@@ -87,6 +120,7 @@ function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
       }
     }
     if (t.includes("retest")) {
+      kinds.push("key_zone");
       if (f.structure !== "consolidation" && f.structure !== "break_of_structure") {
         passed = false;
         subReasons.push("Retest condition not visible");
@@ -95,6 +129,7 @@ function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
       }
     }
     if (t.includes("liquidity") || t.includes("sweep")) {
+      kinds.push("sweep");
       if (f.liquidity === "none" || f.liquidity === "unclear") {
         passed = false;
         subReasons.push("Liquidity sweep not visible");
@@ -102,6 +137,8 @@ function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
         subReasons.push("Liquidity condition visible");
       }
     }
+
+    const regions = kinds.length ? pickRegions(f, "exec", kinds) : undefined;
 
     if (subReasons.length === 0) {
       // No keyword hit — can't deterministically verify from chart alone.
@@ -111,7 +148,7 @@ function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
         reason: "Not directly observable on chart — confirm manually",
       });
     } else {
-      checks.push({ rule: r, passed, reason: subReasons.join("; ") });
+      checks.push({ rule: r, passed, reason: subReasons.join("; "), regions });
     }
   }
   const passed = checks.every((c) => c.passed);
@@ -120,6 +157,7 @@ function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
 }
 
 function structureCheck(f: ChartFeatures): SectionResult {
+  const structureRegions = pickRegions(f, "exec", ["bos", "key_zone"]);
   const checks: RuleCheck[] = [
     {
       rule: "Chart structure must be readable",
@@ -138,6 +176,7 @@ function structureCheck(f: ChartFeatures): SectionResult {
           : f.structure === "unclear"
             ? "Structure unclear"
             : `Structure: ${f.structure}`,
+      regions: structureRegions.length ? structureRegions : undefined,
     },
   ];
   const passed = checks.every((c) => c.passed);
@@ -154,18 +193,21 @@ function riskCheck(rules: string[], f: ChartFeatures): SectionResult {
     };
     return { passed: true, reasons: [`✓ ${c.rule} — ${c.reason}`], checks: [c] };
   }
+  const stopRegions = pickRegions(f, "exec", ["stop_tp", "key_zone"]);
   const checks: RuleCheck[] = rules.map((r) => {
     if (f.volatility === "high") {
       return {
         rule: r,
         passed: false,
         reason: "High volatility — recheck stop placement against this rule",
+        regions: stopRegions.length ? stopRegions : undefined,
       };
     }
     return {
       rule: r,
       passed: true,
       reason: "Volatility looks normal — risk plausible from chart",
+      regions: stopRegions.length ? stopRegions : undefined,
     };
   });
   const passed = checks.every((c) => c.passed);
@@ -187,12 +229,17 @@ function timingCheck(
   }
   const checks: RuleCheck[] = [];
   const trendClear = exec.trend !== "unclear" && higher.trend !== "unclear";
+  const trendRegions: ChartRegion[] = [
+    ...pickRegions(exec, "exec", ["trend"]),
+    ...pickRegions(higher, "higher", ["trend"]),
+  ];
   checks.push({
     rule: "Trend must be readable on both timeframes",
     passed: trendClear,
     reason: trendClear
       ? `Exec ${exec.trend}, higher ${higher.trend}`
       : "Trend unclear on one of the timeframes",
+    regions: trendRegions.length ? trendRegions : undefined,
   });
   const conflict =
     (exec.trend === "uptrend" && higher.trend === "downtrend") ||
@@ -205,6 +252,7 @@ function timingCheck(
       : conflict
         ? `Mismatched: exec ${exec.trend} vs higher ${higher.trend}`
         : `Aligned: ${exec.trend} on both timeframes`,
+    regions: trendRegions.length ? trendRegions : undefined,
   });
   const passed = checks.every((c) => c.passed);
   const reasons = checks.map((c) => `${c.passed ? "✓" : "✗"} ${c.rule} — ${c.reason}`);
