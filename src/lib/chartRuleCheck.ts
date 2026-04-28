@@ -24,7 +24,27 @@ export type RuleBreakdown = {
   timing: { passed: boolean; reasons: string[] };
   overall: "valid" | "weak" | "invalid";
   score: number; // 0-100
+  low_confidence: boolean;
+  confidence_note?: string;
 };
+
+// Detect low-confidence inputs that should force a downgrade.
+export function isLowConfidence(
+  features: ChartFeaturesPair,
+  chartConfidence: number,
+): { low: boolean; note?: string } {
+  if (chartConfidence > 0 && chartConfidence < 70) {
+    return { low: true, note: "Chart validation confidence is low." };
+  }
+  const exec = features.exec ?? {};
+  const unclearFields = (Object.values(exec) as string[]).filter(
+    (v) => v === "unclear",
+  ).length;
+  if (exec.quality === "messy" || exec.quality === "unclear" || unclearFields >= 2) {
+    return { low: true, note: "Analysis confidence is low due to unclear chart structure." };
+  }
+  return { low: false };
+}
 
 const lc = (s: string) => s.toLowerCase();
 
