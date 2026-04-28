@@ -195,7 +195,7 @@ export default function StrategyBuilder({
     try {
       setBootError(null);
       setSlowLoad(false);
-      const created = await createBlueprint();
+      const created = await findOrCreateDraft();
       void navigate({
         to: "/hub/strategy/$id",
         params: { id: created.id },
