@@ -169,3 +169,31 @@ export async function flushPending(): Promise<void> {
     notify();
   }
 }
+
+/**
+ * User-initiated retry of every queued entry. Behaves like `flushPending`
+ * but always runs (queues if a flush is already in progress) and resolves
+ * with how many entries are still pending after the attempt.
+ */
+export async function retryNow(): Promise<{ remaining: number; synced: number }> {
+  // If a background flush is in progress, wait briefly so we don't double-fire.
+  if (flushing) {
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  const before = readQueue();
+  if (before.length === 0) return { remaining: 0, synced: 0 };
+
+  flushing = true;
+  notify();
+  let synced = 0;
+  try {
+    for (const entry of before) {
+      const ok = await syncWithRetry(entry.id, entry.payload, { showToast: false });
+      if (ok) synced++;
+    }
+  } finally {
+    flushing = false;
+    notify();
+  }
+  return { remaining: readQueue().length, synced };
+}
