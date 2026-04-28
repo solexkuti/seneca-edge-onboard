@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { Lock, ShieldAlert, ArrowRight, Loader2, Target } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTraderState } from "@/hooks/useTraderState";
+import { enforcementDisabled } from "@/lib/enforcementFlag";
 
 type Block =
   | "loading"
