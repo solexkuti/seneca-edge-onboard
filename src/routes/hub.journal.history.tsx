@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Filter, RotateCcw, TrendingUp, TrendingDown } from "lucide-react";
 import { fetchJournal, type DbJournalRow, type EmotionalState } from "@/lib/dbJournal";
 import JournalExportButton from "@/components/feature/JournalExportButton";
+import JournalSyncStatus from "@/components/feature/JournalSyncStatus";
 import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 import { playFeedback } from "@/lib/feedback";
 
@@ -123,7 +124,10 @@ function HistoryPage() {
           <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/80">
             History
           </span>
-          <JournalExportButton />
+          <div className="flex items-center gap-2">
+            <JournalSyncStatus />
+            <JournalExportButton />
+          </div>
         </div>
 
         <motion.div

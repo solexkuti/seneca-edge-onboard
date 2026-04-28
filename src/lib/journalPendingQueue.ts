@@ -37,7 +37,45 @@ function writeQueue(list: PendingEntry[]) {
   } catch {
     /* quota exceeded — best effort */
   }
+  notify();
 }
+
+// ─── subscribers ───
+type Listener = () => void;
+const listeners = new Set<Listener>();
+function notify() {
+  for (const l of listeners) {
+    try {
+      l();
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** Subscribe to queue changes. Returns an unsubscribe function. */
+export function subscribePending(listener: Listener): () => void {
+  listeners.add(listener);
+  // Also reflect storage edits from other tabs.
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === PENDING_KEY) listener();
+  };
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", onStorage);
+  }
+  return () => {
+    listeners.delete(listener);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("storage", onStorage);
+    }
+  };
+}
+
+/** Are we currently in the middle of a background flush? */
+export function isSyncingNow(): boolean {
+  return flushing;
+}
+
 
 /** Stable fingerprint of a submission's user-meaningful fields. */
 function fingerprint(p: NewJournalSubmission): string {
@@ -119,6 +157,7 @@ let flushing = false;
 export async function flushPending(): Promise<void> {
   if (flushing) return;
   flushing = true;
+  notify();
   try {
     const list = readQueue();
     for (const entry of list) {
@@ -127,5 +166,6 @@ export async function flushPending(): Promise<void> {
     }
   } finally {
     flushing = false;
+    notify();
   }
 }
