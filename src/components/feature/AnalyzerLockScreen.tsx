@@ -176,30 +176,108 @@ export default function AnalyzerLockScreen({ children }: Props) {
             />
           </div>
 
-          {/* Structured lock reasons — one bullet per gate, showing
-             expected vs actual so the user knows exactly what changed. */}
-          <div className="mt-4 rounded-xl bg-red-600/5 p-3 ring-1 ring-red-600/20">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 flex-none text-red-700" aria-hidden />
-              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-700">
-                Why you're locked
+          {/* Deterministic lock-reason trace — every measured gate, in
+             evaluation order, with expected vs actual and a pass/fail
+             verdict. Mirrors enforceTradingAccess() exactly. */}
+          {(() => {
+            const score = state.discipline.score;
+            const dState = state.discipline.state;
+            const confirmed = state.session.checklist_confirmed;
+
+            // Score threshold band the user fell below (deterministic).
+            // Mirrors stateForScore() boundaries.
+            const THRESHOLDS = [
+              { min: 80, label: "In Control" },
+              { min: 60, label: "Slipping" },
+              { min: 40, label: "At Risk" },
+              { min: 0, label: "Locked (Out of Control)" },
+            ];
+            const belowBand = THRESHOLDS.find((t) => score < t.min);
+            const currentBand = THRESHOLDS.find((t) => score >= t.min) ?? THRESHOLDS[3];
+            const scoreFailed = score < 40 || dState === "locked";
+            const checklistFailed = !confirmed;
+            // Primary blocker is what enforceTradingAccess would report.
+            const primary: "checklist" | "discipline" =
+              isDiscipline ? "discipline" : "checklist";
+
+            return (
+              <div className="mt-4 rounded-xl bg-red-600/5 p-3 ring-1 ring-red-600/20">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 flex-none text-red-700" aria-hidden />
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-700">
+                    Lock reason trace
+                  </div>
+                  <div className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Primary: {primary === "discipline" ? "Discipline" : "Checklist"}
+                  </div>
+                </div>
+
+                <ul className="mt-2 space-y-1.5">
+                  {/* Gate 1 — checklist confirmed today */}
+                  <ReasonBullet
+                    failed={checklistFailed}
+                    label={`1. Daily checklist${primary === "checklist" ? " · BLOCKING" : ""}`}
+                    expected="Confirmed today"
+                    actual={confirmed ? "Confirmed" : "Not confirmed today"}
+                  />
+
+                  {/* Gate 2 — discipline state must not be 'locked' */}
+                  <ReasonBullet
+                    failed={dState === "locked"}
+                    label={`2. Discipline state${dState === "locked" && primary === "discipline" ? " · BLOCKING" : ""}`}
+                    expected="≠ locked"
+                    actual={prettyState(dState)}
+                  />
+
+                  {/* Gate 3 — score threshold */}
+                  <ReasonBullet
+                    failed={scoreFailed}
+                    label="3. Discipline score"
+                    expected="≥ 40 / 100"
+                    actual={
+                      scoreFailed
+                        ? `${score}/100 — below 40 threshold (band: ${belowBand?.label ?? currentBand.label})`
+                        : `${score}/100 — band: ${currentBand.label}`
+                    }
+                  />
+                </ul>
+
+                {/* Threshold ladder — shows exactly which band the user
+                   fell into so the trace is auditable. */}
+                <div className="mt-3 grid grid-cols-4 gap-1">
+                  {THRESHOLDS.slice().reverse().map((t) => {
+                    const inBand = currentBand.min === t.min;
+                    const isLocked = t.min === 0;
+                    return (
+                      <div
+                        key={t.min}
+                        className={[
+                          "rounded-md px-1.5 py-1 text-center ring-1 transition",
+                          inBand && isLocked
+                            ? "bg-red-600/15 ring-red-600/40 text-red-800"
+                            : inBand
+                              ? "bg-amber-500/15 ring-amber-500/40 text-amber-900"
+                              : "bg-muted/40 ring-border text-foreground/55",
+                        ].join(" ")}
+                      >
+                        <div className="text-[9px] font-semibold uppercase tracking-wide">
+                          {t.min}+
+                        </div>
+                        <div className="text-[9px] leading-tight opacity-80">
+                          {t.label.split(" ")[0]}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-2 text-[10px] leading-relaxed text-foreground/70">
+                  Trace is deterministic: same inputs → same verdict. No AI
+                  judgment is applied here.
+                </div>
               </div>
-            </div>
-            <ul className="mt-2 space-y-1.5">
-              <ReasonBullet
-                failed={state.discipline.score < 40 || state.discipline.state === "locked"}
-                label="Discipline score"
-                expected="≥ 40 required"
-                actual={`${state.discipline.score}/100 · ${prettyState(state.discipline.state)}`}
-              />
-              <ReasonBullet
-                failed={!state.session.checklist_confirmed}
-                label="Daily checklist"
-                expected="Must be confirmed"
-                actual={state.session.checklist_confirmed ? "Confirmed" : "Not confirmed today"}
-              />
-            </ul>
-          </div>
+            );
+          })()}
 
           {/* CTAs */}
           <div className="mt-6 flex flex-col gap-2">
