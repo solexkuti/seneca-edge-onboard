@@ -1191,3 +1191,78 @@ function ExplanationCard({
     </div>
   );
 }
+
+// Renders a chart preview with an optional highlighted citation rectangle.
+// `activeRegion` uses normalized 0..1 coordinates relative to the image.
+function CitedChart({
+  src,
+  alt,
+  label,
+  heightClass,
+  activeRegion,
+  onClear,
+}: {
+  src: string;
+  alt: string;
+  label: string;
+  heightClass: string;
+  activeRegion: ChartRegion | null;
+  onClear: () => void;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl bg-card p-1 ring-1 ring-border shadow-soft">
+      <div className="relative">
+        <img
+          src={src}
+          alt={alt}
+          className={`${heightClass} w-full rounded-[14px] object-cover`}
+        />
+        {activeRegion && (
+          <>
+            {/* Dim everything outside the citation box */}
+            <div
+              className="pointer-events-none absolute inset-0 rounded-[14px]"
+              style={{
+                background: "rgba(15, 23, 42, 0.35)",
+                clipPath: `polygon(
+                  0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
+                  ${activeRegion.x * 100}% ${activeRegion.y * 100}%,
+                  ${activeRegion.x * 100}% ${(activeRegion.y + activeRegion.h) * 100}%,
+                  ${(activeRegion.x + activeRegion.w) * 100}% ${(activeRegion.y + activeRegion.h) * 100}%,
+                  ${(activeRegion.x + activeRegion.w) * 100}% ${activeRegion.y * 100}%,
+                  ${activeRegion.x * 100}% ${activeRegion.y * 100}%
+                )`,
+              }}
+            />
+            {/* Highlight box */}
+            <div
+              className="pointer-events-none absolute rounded-md ring-2 ring-brand shadow-[0_0_0_2px_rgba(255,255,255,0.6)]"
+              style={{
+                left: `${activeRegion.x * 100}%`,
+                top: `${activeRegion.y * 100}%`,
+                width: `${activeRegion.w * 100}%`,
+                height: `${activeRegion.h * 100}%`,
+              }}
+            />
+            {/* Floating label + clear button */}
+            <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-card/95 px-2 py-1 text-[10.5px] font-semibold text-text-primary ring-1 ring-border shadow-soft">
+              <MapPin className="h-3 w-3 text-brand" strokeWidth={2.6} />
+              {activeRegion.label}
+              <button
+                type="button"
+                onClick={onClear}
+                className="ml-1 rounded-full px-1.5 text-text-secondary hover:text-text-primary"
+                aria-label="Clear citation"
+              >
+                ×
+              </button>
+            </div>
+          </>
+        )}
+        <div className="absolute right-2 top-2 rounded-full bg-card/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary ring-1 ring-border">
+          {label}
+        </div>
+      </div>
+    </div>
+  );
+}
