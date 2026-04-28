@@ -54,6 +54,16 @@ const PROOF_LINES = [
 
 export default function SlideProof({ onNext }: SlideProps) {
   const [pressing, setPressing] = useState(false);
+  const [tIndex, setTIndex] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(
+      () => setTIndex((i) => (i + 1) % TESTIMONIALS.length),
+      ROTATE_MS,
+    );
+    return () => window.clearInterval(id);
+  }, []);
+
   const handleStep = () => {
     setPressing(true);
     window.setTimeout(() => onNext(), 350);
