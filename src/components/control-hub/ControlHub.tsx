@@ -19,6 +19,7 @@ import {
   detectBehaviorPattern,
   type BehaviorPattern,
 } from "@/lib/behaviorPattern";
+import IntelligencePanel from "./IntelligencePanel";
 
 // Eyebrow label by pattern kind. Reflects the actual signal, not generic copy.
 const PATTERN_LABEL: Record<
@@ -101,6 +102,11 @@ export default function ControlHub({ userName }: { userName?: string }) {
         <div className="mt-6">
           <CheckBeforeTradeButton />
         </div>
+
+        {/* INTELLIGENCE — most common mistake, last 3 patterns, streak, warning */}
+        <Section label="Behavior intelligence">
+          <IntelligencePanel />
+        </Section>
 
         {/* YOUR SYSTEM */}
         <Section label="Your system">
