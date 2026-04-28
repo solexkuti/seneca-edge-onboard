@@ -14,7 +14,7 @@
 //
 // Safety: AI never predicts direction; only restructures the user's own words.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
