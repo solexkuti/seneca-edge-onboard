@@ -18,6 +18,8 @@ export type TradeDirection = "long" | "short";
 export type TradeResult = "win" | "loss" | "breakeven";
 
 export type NewJournalSubmission = {
+  user_id?: string;
+  executed_at?: string;
   trade: {
     market: string;
     direction: TradeDirection;
@@ -75,6 +77,17 @@ export async function submitJournalEntry(
     return { ok: false, error: "You need to be signed in to save trades." };
   }
   const userId = userData.user.id;
+  if (input.user_id && input.user_id !== userId) {
+    return { ok: false, error: "Journal entry belongs to a different signed-in user." };
+  }
+
+  const payloadError = validateSubmission(input);
+  if (payloadError) return { ok: false, error: payloadError };
+
+  const executedAt = input.executed_at ?? new Date().toISOString();
+  if (Number.isNaN(new Date(executedAt).getTime())) {
+    return { ok: false, error: "Trade timestamp is invalid." };
+  }
 
   // 0) Server-side de-dupe: if an identical trade was just inserted (same
   // market/direction/result/rr/prices within the last 2 minutes), reuse it
@@ -134,6 +147,7 @@ export async function submitJournalEntry(
       .from("trades")
       .insert({
         user_id: userId,
+        executed_at: executedAt,
         market: input.trade.market,
         direction: input.trade.direction,
         entry_price: input.trade.entry_price ?? null,
@@ -146,7 +160,8 @@ export async function submitJournalEntry(
       .single();
 
     if (tradeError || !inserted) {
-      return { ok: false, error: tradeError?.message ?? "Failed to save trade." };
+      if (tradeError) console.error(tradeError);
+      return { ok: false, error: formatDbError(tradeError, "Failed to save trade.") };
     }
     trade = inserted as any;
   }
@@ -169,6 +184,7 @@ export async function submitJournalEntry(
     .single();
 
   if (logError || !log) {
+    if (logError) console.error(logError);
     // 23505 = unique_violation on (trade_id) → a parallel submission already
     // wrote this log. Treat as success and return the existing row.
     if ((logError as any)?.code === "23505") {
@@ -195,7 +211,7 @@ export async function submitJournalEntry(
     }
     return {
       ok: false,
-      error: logError?.message ?? "Failed to save behavior log.",
+      error: formatDbError(logError, "Failed to save behavior log."),
     };
   }
 
@@ -272,6 +288,31 @@ export async function fetchJournalAsLegacy(): Promise<JournalEntry[]> {
 }
 
 // ───────── helpers ─────────
+
+function validateSubmission(input: NewJournalSubmission): string | null {
+  if (!input.trade.market.trim()) return "Market is required.";
+  if (!input.trade.direction) return "Trade direction is required.";
+  if (!input.trade.result) return "Trade result is required.";
+  if (!input.emotional_state) return "Emotional state is required.";
+  const d = input.discipline;
+  if (
+    typeof d.followed_entry !== "boolean" ||
+    typeof d.followed_exit !== "boolean" ||
+    typeof d.followed_risk !== "boolean" ||
+    typeof d.followed_behavior !== "boolean"
+  ) {
+    return "Discipline checklist is incomplete.";
+  }
+  return null;
+}
+
+function formatDbError(error: unknown, fallback: string): string {
+  if (!error || typeof error !== "object") return fallback;
+  const e = error as { message?: string; details?: string; hint?: string; code?: string };
+  return [e.message, e.details, e.hint, e.code ? `Code: ${e.code}` : null]
+    .filter(Boolean)
+    .join(" ") || fallback;
+}
 
 function combine(trade: any, log: any): DbJournalRow {
   const followedPlan =

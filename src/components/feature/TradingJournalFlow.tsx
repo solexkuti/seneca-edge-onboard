@@ -25,12 +25,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import FeatureShell from "./FeatureShell";
 import { playFeedback } from "@/lib/feedback";
-import {
-  submitJournalEntry,
-  type EmotionalState,
-  type NewJournalSubmission,
-  type TradeDirection,
-  type TradeResult,
+import { supabase } from "@/integrations/supabase/client";
+import type {
+  EmotionalState,
+  NewJournalSubmission,
+  TradeDirection,
+  TradeResult,
 } from "@/lib/dbJournal";
 
 // ───────── shared visuals ─────────
@@ -88,7 +88,6 @@ const EMPTY_DRAFT: Draft = {
 import {
   enqueuePending,
   syncWithRetry,
-  flushPending,
 } from "@/lib/journalPendingQueue";
 
 // ───────── component ─────────
@@ -99,6 +98,7 @@ export default function TradingJournalFlow() {
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [submitting, setSubmitting] = useState(false);
   const [doneScore, setDoneScore] = useState<number | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const canContinue = useMemo(() => {
     if (step === 0) return !!draft.market.trim() && !!draft.direction && !!draft.result;
@@ -128,6 +128,16 @@ export default function TradingJournalFlow() {
   const handleSubmit = async () => {
     if (submitting) return;
     setSubmitting(true);
+    setSyncError(null);
+
+    const { data, error } = await supabase.auth.getSession();
+    if (error || !data.session?.user) {
+      const message = error?.message ?? "Sign in before saving journal entries.";
+      console.error(error ?? message);
+      showTemporaryError(message, setSyncError);
+      setSubmitting(false);
+      return;
+    }
 
     const d = draft.discipline;
     const optimisticScore =
@@ -138,6 +148,8 @@ export default function TradingJournalFlow() {
       25;
 
     const payload: NewJournalSubmission = {
+      user_id: data.session.user.id,
+      executed_at: new Date().toISOString(),
       trade: {
         market: draft.market.trim().toUpperCase(),
         direction: draft.direction!,
@@ -165,6 +177,7 @@ export default function TradingJournalFlow() {
 
     // 3. Sync in the background with silent retries.
     void syncWithRetry(pendingId, payload, { showToast: true });
+    setSubmitting(false);
   };
 
   // ───────── confirmation screen ─────────
@@ -197,7 +210,7 @@ export default function TradingJournalFlow() {
           </div>
 
           <p className="mt-5 text-[13.5px] leading-snug text-text-secondary">
-            Saved to your journal. Seneca and your Control State are updated.
+            Saved locally. Sync status updates above.
           </p>
 
           <div className="mt-6 flex gap-2.5">
@@ -248,6 +261,11 @@ export default function TradingJournalFlow() {
       <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
         Step {step + 1} of 4 · {STEP_LABELS[step]}
       </p>
+      {syncError ? (
+        <div className="mb-4 rounded-xl bg-destructive/10 px-3.5 py-2.5 text-[12.5px] font-medium text-destructive ring-1 ring-destructive/20">
+          {syncError}
+        </div>
+      ) : null}
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -679,4 +697,13 @@ function parseNumOrNull(v: string): number | null {
   if (!trimmed) return null;
   const n = Number(trimmed);
   return Number.isFinite(n) ? n : null;
+}
+
+function showTemporaryError(
+  message: string,
+  setSyncError: React.Dispatch<React.SetStateAction<string | null>>,
+) {
+  setSyncError(message);
+  toast.error("Journal sync failed", { description: message });
+  window.setTimeout(() => setSyncError(null), 8000);
 }

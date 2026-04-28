@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Cloud, CloudOff, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, Cloud, CloudOff, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import {
   isSyncingNow,
@@ -21,6 +21,8 @@ export default function JournalSyncStatus({
   className?: string;
 }) {
   const [count, setCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
+  const [lastError, setLastError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [online, setOnline] = useState(
     typeof navigator !== "undefined" ? navigator.onLine : true,
@@ -28,7 +30,11 @@ export default function JournalSyncStatus({
 
   useEffect(() => {
     const refresh = () => {
-      setCount(listPending().length);
+      const pending = listPending();
+      const failed = pending.filter((entry) => entry.failedAt || (entry.attempts ?? 0) >= 3);
+      setCount(pending.length);
+      setFailedCount(failed.length);
+      setLastError(failed.at(-1)?.lastError ?? null);
       setSyncing(isSyncingNow());
     };
     refresh();
@@ -55,7 +61,9 @@ export default function JournalSyncStatus({
     } else if (synced > 0) {
       toast(`${synced} synced · ${remaining} still pending.`);
     } else if (before > 0) {
-      toast("Still couldn't sync. We'll keep trying.");
+      toast.error("Sync failed — tap to retry", {
+        description: listPending().find((entry) => entry.lastError)?.lastError,
+      });
     }
   };
 
@@ -70,7 +78,7 @@ export default function JournalSyncStatus({
           transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           role="status"
           aria-live="polite"
-          className={`inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/80 px-2.5 py-1 text-[11px] font-medium text-text-secondary backdrop-blur ${className}`}
+          className={`inline-flex max-w-[min(92vw,520px)] items-center gap-1.5 rounded-full border border-border/60 bg-card/80 px-2.5 py-1 text-[11px] font-medium text-text-secondary backdrop-blur ${className}`}
         >
           {syncing ? (
             <>
@@ -79,12 +87,17 @@ export default function JournalSyncStatus({
             </>
           ) : (
             <>
-              {online ? (
+              {failedCount > 0 ? (
+                <AlertCircle className="h-3 w-3 text-destructive" strokeWidth={2.4} />
+              ) : online ? (
                 <Cloud className="h-3 w-3 text-text-secondary" strokeWidth={2.4} />
               ) : (
                 <CloudOff className="h-3 w-3 text-text-secondary" strokeWidth={2.4} />
               )}
-              Saved locally · {count}
+              <span className="truncate">
+                {failedCount > 0 ? "Sync failed — tap to retry" : `Saved locally · ${count}`}
+                {lastError ? ` · ${lastError}` : ""}
+              </span>
               <button
                 type="button"
                 onClick={handleRetry}
