@@ -611,11 +611,15 @@ function ResultView({
   navigate: ReturnType<typeof useNavigate>;
 }) {
   const v = VERDICT_STYLES[result.breakdown.overall];
-  const sections: Array<{ key: keyof RuleBreakdown; title: string }> = [
-    { key: "entry", title: "Entry" },
-    { key: "structure", title: "Structure" },
-    { key: "risk", title: "Risk" },
-    { key: "timing", title: "Timing" },
+  const sections: Array<{
+    key: "entry" | "structure" | "risk" | "timing";
+    title: string;
+    subtitle: string;
+  }> = [
+    { key: "entry", title: "Entry", subtitle: "Your strategy entry rules vs the chart" },
+    { key: "structure", title: "Structure alignment", subtitle: "Readable price structure" },
+    { key: "risk", title: "Risk alignment", subtitle: "Your strategy risk rules vs current volatility" },
+    { key: "timing", title: "Timing alignment", subtitle: "Higher-timeframe alignment" },
   ];
 
   return (
