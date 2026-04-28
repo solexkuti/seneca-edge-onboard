@@ -688,6 +688,7 @@ function StepParse({
 }
 
 /* -------------------------- Step 6: Refinement ----------------------- */
+// One question per screen. Vague answers are rejected by AI before acceptance.
 function StepRefine({
   bp,
   patch,
@@ -700,26 +701,58 @@ function StepRefine({
   busy: boolean;
 }) {
   const history = bp.refinement_history ?? [];
+  const firstUnansweredIdx = history.findIndex((h) => !h.accepted);
+  const activeIdx = firstUnansweredIdx === -1 ? history.length - 1 : firstUnansweredIdx;
+  const active = history[activeIdx];
+  const answeredCount = history.filter((h) => h.accepted).length;
 
-  const setAnswer = (i: number, answer: string) => {
-    const next = history.map((h, idx) => (idx === i ? { ...h, answer } : h));
-    void patch({ refinement_history: next });
-  };
-  const accept = (i: number) => {
-    const item = history[i];
-    if (!item) return;
-    if (
-      !item.answer ||
-      item.answer.trim().length < 4 ||
-      /^(yes|no|idk|maybe|sure|nope)\.?$/i.test(item.answer.trim())
-    ) {
-      toast.error("Be specific — vague answers don't count.");
+  const [draft, setDraft] = useState(active?.answer ?? "");
+  const [rejection, setRejection] = useState<string | null>(null);
+  const [validating, setValidating] = useState(false);
+
+  // Reset draft whenever the active question changes
+  useEffect(() => {
+    setDraft(active?.answer ?? "");
+    setRejection(null);
+  }, [activeIdx, active?.question]);
+
+  const submitAnswer = async () => {
+    if (!active) return;
+    const trimmed = draft.trim();
+    if (trimmed.length < 4) {
+      setRejection("This answer is not precise enough. Be specific.");
       return;
     }
-    const next = history.map((h, idx) =>
-      idx === i ? { ...h, accepted: true } : h,
-    );
-    void patch({ refinement_history: next });
+    setValidating(true);
+    setRejection(null);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "validate-refinement-answer",
+        { body: { question: active.question, answer: trimmed } },
+      );
+      if (error) throw error;
+      if (!data?.accept) {
+        setRejection(
+          data?.followup ||
+            data?.reason ||
+            "This answer is not precise enough. Be specific.",
+        );
+        return;
+      }
+      const next = history.map((h, idx) =>
+        idx === activeIdx ? { ...h, answer: trimmed, accepted: true } : h,
+      );
+      await patch({ refinement_history: next });
+    } catch (err) {
+      console.error("validate answer failed", err);
+      // Fall back to permissive accept on infra error so user isn't blocked
+      const next = history.map((h, idx) =>
+        idx === activeIdx ? { ...h, answer: trimmed, accepted: true } : h,
+      );
+      await patch({ refinement_history: next });
+    } finally {
+      setValidating(false);
+    }
   };
 
   const reparse = async () => {
@@ -753,63 +786,110 @@ function StepRefine({
     }
   };
 
+  if (history.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Header
+          eyebrow="Step 6"
+          title="Refine the gaps"
+          sub="Run the AI parse step first to generate questions."
+        />
+      </div>
+    );
+  }
+
+  const allAccepted = firstUnansweredIdx === -1;
+
   return (
     <div className="space-y-4">
       <Header
         eyebrow="Step 6"
-        title="Refine the gaps"
-        sub="Answer precisely. Vague answers will be rejected."
+        title={allAccepted ? "All questions answered" : "Your logic is incomplete."}
+        sub={
+          allAccepted
+            ? "Apply your answers to update your structured rules."
+            : "Answer precisely. No skipping. Vague answers will be rejected."
+        }
       />
-      {history.length === 0 ? (
-        <div className="text-sm text-muted-foreground">
-          No questions yet — run the parse step first.
+
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          Question {Math.min(activeIdx + 1, history.length)} of {history.length}
+        </span>
+        <span>{answeredCount} accepted</span>
+      </div>
+      <div className="flex items-center gap-1">
+        {history.map((h, i) => (
+          <div
+            key={i}
+            className={`h-1 flex-1 rounded-full ${
+              h.accepted
+                ? "bg-primary"
+                : i === activeIdx
+                  ? "bg-primary/40"
+                  : "bg-border"
+            }`}
+          />
+        ))}
+      </div>
+
+      {!allAccepted && active && (
+        <div className="rounded-xl bg-background p-3 ring-1 ring-border">
+          <div className="text-sm font-medium text-foreground">
+            {active.question}
+          </div>
+          <textarea
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (rejection) setRejection(null);
+            }}
+            rows={3}
+            placeholder="Be specific — name a number, candle, time, or pattern."
+            className="mt-2 w-full rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+          />
+          {rejection && (
+            <div className="mt-2 flex items-start gap-2 rounded-lg bg-rose-500/5 p-2 ring-1 ring-rose-500/30 text-xs text-rose-700 dark:text-rose-400">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{rejection}</span>
+            </div>
+          )}
+          <div className="mt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={submitAnswer}
+              disabled={validating || draft.trim().length < 4}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-95 disabled:opacity-50"
+            >
+              {validating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              )}
+              Submit answer
+            </button>
+          </div>
         </div>
-      ) : (
-        <div className="space-y-3">
+      )}
+
+      {allAccepted && (
+        <div className="space-y-2">
           {history.map((h, i) => (
             <div
               key={i}
-              className={`rounded-xl p-3 ring-1 ${
-                h.accepted
-                  ? "bg-primary/5 ring-primary/30"
-                  : "bg-background ring-border"
-              }`}
+              className="rounded-xl bg-primary/5 p-3 ring-1 ring-primary/30"
             >
-              <div className="text-sm font-medium text-foreground">
+              <div className="text-xs font-medium text-foreground/80">
                 {h.question}
               </div>
-              <textarea
-                value={h.answer}
-                onChange={(e) => setAnswer(i, e.target.value)}
-                rows={2}
-                placeholder="Your precise answer…"
-                disabled={h.accepted}
-                className="mt-2 w-full rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70 resize-none"
-              />
-              <div className="mt-2 flex justify-end">
-                {h.accepted ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Accepted
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => accept(i)}
-                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-95"
-                  >
-                    Accept answer
-                  </button>
-                )}
-              </div>
+              <div className="mt-1 text-sm text-foreground">{h.answer}</div>
             </div>
           ))}
           <button
             type="button"
             onClick={reparse}
-            disabled={
-              busy || history.filter((h) => h.accepted).length === 0
-            }
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-card px-4 py-2.5 text-sm font-medium text-foreground ring-1 ring-border hover:bg-background disabled:opacity-50"
+            disabled={busy}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="h-4 w-4 animate-spin" />
