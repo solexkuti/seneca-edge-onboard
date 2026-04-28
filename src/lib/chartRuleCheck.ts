@@ -78,6 +78,19 @@ export function isLowConfidence(
 
 const lc = (s: string) => s.toLowerCase();
 
+// Pull regions of given kinds from a chart, tagging the chart label so the UI
+// knows which preview to overlay.
+function pickRegions(
+  f: ChartFeatures,
+  chart: "exec" | "higher",
+  kinds: ChartRegion["kind"][],
+): ChartRegion[] {
+  const all = f.regions ?? [];
+  return all
+    .filter((r) => kinds.includes(r.kind))
+    .map((r) => ({ ...r, chart }));
+}
+
 function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
   if (rules.length === 0) {
     return {
