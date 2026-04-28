@@ -129,19 +129,29 @@ export function computeDiscipline(recent: RecentDecision[]): DisciplineSummary {
 }
 
 export async function loadTraderState(): Promise<TraderState> {
-  const [strategy, lock, recent] = await Promise.all([
+  const [strategy, lock, recent, activeRecovery, probation] = await Promise.all([
     loadActiveStrategyContext().catch(() => null),
     fetchTradeLockState().catch(() => null),
     fetchRecentDecisions(20).catch(() => [] as RecentDecision[]),
+    getActiveRecoverySession().catch(() => null),
+    evaluateProbation().catch(() => ({
+      active: false,
+      passed: false,
+      failed: false,
+      decisions_required: 2,
+      decisions_seen: 0,
+      last_session_id: null,
+    })),
   ]);
 
   const discipline = computeDiscipline(recent);
   const checklist_confirmed = !!lock && !lock.trade_lock;
   const has_strategy = !!strategy?.blueprint;
   const discipline_locked = discipline.state === "locked";
+  const in_recovery = !!activeRecovery || discipline_locked;
 
   const trading_allowed =
-    has_strategy && checklist_confirmed && !discipline_locked;
+    has_strategy && checklist_confirmed && !discipline_locked && !in_recovery;
 
   return {
     loading: false,
@@ -152,10 +162,15 @@ export async function loadTraderState(): Promise<TraderState> {
       trade_lock: lock,
       trading_allowed,
     },
+    recovery: {
+      active_session: activeRecovery,
+      probation,
+    },
     blocks: {
       no_strategy: !has_strategy,
       not_confirmed: !checklist_confirmed,
       discipline_locked,
+      in_recovery,
     },
   };
 }
