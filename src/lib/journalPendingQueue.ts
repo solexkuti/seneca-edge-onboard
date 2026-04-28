@@ -158,13 +158,8 @@ export async function syncWithRetry(
       const res = await submitJournalEntry(payload);
       if (res.ok) {
         removePending(id);
-        // Fire-and-forget pattern detection after a successful sync.
-        try {
-          const rows = await fetchJournal();
-          await detectAndStorePatterns(rows);
-        } catch (err) {
-          console.error("[patterns] post-sync detection failed", err);
-        }
+        // Pattern detection now runs server-side via Postgres trigger on
+        // discipline_logs insert. No client-side detection needed.
         return true;
       }
       console.error(res.error);
