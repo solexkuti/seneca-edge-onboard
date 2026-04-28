@@ -88,7 +88,6 @@ const EMPTY_DRAFT: Draft = {
 import {
   enqueuePending,
   syncWithRetry,
-  flushPending,
 } from "@/lib/journalPendingQueue";
 
 // ───────── component ─────────
@@ -697,4 +696,13 @@ function parseNumOrNull(v: string): number | null {
   if (!trimmed) return null;
   const n = Number(trimmed);
   return Number.isFinite(n) ? n : null;
+}
+
+function showTemporaryError(
+  message: string,
+  setSyncError: React.Dispatch<React.SetStateAction<string | null>>,
+) {
+  setSyncError(message);
+  toast.error("Journal sync failed", { description: message });
+  window.setTimeout(() => setSyncError(null), 8000);
 }
