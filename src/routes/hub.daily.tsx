@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Loader2, Download, ShieldAlert, ShieldCheck, Shield } from "lucide-react";
 import RequireAuth from "@/components/auth/RequireAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { saveDailyChecklist } from "@/lib/dailyChecklistCache";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/hub/daily")({
