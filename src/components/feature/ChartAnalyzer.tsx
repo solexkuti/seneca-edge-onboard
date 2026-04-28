@@ -555,6 +555,9 @@ function ResultView({
     insight: string;
     execPreview: string;
     higherPreview: string | null;
+    modelUsed: "primary" | "fallback";
+    pipelineConfidence: number;
+    warnings: string[];
   };
   onReset: () => void;
   navigate: ReturnType<typeof useNavigate>;
