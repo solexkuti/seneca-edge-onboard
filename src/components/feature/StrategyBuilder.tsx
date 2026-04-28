@@ -30,7 +30,7 @@ import {
   LockOpen,
   Loader2,
   Sparkles,
-  Download,
+  
   CheckCircle2,
   AlertTriangle,
   Plus,
