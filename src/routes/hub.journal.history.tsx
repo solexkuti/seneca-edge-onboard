@@ -352,3 +352,36 @@ function EntryCard({ row }: { row: DbJournalRow }) {
     </motion.div>
   );
 }
+
+type DayGroup = { key: string; label: string; rows: DbJournalRow[] };
+
+function groupByDay(rows: DbJournalRow[]): DayGroup[] {
+  const groups = new Map<string, DayGroup>();
+  const now = new Date();
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const today = startOfDay(now);
+  const yesterday = today - 86_400_000;
+
+  for (const r of rows) {
+    const d = new Date(r.timestamp);
+    const dayMs = startOfDay(d);
+    const key = String(dayMs);
+    let label: string;
+    if (dayMs === today) label = "Today";
+    else if (dayMs === yesterday) label = "Yesterday";
+    else
+      label = d.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: dayMs < startOfDay(new Date(now.getFullYear(), 0, 1)) ? "numeric" : undefined,
+      });
+    if (!groups.has(key)) groups.set(key, { key, label, rows: [] });
+    groups.get(key)!.rows.push(r);
+  }
+  // Preserve incoming row order within each group; order groups by recency.
+  return Array.from(groups.values()).sort(
+    (a, b) => Number(b.key) - Number(a.key),
+  );
+}
