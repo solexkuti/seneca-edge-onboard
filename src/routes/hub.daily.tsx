@@ -207,8 +207,12 @@ function DailyChecklistPage() {
     return result.rules.length > 0 && result.rules.every((r) => acks[r.id] === true);
   }, [result, acks]);
 
+  const requiresStrictAck = result?.control_state === "out_of_control";
+  const canConfirm =
+    allTicked && finalAck && (!requiresStrictAck || strictAck);
+
   const confirm = async () => {
-    if (!result || !allTicked) return;
+    if (!result || !canConfirm) return;
     setConfirming(true);
     try {
       const ackList: RuleAck[] = result.rules.map((r) => ({
@@ -217,11 +221,17 @@ function DailyChecklistPage() {
         category: r.category,
         confirmed: !!acks[r.id],
       }));
+      // Tag the strict-mode commitment so the trade-lock layer knows the user
+      // explicitly accepted the extra constraint.
+      const restrictions = [
+        ...result.applied_restrictions,
+        ...(requiresStrictAck ? ["strict_mode_acknowledged"] : []),
+      ];
       const res = await recordConfirmation({
         control_state: result.control_state,
         discipline_score: result.discipline_score,
         allowed_tiers: result.allowed_tiers,
-        applied_restrictions: result.applied_restrictions,
+        applied_restrictions: restrictions,
         focus: result.focus,
         rule_acknowledgements: ackList,
         strategy_name: result.strategy_name,
@@ -231,7 +241,7 @@ function DailyChecklistPage() {
         return;
       }
       setAlreadyConfirmed({ confirmed_at: res.row.confirmed_at });
-      toast.success("Locked in. The mentor and trade check now hold you to these rules.");
+      toast.success("Locked in. Trading is unlocked for today.");
     } finally {
       setConfirming(false);
     }
