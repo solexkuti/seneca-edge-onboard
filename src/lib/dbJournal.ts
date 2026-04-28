@@ -153,7 +153,7 @@ export async function submitJournalEntry(
       .from("discipline_logs")
       .select(
         `id, trade_id, followed_entry, followed_exit, followed_risk,
-         followed_behavior, discipline_score, emotional_state, notes,
+         followed_behavior, discipline_score, emotional_state, notes, mistake_tag,
          trade:trades!inner (
            id, market, direction, result, rr, executed_at, strategy_id,
            strategy:strategies ( id, name, entry_rule, exit_rule, risk_rule, behavior_rule )
@@ -248,7 +248,7 @@ export async function submitJournalEntry(
         .from("discipline_logs")
         .select(
           `id, trade_id, followed_entry, followed_exit, followed_risk,
-           followed_behavior, discipline_score, emotional_state, notes,
+           followed_behavior, discipline_score, emotional_state, notes, mistake_tag,
            trade:trades!inner (
              id, market, direction, result, rr, executed_at, strategy_id,
              strategy:strategies ( id, name, entry_rule, exit_rule, risk_rule, behavior_rule )
@@ -296,7 +296,7 @@ export async function fetchJournal(): Promise<DbJournalRow[]> {
     .from("discipline_logs")
     .select(
       `id, trade_id, followed_entry, followed_exit, followed_risk,
-       followed_behavior, discipline_score, emotional_state, notes,
+       followed_behavior, discipline_score, emotional_state, notes, mistake_tag,
        trade:trades!inner (
          id, market, direction, result, rr, executed_at, strategy_id,
          strategy:strategies ( id, name, entry_rule, exit_rule, risk_rule, behavior_rule )
