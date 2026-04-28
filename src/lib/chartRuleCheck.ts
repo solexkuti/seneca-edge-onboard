@@ -106,8 +106,10 @@ function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
     const t = lc(r);
     let passed = true;
     const subReasons: string[] = [];
+    const kinds: ChartRegion["kind"][] = [];
 
     if (t.includes("bos") || t.includes("break of structure")) {
+      kinds.push("bos");
       if (f.structure !== "break_of_structure") {
         passed = false;
         subReasons.push(
@@ -118,6 +120,7 @@ function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
       }
     }
     if (t.includes("retest")) {
+      kinds.push("key_zone");
       if (f.structure !== "consolidation" && f.structure !== "break_of_structure") {
         passed = false;
         subReasons.push("Retest condition not visible");
@@ -126,6 +129,7 @@ function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
       }
     }
     if (t.includes("liquidity") || t.includes("sweep")) {
+      kinds.push("sweep");
       if (f.liquidity === "none" || f.liquidity === "unclear") {
         passed = false;
         subReasons.push("Liquidity sweep not visible");
@@ -133,6 +137,8 @@ function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
         subReasons.push("Liquidity condition visible");
       }
     }
+
+    const regions = kinds.length ? pickRegions(f, "exec", kinds) : undefined;
 
     if (subReasons.length === 0) {
       // No keyword hit — can't deterministically verify from chart alone.
@@ -142,9 +148,37 @@ function entryCheck(rules: string[], f: ChartFeatures): SectionResult {
         reason: "Not directly observable on chart — confirm manually",
       });
     } else {
-      checks.push({ rule: r, passed, reason: subReasons.join("; ") });
+      checks.push({ rule: r, passed, reason: subReasons.join("; "), regions });
     }
   }
+  const passed = checks.every((c) => c.passed);
+  const reasons = checks.map((c) => `${c.passed ? "✓" : "✗"} ${c.rule} — ${c.reason}`);
+  return { passed, reasons, checks };
+}
+
+function structureCheck(f: ChartFeatures): SectionResult {
+  const structureRegions = pickRegions(f, "exec", ["bos", "key_zone"]);
+  const checks: RuleCheck[] = [
+    {
+      rule: "Chart structure must be readable",
+      passed: !(f.quality === "messy" || f.quality === "unclear"),
+      reason:
+        f.quality === "messy" || f.quality === "unclear"
+          ? `Chart quality is ${f.quality}`
+          : "Chart quality is clear",
+    },
+    {
+      rule: "Visible market structure on execution timeframe",
+      passed: f.structure !== "none" && f.structure !== "unclear",
+      reason:
+        f.structure === "none"
+          ? "No clear structure detected"
+          : f.structure === "unclear"
+            ? "Structure unclear"
+            : `Structure: ${f.structure}`,
+      regions: structureRegions.length ? structureRegions : undefined,
+    },
+  ];
   const passed = checks.every((c) => c.passed);
   const reasons = checks.map((c) => `${c.passed ? "✓" : "✗"} ${c.rule} — ${c.reason}`);
   return { passed, reasons, checks };
