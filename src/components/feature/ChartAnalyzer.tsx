@@ -611,11 +611,15 @@ function ResultView({
   navigate: ReturnType<typeof useNavigate>;
 }) {
   const v = VERDICT_STYLES[result.breakdown.overall];
-  const sections: Array<{ key: keyof RuleBreakdown; title: string }> = [
-    { key: "entry", title: "Entry" },
-    { key: "structure", title: "Structure" },
-    { key: "risk", title: "Risk" },
-    { key: "timing", title: "Timing" },
+  const sections: Array<{
+    key: "entry" | "structure" | "risk" | "timing";
+    title: string;
+    subtitle: string;
+  }> = [
+    { key: "entry", title: "Entry", subtitle: "Your strategy entry rules vs the chart" },
+    { key: "structure", title: "Structure alignment", subtitle: "Readable price structure" },
+    { key: "risk", title: "Risk alignment", subtitle: "Your strategy risk rules vs current volatility" },
+    { key: "timing", title: "Timing alignment", subtitle: "Higher-timeframe alignment" },
   ];
 
   return (
@@ -709,7 +713,7 @@ function ResultView({
       {/* Breakdown */}
       <div className="space-y-2.5">
         {sections.map((s) => {
-          const cell = result.breakdown[s.key] as { passed: boolean; reasons: string[] };
+          const cell = result.breakdown[s.key];
           return (
             <div
               key={s.key}
@@ -721,24 +725,59 @@ function ResultView({
                 ) : (
                   <XCircle className="h-4 w-4 text-rose-600" strokeWidth={2.4} />
                 )}
-                <span className="text-[13px] font-semibold text-text-primary">{s.title}</span>
-                <span
-                  className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${
-                    cell.passed
-                      ? "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20"
-                      : "bg-rose-500/10 text-rose-700 ring-rose-500/20"
-                  }`}
-                >
-                  {cell.passed ? "PASS" : "FAIL"}
-                </span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-semibold text-text-primary">
+                      {s.title}
+                    </span>
+                    <span
+                      className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${
+                        cell.passed
+                          ? "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20"
+                          : "bg-rose-500/10 text-rose-700 ring-rose-500/20"
+                      }`}
+                    >
+                      {cell.passed ? "PASS" : "FAIL"}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-text-secondary">{s.subtitle}</p>
+                </div>
               </div>
-              <ul className="mt-2 space-y-1 pl-6">
-                {cell.reasons.map((r, idx) => (
+
+              <ul className="mt-3 space-y-2">
+                {cell.checks.map((c, idx) => (
                   <li
                     key={idx}
-                    className="list-disc text-[12px] leading-snug text-text-secondary"
+                    className={`rounded-xl px-3 py-2 ring-1 ${
+                      c.passed
+                        ? "bg-emerald-500/[0.06] ring-emerald-500/20"
+                        : "bg-rose-500/[0.06] ring-rose-500/20"
+                    }`}
                   >
-                    {r}
+                    <div className="flex items-start gap-2">
+                      {c.passed ? (
+                        <CheckCircle2
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600"
+                          strokeWidth={2.6}
+                        />
+                      ) : (
+                        <XCircle
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-600"
+                          strokeWidth={2.6}
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12.5px] font-medium leading-snug text-text-primary">
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                            Your rule:
+                          </span>{" "}
+                          {c.rule}
+                        </p>
+                        <p className="mt-1 text-[11.5px] leading-snug text-text-secondary">
+                          {c.reason}
+                        </p>
+                      </div>
+                    </div>
                   </li>
                 ))}
               </ul>
