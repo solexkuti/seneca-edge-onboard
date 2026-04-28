@@ -28,6 +28,7 @@ import { playFeedback } from "@/lib/feedback";
 import { supabase } from "@/integrations/supabase/client";
 import type {
   EmotionalState,
+  MistakeTagValue,
   NewJournalSubmission,
   TradeDirection,
   TradeResult,
@@ -64,6 +65,7 @@ type Draft = {
   discipline: DraftDiscipline;
   emotional_state: EmotionalState | null;
   notes: string;
+  mistake_tag: MistakeTagValue | null;
 };
 
 const EMPTY_DRAFT: Draft = {
@@ -82,6 +84,7 @@ const EMPTY_DRAFT: Draft = {
   },
   emotional_state: null,
   notes: "",
+  mistake_tag: null,
 };
 
 // Background sync + local-first persistence live in `journalPendingQueue`.
@@ -167,6 +170,7 @@ export default function TradingJournalFlow() {
       },
       emotional_state: draft.emotional_state!,
       notes: draft.notes,
+      mistake_tag: draft.mistake_tag,
     };
 
     // 1. Persist locally FIRST — never advance UI before backup is written.
