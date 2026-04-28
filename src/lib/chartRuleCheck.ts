@@ -229,12 +229,17 @@ function timingCheck(
   }
   const checks: RuleCheck[] = [];
   const trendClear = exec.trend !== "unclear" && higher.trend !== "unclear";
+  const trendRegions: ChartRegion[] = [
+    ...pickRegions(exec, "exec", ["trend"]),
+    ...pickRegions(higher, "higher", ["trend"]),
+  ];
   checks.push({
     rule: "Trend must be readable on both timeframes",
     passed: trendClear,
     reason: trendClear
       ? `Exec ${exec.trend}, higher ${higher.trend}`
       : "Trend unclear on one of the timeframes",
+    regions: trendRegions.length ? trendRegions : undefined,
   });
   const conflict =
     (exec.trend === "uptrend" && higher.trend === "downtrend") ||
@@ -247,6 +252,7 @@ function timingCheck(
       : conflict
         ? `Mismatched: exec ${exec.trend} vs higher ${higher.trend}`
         : `Aligned: ${exec.trend} on both timeframes`,
+    regions: trendRegions.length ? trendRegions : undefined,
   });
   const passed = checks.every((c) => c.passed);
   const reasons = checks.map((c) => `${c.passed ? "✓" : "✗"} ${c.rule} — ${c.reason}`);
