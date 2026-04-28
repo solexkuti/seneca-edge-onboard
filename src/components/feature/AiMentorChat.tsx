@@ -167,14 +167,22 @@ export default function AiMentorChat() {
       };
     });
     const lastTwoPayload = lastTwoTrades.length > 0 ? lastTwoTrades : undefined;
+    const strategyPayload = activeStrategy?.blueprint
+      ? {
+          name: activeStrategy.blueprint.name,
+          locked: activeStrategy.blueprint.locked,
+          rules: summarizeRulesForAI(activeStrategy.rules),
+        }
+      : undefined;
     const ctx =
-      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload
+      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload
         ? {
             ...(journalSummary ? { journalSummary } : {}),
             ...(profileSummary ? { profileSummary } : {}),
             ...(intelligencePayload ? { intelligence: intelligencePayload } : {}),
             ...(recentPatternsPayload ? { recentPatterns: recentPatternsPayload } : {}),
             ...(lastTwoPayload ? { lastTwoTrades: lastTwoPayload } : {}),
+            ...(strategyPayload ? { activeStrategy: strategyPayload } : {}),
           }
         : undefined;
 
