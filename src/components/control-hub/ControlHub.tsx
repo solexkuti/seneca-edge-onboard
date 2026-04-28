@@ -20,6 +20,7 @@ import {
   type BehaviorPattern,
 } from "@/lib/behaviorPattern";
 import IntelligencePanel from "./IntelligencePanel";
+import TradeLockBadge from "@/components/feature/TradeLockBadge";
 
 // Eyebrow label by pattern kind. Reflects the actual signal, not generic copy.
 const PATTERN_LABEL: Record<
