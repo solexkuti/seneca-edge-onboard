@@ -260,6 +260,86 @@ export type Database = {
         }
         Relationships: []
       }
+      strategy_blueprints: {
+        Row: {
+          account_types: string[]
+          ambiguity_flags: Json
+          checklist: Json
+          created_at: string
+          daily_loss_limit_pct: number | null
+          id: string
+          locked: boolean
+          locked_at: string | null
+          max_drawdown_pct: number | null
+          name: string
+          raw_input: string | null
+          refinement_history: Json
+          risk_per_trade_pct: number | null
+          status: string
+          strategy_id: string | null
+          structured_rules: Json
+          tier_strictness: Json
+          trading_plan: string | null
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          account_types?: string[]
+          ambiguity_flags?: Json
+          checklist?: Json
+          created_at?: string
+          daily_loss_limit_pct?: number | null
+          id?: string
+          locked?: boolean
+          locked_at?: string | null
+          max_drawdown_pct?: number | null
+          name?: string
+          raw_input?: string | null
+          refinement_history?: Json
+          risk_per_trade_pct?: number | null
+          status?: string
+          strategy_id?: string | null
+          structured_rules?: Json
+          tier_strictness?: Json
+          trading_plan?: string | null
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          account_types?: string[]
+          ambiguity_flags?: Json
+          checklist?: Json
+          created_at?: string
+          daily_loss_limit_pct?: number | null
+          id?: string
+          locked?: boolean
+          locked_at?: string | null
+          max_drawdown_pct?: number | null
+          name?: string
+          raw_input?: string | null
+          refinement_history?: Json
+          risk_per_trade_pct?: number | null
+          status?: string
+          strategy_id?: string | null
+          structured_rules?: Json
+          tier_strictness?: Json
+          trading_plan?: string | null
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_blueprints_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trades: {
         Row: {
           closed_at: string | null
