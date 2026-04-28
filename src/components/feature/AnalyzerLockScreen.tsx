@@ -8,7 +8,7 @@
 // Real-time recheck: subscribes to TRADER_STATE — when the user fixes their
 // state, this component automatically unmounts (no refresh required).
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
@@ -20,7 +20,26 @@ import {
   AlertTriangle,
   XCircle,
   CheckCircle2,
+  Sparkles,
+  MinusCircle,
 } from "lucide-react";
+
+const REDUCE_MOTION_KEY = "seneca.lock.reduceMotion";
+
+function readInitialReduceMotion(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const stored = window.localStorage.getItem(REDUCE_MOTION_KEY);
+    if (stored === "1") return true;
+    if (stored === "0") return false;
+  } catch {
+    /* ignore */
+  }
+  return (
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
 import { useTraderState } from "@/hooks/useTraderState";
 import { logLockAttempt, type LockAttemptReason } from "@/lib/lockAttempts";
 
@@ -64,6 +83,15 @@ export default function AnalyzerLockScreen({ children }: Props) {
   const { state } = useTraderState();
   const navigate = useNavigate();
   const lastLoggedKeyRef = useRef<string | null>(null);
+  const [reduceMotion, setReduceMotion] = useState<boolean>(readInitialReduceMotion);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(REDUCE_MOTION_KEY, reduceMotion ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [reduceMotion]);
 
   const lock = useMemo(() => {
     if (state.loading) return { kind: "loading" as const };
@@ -127,24 +155,27 @@ export default function AnalyzerLockScreen({ children }: Props) {
          events can reach it because nothing renders. */}
       <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-90" />
 
-      {/* Ambient tech particles — pure decoration, non-interactive. */}
-      <TechParticles />
+      {/* Ambient tech particles — pure decoration, non-interactive.
+         Suppressed when the user has reduced motion enabled. */}
+      {!reduceMotion && <TechParticles />}
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[640px] items-center justify-center px-5 py-10">
         <motion.div
-          initial={{ opacity: 0, y: 8, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
+          initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.98 }}
+          animate={reduceMotion ? { opacity: 1, y: 0, scale: 1 } : { opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: reduceMotion ? 0 : 0.25, ease: "easeOut" }}
           className="w-full rounded-2xl bg-card p-7 ring-1 ring-border shadow-card-premium"
         >
           {/* Icon + eyebrow */}
           <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-red-600/10 ring-1 ring-red-600/20">
-            <motion.span
-              aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-xl bg-red-600/25"
-              animate={{ opacity: [0.15, 0.45, 0.15], scale: [1, 1.08, 1] }}
-              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-            />
+            {!reduceMotion && (
+              <motion.span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-xl bg-red-600/25"
+                animate={{ opacity: [0.15, 0.45, 0.15], scale: [1, 1.08, 1] }}
+                transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+              />
+            )}
             <Lock className="relative h-5 w-5 text-red-700" aria-hidden />
           </div>
           <div className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-red-700">
@@ -167,12 +198,14 @@ export default function AnalyzerLockScreen({ children }: Props) {
               tone={isDiscipline ? "red" : "muted"}
               icon={ShieldAlert}
               meta={`${state.discipline.score}/100`}
+              reduceMotion={reduceMotion}
             />
             <Indicator
               label="Checklist"
               value={state.session.checklist_confirmed ? "Confirmed" : "Not confirmed"}
               tone={state.session.checklist_confirmed ? "ok" : "red"}
               icon={state.session.checklist_confirmed ? ShieldCheck : Lock}
+              reduceMotion={reduceMotion}
             />
           </div>
 
@@ -308,6 +341,37 @@ export default function AnalyzerLockScreen({ children }: Props) {
             feature. The lock will lift automatically the moment your state
             recovers — no refresh needed.
           </p>
+
+          {/* Reduce-motion toggle — purely presentational. Does not change
+             copy, CTA targets, or unlock logic. */}
+          <div className="mt-4 flex items-center justify-between rounded-xl bg-muted/30 px-3 py-2 ring-1 ring-border">
+            <div className="flex items-center gap-2 text-[11px] text-foreground/75">
+              {reduceMotion ? (
+                <MinusCircle className="h-3.5 w-3.5 text-foreground/55" aria-hidden />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 text-foreground/55" aria-hidden />
+              )}
+              <span>Reduce motion</span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={reduceMotion}
+              aria-label="Reduce motion on this screen"
+              onClick={() => setReduceMotion((v) => !v)}
+              className={[
+                "relative inline-flex h-5 w-9 flex-none items-center rounded-full transition-colors",
+                reduceMotion ? "bg-primary" : "bg-foreground/20",
+              ].join(" ")}
+            >
+              <span
+                className={[
+                  "inline-block h-4 w-4 transform rounded-full bg-background shadow transition-transform",
+                  reduceMotion ? "translate-x-4" : "translate-x-0.5",
+                ].join(" ")}
+              />
+            </button>
+          </div>
         </motion.div>
       </div>
     </div>
@@ -332,12 +396,14 @@ function Indicator({
   tone,
   icon: Icon,
   meta,
+  reduceMotion = false,
 }: {
   label: string;
   value: string;
   tone: Tone;
   icon: typeof Lock;
   meta?: string;
+  reduceMotion?: boolean;
 }) {
   const ring =
     tone === "red"
@@ -357,7 +423,7 @@ function Indicator({
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="relative inline-flex h-1.5 w-1.5">
-            {tone !== "muted" && (
+            {tone !== "muted" && !reduceMotion && (
               <motion.span
                 aria-hidden
                 className={`absolute inline-flex h-full w-full rounded-full ${dotTone} opacity-60`}
