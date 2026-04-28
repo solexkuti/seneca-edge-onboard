@@ -48,7 +48,7 @@ export default function TraderStateGate({
   useEffect(() => {
     if (
       !state.loading &&
-      enforce.includes("no_strategy") &&
+      effectiveEnforce.includes("no_strategy") &&
       state.blocks.no_strategy
     ) {
       void navigate({ to: "/hub/strategy/new", replace: true });
@@ -59,7 +59,7 @@ export default function TraderStateGate({
   useEffect(() => {
     if (
       !state.loading &&
-      enforce.includes("discipline_locked") &&
+      effectiveEnforce.includes("discipline_locked") &&
       (state.blocks.discipline_locked || state.blocks.in_recovery)
     ) {
       void navigate({ to: "/hub/recovery", replace: true });
@@ -74,12 +74,12 @@ export default function TraderStateGate({
 
   let block: Block = "ok";
   if (state.loading) block = "loading";
-  else if (enforce.includes("no_strategy") && state.blocks.no_strategy)
+  else if (effectiveEnforce.includes("no_strategy") && state.blocks.no_strategy)
     block = "no_strategy";
-  else if (enforce.includes("not_confirmed") && state.blocks.not_confirmed)
+  else if (effectiveEnforce.includes("not_confirmed") && state.blocks.not_confirmed)
     block = "not_confirmed";
   else if (
-    enforce.includes("discipline_locked") &&
+    effectiveEnforce.includes("discipline_locked") &&
     (state.blocks.discipline_locked || state.blocks.in_recovery)
   )
     block = "discipline_locked";
