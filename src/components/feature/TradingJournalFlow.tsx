@@ -157,14 +157,14 @@ export default function TradingJournalFlow() {
       notes: draft.notes,
     };
 
-    // 1. Move user forward immediately (optimistic UI).
+    // 1. Persist locally FIRST — never advance UI before backup is written.
+    const pendingId = enqueuePending(payload);
+
+    // 2. Now safe to move the user forward (optimistic UI).
     setDoneScore(optimisticScore);
 
-    // 2. Buffer locally so nothing is lost if the tab closes mid-sync.
-    bufferPendingSubmission(payload);
-
     // 3. Sync in the background with silent retries.
-    void syncWithRetry(payload);
+    void syncWithRetry(pendingId, payload, { showToast: true });
   };
 
   // ───────── confirmation screen ─────────
