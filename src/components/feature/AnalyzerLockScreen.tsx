@@ -71,9 +71,7 @@ export default function AnalyzerLockScreen({ children }: Props) {
   const title = "Trading Locked";
   const subtitle =
     "You are not in a controlled state to analyze or execute trades.";
-  const reasonLine = isDiscipline
-    ? `Your discipline score has dropped to ${state.discipline.score}/100. The system has forced a cooldown.`
-    : "You have not confirmed today's checklist. Trading is blocked until you do.";
+  // (Reason copy is now rendered as structured bullets below.)
 
   const fixTarget = isDiscipline ? "/hub/recovery" : "/hub/daily";
   const fixLabel = isDiscipline
