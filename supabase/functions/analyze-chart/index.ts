@@ -240,6 +240,100 @@ async function extract(
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// LOCK ENFORCEMENT (server-side)
+// ────────────────────────────────────────────────────────────────────────────
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+function lockedResponse(reason: string, details: Record<string, unknown>) {
+  return new Response(
+    JSON.stringify({ status: "locked", reason, ...details }),
+    {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    },
+  );
+}
+
+async function enforceAnalyzerLock(req: Request): Promise<Response | null> {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.replace(/^Bearer\s+/i, "");
+  if (!token) {
+    return lockedResponse("Authentication required", { code: "no_auth" });
+  }
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+    // Service-role missing → fail open with a warning rather than locking
+    // every legitimate call. Client-side gate still protects the UX.
+    console.warn("[analyze-chart] lock check skipped: service role missing");
+    return null;
+  }
+
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  // Identify the user from the JWT.
+  const { data: userRes, error: userErr } = await admin.auth.getUser(token);
+  if (userErr || !userRes?.user) {
+    return lockedResponse("Authentication failed", { code: "bad_token" });
+  }
+  const uid = userRes.user.id;
+
+  // 1) Checklist confirmation for today.
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: conf } = await admin
+    .from("checklist_confirmations")
+    .select("confirmed_at,control_state,applied_restrictions")
+    .eq("user_id", uid)
+    .eq("generated_for", today)
+    .order("confirmed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!conf) {
+    return lockedResponse(
+      "Confirm today's checklist before analyzing.",
+      { code: "checklist_not_confirmed" },
+    );
+  }
+  const restrictions = (conf.applied_restrictions ?? []) as string[];
+  if (
+    conf.control_state === "out_of_control" &&
+    !restrictions.includes("strict_mode_acknowledged")
+  ) {
+    return lockedResponse(
+      "Strict-mode commitment required before analyzing.",
+      { code: "checklist_not_confirmed" },
+    );
+  }
+
+  // 2) Discipline lock — recompute score from recent_decisions to mirror
+  //    the client-side computeDiscipline() exactly (start at 50, sum deltas).
+  const { data: recent } = await admin
+    .from("recent_decisions")
+    .select("score_delta,verdict,created_at")
+    .eq("user_id", uid)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  let score = 50;
+  for (const r of recent ?? []) score += Number(r.score_delta ?? 0);
+  score = Math.max(0, Math.min(100, score));
+
+  if (score < 50) {
+    return lockedResponse(
+      `Discipline score ${score}/100 — cooldown required.`,
+      { code: "discipline_locked", discipline_score: score },
+    );
+  }
+
+  return null; // unlocked
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // HANDLER
 // ────────────────────────────────────────────────────────────────────────────
 
