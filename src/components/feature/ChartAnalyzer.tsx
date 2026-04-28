@@ -588,6 +588,34 @@ function ResultView({
         </div>
       )}
 
+      {/* Pipeline status — model used + confidence */}
+      <div className="flex items-center gap-2 rounded-2xl bg-card px-3.5 py-2.5 ring-1 ring-border shadow-soft">
+        <Sparkles
+          className={`h-3.5 w-3.5 ${
+            result.modelUsed === "fallback" ? "text-amber-600" : "text-brand"
+          }`}
+          strokeWidth={2.4}
+        />
+        <span className="text-[11.5px] font-semibold text-text-primary">
+          {result.modelUsed === "fallback"
+            ? "Deeper validation used"
+            : "Primary model"}
+        </span>
+        <span className="ml-auto text-[11.5px] text-text-secondary">
+          AI confidence {Math.round(result.pipelineConfidence * 100)}%
+        </span>
+      </div>
+
+      {result.modelUsed === "fallback" && (
+        <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <p className="text-[12.5px] leading-snug text-text-primary">
+            Analysis required deeper validation. Using advanced model for higher
+            accuracy.
+          </p>
+        </div>
+      )}
+
       {/* Verdict */}
       <div className={`rounded-2xl p-4 ring-1 shadow-soft ${v.bg} ${v.ring}`}>
         <div className="flex items-center gap-3">
