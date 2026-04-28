@@ -10,10 +10,15 @@ export const Route = createFileRoute("/hub/chart")({
   }),
   component: () => (
     <RequireAuth>
-      {/* Strategy is foundational: missing strategy hard-redirects to builder. */}
-      <TraderStateGate surface="Chart Analyzer" enforce={["no_strategy"]}>
-        {/* Strict analyzer lock: hides ALL analyzer UI and blocks uploads
-           when the user is not in a controlled state. */}
+      {/* Strategy + discipline are foundational. discipline_locked redirects
+         the user to /hub/recovery — the only way back into the system. */}
+      <TraderStateGate
+        surface="Chart Analyzer"
+        enforce={["no_strategy", "discipline_locked"]}
+      >
+        {/* Checklist-only lock UI (kept as a soft inline screen so the user
+           can still see the analyzer surface context). Discipline locks are
+           handled upstream by the gate redirect. */}
         <AnalyzerLockScreen>
           <ChartAnalyzer />
         </AnalyzerLockScreen>
