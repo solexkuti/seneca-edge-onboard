@@ -211,7 +211,7 @@ export async function submitJournalEntry(
     }
     return {
       ok: false,
-      error: logError?.message ?? "Failed to save behavior log.",
+      error: formatDbError(logError, "Failed to save behavior log."),
     };
   }
 
@@ -288,6 +288,31 @@ export async function fetchJournalAsLegacy(): Promise<JournalEntry[]> {
 }
 
 // ───────── helpers ─────────
+
+function validateSubmission(input: NewJournalSubmission): string | null {
+  if (!input.trade.market.trim()) return "Market is required.";
+  if (!input.trade.direction) return "Trade direction is required.";
+  if (!input.trade.result) return "Trade result is required.";
+  if (!input.emotional_state) return "Emotional state is required.";
+  const d = input.discipline;
+  if (
+    typeof d.followed_entry !== "boolean" ||
+    typeof d.followed_exit !== "boolean" ||
+    typeof d.followed_risk !== "boolean" ||
+    typeof d.followed_behavior !== "boolean"
+  ) {
+    return "Discipline checklist is incomplete.";
+  }
+  return null;
+}
+
+function formatDbError(error: unknown, fallback: string): string {
+  if (!error || typeof error !== "object") return fallback;
+  const e = error as { message?: string; details?: string; hint?: string; code?: string };
+  return [e.message, e.details, e.hint, e.code ? `Code: ${e.code}` : null]
+    .filter(Boolean)
+    .join(" ") || fallback;
+}
 
 function combine(trade: any, log: any): DbJournalRow {
   const followedPlan =
