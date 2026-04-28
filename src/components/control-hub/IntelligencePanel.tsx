@@ -145,19 +145,41 @@ export default function IntelligencePanel() {
   );
 }
 
+type GlowTone = "none" | "emerald" | "amber" | "rose";
+
+const GLOW_STYLES: Record<GlowTone, string> = {
+  none: "",
+  emerald:
+    "shadow-[0_10px_28px_-18px_color-mix(in_oklab,oklch(0.72_0.13_160)_55%,transparent)]",
+  amber:
+    "shadow-[0_10px_28px_-18px_color-mix(in_oklab,oklch(0.78_0.12_75)_55%,transparent)]",
+  rose:
+    "shadow-[0_10px_28px_-18px_color-mix(in_oklab,oklch(0.70_0.14_20)_55%,transparent)]",
+};
+
 function StatCard({
   label,
   value,
   suffix,
   icon,
+  glow = "none",
+  delay = 0,
 }: {
   label: string;
   value: string;
   suffix?: string;
   icon?: React.ReactNode;
+  glow?: GlowTone;
+  delay?: number;
 }) {
   return (
-    <div className="rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease, delay }}
+      whileHover={{ y: -2 }}
+      className={`rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft transition-shadow duration-500 hover:ring-border/80 ${GLOW_STYLES[glow]}`}
+    >
       <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
         {label}
       </p>
@@ -166,7 +188,7 @@ function StatCard({
         {value}
         {suffix && <span className="text-[10.5px] font-medium text-text-secondary">{suffix}</span>}
       </p>
-    </div>
+    </motion.div>
   );
 }
 
