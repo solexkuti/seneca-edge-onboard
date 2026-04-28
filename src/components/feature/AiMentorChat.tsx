@@ -187,6 +187,18 @@ export default function AiMentorChat() {
     const lastAnalyzer = traderState.discipline.recent.find(
       (d) => d.source === "analyzer",
     );
+    const summarizeViolations = (v: unknown): string | null => {
+      if (Array.isArray(v) && v.length) {
+        return v.filter((x) => typeof x === "string").join(", ") || null;
+      }
+      if (v && typeof v === "object") {
+        const vals = Object.values(v as Record<string, unknown>).filter(
+          (x) => typeof x === "string",
+        );
+        return vals.length ? vals.join(", ") : null;
+      }
+      return null;
+    };
     const traderStatePayload = traderState.loading
       ? undefined
       : {
@@ -200,7 +212,10 @@ export default function AiMentorChat() {
             state: traderState.discipline.state,
             consecutive_breaks: traderState.discipline.consecutive_breaks,
             last_score_delta: lastDecision?.score_delta ?? null,
-            last_reason: lastDecision?.reason ?? null,
+            last_reason: lastDecision
+              ? summarizeViolations(lastDecision.violations) ??
+                `${lastDecision.source} ${lastDecision.verdict}`
+              : null,
             last_source: lastDecision?.source ?? null,
           },
           session: {
@@ -211,7 +226,9 @@ export default function AiMentorChat() {
             ? {
                 verdict: lastAnalyzer.verdict,
                 score_delta: lastAnalyzer.score_delta,
-                reason: lastAnalyzer.reason,
+                reason:
+                  summarizeViolations(lastAnalyzer.violations) ??
+                  lastAnalyzer.verdict,
                 created_at: lastAnalyzer.created_at,
               }
             : null,
