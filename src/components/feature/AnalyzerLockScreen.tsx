@@ -93,6 +93,9 @@ export default function AnalyzerLockScreen({ children }: Props) {
          events can reach it because nothing renders. */}
       <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-90" />
 
+      {/* Ambient tech particles — pure decoration, non-interactive. */}
+      <TechParticles />
+
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[640px] items-center justify-center px-5 py-10">
         <motion.div
           initial={{ opacity: 0, y: 8, scale: 0.98 }}
@@ -101,8 +104,14 @@ export default function AnalyzerLockScreen({ children }: Props) {
           className="w-full rounded-2xl bg-card p-7 ring-1 ring-border shadow-card-premium"
         >
           {/* Icon + eyebrow */}
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-600/10 ring-1 ring-red-600/20">
-            <Lock className="h-5 w-5 text-red-700" aria-hidden />
+          <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-red-600/10 ring-1 ring-red-600/20">
+            <motion.span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-xl bg-red-600/25"
+              animate={{ opacity: [0.15, 0.45, 0.15], scale: [1, 1.08, 1] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <Lock className="relative h-5 w-5 text-red-700" aria-hidden />
           </div>
           <div className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-red-700">
             Analyzer Locked
@@ -210,18 +219,83 @@ function Indicator({
       : tone === "ok"
         ? "ring-emerald-600/25 bg-emerald-600/5 text-emerald-800"
         : "ring-border bg-muted/40 text-foreground/80";
+  const dotTone =
+    tone === "red"
+      ? "bg-red-500"
+      : tone === "ok"
+        ? "bg-emerald-500"
+        : "bg-foreground/30";
   return (
-    <div className={`flex items-start gap-2 rounded-xl p-3 ring-1 ${ring}`}>
+    <div className={`relative flex items-start gap-2 rounded-xl p-3 ring-1 ${ring}`}>
       <Icon className="mt-0.5 h-4 w-4 flex-none" aria-hidden />
       <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-wide opacity-70">
-          {label}
+        <div className="flex items-center gap-1.5">
+          <span className="relative inline-flex h-1.5 w-1.5">
+            {tone !== "muted" && (
+              <motion.span
+                aria-hidden
+                className={`absolute inline-flex h-full w-full rounded-full ${dotTone} opacity-60`}
+                animate={{ scale: [1, 2.2, 1], opacity: [0.6, 0, 0.6] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+              />
+            )}
+            <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${dotTone}`} />
+          </span>
+          <div className="text-[10px] uppercase tracking-wide opacity-70">
+            {label}
+          </div>
         </div>
         <div className="mt-0.5 truncate text-sm font-semibold">{value}</div>
         {meta && (
           <div className="text-[10px] opacity-70">{meta}</div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Decorative floating particle field. Deterministic positions so SSR/CSR
+// match and the layout doesn't shift.
+const PARTICLES = Array.from({ length: 14 }, (_, i) => {
+  const seed = (i + 1) * 9301;
+  const x = (seed % 97) / 97; // 0..1
+  const y = ((seed * 7) % 89) / 89;
+  const size = 2 + ((seed >> 2) % 4); // 2..5px
+  const delay = (i % 7) * 0.4;
+  const duration = 6 + ((seed >> 3) % 5); // 6..10s
+  const drift = 12 + ((seed >> 1) % 18); // 12..29px
+  return { x, y, size, delay, duration, drift };
+});
+
+function TechParticles() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      {PARTICLES.map((p, i) => (
+        <motion.span
+          key={i}
+          className="absolute rounded-full bg-red-500/40"
+          style={{
+            left: `${p.x * 100}%`,
+            top: `${p.y * 100}%`,
+            width: p.size,
+            height: p.size,
+            boxShadow: "0 0 8px 1px rgba(220,38,38,0.35)",
+          }}
+          animate={{
+            y: [0, -p.drift, 0],
+            opacity: [0.15, 0.6, 0.15],
+          }}
+          transition={{
+            duration: p.duration,
+            delay: p.delay,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
     </div>
   );
 }
