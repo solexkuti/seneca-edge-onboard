@@ -389,6 +389,51 @@ export type Database = {
         }
         Relationships: []
       }
+      pressure_events: {
+        Row: {
+          created_at: string
+          discipline_score: number
+          discipline_state: string
+          escalation_level: number
+          hold_seconds: number
+          id: string
+          last_event_klass: string | null
+          proceeded: boolean
+          surface: string
+          trigger_reason: string
+          triggers: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          discipline_score?: number
+          discipline_state: string
+          escalation_level?: number
+          hold_seconds?: number
+          id?: string
+          last_event_klass?: string | null
+          proceeded?: boolean
+          surface?: string
+          trigger_reason: string
+          triggers?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          discipline_score?: number
+          discipline_state?: string
+          escalation_level?: number
+          hold_seconds?: number
+          id?: string
+          last_event_klass?: string | null
+          proceeded?: boolean
+          surface?: string
+          trigger_reason?: string
+          triggers?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           challenge: string | null
