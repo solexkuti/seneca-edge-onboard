@@ -39,6 +39,7 @@ import {
   type AmbiguityFlag,
   type RefinementQA,
   type ChecklistByTier,
+  type TierRules,
   EMPTY_RULES,
   createBlueprint,
   getBlueprint,
