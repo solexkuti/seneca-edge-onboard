@@ -184,32 +184,6 @@ function structureCheck(f: ChartFeatures): SectionResult {
   return { passed, reasons, checks };
 }
 
-function structureCheck(f: ChartFeatures): SectionResult {
-  const checks: RuleCheck[] = [
-    {
-      rule: "Chart structure must be readable",
-      passed: !(f.quality === "messy" || f.quality === "unclear"),
-      reason:
-        f.quality === "messy" || f.quality === "unclear"
-          ? `Chart quality is ${f.quality}`
-          : "Chart quality is clear",
-    },
-    {
-      rule: "Visible market structure on execution timeframe",
-      passed: f.structure !== "none" && f.structure !== "unclear",
-      reason:
-        f.structure === "none"
-          ? "No clear structure detected"
-          : f.structure === "unclear"
-            ? "Structure unclear"
-            : `Structure: ${f.structure}`,
-    },
-  ];
-  const passed = checks.every((c) => c.passed);
-  const reasons = checks.map((c) => `${c.passed ? "✓" : "✗"} ${c.rule} — ${c.reason}`);
-  return { passed, reasons, checks };
-}
-
 function riskCheck(rules: string[], f: ChartFeatures): SectionResult {
   if (rules.length === 0) {
     const c: RuleCheck = {
