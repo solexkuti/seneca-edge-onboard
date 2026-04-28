@@ -570,8 +570,19 @@ function ResultView({
         </div>
       </div>
 
+      {/* Low-confidence warning */}
+      {result.breakdown.low_confidence && (
+        <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <p className="text-[12.5px] leading-snug text-text-primary">
+            {result.breakdown.confidence_note ??
+              "Analysis confidence is low due to unclear chart structure."}
+          </p>
+        </div>
+      )}
+
       {/* Strategy mismatch warning */}
-      {result.breakdown.overall !== "valid" && (
+      {result.breakdown.overall !== "valid" && !result.breakdown.low_confidence && (
         <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
           <p className="text-[12.5px] leading-snug text-text-primary">
