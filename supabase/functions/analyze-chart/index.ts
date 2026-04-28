@@ -8,6 +8,8 @@
 // Hard rules: never analyze non-charts, never return low-confidence primary
 // when fallback was triggered, never invent structure when none detected.
 
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -243,7 +245,7 @@ async function extract(
 // LOCK ENFORCEMENT (server-side)
 // ────────────────────────────────────────────────────────────────────────────
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+// (createClient imported at top of file)
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
