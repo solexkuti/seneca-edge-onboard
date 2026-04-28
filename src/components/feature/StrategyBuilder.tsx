@@ -111,7 +111,7 @@ export default function StrategyBuilder({
 
     const finish = () => {
       window.clearTimeout(timeoutTimer);
-    }, 3000);
+    };
 
     // Hard timeout helper — DB calls must NEVER hang the bootstrap.
     const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
