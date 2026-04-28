@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.generate-daily-checklist]
 verify_jwt = false
+
+[functions.analyze-chart]
+verify_jwt = false
