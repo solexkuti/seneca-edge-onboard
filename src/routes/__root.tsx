@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import appCss from "../styles.css?url";
 import DevResetOnboarding from "@/components/dev/DevResetOnboarding";
 import { flushPending } from "@/lib/journalPendingQueue";
+import { TraderStateProvider } from "@/hooks/useTraderState";
 
 function NotFoundComponent() {
   return (
@@ -84,10 +85,10 @@ function RootComponent() {
   }, []);
 
   return (
-    <>
+    <TraderStateProvider>
       <Outlet />
       <Toaster position="top-center" richColors closeButton />
       <DevResetOnboarding />
-    </>
+    </TraderStateProvider>
   );
 }

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import RequireAuth from "@/components/auth/RequireAuth";
-import TradeLockGate from "@/components/feature/TradeLockGate";
+import TraderStateGate from "@/components/feature/TraderStateGate";
 import ChartAnalyzer from "@/components/feature/ChartAnalyzer";
 
 export const Route = createFileRoute("/hub/chart")({
@@ -9,9 +9,9 @@ export const Route = createFileRoute("/hub/chart")({
   }),
   component: () => (
     <RequireAuth>
-      <TradeLockGate surface="Chart Analyzer">
+      <TraderStateGate surface="Chart Analyzer">
         <ChartAnalyzer />
-      </TradeLockGate>
+      </TraderStateGate>
     </RequireAuth>
   ),
 });
