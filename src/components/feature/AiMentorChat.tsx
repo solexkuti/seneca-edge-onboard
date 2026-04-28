@@ -22,6 +22,8 @@ import {
 } from "@/lib/activeStrategy";
 import { getDailyChecklist } from "@/lib/dailyChecklistCache";
 import { toast } from "sonner";
+import MentorRecoveryChecklist from "./MentorRecoveryChecklist";
+import { useTraderState } from "@/hooks/useTraderState";
 
 type Msg = {
   id: string;
@@ -36,6 +38,7 @@ const SESSION_ID =
     : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 export default function AiMentorChat() {
+  const { state: traderState } = useTraderState();
   const { rows, entries: journal } = useDbJournal();
   const intelligence = useMemo(() => computeIntelligence(rows), [rows]);
   const [recentPatterns, setRecentPatterns] = useState<DbBehaviorPattern[]>([]);
@@ -319,6 +322,16 @@ export default function AiMentorChat() {
             </p>
           </div>
         ) : null}
+
+        {/* Mini interactive recovery checklist — only shown while the
+           Analyzer is gated (locked discipline OR checklist not confirmed).
+           Each completed step inserts a synthetic positive analyzer_event
+           and broadcasts, which progressively lifts the lock in real time. */}
+        {(traderState.discipline.state === "locked" ||
+          traderState.discipline.state === "at_risk" ||
+          !traderState.session.checklist_confirmed) && (
+          <MentorRecoveryChecklist />
+        )}
 
         {/* Messages */}
         <div
