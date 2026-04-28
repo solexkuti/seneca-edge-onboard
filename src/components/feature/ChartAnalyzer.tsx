@@ -140,10 +140,22 @@ export default function ChartAnalyzer() {
     );
   }
 
-  const canAnalyze = !!activeStrategy && !!execFile && !!execTf;
+  const isLocked =
+    traderState.blocks.discipline_locked || traderState.blocks.not_confirmed;
+  const canAnalyze = !!activeStrategy && !!execFile && !!execTf && !isLocked;
 
   async function handleAnalyze() {
     if (!activeStrategy || !execFile) return;
+    // Defense-in-depth: refuse to even attempt the API call if the session
+    // entered lock state mid-flow. The lock screen will mount on next render.
+    if (isLocked) {
+      toast.error(
+        traderState.blocks.discipline_locked
+          ? "Discipline locked. Reflect with the mentor before analyzing again."
+          : "Confirm today's checklist before analyzing.",
+      );
+      return;
+    }
     setPhase("analyzing");
     setStep(0);
     setResult(null);
