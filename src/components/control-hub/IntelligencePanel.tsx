@@ -196,14 +196,40 @@ function WarningBanner() {
   return (
     <motion.div
       initial={{ opacity: 0, y: -4 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease }}
-      className="flex items-start gap-3 rounded-2xl bg-rose-500/[0.08] px-4 py-3 ring-1 ring-rose-500/25"
+      animate={{
+        opacity: 1,
+        y: 0,
+        boxShadow: [
+          "0 0 0 0 color-mix(in oklab, oklch(0.70 0.14 20) 0%, transparent)",
+          "0 0 0 8px color-mix(in oklab, oklch(0.70 0.14 20) 12%, transparent)",
+          "0 0 0 0 color-mix(in oklab, oklch(0.70 0.14 20) 0%, transparent)",
+        ],
+      }}
+      transition={{
+        opacity: { duration: 0.35, ease },
+        y: { duration: 0.35, ease },
+        boxShadow: { duration: 2.6, repeat: Infinity, ease: "easeInOut" },
+      }}
+      className="relative flex items-start gap-3 overflow-hidden rounded-2xl bg-rose-500/[0.08] px-4 py-3 ring-1 ring-rose-500/25"
     >
-      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-500/15 text-rose-700">
+      <motion.span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 rounded-2xl"
+        style={{
+          background:
+            "radial-gradient(120% 80% at 0% 50%, color-mix(in oklab, oklch(0.70 0.14 20) 14%, transparent), transparent 60%)",
+        }}
+        animate={{ opacity: [0.55, 0.9, 0.55] }}
+        transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.span
+        className="relative mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-500/15 text-rose-700"
+        animate={{ scale: [1, 1.06, 1] }}
+        transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+      >
         <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2.4} />
-      </span>
-      <div className="min-w-0">
+      </motion.span>
+      <div className="relative min-w-0">
         <p className="text-[12.5px] font-semibold leading-snug text-rose-800">
           Two undisciplined trades in a row.
         </p>
@@ -215,24 +241,27 @@ function WarningBanner() {
   );
 }
 
-const CLASS_STYLES: Record<DisciplineClass, { ring: string; bg: string; dot: string; text: string }> = {
+const CLASS_STYLES: Record<DisciplineClass, { ring: string; bg: string; dot: string; text: string; glow: string }> = {
   in_control: {
     ring: "ring-emerald-500/25",
     bg: "bg-emerald-500/[0.06]",
     dot: "bg-emerald-500",
     text: "text-emerald-800",
+    glow: "shadow-[0_14px_36px_-22px_color-mix(in_oklab,oklch(0.72_0.13_160)_55%,transparent)]",
   },
   unstable: {
     ring: "ring-amber-500/25",
     bg: "bg-amber-500/[0.07]",
     dot: "bg-amber-500",
     text: "text-amber-800",
+    glow: "shadow-[0_14px_36px_-22px_color-mix(in_oklab,oklch(0.78_0.12_75)_55%,transparent)]",
   },
   out_of_control: {
     ring: "ring-rose-500/25",
     bg: "bg-rose-500/[0.07]",
     dot: "bg-rose-500",
     text: "text-rose-800",
+    glow: "shadow-[0_14px_36px_-22px_color-mix(in_oklab,oklch(0.70_0.14_20)_55%,transparent)]",
   },
 };
 
