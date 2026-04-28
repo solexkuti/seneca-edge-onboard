@@ -157,6 +157,7 @@ let flushing = false;
 export async function flushPending(): Promise<void> {
   if (flushing) return;
   flushing = true;
+  notify();
   try {
     const list = readQueue();
     for (const entry of list) {
@@ -165,5 +166,6 @@ export async function flushPending(): Promise<void> {
     }
   } finally {
     flushing = false;
+    notify();
   }
 }
