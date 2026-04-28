@@ -257,6 +257,12 @@ export default function TradingJournalFlow() {
             </div>
           </div>
 
+          {/* Post-action: Discipline Impact (deterministic, < 300ms) */}
+          <DisciplineImpactBanner
+            executionDelta={doneScore}
+            decisionDelta={lastDecisionDelta}
+          />
+
           <p className="mt-5 text-[13.5px] leading-snug text-text-secondary">
             Saved locally. Sync status updates above.
           </p>
