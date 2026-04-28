@@ -335,8 +335,10 @@ export default function TradingJournalFlow() {
           disabled={!canContinue || submitting}
           className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-primary px-4 text-[14px] font-semibold text-white shadow-glow-primary transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {submitting ? (
-            "Saving…"
+          {submitting && step === 3 ? (
+            <>
+              <Check className="h-4 w-4" strokeWidth={2.4} /> Saved ✓
+            </>
           ) : step === 3 ? (
             <>
               <Check className="h-4 w-4" strokeWidth={2.4} /> Save trade
