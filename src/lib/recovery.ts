@@ -459,7 +459,7 @@ export async function evaluateProbation(): Promise<ProbationStatus> {
         blueprint_id: null,
         verdict: "invalid",
         violations: ["probation_failed"],
-        score_delta: -40,
+        score_delta: -20,
         reason: "probation_failed",
       } as never);
     }
