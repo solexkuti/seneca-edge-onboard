@@ -3,6 +3,7 @@
 // "you broke rule 2 that you confirmed at 09:14".
 
 import { supabase } from "@/integrations/supabase/client";
+import { broadcastLockChange } from "@/lib/tradeLock";
 
 export type RuleAck = {
   id: string; // stable rule_id from the daily checklist (e.g. "entry-2")
@@ -96,5 +97,7 @@ export async function recordConfirmation(
     console.error("[checklist-confirm] insert failed:", error);
     return { ok: false, error: error?.message ?? "Could not lock checklist." };
   }
+  // Tell the rest of the app that the trade lock just changed.
+  broadcastLockChange();
   return { ok: true, row: data as unknown as ChecklistConfirmation };
 }
