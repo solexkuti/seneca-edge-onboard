@@ -16,6 +16,7 @@ import { useDbJournal } from "@/hooks/useDbJournal";
 import { detectBehaviorPattern } from "@/lib/behaviorPattern";
 import type { DbJournalRow } from "@/lib/dbJournal";
 import DisciplineStreakWidget from "@/components/feature/DisciplineStreakWidget";
+import DisciplineScoreBreakdown from "@/components/feature/DisciplineScoreBreakdown";
 import RequireAuth from "@/components/auth/RequireAuth";
 
 export const Route = createFileRoute("/hub/state")({
