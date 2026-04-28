@@ -396,12 +396,14 @@ function Indicator({
   tone,
   icon: Icon,
   meta,
+  reduceMotion = false,
 }: {
   label: string;
   value: string;
   tone: Tone;
   icon: typeof Lock;
   meta?: string;
+  reduceMotion?: boolean;
 }) {
   const ring =
     tone === "red"
@@ -421,7 +423,7 @@ function Indicator({
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="relative inline-flex h-1.5 w-1.5">
-            {tone !== "muted" && (
+            {tone !== "muted" && !reduceMotion && (
               <motion.span
                 aria-hidden
                 className={`absolute inline-flex h-full w-full rounded-full ${dotTone} opacity-60`}
