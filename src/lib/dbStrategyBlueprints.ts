@@ -63,9 +63,21 @@ export type StrategyBlueprint = {
   locked_at: string | null;
   version: number;
   status: "draft" | "parsed" | "refined" | "finalized" | "locked";
+  current_step: BuilderStep;
   created_at: string;
   updated_at: string;
 };
+
+export type BuilderStep =
+  | "account"
+  | "risk"
+  | "raw"
+  | "tiers"
+  | "parse"
+  | "refine"
+  | "output"
+  | "export"
+  | "lock";
 
 export const EMPTY_RULES: StructuredRules = {
   entry: [],
