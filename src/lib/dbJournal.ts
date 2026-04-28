@@ -153,7 +153,7 @@ export async function fetchJournal(): Promise<DbJournalRow[]> {
        )`,
     )
     .eq("user_id", userData.user.id)
-    .order("created_at", { ascending: false })
+    .order("executed_at", { ascending: false, referencedTable: "trades" })
     .limit(200);
 
   if (error || !data) return [];

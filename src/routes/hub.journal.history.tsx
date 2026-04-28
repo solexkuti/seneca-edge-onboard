@@ -270,7 +270,7 @@ function HistoryPage() {
             />
           )}
         </div>
-        <div className="mt-3 space-y-2.5">
+        <div className="mt-3 space-y-5">
           {rows === null && (
             <div className="rounded-2xl bg-card ring-1 ring-border p-6 text-center text-sm text-text-secondary">
               Loading entries…
@@ -281,8 +281,16 @@ function HistoryPage() {
               No entries match these filters.
             </div>
           )}
-          {filtered.map((r) => (
-            <EntryCard key={r.id} row={r} />
+          {groupByDay(filtered).map((group) => (
+            <section key={group.key} className="space-y-2.5">
+              <h2 className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+                {group.label}
+                <span className="ml-2 text-text-secondary/60">{group.rows.length}</span>
+              </h2>
+              {group.rows.map((r) => (
+                <EntryCard key={r.id} row={r} />
+              ))}
+            </section>
           ))}
         </div>
       </div>
@@ -342,5 +350,38 @@ function EntryCard({ row }: { row: DbJournalRow }) {
         <p className="mt-3 line-clamp-2 text-sm text-text-secondary">{row.notes}</p>
       )}
     </motion.div>
+  );
+}
+
+type DayGroup = { key: string; label: string; rows: DbJournalRow[] };
+
+function groupByDay(rows: DbJournalRow[]): DayGroup[] {
+  const groups = new Map<string, DayGroup>();
+  const now = new Date();
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const today = startOfDay(now);
+  const yesterday = today - 86_400_000;
+
+  for (const r of rows) {
+    const d = new Date(r.timestamp);
+    const dayMs = startOfDay(d);
+    const key = String(dayMs);
+    let label: string;
+    if (dayMs === today) label = "Today";
+    else if (dayMs === yesterday) label = "Yesterday";
+    else
+      label = d.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: dayMs < startOfDay(new Date(now.getFullYear(), 0, 1)) ? "numeric" : undefined,
+      });
+    if (!groups.has(key)) groups.set(key, { key, label, rows: [] });
+    groups.get(key)!.rows.push(r);
+  }
+  // Preserve incoming row order within each group; order groups by recency.
+  return Array.from(groups.values()).sort(
+    (a, b) => Number(b.key) - Number(a.key),
   );
 }
