@@ -179,8 +179,57 @@ export default function AiMentorChat() {
         }
       : undefined;
     const dailyChecklistPayload = getDailyChecklist() ?? undefined;
+
+    // TRADER_STATE awareness payload — Mentor MUST receive the full system
+    // state on every response so it can explain restrictions, score moves,
+    // and next actions deterministically. Read-only — Mentor never mutates.
+    const lastDecision = traderState.discipline.recent[0] ?? null;
+    const lastAnalyzer = traderState.discipline.recent.find(
+      (d) => d.source === "analyzer",
+    );
+    const traderStatePayload = traderState.loading
+      ? undefined
+      : {
+          strategy: {
+            exists: !!traderState.strategy?.blueprint,
+            locked: !!traderState.strategy?.blueprint?.locked,
+            name: traderState.strategy?.blueprint?.name ?? null,
+          },
+          discipline: {
+            score: traderState.discipline.score,
+            state: traderState.discipline.state,
+            consecutive_breaks: traderState.discipline.consecutive_breaks,
+            last_score_delta: lastDecision?.score_delta ?? null,
+            last_reason: lastDecision?.reason ?? null,
+            last_source: lastDecision?.source ?? null,
+          },
+          session: {
+            checklist_confirmed: traderState.session.checklist_confirmed,
+            trading_allowed: traderState.session.trading_allowed,
+          },
+          last_analyzer_event: lastAnalyzer
+            ? {
+                verdict: lastAnalyzer.verdict,
+                score_delta: lastAnalyzer.score_delta,
+                reason: lastAnalyzer.reason,
+                created_at: lastAnalyzer.created_at,
+              }
+            : null,
+          blocks: {
+            no_strategy: traderState.blocks.no_strategy,
+            not_confirmed: traderState.blocks.not_confirmed,
+            discipline_locked: traderState.blocks.discipline_locked,
+            in_recovery: traderState.blocks.in_recovery,
+          },
+          recovery: {
+            active: !!traderState.recovery.active_session,
+            step: traderState.recovery.active_session?.step ?? null,
+            probation_active: traderState.recovery.probation.active,
+          },
+        };
+
     const ctx =
-      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload || dailyChecklistPayload
+      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload || dailyChecklistPayload || traderStatePayload
         ? {
             ...(journalSummary ? { journalSummary } : {}),
             ...(profileSummary ? { profileSummary } : {}),
@@ -189,6 +238,7 @@ export default function AiMentorChat() {
             ...(lastTwoPayload ? { lastTwoTrades: lastTwoPayload } : {}),
             ...(strategyPayload ? { activeStrategy: strategyPayload } : {}),
             ...(dailyChecklistPayload ? { dailyChecklist: dailyChecklistPayload } : {}),
+            ...(traderStatePayload ? { traderState: traderStatePayload } : {}),
           }
         : undefined;
 
