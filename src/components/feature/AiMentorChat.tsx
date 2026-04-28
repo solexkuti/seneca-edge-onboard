@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Sparkles } from "lucide-react";
+import { ArrowUp, Sparkles, AlertTriangle } from "lucide-react";
 import FeatureShell from "./FeatureShell";
 import { useDbJournal } from "@/hooks/useDbJournal";
 import { summarizeJournal } from "@/lib/journalSummary";
@@ -118,10 +118,13 @@ export default function AiMentorChat() {
     const intelligencePayload = intelligence.windowSize > 0
       ? {
           disciplineScore: intelligence.disciplineScore,
+          disciplineClass: intelligence.disciplineClass,
           windowSize: intelligence.windowSize,
           mostCommonMistake: intelligence.mostCommonMistake?.label ?? null,
+          mostCommonMistakeTag: intelligence.mostCommonMistakeTag?.label ?? null,
           disciplineStreak: intelligence.disciplineStreak,
           twoUndisciplinedInARow: intelligence.twoUndisciplinedInARow,
+          strictModeActive: intelligence.strictModeActive,
         }
       : undefined;
     const recentPatternsPayload = recentPatterns.length > 0
@@ -131,13 +134,37 @@ export default function AiMentorChat() {
           detected_at: p.detected_at,
         }))
       : undefined;
+    // Last two journal rows used by strict mode to name the pattern.
+    const lastTwoTrades = rows.slice(0, 2).map((r) => {
+      const broken: string[] = [];
+      if (!r.followed_entry) broken.push("entry");
+      if (!r.followed_exit) broken.push("exit");
+      if (!r.followed_risk) broken.push("risk");
+      if (!r.followed_behavior) broken.push("behavior");
+      return {
+        when: new Date(r.timestamp).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        market: r.pair,
+        direction: r.direction,
+        result: r.result,
+        followedPlan: r.followedPlan,
+        brokenRules: broken,
+        mistakeTag: r.mistake_tag,
+      };
+    });
+    const lastTwoPayload = lastTwoTrades.length > 0 ? lastTwoTrades : undefined;
     const ctx =
-      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload
+      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload
         ? {
             ...(journalSummary ? { journalSummary } : {}),
             ...(profileSummary ? { profileSummary } : {}),
             ...(intelligencePayload ? { intelligence: intelligencePayload } : {}),
             ...(recentPatternsPayload ? { recentPatterns: recentPatternsPayload } : {}),
+            ...(lastTwoPayload ? { lastTwoTrades: lastTwoPayload } : {}),
           }
         : undefined;
 
@@ -240,7 +267,7 @@ export default function AiMentorChat() {
             <Sparkles className="h-4 w-4 text-white" strokeWidth={2.2} />
             <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-text-primary">Seneca</p>
             <p className="text-[11px] text-text-secondary">
               {journal.length > 0
@@ -248,7 +275,29 @@ export default function AiMentorChat() {
                 : "No journal data — answers will be general"}
             </p>
           </div>
+          {intelligence.strictModeActive ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              title="Two undisciplined trades in a row — Seneca is firmer until you log two clean trades."
+              className="flex shrink-0 items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 ring-1 ring-rose-500/25"
+            >
+              <AlertTriangle className="h-3 w-3 text-rose-700" strokeWidth={2.6} />
+              <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-rose-800">
+                Strict mode
+              </span>
+            </motion.div>
+          ) : null}
         </div>
+
+        {intelligence.strictModeActive ? (
+          <div className="border-b border-rose-500/15 bg-rose-500/[0.04] px-4 py-2">
+            <p className="text-[11.5px] leading-snug text-rose-900/85">
+              Two undisciplined trades in a row. Seneca's tone is firmer this turn — log two clean trades to lift it.
+            </p>
+          </div>
+        ) : null}
 
         {/* Messages */}
         <div

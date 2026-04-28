@@ -222,25 +222,41 @@ type UserContext = {
   /** Live intelligence snapshot derived from the last 20 trades. */
   intelligence?: {
     disciplineScore: number | null;
+    disciplineClass: string | null;
     windowSize: number;
     mostCommonMistake: string | null;
+    mostCommonMistakeTag: string | null;
     disciplineStreak: number;
     twoUndisciplinedInARow: boolean;
+    strictModeActive: boolean;
   };
   /** Most recent persisted behavior patterns (kind + message + when). */
   recentPatterns?: Array<{ kind: string; message: string; detected_at: string }>;
+  /** The last two trades in plain English — used by strict mode to name the pattern. */
+  lastTwoTrades?: Array<{
+    when: string;
+    market: string;
+    direction: string;
+    result: string | null;
+    followedPlan: boolean;
+    brokenRules: string[];
+    mistakeTag: string | null;
+  }>;
 };
 
 const STRICT_MODE_ADDENDUM = `
 
 STRICT MODE — ACTIVE THIS TURN
-The user has just logged two or more undisciplined trades in a row. Their system is breaking down right now. For this reply only, shift tone:
-- Stay warm but firm. No softening words like "totally fine", "no worries", "that's okay".
-- Name the pattern out loud in one sentence ("Two trades in a row broke the plan — that's the actual problem to address.").
-- If a recent mistake_tag exists, call it out specifically.
-- Refuse to discuss new setups, market views, or "next trade" thinking. Redirect every attempt back to a cooldown.
-- Close with a hard, single question that forces a process answer (not a feeling answer).
+Identity stays the same — you are still Seneca, the same calm partner. But the user's last two trades both broke the plan. Their system is breaking down right now. Tone shifts firmer, more direct, more accountable for THIS reply only:
+
+- No motivational fluff. No "totally fine", "no worries", "that's okay", "you've got this", "good question".
+- Name the pattern out loud in one sentence — reference the LAST TWO TRADES block by market or by what was broken (e.g. "Two trades in a row — the entry rule slipped on both" or "You're forcing trades — both of the last two skipped the setup check").
+- If a recent mistake_tag exists in the last-two-trades block, name it directly (e.g. "That's the second FOMO entry in a row.").
+- Refuse to discuss new setups, market views, or "what's the next trade" thinking. Redirect every attempt back to a cooldown.
+- Reduce encouragement. Increase correction. Stay warm but firm — never harsh, never insulting, never sarcastic.
+- Close with ONE direct challenge question that forces a process answer (not a feeling answer): "What rule was broken on both?" / "Why did you take the second one?" / "What is the cooldown rule before you re-enter?" — never "How do you feel?".
 - Stay under 110 words. No grounding-action paragraph. No spiral fallback. This overrides the normal structure.
+- Strict mode lifts automatically once the user logs two disciplined trades — do not announce that, just return to your normal voice when the snapshot says so.
 `;
 
 // ── Hidden analytics helpers ───────────────────────────────────────────────
@@ -378,7 +394,8 @@ Deno.serve(async (req) => {
         context.systemRules ||
         context.profileSummary ||
         context.intelligence ||
-        (context.recentPatterns && context.recentPatterns.length > 0))
+        (context.recentPatterns && context.recentPatterns.length > 0) ||
+        (context.lastTwoTrades && context.lastTwoTrades.length > 0))
     );
     let contextBlock = "";
     if (hasContext) {
@@ -389,12 +406,26 @@ Deno.serve(async (req) => {
       if (context!.intelligence) {
         const i = context!.intelligence;
         const lines = [
-          `Discipline score (last ${i.windowSize} trades): ${i.disciplineScore ?? "n/a"}%`,
+          `Discipline score (last ${i.windowSize} trades, % with score >= 75): ${i.disciplineScore ?? "n/a"}%`,
+          i.disciplineClass ? `Discipline classification: ${i.disciplineClass}` : null,
           `Current discipline streak: ${i.disciplineStreak} clean trade${i.disciplineStreak === 1 ? "" : "s"}`,
-          i.mostCommonMistake ? `Most common mistake right now: ${i.mostCommonMistake}` : null,
+          i.mostCommonMistake ? `Most common rule break: ${i.mostCommonMistake}` : null,
+          i.mostCommonMistakeTag ? `Most common behavioral mistake: ${i.mostCommonMistakeTag}` : null,
           i.twoUndisciplinedInARow ? `WARNING: last two trades both broke the plan.` : null,
+          i.strictModeActive ? `STRICT MODE: active.` : null,
         ].filter(Boolean);
         contextBlock += `\n\n[Intelligence Snapshot]\n${lines.join("\n")}`;
+      }
+      if (context!.lastTwoTrades && context!.lastTwoTrades.length > 0) {
+        contextBlock += `\n\n[Last Two Trades]\n` +
+          context!.lastTwoTrades
+            .map((t, idx) => {
+              const broken = t.brokenRules.length > 0 ? `broke: ${t.brokenRules.join(", ")}` : "plan followed";
+              const tag = t.mistakeTag ? ` | tag: ${t.mistakeTag}` : "";
+              const res = t.result ?? "—";
+              return `${idx + 1}. [${t.when}] ${t.market} ${t.direction.toUpperCase()} | ${res} | ${broken}${tag}`;
+            })
+            .join("\n");
       }
       if (context!.recentPatterns && context!.recentPatterns.length > 0) {
         contextBlock += `\n\n[Recent Behavior Patterns]\n` +
@@ -413,7 +444,7 @@ Deno.serve(async (req) => {
         "\n\nUSER CONTEXT: none yet. Offer warm, general guidance. Do NOT mention missing data. Do NOT refuse. Invite the user to share more about their situation through your soft closing.";
     }
 
-    const strictMode = !!context?.intelligence?.twoUndisciplinedInARow;
+    const strictMode = !!context?.intelligence?.strictModeActive;
     const systemContent =
       SYSTEM_PROMPT + contextBlock + (strictMode ? STRICT_MODE_ADDENDUM : "");
 

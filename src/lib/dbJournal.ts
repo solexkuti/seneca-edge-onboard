@@ -17,6 +17,15 @@ export type EmotionalState =
 export type TradeDirection = "long" | "short";
 export type TradeResult = "win" | "loss" | "breakeven";
 
+export type MistakeTagValue =
+  | "fomo"
+  | "revenge"
+  | "overleveraged"
+  | "early_exit"
+  | "late_entry"
+  | "no_setup"
+  | "emotional";
+
 export type NewJournalSubmission = {
   user_id?: string;
   executed_at?: string;
@@ -37,6 +46,7 @@ export type NewJournalSubmission = {
   };
   emotional_state: EmotionalState;
   notes?: string;
+  mistake_tag?: MistakeTagValue | null;
 };
 
 export type DbJournalRow = {
@@ -56,6 +66,7 @@ export type DbJournalRow = {
   resultR: number;       // signed R for legacy compatibility
   emotional_state: EmotionalState;
   notes: string | null;
+  mistake_tag: MistakeTagValue | null;
   strategy_id: string | null;
   strategy_name: string | null;
   entry_rule: string | null;
@@ -142,7 +153,7 @@ export async function submitJournalEntry(
       .from("discipline_logs")
       .select(
         `id, trade_id, followed_entry, followed_exit, followed_risk,
-         followed_behavior, discipline_score, emotional_state, notes,
+         followed_behavior, discipline_score, emotional_state, notes, mistake_tag,
          trade:trades!inner (
            id, market, direction, result, rr, executed_at, strategy_id,
            strategy:strategies ( id, name, entry_rule, exit_rule, risk_rule, behavior_rule )
@@ -209,6 +220,7 @@ export async function submitJournalEntry(
     followed_behavior: input.discipline.followed_behavior,
     emotional_state: input.emotional_state,
     notes: input.notes?.trim() ? input.notes.trim() : null,
+    mistake_tag: input.mistake_tag ?? null,
   };
   console.log("[journal] inserting discipline_log payload:", logPayload);
 
@@ -236,7 +248,7 @@ export async function submitJournalEntry(
         .from("discipline_logs")
         .select(
           `id, trade_id, followed_entry, followed_exit, followed_risk,
-           followed_behavior, discipline_score, emotional_state, notes,
+           followed_behavior, discipline_score, emotional_state, notes, mistake_tag,
            trade:trades!inner (
              id, market, direction, result, rr, executed_at, strategy_id,
              strategy:strategies ( id, name, entry_rule, exit_rule, risk_rule, behavior_rule )
@@ -284,7 +296,7 @@ export async function fetchJournal(): Promise<DbJournalRow[]> {
     .from("discipline_logs")
     .select(
       `id, trade_id, followed_entry, followed_exit, followed_risk,
-       followed_behavior, discipline_score, emotional_state, notes,
+       followed_behavior, discipline_score, emotional_state, notes, mistake_tag,
        trade:trades!inner (
          id, market, direction, result, rr, executed_at, strategy_id,
          strategy:strategies ( id, name, entry_rule, exit_rule, risk_rule, behavior_rule )
@@ -391,6 +403,7 @@ function combine(trade: any, log: any): DbJournalRow {
     resultR,
     emotional_state: log.emotional_state ?? "calm",
     notes: log.notes ?? null,
+    mistake_tag: (log.mistake_tag ?? null) as MistakeTagValue | null,
     strategy_id: trade.strategy_id ?? strategy?.id ?? null,
     strategy_name: strategy?.name ?? null,
     entry_rule: strategy?.entry_rule ?? null,
