@@ -105,11 +105,15 @@ import {
 
 export default function TradingJournalFlow() {
   const navigate = useNavigate();
+  const { state: traderState } = useTraderState();
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [submitting, setSubmitting] = useState(false);
   const [doneScore, setDoneScore] = useState<number | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Pressure layer — evaluated when the user attempts to save the trade.
+  const [pressure, setPressure] = useState<PressureEvaluation | null>(null);
 
   const canContinue = useMemo(() => {
     if (step === 0) return !!draft.market.trim() && !!draft.direction && !!draft.result;
@@ -133,8 +137,40 @@ export default function TradingJournalFlow() {
       return;
     }
     playFeedback("press");
+
+    // ── Pressure intercept ──────────────────────────────────────────
+    // Evaluate against the live TRADER_STATE. If active, render the
+    // intercept and DO NOT submit until hold-to-confirm completes.
+    const evalResult = evaluatePressure(traderState);
+    if (evalResult.active) {
+      bumpPressureEscalation();
+      setPressure(evalResult);
+      return;
+    }
     await handleSubmit();
   };
+
+  const handleInterceptConfirm = async () => {
+    if (!pressure) return;
+    await logPressureEvent({ evaluation: pressure, proceeded: true });
+    setPressure(null);
+    await handleSubmit();
+  };
+
+  const handleInterceptCancel = async () => {
+    if (!pressure) return;
+    await logPressureEvent({ evaluation: pressure, proceeded: false });
+    setPressure(null);
+    // Soft exit → route to mentor for explanation.
+    navigate({ to: "/hub/mind" });
+  };
+
+  // Last analyzer event delta — used in post-action feedback.
+  const lastDecisionDelta = useMemo(() => {
+    const a = traderState.discipline.recent.find((d) => d.source === "analyzer");
+    return a ? a.score_delta : null;
+  }, [traderState.discipline.recent]);
+
 
   const handleSubmit = async () => {
     if (submitting) return;
