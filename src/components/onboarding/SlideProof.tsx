@@ -113,8 +113,8 @@ export default function SlideProof({ onNext }: SlideProps) {
         ))}
       </div>
 
-      {/* Testimonial card */}
-      <motion.figure
+      {/* Auto-rotating testimonial */}
+      <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, delay: 0.7 }}
@@ -124,24 +124,37 @@ export default function SlideProof({ onNext }: SlideProps) {
           className="absolute right-3 top-3 h-5 w-5 text-brand/20"
           strokeWidth={2.2}
         />
-        <blockquote className="text-[14px] leading-snug text-text-primary">
-          “I stopped losing on revenge trades the week I started reviewing
-          every setup here. The rules don't change — I finally do.”
-        </blockquote>
-        <figcaption className="mt-3 flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-mix text-[11px] font-bold text-white">
-            M
-          </span>
-          <div className="flex flex-col">
-            <span className="text-[12px] font-semibold text-text-primary">
-              Marco D.
-            </span>
-            <span className="text-[10.5px] text-text-secondary">
-              Swing trader · 14 months
-            </span>
-          </div>
-        </figcaption>
-      </motion.figure>
+        <div className="relative min-h-[92px]">
+          <AnimatePresence mode="wait">
+            <motion.figure
+              key={tIndex}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <blockquote className="text-[14px] leading-snug text-text-primary">
+                “{TESTIMONIALS[tIndex].quote}”
+              </blockquote>
+              <figcaption className="mt-3 flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-mix text-[11px] font-bold text-white">
+                  {TESTIMONIALS[tIndex].initial}
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-[12px] font-semibold text-text-primary">
+                    {TESTIMONIALS[tIndex].name}
+                  </span>
+                  {TESTIMONIALS[tIndex].meta && (
+                    <span className="text-[10.5px] text-text-secondary">
+                      {TESTIMONIALS[tIndex].meta}
+                    </span>
+                  )}
+                </div>
+              </figcaption>
+            </motion.figure>
+          </AnimatePresence>
+        </div>
+      </motion.div>
 
       {/* Quiet, intentional CTA — only one button in the entire narrative flow */}
       <motion.button
