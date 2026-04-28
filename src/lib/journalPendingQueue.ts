@@ -39,17 +39,42 @@ function writeQueue(list: PendingEntry[]) {
   }
 }
 
-/** Persist a submission BEFORE any UI advance. Returns the entry's id. */
+/** Stable fingerprint of a submission's user-meaningful fields. */
+function fingerprint(p: NewJournalSubmission): string {
+  return JSON.stringify({
+    t: p.trade,
+    d: p.discipline,
+    e: p.emotional_state,
+    n: (p.notes ?? "").trim(),
+  });
+}
+
+const DEDUPE_WINDOW_MS = 60_000; // ignore identical resubmits within 60s
+
+/**
+ * Persist a submission BEFORE any UI advance.
+ * If an identical payload was just enqueued (same fingerprint within the
+ * dedupe window), reuses the existing id instead of creating a duplicate.
+ */
 export function enqueuePending(payload: NewJournalSubmission): string {
+  const fp = fingerprint(payload);
+  const now = Date.now();
+  const list = readQueue();
+
+  const existing = list.find(
+    (e) => fingerprint(e.payload) === fp && now - e.createdAt < DEDUPE_WINDOW_MS,
+  );
+  if (existing) return existing.id;
+
   const id =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
-      : `pj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const list = readQueue();
-  list.push({ id, payload, createdAt: Date.now() });
+      : `pj_${now}_${Math.random().toString(36).slice(2, 8)}`;
+  list.push({ id, payload, createdAt: now });
   writeQueue(list);
   return id;
 }
+
 
 export function removePending(id: string) {
   writeQueue(readQueue().filter((e) => e.id !== id));
