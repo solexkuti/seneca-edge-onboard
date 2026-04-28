@@ -278,6 +278,7 @@ export type Database = {
           status: string
           strategy_id: string | null
           structured_rules: Json
+          tier_rules: Json
           tier_strictness: Json
           trading_plan: string | null
           updated_at: string
@@ -301,6 +302,7 @@ export type Database = {
           status?: string
           strategy_id?: string | null
           structured_rules?: Json
+          tier_rules?: Json
           tier_strictness?: Json
           trading_plan?: string | null
           updated_at?: string
@@ -324,6 +326,7 @@ export type Database = {
           status?: string
           strategy_id?: string | null
           structured_rules?: Json
+          tier_rules?: Json
           tier_strictness?: Json
           trading_plan?: string | null
           updated_at?: string
