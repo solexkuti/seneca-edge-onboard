@@ -101,6 +101,7 @@ export default function StrategyBuilder({
     const key = blueprintId ?? "__new__";
     if (bootstrappedRef.current === key) return;
     bootstrappedRef.current = key;
+    setSlowLoad(false);
 
     let cancelled = false;
     // 3s failsafe — surface a "Start fresh" CTA if we're still spinning.
