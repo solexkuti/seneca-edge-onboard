@@ -27,6 +27,11 @@ import {
   type RecentDecision,
 } from "@/lib/analyzerEvents";
 import {
+  loadDisciplineBreakdown,
+  type DisciplineBreakdown,
+  type DisciplineState as RawDisciplineState,
+} from "@/lib/disciplineScore";
+import {
   getActiveRecoverySession,
   evaluateProbation,
   RECOVERY_EVENT,
@@ -34,13 +39,15 @@ import {
   type ProbationStatus,
 } from "@/lib/recovery";
 
-export type DisciplineState = "optimal" | "at_risk" | "locked";
+export type DisciplineState = RawDisciplineState; // in_control | slipping | at_risk | locked
 
 export type DisciplineSummary = {
-  score: number;            // 0–100, rolling
+  score: number;            // 0–100, final
   state: DisciplineState;
   consecutive_breaks: number;
   recent: RecentDecision[];
+  /** Full transparent breakdown — drives the score breakdown UI. */
+  breakdown: DisciplineBreakdown;
 };
 
 export type SessionSummary = {
