@@ -132,15 +132,15 @@ export default function StrategyBuilder({
           });
           if (cancelled) return;
           if (!existing) {
-            // Don't dead-end the user — start a fresh strategy instead.
+            // Don't dead-end the user — reuse an empty draft if one exists.
             console.warn(
-              "[StrategyBuilder] blueprint missing/timed out, creating fresh:",
+              "[StrategyBuilder] blueprint missing/timed out, finding draft:",
               blueprintId,
             );
             const created = await withTimeout(
-              createBlueprint(),
+              findOrCreateDraft(),
               5000,
-              "createBlueprint",
+              "findOrCreateDraft",
             );
             if (cancelled) return;
             void navigate({
@@ -159,14 +159,17 @@ export default function StrategyBuilder({
           // eslint-disable-next-line no-console
           console.log("[StrategyBuilder] SESSION resumed:", existing.id, "STEP:", existing.current_step);
         } else {
+          // No id in URL → reuse most recent empty draft, else create one.
+          // findOrCreateDraft is in-flight-deduped so StrictMode double-invoke
+          // and back-to-back navigations cannot create duplicates.
           const created = await withTimeout(
-            createBlueprint(),
+            findOrCreateDraft(),
             5000,
-            "createBlueprint",
+            "findOrCreateDraft",
           );
           if (cancelled) return;
           // eslint-disable-next-line no-console
-          console.log("[StrategyBuilder] SESSION created:", created.id, "STEP:", created.current_step);
+          console.log("[StrategyBuilder] SESSION ready:", created.id, "STEP:", created.current_step);
           void navigate({
             to: "/hub/strategy/$id",
             params: { id: created.id },
