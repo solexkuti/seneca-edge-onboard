@@ -13,11 +13,15 @@ import {
 } from "@/lib/dbJournal";
 
 const PENDING_KEY = "journal_pending_submissions_v1";
+const MAX_SYNC_ATTEMPTS = 3;
 
 export type PendingEntry = {
   id: string;
   payload: NewJournalSubmission;
   createdAt: number;
+  attempts?: number;
+  lastError?: string;
+  failedAt?: number;
 };
 
 function readQueue(): PendingEntry[] {
@@ -108,7 +112,7 @@ export function enqueuePending(payload: NewJournalSubmission): string {
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
       : `pj_${now}_${Math.random().toString(36).slice(2, 8)}`;
-  list.push({ id, payload, createdAt: now });
+  list.push({ id, payload, createdAt: now, attempts: 0 });
   writeQueue(list);
   return id;
 }
@@ -122,15 +126,30 @@ export function listPending(): PendingEntry[] {
   return readQueue();
 }
 
+function updatePending(id: string, patch: Partial<PendingEntry>) {
+  writeQueue(readQueue().map((e) => (e.id === id ? { ...e, ...patch } : e)));
+}
+
+function getPending(id: string) {
+  return readQueue().find((e) => e.id === id) ?? null;
+}
+
 /** Background sync for a single entry. Silent retries with backoff. */
 export async function syncWithRetry(
   id: string,
   payload: NewJournalSubmission,
-  opts: { showToast?: boolean } = {},
+  opts: { showToast?: boolean; force?: boolean } = {},
 ) {
-  const delays = [0, 1500, 4000, 10000, 30000];
+  const delays = [0, 1500, 4000];
   let warned = false;
+  if (opts.force) updatePending(id, { attempts: 0, lastError: undefined, failedAt: undefined });
+
   for (let attempt = 0; attempt < delays.length; attempt++) {
+    const current = getPending(id);
+    if (!current) return true;
+    const totalAttempts = current.attempts ?? 0;
+    if (totalAttempts >= MAX_SYNC_ATTEMPTS) return false;
+
     if (delays[attempt] > 0)
       await new Promise((r) => setTimeout(r, delays[attempt]));
     try {
@@ -139,15 +158,35 @@ export async function syncWithRetry(
         removePending(id);
         return true;
       }
+      console.error(res.error);
+      const nextAttempts = totalAttempts + 1;
+      updatePending(id, {
+        attempts: nextAttempts,
+        lastError: res.error,
+        failedAt: nextAttempts >= MAX_SYNC_ATTEMPTS ? Date.now() : undefined,
+      });
+      if (opts.showToast && nextAttempts >= MAX_SYNC_ATTEMPTS) {
+        toast.error("Sync failed — tap to retry", { description: res.error });
+      }
     } catch {
-      /* fallthrough */
+      const message = "Unexpected error while syncing journal entry.";
+      console.error(message);
+      const nextAttempts = totalAttempts + 1;
+      updatePending(id, {
+        attempts: nextAttempts,
+        lastError: message,
+        failedAt: nextAttempts >= MAX_SYNC_ATTEMPTS ? Date.now() : undefined,
+      });
+      if (opts.showToast && nextAttempts >= MAX_SYNC_ATTEMPTS) {
+        toast.error("Sync failed — tap to retry", { description: message });
+      }
     }
     if (!warned && opts.showToast && attempt === 0) {
       warned = true;
       toast("Couldn't sync. Retrying…");
     }
   }
-  // Leave it in the queue for the next flush.
+  // Leave it in the queue for manual retry.
   return false;
 }
 
