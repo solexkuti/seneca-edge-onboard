@@ -220,6 +220,7 @@ export async function submitJournalEntry(
     followed_behavior: input.discipline.followed_behavior,
     emotional_state: input.emotional_state,
     notes: input.notes?.trim() ? input.notes.trim() : null,
+    mistake_tag: input.mistake_tag ?? null,
   };
   console.log("[journal] inserting discipline_log payload:", logPayload);
 
