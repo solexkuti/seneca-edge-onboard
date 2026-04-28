@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import ComingSoonScreen from "@/components/feature/ComingSoonScreen";
 import RequireAuth from "@/components/auth/RequireAuth";
 import TradeLockGate from "@/components/feature/TradeLockGate";
+import ChartAnalyzer from "@/components/feature/ChartAnalyzer";
 
 export const Route = createFileRoute("/hub/chart")({
   head: () => ({
@@ -10,12 +10,7 @@ export const Route = createFileRoute("/hub/chart")({
   component: () => (
     <RequireAuth>
       <TradeLockGate surface="Chart Analyzer">
-        <ComingSoonScreen
-          eyebrow="Chart Analyzer"
-          title="Analyze your trade against your rules."
-          subtitle="Decision clarity, on demand."
-          description="Drop in your chart and get an instant read against your defined system. In active development."
-        />
+        <ChartAnalyzer />
       </TradeLockGate>
     </RequireAuth>
   ),
