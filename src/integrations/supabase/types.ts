@@ -59,6 +59,66 @@ export type Database = {
         }
         Relationships: []
       }
+      chart_analyses: {
+        Row: {
+          ai_insight: string | null
+          blueprint_id: string | null
+          chart_confidence: number
+          chart_reason: string | null
+          created_at: string
+          exec_image_path: string
+          exec_timeframe: string
+          features: Json
+          higher_image_path: string | null
+          higher_timeframe: string | null
+          id: string
+          is_chart: boolean
+          rule_breakdown: Json
+          strategy_name: string | null
+          trade_id: string | null
+          user_id: string
+          verdict: string
+        }
+        Insert: {
+          ai_insight?: string | null
+          blueprint_id?: string | null
+          chart_confidence?: number
+          chart_reason?: string | null
+          created_at?: string
+          exec_image_path: string
+          exec_timeframe: string
+          features?: Json
+          higher_image_path?: string | null
+          higher_timeframe?: string | null
+          id?: string
+          is_chart?: boolean
+          rule_breakdown?: Json
+          strategy_name?: string | null
+          trade_id?: string | null
+          user_id: string
+          verdict?: string
+        }
+        Update: {
+          ai_insight?: string | null
+          blueprint_id?: string | null
+          chart_confidence?: number
+          chart_reason?: string | null
+          created_at?: string
+          exec_image_path?: string
+          exec_timeframe?: string
+          features?: Json
+          higher_image_path?: string | null
+          higher_timeframe?: string | null
+          id?: string
+          is_chart?: boolean
+          rule_breakdown?: Json
+          strategy_name?: string | null
+          trade_id?: string | null
+          user_id?: string
+          verdict?: string
+        }
+        Relationships: []
+      }
       checklist_confirmations: {
         Row: {
           allowed_tiers: Json
@@ -420,6 +480,7 @@ export type Database = {
       }
       trades: {
         Row: {
+          analysis_id: string | null
           closed_at: string | null
           created_at: string
           direction: Database["public"]["Enums"]["trade_direction"]
@@ -436,6 +497,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          analysis_id?: string | null
           closed_at?: string | null
           created_at?: string
           direction: Database["public"]["Enums"]["trade_direction"]
@@ -452,6 +514,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          analysis_id?: string | null
           closed_at?: string | null
           created_at?: string
           direction?: Database["public"]["Enums"]["trade_direction"]
