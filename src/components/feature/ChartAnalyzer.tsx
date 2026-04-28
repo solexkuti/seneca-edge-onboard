@@ -1,591 +1,364 @@
-// Chart Analyzer UI
-// -----------------------------------------------------------------------------
-// Strict pipeline:
-//   1. Pick locked strategy
-//   2. Upload BOTH execution + higher timeframe charts (required)
-//   3. AI validates each image → reject if not a chart
-//   4. AI extracts structured observations (no opinions)
-//   5. Deterministic matcher scores against the strategy
-//   6. AI explains the deterministic result (cannot change it)
-// Failsafes block at every step.
-
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { motion, AnimatePresence } from "framer-motion";
+import { useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Upload,
-  Loader2,
-  ShieldCheck,
-  ShieldAlert,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
+  Image as ImageIcon,
   Sparkles,
+  CheckCircle2,
+  AlertTriangle,
+  Target,
+  Shield,
+  TrendingUp,
   RefreshCw,
 } from "lucide-react";
-import { toast } from "sonner";
+import FeatureShell from "./FeatureShell";
 
-import { supabase } from "@/integrations/supabase/client";
-import {
-  listBlueprints,
-  type StrategyBlueprint,
-} from "@/lib/dbStrategyBlueprints";
-import {
-  buildAnalyzerStrategy,
-  type AnalyzerStrategy,
-} from "@/lib/chartAnalyzer/schema";
-import {
-  passesChartGate,
-  CHART_REJECTION_MESSAGE,
-  type ChartValidation,
-  type StructuredExtraction,
-  type DualExtraction,
-} from "@/lib/chartAnalyzer/extraction";
-import {
-  analyzeAgainstStrategy,
-  type AnalyzerOutput,
-} from "@/lib/chartAnalyzer/matcher";
+type Phase = "idle" | "analyzing" | "result";
 
-type SlotKey = "execution" | "higher";
+const checks = [
+  "Reading price structure",
+  "Cross-checking with your strategy",
+  "Scoring trade quality",
+];
 
-type Slot = {
-  file: File | null;
-  dataUrl: string | null;
-  validation: ChartValidation | null;
-  extraction: StructuredExtraction | null;
-  validating: boolean;
-  extracting: boolean;
-  error: string | null;
+const insights = [
+  {
+    Icon: CheckCircle2,
+    label: "Setup",
+    value: "Trend continuation",
+    tone: "good",
+  },
+  {
+    Icon: Target,
+    label: "Entry",
+    value: "Wait for retest of 1.0842",
+    tone: "neutral",
+  },
+  {
+    Icon: Shield,
+    label: "Invalidation",
+    value: "Below 1.0820",
+    tone: "warn",
+  },
+  {
+    Icon: TrendingUp,
+    label: "Target",
+    value: "1.0905 (1:2.5 R:R)",
+    tone: "good",
+  },
+];
+
+const toneClass: Record<string, string> = {
+  good: "text-emerald-600 bg-emerald-500/10 ring-emerald-500/20",
+  warn: "text-amber-600 bg-amber-500/10 ring-amber-500/20",
+  neutral: "text-text-primary bg-text-primary/5 ring-border",
 };
-
-const EMPTY_SLOT: Slot = {
-  file: null,
-  dataUrl: null,
-  validation: null,
-  extraction: null,
-  validating: false,
-  extracting: false,
-  error: null,
-};
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result as string);
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
 
 export default function ChartAnalyzer() {
-  const [blueprints, setBlueprints] = useState<StrategyBlueprint[] | null>(null);
-  const [strategyId, setStrategyId] = useState<string>("");
-  const [execTf, setExecTf] = useState("5m");
-  const [higherTf, setHigherTf] = useState("1h");
-  const [riskPct, setRiskPct] = useState(1);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [preview, setPreview] = useState<string | null>(null);
+  const [stepIdx, setStepIdx] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const [exec, setExec] = useState<Slot>(EMPTY_SLOT);
-  const [higher, setHigher] = useState<Slot>(EMPTY_SLOT);
-  const [behaviorChecks, setBehaviorChecks] = useState<Record<string, boolean>>({});
-
-  const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState<AnalyzerOutput | null>(null);
-  const [explanation, setExplanation] = useState<string>("");
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const list = await listBlueprints();
-        setBlueprints(list);
-        const locked = list.find((b) => b.locked) ?? list[0];
-        if (locked) setStrategyId(locked.id);
-      } catch (err) {
-        console.error(err);
-        toast.error("Could not load strategies.");
-        setBlueprints([]);
-      }
-    })();
-  }, []);
-
-  const blueprint = useMemo(
-    () => blueprints?.find((b) => b.id === strategyId) ?? null,
-    [blueprints, strategyId],
-  );
-
-  // Build the strict AnalyzerStrategy from the blueprint each render. Cheap.
-  const strategy: AnalyzerStrategy | null = useMemo(() => {
-    if (!blueprint) return null;
-    const r = blueprint.structured_rules ?? {};
-    return buildAnalyzerStrategy({
-      strategyId: blueprint.id,
-      name: blueprint.name,
-      timeframes: { execution: execTf, higher: higherTf },
-      entry: [...(r.entry ?? []), ...(r.context ?? [])],
-      confirmation: r.confirmation ?? [],
-      risk: r.risk ?? [],
-      behavior: r.behavior ?? [],
-      maxRiskPercent: blueprint.risk_per_trade_pct ?? 1,
-    });
-  }, [blueprint, execTf, higherTf]);
-
-  // Initialise behavior checkboxes whenever strategy changes
-  useEffect(() => {
-    if (!strategy) return;
-    const next: Record<string, boolean> = {};
-    for (const r of strategy.rules.behavior) next[r.id] = false;
-    setBehaviorChecks(next);
-  }, [strategy?.strategy_id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const setSlot = (k: SlotKey, patch: Partial<Slot>) => {
-    if (k === "execution") setExec((s) => ({ ...s, ...patch }));
-    else setHigher((s) => ({ ...s, ...patch }));
+  const handleFile = (file: File) => {
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    setPhase("analyzing");
+    setStepIdx(0);
+    // Simulated analysis pipeline
+    const t1 = window.setTimeout(() => setStepIdx(1), 900);
+    const t2 = window.setTimeout(() => setStepIdx(2), 1800);
+    const t3 = window.setTimeout(() => setPhase("result"), 2900);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
   };
 
-  const handleUpload = async (k: SlotKey, file: File) => {
-    setSlot(k, { ...EMPTY_SLOT, file, validating: true });
-    setResult(null);
-    setExplanation("");
-    try {
-      const dataUrl = await fileToDataUrl(file);
-      setSlot(k, { dataUrl });
-      const { data, error } = await supabase.functions.invoke("validate-chart", {
-        body: { image_url: dataUrl },
-      });
-      if (error) throw error;
-      const v = data as ChartValidation;
-      setSlot(k, { validation: v, validating: false });
-      if (!passesChartGate(v)) {
-        setSlot(k, { error: CHART_REJECTION_MESSAGE });
-        toast.error(CHART_REJECTION_MESSAGE);
-      }
-    } catch (err) {
-      console.error(err);
-      const msg = err instanceof Error ? err.message : "Validation failed.";
-      setSlot(k, { validating: false, error: msg });
-      toast.error(msg);
-    }
-  };
-
-  const reset = (k: SlotKey) => setSlot(k, EMPTY_SLOT);
-
-  const canAnalyze =
-    !!strategy &&
-    !!exec.dataUrl &&
-    !!higher.dataUrl &&
-    !!exec.validation &&
-    !!higher.validation &&
-    passesChartGate(exec.validation) &&
-    passesChartGate(higher.validation) &&
-    !analyzing;
-
-  const runAnalysis = async () => {
-    if (!strategy || !exec.dataUrl || !higher.dataUrl) return;
-    setAnalyzing(true);
-    setResult(null);
-    setExplanation("");
-    try {
-      // Step 4: structured extraction (AI, no opinions)
-      const [execExt, higherExt] = await Promise.all([
-        invokeExtract(exec.dataUrl, execTf),
-        invokeExtract(higher.dataUrl, higherTf),
-      ]);
-      setSlot("execution", { extraction: execExt });
-      setSlot("higher", { extraction: higherExt });
-
-      const dual: DualExtraction = { execution: execExt, higher: higherExt };
-
-      // Step 5+6: deterministic scoring + tier (no AI involvement)
-      const out = analyzeAgainstStrategy(strategy, dual, {
-        risk_percent: riskPct,
-        behavior: behaviorChecks,
-      });
-      setResult(out);
-
-      // Step 7: AI explanation (cannot change result)
-      try {
-        const { data, error } = await supabase.functions.invoke("explain-analysis", {
-          body: { result: out, extraction: dual },
-        });
-        if (!error && data?.explanation) setExplanation(String(data.explanation));
-      } catch {
-        /* fallback: deterministic summary already on screen */
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error(err instanceof Error ? err.message : "Analysis failed.");
-    } finally {
-      setAnalyzing(false);
-    }
+  const reset = () => {
+    setPhase("idle");
+    setPreview(null);
+    setStepIdx(0);
+    if (inputRef.current) inputRef.current.value = "";
   };
 
   return (
-    <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
-      <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-90" />
-      <div className="relative z-10 mx-auto w-full max-w-[720px] px-5 pt-6 pb-24">
-        <div className="flex items-center justify-between">
-          <Link
-            to="/hub"
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-card px-3 text-sm ring-1 ring-border shadow-soft hover:shadow-card-premium"
+    <FeatureShell
+      eyebrow="Chart Analyzer"
+      title="Drop your chart."
+      subtitle="Get instant insight based on how YOU trade."
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+        }}
+      />
+
+      <AnimatePresence mode="wait">
+        {phase === "idle" ? (
+          <motion.div
+            key="idle"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.4 }}
           >
-            ← Hub
-          </Link>
-          <span className="inline-flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs text-muted-foreground ring-1 ring-border">
-            <ShieldCheck className="h-3.5 w-3.5" /> Deterministic engine
-          </span>
-        </div>
-
-        <header className="mt-5">
-          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-            Chart Analyzer
-          </div>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-            Score this setup against your strategy.
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Upload both timeframes. The engine — not the AI — decides if it qualifies.
-          </p>
-        </header>
-
-        {/* STEP 1 — strategy + risk */}
-        <Section title="1 · Strategy">
-          {blueprints === null ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading strategies…
-            </div>
-          ) : blueprints.length === 0 ? (
-            <EmptyStrategy />
-          ) : (
-            <div className="space-y-3">
-              <select
-                value={strategyId}
-                onChange={(e) => setStrategyId(e.target.value)}
-                className="w-full rounded-xl bg-card px-3 py-2.5 text-sm ring-1 ring-border shadow-soft focus:outline-none"
-              >
-                {blueprints.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name} {b.locked ? "· locked" : `· ${b.status}`}
-                  </option>
-                ))}
-              </select>
-              {blueprint && !blueprint.locked && (
-                <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-2.5 text-xs text-amber-700 dark:text-amber-300">
-                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  This strategy is not locked. Lock it before analyzing live trades.
-                </div>
-              )}
-              <div className="grid grid-cols-3 gap-2">
-                <LabeledField label="Execution TF">
-                  <select
-                    value={execTf}
-                    onChange={(e) => setExecTf(e.target.value)}
-                    className="w-full rounded-lg bg-background px-2 py-2 text-sm ring-1 ring-border"
-                  >
-                    {["1m", "3m", "5m", "15m", "30m"].map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </LabeledField>
-                <LabeledField label="Higher TF">
-                  <select
-                    value={higherTf}
-                    onChange={(e) => setHigherTf(e.target.value)}
-                    className="w-full rounded-lg bg-background px-2 py-2 text-sm ring-1 ring-border"
-                  >
-                    {["30m", "1h", "2h", "4h", "1d"].map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </LabeledField>
-                <LabeledField label="Risk %">
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={riskPct}
-                    onChange={(e) => setRiskPct(Number(e.target.value) || 0)}
-                    className="w-full rounded-lg bg-background px-2 py-2 text-sm ring-1 ring-border"
-                  />
-                </LabeledField>
-              </div>
-            </div>
-          )}
-        </Section>
-
-        {/* STEP 2 — uploads */}
-        <Section title="2 · Charts (both required)">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <UploadSlot
-              label={`Execution chart · ${execTf}`}
-              slot={exec}
-              onPick={(f) => handleUpload("execution", f)}
-              onReset={() => reset("execution")}
-            />
-            <UploadSlot
-              label={`Higher TF chart · ${higherTf}`}
-              slot={higher}
-              onPick={(f) => handleUpload("higher", f)}
-              onReset={() => reset("higher")}
-            />
-          </div>
-        </Section>
-
-        {/* STEP 3 — behavior confirmations */}
-        {strategy && strategy.rules.behavior.length > 0 && (
-          <Section title="3 · Behavior confirmations">
-            <ul className="space-y-2">
-              {strategy.rules.behavior.map((r) => (
-                <li
-                  key={r.id}
-                  className="flex items-start gap-3 rounded-xl bg-card p-3 ring-1 ring-border"
-                >
-                  <input
-                    id={r.id}
-                    type="checkbox"
-                    checked={!!behaviorChecks[r.id]}
-                    onChange={(e) =>
-                      setBehaviorChecks((m) => ({ ...m, [r.id]: e.target.checked }))
-                    }
-                    className="mt-0.5 h-4 w-4 rounded border-border"
-                  />
-                  <label htmlFor={r.id} className="text-sm text-foreground">
-                    {r.label}
-                  </label>
-                </li>
-              ))}
-            </ul>
-          </Section>
-        )}
-
-        {/* STEP 4 — analyze */}
-        <div className="mt-6">
-          <button
-            type="button"
-            onClick={runAnalysis}
-            disabled={!canAnalyze}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft transition disabled:cursor-not-allowed disabled:opacity-50"
+            <DropZone onPick={() => inputRef.current?.click()} />
+            <StrategyChips />
+          </motion.div>
+        ) : phase === "analyzing" ? (
+          <motion.div
+            key="analyzing"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.4 }}
           >
-            {analyzing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Analyzing…
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" /> Analyze setup
-              </>
-            )}
-          </button>
-          {!canAnalyze && !analyzing && (
-            <p className="mt-2 text-center text-xs text-muted-foreground">
-              {!strategy
-                ? "Pick a strategy."
-                : !exec.dataUrl || !higher.dataUrl
-                  ? "Upload both timeframe charts."
-                  : "Both charts must pass validation before analysis."}
-            </p>
-          )}
-        </div>
-
-        {/* RESULT */}
-        <AnimatePresence>
-          {result && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-6 rounded-2xl bg-card p-5 ring-1 ring-border shadow-card-premium"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Result
-                  </div>
-                  <h2 className="mt-1 text-xl font-semibold text-foreground">
-                    Tier {result.tier} · {result.score}/100
-                  </h2>
-                </div>
-                <div
-                  className={`flex h-12 w-12 items-center justify-center rounded-full ${
-                    result.tier === "A"
-                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                      : result.tier === "B"
-                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                        : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
-                  }`}
-                >
-                  {result.tier === "A" ? (
-                    <CheckCircle2 className="h-6 w-6" />
-                  ) : result.tier === "C" ? (
-                    <XCircle className="h-6 w-6" />
-                  ) : (
-                    <ShieldAlert className="h-6 w-6" />
-                  )}
-                </div>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{result.summary}</p>
-
-              {result.warnings.length > 0 && (
-                <ul className="mt-3 space-y-1">
-                  {result.warnings.map((w, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300"
+            <ChartPreview src={preview} analyzing />
+            <div className="mt-5 space-y-2.5">
+              {checks.map((label, i) => {
+                const done = stepIdx > i;
+                const active = stepIdx === i;
+                return (
+                  <motion.div
+                    key={label}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: active || done ? 1 : 0.45, x: 0 }}
+                    className="flex items-center gap-3 rounded-xl bg-card px-3 py-2.5 ring-1 ring-border shadow-soft"
+                  >
+                    <div
+                      className={`flex h-7 w-7 items-center justify-center rounded-full transition-all ${
+                        done
+                          ? "bg-gradient-primary"
+                          : active
+                            ? "bg-gradient-mix animate-pulse-glow"
+                            : "bg-text-secondary/15"
+                      }`}
                     >
-                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      {w}
-                    </li>
-                  ))}
-                </ul>
-              )}
+                      {done ? (
+                        <CheckCircle2
+                          className="h-4 w-4 text-white"
+                          strokeWidth={3}
+                        />
+                      ) : (
+                        <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                      )}
+                    </div>
+                    <span className="text-[13px] font-medium text-text-primary">
+                      {label}
+                    </span>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="result"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.4 }}
+          >
+            <ChartPreview src={preview} />
 
-              <div className="mt-4 space-y-1.5">
-                {result.breakdown.map((b) => (
-                  <div
-                    key={b.rule_id}
-                    className="flex items-start gap-2 rounded-lg bg-background/60 p-2.5 ring-1 ring-border"
-                  >
-                    {b.result === "pass" ? (
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                    ) : (
-                      <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
-                    )}
-                    <div className="text-sm text-foreground">{b.explanation}</div>
+            {/* Score */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.5 }}
+              className="mt-5 overflow-hidden rounded-2xl p-[1.5px]"
+              style={{ backgroundImage: "var(--gradient-mix)" }}
+            >
+              <div className="rounded-[14px] bg-card p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+                      Trade Quality
+                    </p>
+                    <p className="mt-1 text-[26px] font-bold leading-none text-gradient-mix">
+                      82<span className="text-[16px]">/100</span>
+                    </p>
                   </div>
-                ))}
-              </div>
-
-              {explanation && (
-                <div className="mt-4 rounded-xl bg-background/60 p-3 ring-1 ring-border">
-                  <div className="mb-1 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                    AI explanation
-                  </div>
-                  <div className="whitespace-pre-wrap text-sm text-foreground">
-                    {explanation}
+                  <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 ring-1 ring-emerald-500/20">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                    <span className="text-[11px] font-semibold text-emerald-700">
+                      A-grade setup
+                    </span>
                   </div>
                 </div>
-              )}
+                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-text-secondary/10">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: "82%" }}
+                    transition={{ delay: 0.3, duration: 0.9, ease: "easeOut" }}
+                    className="h-full bg-gradient-mix"
+                  />
+                </div>
+              </div>
             </motion.div>
-          )}
-        </AnimatePresence>
+
+            {/* Insights */}
+            <div className="mt-4 space-y-2.5">
+              {insights.map((ins, i) => (
+                <motion.div
+                  key={ins.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 + i * 0.07, duration: 0.45 }}
+                  className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft"
+                >
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ${toneClass[ins.tone]}`}
+                  >
+                    <ins.Icon className="h-4 w-4" strokeWidth={2.2} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+                      {ins.label}
+                    </p>
+                    <p className="mt-0.5 text-[13.5px] font-medium text-text-primary">
+                      {ins.value}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Mentor note */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.5 }}
+              className="mt-4 flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-mix shadow-glow-primary">
+                <Sparkles className="h-4 w-4 text-white" strokeWidth={2.2} />
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+                  Mentor note
+                </p>
+                <p className="mt-0.5 text-[13px] leading-snug text-text-primary">
+                  Don't chase. Wait for confirmation at the retest. Skip if
+                  candle closes below 1.0830.
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Reset */}
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.5 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={reset}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-card px-4 py-3 text-[13.5px] font-semibold text-text-primary ring-1 ring-border shadow-soft transition-all hover:shadow-card-premium"
+            >
+              <RefreshCw className="h-4 w-4" strokeWidth={2.2} />
+              Analyze another chart
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </FeatureShell>
+  );
+}
+
+function DropZone({ onPick }: { onPick: () => void }) {
+  return (
+    <motion.button
+      whileTap={{ scale: 0.99 }}
+      onClick={onPick}
+      className="group relative flex w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl border border-dashed border-brand/40 bg-card/70 px-6 py-12 text-center backdrop-blur transition-all hover:border-brand/70 hover:shadow-card-premium"
+    >
+      <div
+        className="pointer-events-none absolute inset-0 opacity-50"
+        style={{ background: "var(--gradient-bg-glow)" }}
+      />
+      <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-mix shadow-glow-primary">
+        <Upload className="h-6 w-6 text-white" strokeWidth={2.2} />
+      </div>
+      <div className="relative">
+        <p className="text-[15px] font-semibold text-text-primary">
+          Upload your chart
+        </p>
+        <p className="mt-1 text-[12px] text-text-secondary">
+          PNG or JPG · TradingView screenshot works best
+        </p>
+      </div>
+      <div className="relative mt-1 flex items-center gap-1.5 rounded-full bg-text-primary/5 px-3 py-1 text-[11px] font-semibold text-text-primary ring-1 ring-border">
+        <ImageIcon className="h-3 w-3" strokeWidth={2.4} />
+        Tap to choose image
+      </div>
+    </motion.button>
+  );
+}
+
+function StrategyChips() {
+  const tags = ["Trend following", "Smart money", "1:2 R:R minimum"];
+  return (
+    <div className="mt-4 rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+          Analyzing through your strategy
+        </p>
+      </div>
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {tags.map((t) => (
+          <span
+            key={t}
+            className="rounded-full bg-text-primary/5 px-2.5 py-1 text-[11px] font-medium text-text-primary ring-1 ring-border"
+          >
+            {t}
+          </span>
+        ))}
       </div>
     </div>
   );
 }
 
-// ---------- helpers ----------
-
-async function invokeExtract(
-  dataUrl: string,
-  timeframe: string,
-): Promise<StructuredExtraction> {
-  const { data, error } = await supabase.functions.invoke("extract-chart", {
-    body: { image_url: dataUrl, timeframe_label: timeframe },
-  });
-  if (error) throw error;
-  return data as StructuredExtraction;
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-6">
-      <div className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-        {title}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function LabeledField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-[11px] uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-function UploadSlot({
-  label,
-  slot,
-  onPick,
-  onReset,
+function ChartPreview({
+  src,
+  analyzing,
 }: {
-  label: string;
-  slot: Slot;
-  onPick: (f: File) => void;
-  onReset: () => void;
+  src: string | null;
+  analyzing?: boolean;
 }) {
-  const blocked = slot.validation && !passesChartGate(slot.validation);
   return (
-    <div className="rounded-xl bg-card p-3 ring-1 ring-border shadow-soft">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="text-sm font-medium text-foreground">{label}</div>
-        {slot.dataUrl && (
-          <button
-            type="button"
-            onClick={onReset}
-            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-          >
-            <RefreshCw className="h-3 w-3" /> Replace
-          </button>
+    <div className="relative overflow-hidden rounded-2xl bg-card p-1 ring-1 ring-border shadow-soft">
+      <div className="relative aspect-[16/10] overflow-hidden rounded-[14px] bg-gradient-to-br from-text-primary/5 to-text-primary/10">
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt="Chart" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <ImageIcon className="h-8 w-8 text-text-secondary/40" />
+          </div>
+        )}
+        {analyzing ? (
+          <>
+            <motion.div
+              className="absolute inset-x-0 h-[2px] bg-gradient-mix shadow-glow-cyan"
+              animate={{ top: ["0%", "100%", "0%"] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-card/40 via-transparent to-card/20" />
+          </>
+        ) : (
+          <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-card/90 px-2 py-0.5 text-[10px] font-semibold text-text-primary ring-1 ring-border backdrop-blur">
+            <AlertTriangle className="h-3 w-3 text-amber-500" />
+            Wait for retest
+          </div>
         )}
       </div>
-
-      {!slot.dataUrl ? (
-        <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-background/50 p-6 text-center text-xs text-muted-foreground hover:bg-background">
-          <Upload className="h-5 w-5" />
-          <span>Click to upload</span>
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) onPick(f);
-            }}
-          />
-        </label>
-      ) : (
-        <div className="space-y-2">
-          <img
-            src={slot.dataUrl}
-            alt={label}
-            className="aspect-video w-full rounded-lg object-cover ring-1 ring-border"
-          />
-          {slot.validating && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Validating image…
-            </div>
-          )}
-          {slot.validation && passesChartGate(slot.validation) && (
-            <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 p-2 text-xs text-emerald-700 dark:text-emerald-300">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Chart validated · confidence {(slot.validation.confidence * 100).toFixed(0)}%
-            </div>
-          )}
-          {blocked && (
-            <div className="flex items-start gap-2 rounded-lg bg-rose-500/10 p-2 text-xs text-rose-700 dark:text-rose-300">
-              <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              {slot.validation?.reason || CHART_REJECTION_MESSAGE}
-            </div>
-          )}
-          {slot.error && !slot.validation && (
-            <div className="text-xs text-rose-600">{slot.error}</div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function EmptyStrategy() {
-  return (
-    <div className="rounded-xl bg-card p-4 text-sm text-muted-foreground ring-1 ring-border">
-      You need a strategy before analyzing.{" "}
-      <Link to="/hub/strategy/new" className="font-medium text-primary hover:underline">
-        Build one →
-      </Link>
     </div>
   );
 }

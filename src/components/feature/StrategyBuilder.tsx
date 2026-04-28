@@ -1051,8 +1051,6 @@ function StepExport({ bp }: { bp: StrategyBlueprint }) {
           },
           checklist: bp.checklist,
           trading_plan: bp.trading_plan,
-          structured_rules: bp.structured_rules,
-          tier_rules: bp.tier_rules,
         }),
       });
       if (!res.ok) throw new Error(`Export failed (${res.status})`);
