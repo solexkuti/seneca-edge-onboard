@@ -219,18 +219,83 @@ function Indicator({
       : tone === "ok"
         ? "ring-emerald-600/25 bg-emerald-600/5 text-emerald-800"
         : "ring-border bg-muted/40 text-foreground/80";
+  const dotTone =
+    tone === "red"
+      ? "bg-red-500"
+      : tone === "ok"
+        ? "bg-emerald-500"
+        : "bg-foreground/30";
   return (
-    <div className={`flex items-start gap-2 rounded-xl p-3 ring-1 ${ring}`}>
+    <div className={`relative flex items-start gap-2 rounded-xl p-3 ring-1 ${ring}`}>
       <Icon className="mt-0.5 h-4 w-4 flex-none" aria-hidden />
       <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-wide opacity-70">
-          {label}
+        <div className="flex items-center gap-1.5">
+          <span className="relative inline-flex h-1.5 w-1.5">
+            {tone !== "muted" && (
+              <motion.span
+                aria-hidden
+                className={`absolute inline-flex h-full w-full rounded-full ${dotTone} opacity-60`}
+                animate={{ scale: [1, 2.2, 1], opacity: [0.6, 0, 0.6] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+              />
+            )}
+            <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${dotTone}`} />
+          </span>
+          <div className="text-[10px] uppercase tracking-wide opacity-70">
+            {label}
+          </div>
         </div>
         <div className="mt-0.5 truncate text-sm font-semibold">{value}</div>
         {meta && (
           <div className="text-[10px] opacity-70">{meta}</div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Decorative floating particle field. Deterministic positions so SSR/CSR
+// match and the layout doesn't shift.
+const PARTICLES = Array.from({ length: 14 }, (_, i) => {
+  const seed = (i + 1) * 9301;
+  const x = (seed % 97) / 97; // 0..1
+  const y = ((seed * 7) % 89) / 89;
+  const size = 2 + ((seed >> 2) % 4); // 2..5px
+  const delay = (i % 7) * 0.4;
+  const duration = 6 + ((seed >> 3) % 5); // 6..10s
+  const drift = 12 + ((seed >> 1) % 18); // 12..29px
+  return { x, y, size, delay, duration, drift };
+});
+
+function TechParticles() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      {PARTICLES.map((p, i) => (
+        <motion.span
+          key={i}
+          className="absolute rounded-full bg-red-500/40"
+          style={{
+            left: `${p.x * 100}%`,
+            top: `${p.y * 100}%`,
+            width: p.size,
+            height: p.size,
+            boxShadow: "0 0 8px 1px rgba(220,38,38,0.35)",
+          }}
+          animate={{
+            y: [0, -p.drift, 0],
+            opacity: [0.15, 0.6, 0.15],
+          }}
+          transition={{
+            duration: p.duration,
+            delay: p.delay,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
     </div>
   );
 }
