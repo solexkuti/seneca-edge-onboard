@@ -1,7 +1,43 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Quote } from "lucide-react";
 import type { SlideProps } from "./OnboardingFlow";
+
+type Testimonial = {
+  quote: string;
+  initial: string;
+  name: string;
+  meta?: string;
+};
+
+const TESTIMONIALS: Testimonial[] = [
+  {
+    quote: "I stopped entering trades I couldn't explain.",
+    initial: "M",
+    name: "Marco D.",
+    meta: "Swing trader · 14 months",
+  },
+  {
+    quote: "It didn't change my strategy. It changed how I follow it.",
+    initial: "A",
+    name: "Aisha R.",
+    meta: "Forex · 5 years",
+  },
+  {
+    quote: "I realized most of my losses were decisions, not setups.",
+    initial: "K",
+    name: "Kenji T.",
+    meta: "Crypto · 2 years",
+  },
+  {
+    quote: "Tracking my behavior made it harder to lie to myself.",
+    initial: "S",
+    name: "Sara L.",
+    meta: "Indices · 3 years",
+  },
+];
+
+const ROTATE_MS = 5000;
 
 /**
  * Slide 4 — Soft Proof
