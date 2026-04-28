@@ -93,6 +93,9 @@ export default function AnalyzerLockScreen({ children }: Props) {
          events can reach it because nothing renders. */}
       <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-90" />
 
+      {/* Ambient tech particles — pure decoration, non-interactive. */}
+      <TechParticles />
+
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[640px] items-center justify-center px-5 py-10">
         <motion.div
           initial={{ opacity: 0, y: 8, scale: 0.98 }}
@@ -101,8 +104,14 @@ export default function AnalyzerLockScreen({ children }: Props) {
           className="w-full rounded-2xl bg-card p-7 ring-1 ring-border shadow-card-premium"
         >
           {/* Icon + eyebrow */}
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-600/10 ring-1 ring-red-600/20">
-            <Lock className="h-5 w-5 text-red-700" aria-hidden />
+          <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-red-600/10 ring-1 ring-red-600/20">
+            <motion.span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-xl bg-red-600/25"
+              animate={{ opacity: [0.15, 0.45, 0.15], scale: [1, 1.08, 1] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <Lock className="relative h-5 w-5 text-red-700" aria-hidden />
           </div>
           <div className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-red-700">
             Analyzer Locked
