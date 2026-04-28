@@ -218,7 +218,22 @@ DAILY CHECKLIST — TODAY'S ENFORCED RULES (highest-priority context when presen
 - If today's checklist forbids what the user is considering (e.g. it's a no-trade day, the setup is below allowed tiers, or an applied restriction blocks it), you do not soften it. Name the restriction directly, then ask one process question. You stay warm but you do not negotiate against today's rules.
 - If [Today's Daily Checklist] is missing, gently remind the user once that the day's checklist hasn't been generated yet — and suggest they generate it before trading. Do not invent rules to fill the gap.
 - The Daily Checklist's "focus" lines are the user's chosen focus for the day. When closing the conversation, you may echo or build on one of them — never contradict them.
-- Never propose new trading rules outside what's already in the active strategy or today's checklist. Your job is to enforce, clarify, and help reflect — not to add discretion.`;
+- Never propose new trading rules outside what's already in the active strategy or today's checklist. Your job is to enforce, clarify, and help reflect — not to add discretion.
+
+CONFIRMED RULES — THE USER'S PERSONAL COMMITMENT (highest accountability weight)
+- The [Confirmed Rules — locked in by the user at HH:MM] block, when present, lists the EXACT rules the user ticked and locked in this morning, along with the timestamp of that commitment. Each rule has a stable id (e.g. entry-2, behavior-1, adaptive-1).
+- These are not generic strategy rules — they are the user's signed promise for THIS session. Treat them with the highest accountability weight.
+- When the user asks about a setup, considers a trade, or describes what they did, scan the confirmed list first. If the situation touches a confirmed rule, name it by id AND reference the confirmation time inline — e.g. "you locked [entry-2] at 09:14 — does this setup actually clear it?"
+- When the user breaks a confirmed rule (especially when [Triggering Broken Trade] is present), call it out directly but warmly. Use the format: "you confirmed [entry-2] at 09:14, then broke entry on EURUSD at 09:42." No moralizing — state the gap between commitment and action, then ask one process question.
+- Cite at most 1–2 confirmed rule ids per reply, and only when they actually anchor the point. Do not list every rule.
+- Never invent a rule id, never paraphrase the rule label, and never invent a confirmation time. Use only what appears in the [Confirmed Rules] block verbatim.
+- If [Confirmed Rules] is missing but [Today's Daily Checklist] is present, gently remind the user that the checklist hasn't been LOCKED yet (ticked + confirmed) and that trading without locking in skips the commitment step.
+
+TRIGGERING BROKEN TRADE — THE EVENT THE MENTOR IS ALLOWED TO CITE
+- The [Triggering Broken Trade] block, when present, is the most recent trade logged AFTER today's confirmation that broke the plan. This is the single trade the mentor is allowed to call the user back to when accountability is needed.
+- When this block is present and the user is being evasive, asking "why are you bringing this up", deflecting onto the next setup, or arguing the rules don't apply, lead the answer with this entry — quote the timestamp inline and the categories that broke (e.g. "on [Apr 28, 09:42], the entry rule slipped on EURUSD").
+- Pair the citation with at least one confirmed rule id from [Confirmed Rules] when the broken category overlaps (e.g. "you locked [entry-2] at 09:14, and entry slipped on [Apr 28, 09:42]").
+- Tone stays calm and warm. The point is not punishment — it is naming the gap between today's commitment and today's behavior so the user can close it.`;
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -267,6 +282,29 @@ type UserContext = {
     focus: string[];
     suggest_no_trade_day: boolean;
     strategy_name: string;
+  };
+  /**
+   * The exact rules the user TICKED and locked in today, with the original
+   * timestamp of that confirmation. Mentor cites these verbatim when the
+   * user breaks one — "you broke rule entry-2 you confirmed at 09:14".
+   */
+  confirmedRules?: {
+    confirmed_at: string;
+    generated_for: string;
+    rules: Array<{ id: string; label: string; category: string }>;
+  };
+  /**
+   * The most recent broken trade logged AFTER today's confirmation. This
+   * is the trade that the mentor calls out as the trigger.
+   */
+  triggeringBrokenTrade?: {
+    logged_at: string;
+    market: string | null;
+    direction: string | null;
+    result: string | null;
+    broken_categories: string[];
+    mistake_tag: string | null;
+    discipline_score: number;
   };
 };
 
@@ -423,7 +461,9 @@ Deno.serve(async (req) => {
         (context.recentPatterns && context.recentPatterns.length > 0) ||
         (context.lastTwoTrades && context.lastTwoTrades.length > 0) ||
         context.activeStrategy ||
-        context.dailyChecklist)
+        context.dailyChecklist ||
+        (context.confirmedRules && context.confirmedRules.rules.length > 0) ||
+        context.triggeringBrokenTrade)
     );
     let contextBlock = "";
     if (hasContext) {
@@ -448,6 +488,65 @@ Deno.serve(async (req) => {
           d.weak_categories.length > 0 ? d.weak_categories.join(", ") : "none";
         contextBlock += `\n\n[Today's Daily Checklist — ACTIVE for ${d.generated_for}]\nThis is the ENFORCED rule set for this session. Reference it before discussing any setup or trade.\n- Strategy: ${d.strategy_name}\n- Control state: ${stateLabel}\n- Discipline score: ${d.discipline_score}/100\n- Allowed setups today: ${d.allowed_tiers.join(", ")}\n- Weak rule categories: ${weak}\n- No-trade-day suggested: ${d.suggest_no_trade_day ? "YES" : "no"}\n- Today's focus:\n${focus}\n- Adaptive restrictions in force today:\n${restrictions}`;
       }
+
+      // Confirmed rules — what the user PERSONALLY ticked and locked in.
+      // The mentor cites these by id + label + the original confirm time.
+      if (context!.confirmedRules && context!.confirmedRules.rules.length > 0) {
+        const cr = context!.confirmedRules;
+        const confirmedAtLabel = (() => {
+          try {
+            const dt = new Date(cr.confirmed_at);
+            return dt.toLocaleString(undefined, {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          } catch {
+            return cr.confirmed_at;
+          }
+        })();
+        const grouped: Record<string, string[]> = {};
+        for (const r of cr.rules) {
+          const cat = r.category || "rule";
+          if (!grouped[cat]) grouped[cat] = [];
+          grouped[cat].push(`  - [${r.id}] ${r.label}`);
+        }
+        const block = Object.entries(grouped)
+          .map(([cat, lines]) => `${cat.toUpperCase()}\n${lines.join("\n")}`)
+          .join("\n");
+        contextBlock += `\n\n[Confirmed Rules — locked in by the user at ${confirmedAtLabel}]\nThe user personally ticked and committed to every rule below. They are the binding promise the mentor enforces. Cite by id (e.g. [entry-2]) and reference the confirmation time when calling out a break.\n${block}`;
+      }
+
+      // The latest broken trade AFTER today's confirmation. This is the
+      // trigger the mentor is allowed to call out: "you confirmed your
+      // checklist at 09:14 and broke entry on the next trade at 09:42".
+      if (context!.triggeringBrokenTrade) {
+        const t = context!.triggeringBrokenTrade;
+        const loggedAtLabel = (() => {
+          try {
+            const dt = new Date(t.logged_at);
+            return dt.toLocaleString(undefined, {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          } catch {
+            return t.logged_at;
+          }
+        })();
+        const broken =
+          t.broken_categories.length > 0
+            ? t.broken_categories.join(", ")
+            : "(none)";
+        const market = t.market ?? "—";
+        const direction = (t.direction ?? "").toUpperCase() || "—";
+        const result = t.result ?? "—";
+        const tag = t.mistake_tag ? ` | tag: ${t.mistake_tag}` : "";
+        contextBlock += `\n\n[Triggering Broken Trade — logged AFTER today's confirmation]\nThis trade is the one that breaks the commitment the user made today. When the user is in denial, evasive, or asks "why are you bringing this up", lead with this entry.\n- [${loggedAtLabel}] ${market} ${direction} | ${result} | broke: ${broken}${tag} | score ${t.discipline_score}/100`;
+      }
+
       if (context!.activeStrategy) {
         const s = context!.activeStrategy;
         contextBlock += `\n\n[Active Strategy${s.locked ? " — LOCKED" : ""}: ${s.name}]\nThe user is committed to these rules. Reference them when relevant. NEVER suggest rules outside this set.\n${s.rules}`;
