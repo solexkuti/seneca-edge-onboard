@@ -21,10 +21,6 @@ import {
   type ActiveStrategyContext,
 } from "@/lib/activeStrategy";
 import { getDailyChecklist } from "@/lib/dailyChecklistCache";
-import {
-  fetchTodayConfirmation,
-  fetchPostConfirmationBreak,
-} from "@/lib/checklistConfirmation";
 import { toast } from "sonner";
 
 type Msg = {
@@ -180,66 +176,8 @@ export default function AiMentorChat() {
         }
       : undefined;
     const dailyChecklistPayload = getDailyChecklist() ?? undefined;
-
-    // Pull today's confirmation (so the mentor can cite the EXACT rules the
-    // user ticked, with the timestamp they locked them in at) and the most
-    // recent broken trade after that confirmation (the trade that the
-    // mentor calls out as the trigger).
-    let confirmedRulesPayload:
-      | {
-          confirmed_at: string;
-          generated_for: string;
-          rules: Array<{
-            id: string;
-            label: string;
-            category: string;
-          }>;
-        }
-      | undefined;
-    let triggeringBrokenTradePayload:
-      | {
-          logged_at: string;
-          market: string | null;
-          direction: string | null;
-          result: string | null;
-          broken_categories: string[];
-          mistake_tag: string | null;
-          discipline_score: number;
-        }
-      | undefined;
-    try {
-      const confirmation = await fetchTodayConfirmation();
-      if (confirmation && Array.isArray(confirmation.rule_acknowledgements)) {
-        confirmedRulesPayload = {
-          confirmed_at: confirmation.confirmed_at,
-          generated_for: confirmation.generated_for,
-          rules: confirmation.rule_acknowledgements
-            .filter((r) => r.confirmed)
-            .map((r) => ({
-              id: r.id,
-              label: r.label,
-              category: r.category,
-            })),
-        };
-        const brk = await fetchPostConfirmationBreak(confirmation.confirmed_at);
-        if (brk) {
-          triggeringBrokenTradePayload = {
-            logged_at: brk.logged_at,
-            market: brk.market,
-            direction: brk.direction,
-            result: brk.result,
-            broken_categories: brk.broken_categories,
-            mistake_tag: brk.mistake_tag,
-            discipline_score: brk.discipline_score,
-          };
-        }
-      }
-    } catch (err) {
-      console.warn("[mentor] confirmation context fetch failed:", err);
-    }
-
     const ctx =
-      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload || dailyChecklistPayload || confirmedRulesPayload || triggeringBrokenTradePayload
+      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload || dailyChecklistPayload
         ? {
             ...(journalSummary ? { journalSummary } : {}),
             ...(profileSummary ? { profileSummary } : {}),
@@ -248,8 +186,6 @@ export default function AiMentorChat() {
             ...(lastTwoPayload ? { lastTwoTrades: lastTwoPayload } : {}),
             ...(strategyPayload ? { activeStrategy: strategyPayload } : {}),
             ...(dailyChecklistPayload ? { dailyChecklist: dailyChecklistPayload } : {}),
-            ...(confirmedRulesPayload ? { confirmedRules: confirmedRulesPayload } : {}),
-            ...(triggeringBrokenTradePayload ? { triggeringBrokenTrade: triggeringBrokenTradePayload } : {}),
           }
         : undefined;
 

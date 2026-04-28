@@ -63,24 +63,13 @@ function computeControlState(score: number): ControlState {
 }
 
 function computeChecklist(input: {
-  discipline_score: number | null;
-  discipline_score_available: boolean;
+  discipline_score: number;
   last_20_trades_count: number;
   current_streak: number;
   behavior_patterns: string[];
 }): Computed {
-  // SAFETY: When discipline data is missing/unavailable, default to "at_risk".
-  // We never assume "in_control" without evidence, and we never silently
-  // collapse to "out_of_control" (which would suggest broken discipline that
-  // never actually happened). "at_risk" is the conservative middle ground.
-  const hasScore =
-    input.discipline_score_available &&
-    typeof input.discipline_score === "number" &&
-    Number.isFinite(input.discipline_score);
-  const score = hasScore
-    ? Math.max(0, Math.min(100, Math.round(input.discipline_score as number)))
-    : 0;
-  const state: ControlState = hasScore ? computeControlState(score) : "at_risk";
+  const score = Math.max(0, Math.min(100, Math.round(input.discipline_score)));
+  const state = computeControlState(score);
   const allowed_tiers =
     state === "in_control"
       ? ["A+", "B+", "C"]
@@ -742,12 +731,8 @@ async function loadInputs(supabase: any, userId: string) {
     const dl = Array.isArray(t.discipline_logs) ? t.discipline_logs[0] : t.discipline_logs;
     if (dl && typeof dl.discipline_score === "number") scores.push(dl.discipline_score);
   }
-  // If no scored discipline logs exist, mark score as unavailable.
-  // Downstream defaults the control_state to "at_risk" (safer than assuming "in_control").
-  const discipline_score_available = scores.length > 0;
-  const discipline_score = discipline_score_available
-    ? scores.reduce((a, b) => a + b, 0) / scores.length
-    : null;
+  const discipline_score =
+    scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
   let current_streak = 0;
   let consecutive_breaks = 0;
@@ -799,7 +784,6 @@ async function loadInputs(supabase: any, userId: string) {
   return {
     blueprint: bp as ActiveStrategyRow | undefined,
     discipline_score,
-    discipline_score_available,
     last_20_trades_count: tradesArr.length,
     current_streak: streakRow?.current_streak ?? current_streak,
     longest_streak: streakRow?.longest_streak ?? current_streak,
@@ -859,7 +843,6 @@ Deno.serve(async (req: Request) => {
     const {
       blueprint,
       discipline_score,
-      discipline_score_available,
       last_20_trades_count,
       current_streak,
       longest_streak,
@@ -870,16 +853,12 @@ Deno.serve(async (req: Request) => {
       behavior_patterns,
     } = await loadInputs(supabase, userId);
 
-    // HARD GATE: no strategy → block generation. No defaults, no guessing.
     if (!blueprint) {
       return new Response(
         JSON.stringify({
-          code: "STRATEGY_REQUIRED",
-          error:
-            "No active strategy found. Build and lock a strategy in the Strategy Builder before generating a daily checklist.",
-          next_action: "open_strategy_builder",
+          error: "No strategy found. Build a strategy before generating a daily checklist.",
         }),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -892,18 +871,15 @@ Deno.serve(async (req: Request) => {
     if (totalRules === 0) {
       return new Response(
         JSON.stringify({
-          code: "STRATEGY_RULES_EMPTY",
           error:
             "Strategy has no structured rules. Complete the Strategy Builder before generating a daily checklist.",
-          next_action: "open_strategy_builder",
         }),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     const computed = computeChecklist({
       discipline_score,
-      discipline_score_available,
       last_20_trades_count,
       current_streak,
       behavior_patterns,
