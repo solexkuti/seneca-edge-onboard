@@ -859,6 +859,7 @@ Deno.serve(async (req: Request) => {
     const {
       blueprint,
       discipline_score,
+      discipline_score_available,
       last_20_trades_count,
       current_streak,
       longest_streak,
@@ -869,12 +870,16 @@ Deno.serve(async (req: Request) => {
       behavior_patterns,
     } = await loadInputs(supabase, userId);
 
+    // HARD GATE: no strategy → block generation. No defaults, no guessing.
     if (!blueprint) {
       return new Response(
         JSON.stringify({
-          error: "No strategy found. Build a strategy before generating a daily checklist.",
+          code: "STRATEGY_REQUIRED",
+          error:
+            "No active strategy found. Build and lock a strategy in the Strategy Builder before generating a daily checklist.",
+          next_action: "open_strategy_builder",
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -887,15 +892,18 @@ Deno.serve(async (req: Request) => {
     if (totalRules === 0) {
       return new Response(
         JSON.stringify({
+          code: "STRATEGY_RULES_EMPTY",
           error:
             "Strategy has no structured rules. Complete the Strategy Builder before generating a daily checklist.",
+          next_action: "open_strategy_builder",
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     const computed = computeChecklist({
       discipline_score,
+      discipline_score_available,
       last_20_trades_count,
       current_streak,
       behavior_patterns,
