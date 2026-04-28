@@ -38,6 +38,13 @@ import {
 } from "@/lib/chartRuleCheck";
 import { supabase } from "@/integrations/supabase/client";
 
+type ChartExplanation = {
+  summary: string;
+  aligns: string[];
+  misaligns: string[];
+  final_assessment: string;
+};
+
 const TIMEFRAMES = ["1m", "5m", "15m", "1H", "4H", "1D", "1W"] as const;
 
 type Phase = "setup" | "analyzing" | "result" | "invalid";
