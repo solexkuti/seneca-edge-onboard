@@ -387,7 +387,7 @@ async function applyRecoveryBoost(): Promise<void> {
     blueprint_id: null,
     verdict: "valid" as const,
     violations: [],
-    score_delta: 5,
+    score_delta: 2,
     reason: "recovery_completed",
   }));
   const { error } = await supabase.from("analyzer_events").insert(rows as never);
@@ -458,8 +458,8 @@ export async function evaluateProbation(): Promise<ProbationStatus> {
         analysis_id: null,
         blueprint_id: null,
         verdict: "invalid",
-        violations: ["probation_failed"],
-        score_delta: -20,
+        violations: ["probation_failed", "critical"],
+        score_delta: -10,
         reason: "probation_failed",
       } as never);
     }
