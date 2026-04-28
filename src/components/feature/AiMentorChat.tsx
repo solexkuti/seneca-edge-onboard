@@ -15,6 +15,11 @@ import {
   INTENT_STYLES,
 } from "@/lib/mentorSuggestions";
 import { readProfile, summarizeProfile } from "@/lib/onboardingProfile";
+import {
+  loadActiveStrategyContext,
+  summarizeRulesForAI,
+  type ActiveStrategyContext,
+} from "@/lib/activeStrategy";
 import { toast } from "sonner";
 
 type Msg = {
@@ -33,10 +38,15 @@ export default function AiMentorChat() {
   const { rows, entries: journal } = useDbJournal();
   const intelligence = useMemo(() => computeIntelligence(rows), [rows]);
   const [recentPatterns, setRecentPatterns] = useState<DbBehaviorPattern[]>([]);
+  const [activeStrategy, setActiveStrategy] =
+    useState<ActiveStrategyContext | null>(null);
   useEffect(() => {
     let cancelled = false;
     fetchRecentPatterns(3).then((p) => {
       if (!cancelled) setRecentPatterns(p);
+    });
+    loadActiveStrategyContext().then((s) => {
+      if (!cancelled) setActiveStrategy(s);
     });
     return () => {
       cancelled = true;
@@ -157,14 +167,22 @@ export default function AiMentorChat() {
       };
     });
     const lastTwoPayload = lastTwoTrades.length > 0 ? lastTwoTrades : undefined;
+    const strategyPayload = activeStrategy?.blueprint
+      ? {
+          name: activeStrategy.blueprint.name,
+          locked: activeStrategy.blueprint.locked,
+          rules: summarizeRulesForAI(activeStrategy.rules),
+        }
+      : undefined;
     const ctx =
-      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload
+      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload
         ? {
             ...(journalSummary ? { journalSummary } : {}),
             ...(profileSummary ? { profileSummary } : {}),
             ...(intelligencePayload ? { intelligence: intelligencePayload } : {}),
             ...(recentPatternsPayload ? { recentPatterns: recentPatternsPayload } : {}),
             ...(lastTwoPayload ? { lastTwoTrades: lastTwoPayload } : {}),
+            ...(strategyPayload ? { activeStrategy: strategyPayload } : {}),
           }
         : undefined;
 
