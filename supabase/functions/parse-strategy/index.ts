@@ -1,0 +1,210 @@
+// parse-strategy — Turn raw user input into a structured rule set.
+// Returns: { structured_rules, ambiguity_flags, refinement_questions }
+// SAFETY: Never predicts market direction. Only extracts rules the user wrote.
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+const SYSTEM = `You are an extraction engine for a trading discipline tool.
+
+You DO NOT predict markets. You DO NOT recommend trades. You ONLY restructure
+the user's own words into a clean rule framework, and you ONLY ask clarifying
+questions when their language is ambiguous or missing critical info.
+
+Return rules in 5 categories:
+- entry: what conditions must hold to take a trade
+- confirmation: secondary signals that confirm the entry
+- risk: position sizing, stops, daily loss limits, drawdown rules
+- behavior: psychological rules (no revenge trades, max trades/day, no trading after a loss, etc.)
+- context: market/session/instrument filters (session times, news avoidance, instruments)
+
+Each rule must be:
+- A short, binary statement testable as yes/no.
+- Verbatim or minimally rephrased from the user's input. Never invent rules they didn't imply.
+- Free of vague words like "good", "clean", "strong", "decent" unless you also flag them.
+
+Detect ambiguity:
+- Vague qualifiers ("good setup", "clean break"): flag with the area + a precise question.
+- Missing piece (e.g. no stop-loss rule mentioned at all): flag.
+
+Generate 3 to 5 refinement questions. Each must be precise and force a binary or numeric answer.
+Bad: "Can you describe your entry better?"
+Good: "What exact candle close confirms the breakout — first close above the level, or second consecutive?"`;
+
+const TOOL = {
+  type: "function",
+  function: {
+    name: "emit_blueprint",
+    description: "Return the structured rules and refinement questions.",
+    parameters: {
+      type: "object",
+      properties: {
+        structured_rules: {
+          type: "object",
+          properties: {
+            entry: { type: "array", items: { type: "string" } },
+            confirmation: { type: "array", items: { type: "string" } },
+            risk: { type: "array", items: { type: "string" } },
+            behavior: { type: "array", items: { type: "string" } },
+            context: { type: "array", items: { type: "string" } },
+          },
+          required: ["entry", "confirmation", "risk", "behavior", "context"],
+          additionalProperties: false,
+        },
+        ambiguity_flags: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              area: {
+                type: "string",
+                enum: ["entry", "confirmation", "risk", "behavior", "context", "general"],
+              },
+              note: { type: "string" },
+            },
+            required: ["area", "note"],
+            additionalProperties: false,
+          },
+        },
+        refinement_questions: {
+          type: "array",
+          minItems: 3,
+          maxItems: 5,
+          items: { type: "string" },
+        },
+      },
+      required: ["structured_rules", "ambiguity_flags", "refinement_questions"],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { rawInput, accountTypes, riskProfile, refinementHistory } =
+      await req.json();
+    if (!rawInput || typeof rawInput !== "string") {
+      return new Response(JSON.stringify({ error: "rawInput is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: "LOVABLE_API_KEY not configured" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const userBlock = [
+      `ACCOUNT TYPES: ${(accountTypes ?? []).join(", ") || "unspecified"}`,
+      riskProfile
+        ? `RISK PROFILE: per-trade ${riskProfile.risk_per_trade_pct ?? "?"}%, daily loss ${riskProfile.daily_loss_limit_pct ?? "?"}%, max DD ${riskProfile.max_drawdown_pct ?? "?"}%`
+        : "RISK PROFILE: unspecified",
+      "",
+      "RAW STRATEGY INPUT:",
+      rawInput,
+      "",
+      Array.isArray(refinementHistory) && refinementHistory.length
+        ? "PRIOR REFINEMENT Q&A (treat answers as authoritative):\n" +
+          refinementHistory
+            .map(
+              (r: { question: string; answer: string }, i: number) =>
+                `${i + 1}. Q: ${r.question}\n   A: ${r.answer}`,
+            )
+            .join("\n")
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const res = await fetch(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: SYSTEM },
+            { role: "user", content: userBlock },
+          ],
+          tools: [TOOL],
+          tool_choice: {
+            type: "function",
+            function: { name: "emit_blueprint" },
+          },
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      if (res.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limited. Please try again shortly." }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+      if (res.status === 402) {
+        return new Response(
+          JSON.stringify({
+            error: "AI credits exhausted. Add funds in Settings.",
+          }),
+          {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+      const t = await res.text();
+      console.error("parse-strategy AI error", res.status, t);
+      return new Response(JSON.stringify({ error: "AI gateway error" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const data = await res.json();
+    const call = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (!call) {
+      return new Response(JSON.stringify({ error: "No tool call returned" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const args = JSON.parse(call.function.arguments);
+    return new Response(JSON.stringify(args), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error("parse-strategy error", err);
+    return new Response(
+      JSON.stringify({
+        error: err instanceof Error ? err.message : "Unknown error",
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
+});
