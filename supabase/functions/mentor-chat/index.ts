@@ -268,6 +268,41 @@ type UserContext = {
     suggest_no_trade_day: boolean;
     strategy_name: string;
   };
+  /**
+   * TRADER_STATE — the read-only awareness payload required on every reply.
+   * Mentor MUST consult this before answering "why am I locked", "why did
+   * my score change", "can I analyze", "what should I do next" — anything
+   * touching system state. Mentor never mutates it.
+   */
+  traderState?: {
+    strategy: { exists: boolean; locked: boolean; name: string | null };
+    discipline: {
+      score: number;
+      state: "in_control" | "slipping" | "at_risk" | "locked";
+      consecutive_breaks: number;
+      last_score_delta: number | null;
+      last_reason: string | null;
+      last_source: "analyzer" | "execution" | null;
+    };
+    session: { checklist_confirmed: boolean; trading_allowed: boolean };
+    last_analyzer_event: {
+      verdict: "valid" | "invalid" | "weak";
+      score_delta: number;
+      reason: string | null;
+      created_at: string;
+    } | null;
+    blocks: {
+      no_strategy: boolean;
+      not_confirmed: boolean;
+      discipline_locked: boolean;
+      in_recovery: boolean;
+    };
+    recovery: {
+      active: boolean;
+      step: string | null;
+      probation_active: boolean;
+    };
+  };
 };
 
 const STRICT_MODE_ADDENDUM = `
