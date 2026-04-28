@@ -918,6 +918,33 @@ function ResultView({
                         <p className="mt-1 text-[11.5px] leading-snug text-text-secondary">
                           {c.reason}
                         </p>
+                        {c.regions && c.regions.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {c.regions.map((rg, ri) => {
+                              const isActive =
+                                activeCitation?.section === s.key &&
+                                activeCitation?.checkIdx === idx &&
+                                activeCitation?.regionIdx === ri;
+                              return (
+                                <button
+                                  key={ri}
+                                  type="button"
+                                  onClick={() => onCite(s.key, idx, ri, rg)}
+                                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold ring-1 transition ${
+                                    isActive
+                                      ? "bg-brand/15 text-brand ring-brand/40"
+                                      : "bg-card text-text-secondary ring-border hover:ring-brand/30 hover:text-brand"
+                                  }`}
+                                  aria-label={`Show ${rg.label} on ${rg.chart === "exec" ? "execution" : "higher-timeframe"} chart`}
+                                >
+                                  <MapPin className="h-3 w-3" strokeWidth={2.6} />
+                                  Show on {rg.chart === "exec" ? "exec" : "higher"} chart
+                                  <span className="opacity-70">· {rg.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </li>
