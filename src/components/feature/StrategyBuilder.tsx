@@ -88,6 +88,7 @@ export default function StrategyBuilder({
   const [stepIdx, setStepIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
+  const [slowLoad, setSlowLoad] = useState(false);
   const step = STEPS[stepIdx];
 
   // Guard against React StrictMode / re-renders creating multiple blueprints.
@@ -99,13 +100,29 @@ export default function StrategyBuilder({
     bootstrappedRef.current = true;
 
     let cancelled = false;
+    // 3s failsafe — surface a "Start fresh" CTA if we're still spinning.
+    const slowTimer = window.setTimeout(() => {
+      if (!cancelled) setSlowLoad(true);
+    }, 3000);
+
     (async () => {
       try {
         if (blueprintId) {
           const existing = await getBlueprint(blueprintId);
           if (cancelled) return;
           if (!existing) {
-            setBootError("Strategy not found.");
+            // Don't dead-end the user — start a fresh strategy instead.
+            console.warn(
+              "[StrategyBuilder] blueprint not found, creating fresh:",
+              blueprintId,
+            );
+            const created = await createBlueprint();
+            if (cancelled) return;
+            void navigate({
+              to: "/hub/strategy/$id",
+              params: { id: created.id },
+              replace: true,
+            });
             return;
           }
           // Initialize step from persisted session (NEVER reset to 0).
@@ -118,8 +135,6 @@ export default function StrategyBuilder({
           // eslint-disable-next-line no-console
           console.log("[StrategyBuilder] SESSION resumed:", existing.id, "STEP:", existing.current_step);
         } else {
-          // "Preparing your system…" splash before creating the session.
-          await new Promise((r) => setTimeout(r, 500));
           const created = await createBlueprint();
           if (cancelled) return;
           // eslint-disable-next-line no-console
@@ -133,16 +148,35 @@ export default function StrategyBuilder({
           });
         }
       } catch (err) {
-        console.error("[StrategyBuilder] bootstrap failed", err);
+        console.error("[StrategyBuilder] Strategy load failed", err);
         const msg = err instanceof Error ? err.message : "Could not start a new strategy.";
         setBootError(msg);
-        toast.error("Could not load strategy. Are you signed in?");
+        toast.error("Couldn't load existing strategy. Start fresh.");
+      } finally {
+        window.clearTimeout(slowTimer);
       }
     })();
     return () => {
       cancelled = true;
+      window.clearTimeout(slowTimer);
     };
   }, [blueprintId, navigate]);
+
+  const startFresh = async () => {
+    try {
+      setBootError(null);
+      setSlowLoad(false);
+      const created = await createBlueprint();
+      void navigate({
+        to: "/hub/strategy/$id",
+        params: { id: created.id },
+        replace: true,
+      });
+    } catch (err) {
+      console.error("[StrategyBuilder] startFresh failed", err);
+      toast.error("Could not start a new strategy. Are you signed in?");
+    }
+  };
 
   const patch = async (p: Partial<StrategyBlueprint>) => {
     if (!bp) return;
