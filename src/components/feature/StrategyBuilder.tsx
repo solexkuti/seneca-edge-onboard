@@ -91,13 +91,16 @@ export default function StrategyBuilder({
   const [slowLoad, setSlowLoad] = useState(false);
   const step = STEPS[stepIdx];
 
-  // Guard against React StrictMode / re-renders creating multiple blueprints.
-  const bootstrappedRef = useRef(false);
+  // Guard against React StrictMode double-invoke creating multiple blueprints.
+  // Keyed by blueprintId so navigating from /new -> /$id (which reuses this
+  // component instance at the same tree position) re-runs the bootstrap.
+  const bootstrappedRef = useRef<string | "__new__" | null>(null);
 
-  // Bootstrap: load existing or create new — exactly once per mount.
+  // Bootstrap: load existing or create new — exactly once per (blueprintId).
   useEffect(() => {
-    if (bootstrappedRef.current) return;
-    bootstrappedRef.current = true;
+    const key = blueprintId ?? "__new__";
+    if (bootstrappedRef.current === key) return;
+    bootstrappedRef.current = key;
 
     let cancelled = false;
     // 3s failsafe — surface a "Start fresh" CTA if we're still spinning.
