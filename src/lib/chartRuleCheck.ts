@@ -17,11 +17,23 @@ export type ChartFeaturesPair = {
   higher?: ChartFeatures | null;
 };
 
+export type RuleCheck = {
+  rule: string; // the user's actual strategy rule text (or a synthetic label)
+  passed: boolean;
+  reason: string;
+};
+
+export type SectionResult = {
+  passed: boolean;
+  reasons: string[];
+  checks: RuleCheck[]; // per-rule breakdown referencing strategy rules
+};
+
 export type RuleBreakdown = {
-  entry: { passed: boolean; reasons: string[] };
-  structure: { passed: boolean; reasons: string[] };
-  risk: { passed: boolean; reasons: string[] };
-  timing: { passed: boolean; reasons: string[] };
+  entry: SectionResult;
+  structure: SectionResult;
+  risk: SectionResult;
+  timing: SectionResult;
   overall: "valid" | "weak" | "invalid";
   score: number; // 0-100
   low_confidence: boolean;
