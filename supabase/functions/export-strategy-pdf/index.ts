@@ -489,9 +489,12 @@ function drawCover(
   // Eyebrow
   drawCentered(f, opts.eyebrow.toUpperCase(), SIZE.subtitle, f.bold, ACCENT);
   f.y -= 32;
-  // Title (very large)
-  drawCentered(f, opts.title, SIZE.title, f.bold, INK);
-  f.y -= 36;
+  // Title (very large) — supports multi-line via \n
+  for (const line of opts.title.split("\n")) {
+    drawCentered(f, line, SIZE.title, f.bold, INK);
+    f.y -= SIZE.title + 4;
+  }
+  f.y -= 8;
   // Subtitle
   drawCentered(f, opts.subtitle, SIZE.subtitle, f.italic, MUTED);
 
