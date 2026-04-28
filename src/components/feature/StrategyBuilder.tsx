@@ -105,18 +105,38 @@ export default function StrategyBuilder({
       if (!cancelled) setSlowLoad(true);
     }, 3000);
 
+    // Hard timeout helper — DB calls must NEVER hang the bootstrap.
+    const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
+      Promise.race([
+        p,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms),
+        ),
+      ]);
+
     (async () => {
       try {
         if (blueprintId) {
-          const existing = await getBlueprint(blueprintId);
+          const existing = await withTimeout(
+            getBlueprint(blueprintId),
+            5000,
+            "getBlueprint",
+          ).catch((err) => {
+            console.error("[StrategyBuilder] getBlueprint failed", err);
+            return null;
+          });
           if (cancelled) return;
           if (!existing) {
             // Don't dead-end the user — start a fresh strategy instead.
             console.warn(
-              "[StrategyBuilder] blueprint not found, creating fresh:",
+              "[StrategyBuilder] blueprint missing/timed out, creating fresh:",
               blueprintId,
             );
-            const created = await createBlueprint();
+            const created = await withTimeout(
+              createBlueprint(),
+              5000,
+              "createBlueprint",
+            );
             if (cancelled) return;
             void navigate({
               to: "/hub/strategy/$id",
@@ -125,7 +145,6 @@ export default function StrategyBuilder({
             });
             return;
           }
-          // Initialize step from persisted session (NEVER reset to 0).
           const idx = Math.max(
             0,
             STEPS.findIndex((s) => s.key === (existing.current_step ?? "account")),
@@ -135,12 +154,14 @@ export default function StrategyBuilder({
           // eslint-disable-next-line no-console
           console.log("[StrategyBuilder] SESSION resumed:", existing.id, "STEP:", existing.current_step);
         } else {
-          const created = await createBlueprint();
+          const created = await withTimeout(
+            createBlueprint(),
+            5000,
+            "createBlueprint",
+          );
           if (cancelled) return;
           // eslint-disable-next-line no-console
           console.log("[StrategyBuilder] SESSION created:", created.id, "STEP:", created.current_step);
-          // Hand off to the persistent /$id route. `replace` so back button
-          // doesn't bounce the user back into a fresh-create loop.
           void navigate({
             to: "/hub/strategy/$id",
             params: { id: created.id },

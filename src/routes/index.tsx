@@ -39,45 +39,60 @@ function Index() {
 
   useEffect(() => {
     let cancelled = false;
+    // Hard 4s failsafe: never leave the entry route on the spinner.
+    const failsafe = window.setTimeout(() => {
+      if (!cancelled) {
+        console.warn("[entry] failsafe — rendering onboarding");
+        setDecision("onboarding");
+      }
+    }, 4000);
+
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      const userId = data.session?.user?.id;
-
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.log("[entry] route=/ authed=", !!userId);
-      }
-
-      if (!userId) {
-        if (!cancelled) setDecision("onboarding");
-        return;
-      }
-
-      // Authed — does this user already have a strategy?
-      let hasStrategy = false;
       try {
-        const bp = await getActiveBlueprint();
-        hasStrategy = !!bp;
-      } catch (e) {
-        console.warn("[entry] strategy check failed", e);
-      }
+        const { data } = await supabase.auth.getSession();
+        const userId = data.session?.user?.id;
 
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.log("[entry] strategy_exists=", hasStrategy);
-      }
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.log("[entry] route=/ authed=", !!userId);
+        }
 
-      if (cancelled) return;
-      if (hasStrategy) {
+        if (!userId) {
+          if (!cancelled) setDecision("onboarding");
+          return;
+        }
+
+        // Authed — check for an existing strategy with a 2s cap.
+        // We don't actually need the answer to route correctly (both branches
+        // go to /hub), so don't let a slow query hold the entry page.
+        let hasStrategy = false;
+        try {
+          const bp = await Promise.race([
+            getActiveBlueprint(),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+          ]);
+          hasStrategy = !!bp;
+        } catch (e) {
+          console.warn("[entry] strategy check failed", e);
+        }
+
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.log("[entry] strategy_exists=", hasStrategy);
+        }
+
+        if (cancelled) return;
         navigate({ to: "/hub", replace: true });
-      } else {
-        // Authed but no strategy — drop them into the hub; TraderStateGate
-        // will route them to /hub/strategy/new on first protected surface.
-        navigate({ to: "/hub", replace: true });
+      } catch (err) {
+        console.error("[entry] failed", err);
+        if (!cancelled) setDecision("onboarding");
+      } finally {
+        window.clearTimeout(failsafe);
       }
     })();
     return () => {
       cancelled = true;
+      window.clearTimeout(failsafe);
     };
   }, [navigate]);
 
