@@ -183,6 +183,55 @@ function WarningBanner() {
   );
 }
 
+const CLASS_STYLES: Record<DisciplineClass, { ring: string; bg: string; dot: string; text: string }> = {
+  in_control: {
+    ring: "ring-emerald-500/25",
+    bg: "bg-emerald-500/[0.06]",
+    dot: "bg-emerald-500",
+    text: "text-emerald-800",
+  },
+  unstable: {
+    ring: "ring-amber-500/25",
+    bg: "bg-amber-500/[0.07]",
+    dot: "bg-amber-500",
+    text: "text-amber-800",
+  },
+  out_of_control: {
+    ring: "ring-rose-500/25",
+    bg: "bg-rose-500/[0.07]",
+    dot: "bg-rose-500",
+    text: "text-rose-800",
+  },
+};
+
+function ClassificationCard({ cls, score }: { cls: DisciplineClass; score: number }) {
+  const s = CLASS_STYLES[cls];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease }}
+      className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 ring-1 ${s.bg} ${s.ring}`}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className={`h-2 w-2 shrink-0 rounded-full ${s.dot}`} />
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+            Discipline state
+          </p>
+          <p className={`mt-0.5 text-[14px] font-semibold leading-snug ${s.text}`}>
+            {DISCIPLINE_CLASS_LABEL[cls]}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-baseline gap-1 text-text-primary">
+        <Gauge className="h-3.5 w-3.5 text-text-secondary" strokeWidth={2.4} />
+        <span className="text-[18px] font-bold tabular-nums">{score}%</span>
+      </div>
+    </motion.div>
+  );
+}
+
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60_000);
