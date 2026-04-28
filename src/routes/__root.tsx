@@ -1,8 +1,10 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "sonner";
+import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import DevResetOnboarding from "@/components/dev/DevResetOnboarding";
+import { flushPending } from "@/lib/journalPendingQueue";
 
 function NotFoundComponent() {
   return (
