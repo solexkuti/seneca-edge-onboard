@@ -401,6 +401,7 @@ export type Database = {
           ambiguity_flags: Json
           checklist: Json
           created_at: string
+          current_step: string
           daily_loss_limit_pct: number | null
           id: string
           locked: boolean
@@ -425,6 +426,7 @@ export type Database = {
           ambiguity_flags?: Json
           checklist?: Json
           created_at?: string
+          current_step?: string
           daily_loss_limit_pct?: number | null
           id?: string
           locked?: boolean
@@ -449,6 +451,7 @@ export type Database = {
           ambiguity_flags?: Json
           checklist?: Json
           created_at?: string
+          current_step?: string
           daily_loss_limit_pct?: number | null
           id?: string
           locked?: boolean
