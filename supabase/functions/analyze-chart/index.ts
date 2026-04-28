@@ -313,11 +313,26 @@ async function enforceAnalyzerLock(req: Request): Promise<Response | null> {
   }
 
   // 2) Discipline lock — mirror the deterministic scoring system in
-  //    src/lib/disciplineScore.ts. Decision (40%) + Execution (60%),
-  //    each weighted-averaged over the last 10 events with recency decay.
-  //    Lock threshold: final score < 40 ("locked" state).
-  const RECENCY = [1.0, 0.85, 0.7, 0.6, 0.5, 0.42, 0.35, 0.3, 0.25, 0.2];
-  const normEvent = (s: number) => ((Math.max(-20, Math.min(5, s)) + 20) / 25) * 100;
+  //    src/lib/disciplineScore.ts. 4-tier classification, recency weights
+  //    1.0→0.2, decision normalized vs theoretical min/max, then blended
+  //    0.4 * decision + 0.6 * execution. Lock threshold: score < 40.
+  const RECENCY = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2];
+  const EVT_MAX = 2;   // VALID_CLEAN
+  const EVT_MIN = -10; // CRITICAL_INVALID
+  const CRITICAL = [
+    "htf_bias", "against htf", "against trend", "no_entry", "no entry",
+    "no clear entry", "random_entry", "random entry", "forced", "critical",
+  ];
+  const isCrit = (vs: unknown) => Array.isArray(vs) && vs.some((v) =>
+    typeof v === "string" && CRITICAL.some((c) => v.toLowerCase().includes(c))
+  );
+  const vCount = (vs: unknown) => Array.isArray(vs) ? vs.length : 0;
+  const classify = (verdict: string, vs: unknown): number => {
+    if (verdict === "valid") return 2;
+    if (verdict === "weak") return 0;
+    if (isCrit(vs) || vCount(vs) >= 3) return -10;
+    return -5;
+  };
   const wavg = (vals: number[], wts: number[]) => {
     let s = 0, w = 0;
     for (let i = 0; i < vals.length; i++) {
@@ -330,7 +345,7 @@ async function enforceAnalyzerLock(req: Request): Promise<Response | null> {
   const [{ data: events }, { data: trades }] = await Promise.all([
     admin
       .from("analyzer_events")
-      .select("score_delta,verdict,created_at")
+      .select("verdict,violations,created_at")
       .eq("user_id", uid)
       .order("created_at", { ascending: false })
       .limit(10),
@@ -342,16 +357,39 @@ async function enforceAnalyzerLock(req: Request): Promise<Response | null> {
       .limit(10),
   ]);
 
-  const evVals = (events ?? []).map((e: { score_delta: number | null }) =>
-    normEvent(Number(e.score_delta ?? 0)),
+  const evRaws = (events ?? []).map((e: { verdict: string; violations: unknown }) =>
+    classify(String(e.verdict), e.violations),
   );
   const trVals = (trades ?? []).map((t: { discipline_score: number }) =>
     Math.max(0, Math.min(100, Number(t.discipline_score ?? 0))),
   );
 
-  const decision = evVals.length === 0 ? 50 : wavg(evVals, RECENCY);
+  // Decision normalization: (Σ raw·w − Σ MIN·w) / (Σ MAX·w − Σ MIN·w) * 100
+  let decision = 50;
+  if (evRaws.length > 0) {
+    let ws = 0, mx = 0, mn = 0;
+    for (let i = 0; i < evRaws.length; i++) {
+      const w = RECENCY[i] ?? 0;
+      ws += evRaws[i] * w;
+      mx += EVT_MAX * w;
+      mn += EVT_MIN * w;
+    }
+    decision = mx === mn ? 50 : ((ws - mn) / (mx - mn)) * 100;
+
+    // Anti-spam: 5+ consecutive INVALID/CRITICAL → -10
+    let streak = 0;
+    for (const r of evRaws) {
+      if (r === -5 || r === -10) streak += 1;
+      else break;
+    }
+    if (streak >= 5) decision = Math.max(0, decision - 10);
+  }
+
   const execution = trVals.length === 0 ? 50 : wavg(trVals, RECENCY);
-  const score = Math.round(decision * 0.4 + execution * 0.6);
+  const score = Math.round(
+    Math.max(0, Math.min(100, decision)) * 0.4 +
+    Math.max(0, Math.min(100, execution)) * 0.6,
+  );
 
   if (score < 40) {
     return lockedResponse(
