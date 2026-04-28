@@ -856,9 +856,11 @@ Deno.serve(async (req: Request) => {
     if (!blueprint) {
       return new Response(
         JSON.stringify({
-          error: "No strategy found. Build a strategy before generating a daily checklist.",
+          code: "STRATEGY_REQUIRED",
+          error: "Build a strategy before generating today's checklist.",
+          next_action: "/hub/strategy/new",
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -871,10 +873,12 @@ Deno.serve(async (req: Request) => {
     if (totalRules === 0) {
       return new Response(
         JSON.stringify({
+          code: "STRATEGY_RULES_EMPTY",
           error:
-            "Strategy has no structured rules. Complete the Strategy Builder before generating a daily checklist.",
+            "Your strategy has no structured rules yet. Finish the Strategy Builder to generate today's checklist.",
+          next_action: "/hub/strategy",
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
