@@ -472,36 +472,79 @@ function StepTiers({
   patch: (p: Partial<StrategyBlueprint>) => Promise<void>;
 }) {
   const t = bp.tier_strictness ?? { a_plus: 100, b_plus: 80, c: 60 };
-  const update = (k: keyof typeof t, v: number) =>
+  const r: TierRules = bp.tier_rules ?? { a_plus: "", b_plus: "", c: "" };
+  const updateStrict = (k: keyof typeof t, v: number) =>
     void patch({ tier_strictness: { ...t, [k]: v } });
+  const updateRule = (k: keyof TierRules, v: string) =>
+    void patch({ tier_rules: { ...r, [k]: v } });
+
+  const tiers: Array<{
+    k: keyof TierRules;
+    title: string;
+    sub: string;
+    placeholder: string;
+  }> = [
+    {
+      k: "a_plus",
+      title: "A+ — Perfect execution only",
+      sub: "Every condition met. No tolerance.",
+      placeholder:
+        "e.g. HTF bias aligned, key level reaction, volume confirmation, news clear, R:R ≥ 2.5",
+    },
+    {
+      k: "b_plus",
+      title: "B+ — One tolerated flaw",
+      sub: "Strong setup, missing one non-critical item.",
+      placeholder:
+        "e.g. all A+ except either volume confirmation OR news clear can be missing",
+    },
+    {
+      k: "c",
+      title: "C — Minimum acceptable",
+      sub: "Bare baseline. Below this you stand down.",
+      placeholder:
+        "e.g. HTF bias aligned + key level + R:R ≥ 1.5 — anything less = no trade",
+    },
+  ];
+
   return (
     <div className="space-y-4">
       <Header
         eyebrow="Step 4"
-        title="Tier strictness"
-        sub="A+ is the perfect setup. C is the bare minimum. Tighter sliders = stricter grading."
+        title="Define your standards"
+        sub="Strictness controls how rigidly each tier is enforced."
       />
-      {(
-        [
-          ["a_plus", "A+ — Perfect"],
-          ["b_plus", "B+ — Acceptable"],
-          ["c", "C — Minimum"],
-        ] as const
-      ).map(([k, label]) => (
-        <div key={k}>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-foreground/90">{label}</span>
-            <span className="text-muted-foreground">{t[k]}%</span>
+      {tiers.map(({ k, title, sub, placeholder }) => (
+        <div
+          key={k}
+          className="rounded-xl bg-background p-3 ring-1 ring-border space-y-2"
+        >
+          <div>
+            <div className="text-sm font-medium text-foreground">{title}</div>
+            <div className="text-xs text-muted-foreground">{sub}</div>
           </div>
-          <input
-            type="range"
-            min={20}
-            max={100}
-            step={5}
-            value={t[k]}
-            onChange={(e) => update(k, Number(e.target.value))}
-            className="mt-2 w-full accent-primary"
+          <textarea
+            value={r[k] ?? ""}
+            onChange={(e) => updateRule(k, e.target.value)}
+            rows={2}
+            placeholder={placeholder}
+            className="w-full rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
           />
+          <div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Strictness</span>
+              <span className="font-medium text-foreground/90">{t[k]}%</span>
+            </div>
+            <input
+              type="range"
+              min={20}
+              max={100}
+              step={5}
+              value={t[k]}
+              onChange={(e) => updateStrict(k, Number(e.target.value))}
+              className="mt-1 w-full accent-primary"
+            />
+          </div>
         </div>
       ))}
     </div>
