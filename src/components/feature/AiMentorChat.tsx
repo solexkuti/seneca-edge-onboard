@@ -38,6 +38,7 @@ const SESSION_ID =
     : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 export default function AiMentorChat() {
+  const { state: traderState } = useTraderState();
   const { rows, entries: journal } = useDbJournal();
   const intelligence = useMemo(() => computeIntelligence(rows), [rows]);
   const [recentPatterns, setRecentPatterns] = useState<DbBehaviorPattern[]>([]);
