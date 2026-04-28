@@ -69,6 +69,9 @@ export default function ChartAnalyzer() {
     modelUsed: "primary" | "fallback";
     pipelineConfidence: number; // 0–1
     warnings: string[];
+    explanation: ChartExplanation | null;
+    explanationLoading: boolean;
+    explanationError: string | null;
   } | null>(null);
 
   const execInputRef = useRef<HTMLInputElement>(null);
