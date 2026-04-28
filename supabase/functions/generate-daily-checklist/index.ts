@@ -243,7 +243,148 @@ function defaultFocus(c: Computed, weak: string[]): string[] {
   return lines.slice(0, 3);
 }
 
-// ---------- PDF rendering ----------
+// ---------- Escalation engine (deterministic) ----------
+
+type EscalationLevel = 0 | 1 | 2 | 3;
+
+function computeEscalation(args: {
+  consecutive_breaks: number;
+  has_repeat_pattern: boolean;
+}): { level: EscalationLevel; label: string; description: string } {
+  if (args.consecutive_breaks >= 3 || args.has_repeat_pattern) {
+    return {
+      level: 3,
+      label: "LOCKDOWN",
+      description: "Repeated rule breaks. A+ setups only, with mandatory delay.",
+    };
+  }
+  if (args.consecutive_breaks === 2) {
+    return {
+      level: 2,
+      label: "STRICT MODE",
+      description: "Two broken trades in a row. Tightened tiers, pause before entry.",
+    };
+  }
+  if (args.consecutive_breaks === 1) {
+    return {
+      level: 1,
+      label: "WARNING",
+      description: "Last trade broke the plan. Read the checklist out loud before re-entry.",
+    };
+  }
+  return {
+    level: 0,
+    label: "STABLE",
+    description: "System holding. Standard rules apply.",
+  };
+}
+
+// ---------- Behavioral interpretation (AI — sharp, no rule generation) ----------
+
+async function generateBehaviorInterpretation(args: {
+  control_state: ControlState;
+  consecutive_breaks: number;
+  behavior_patterns: string[];
+  weak_categories: string[];
+  current_streak: number;
+}): Promise<string | null> {
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!apiKey) return null;
+  // Skip when there's nothing meaningful to interpret.
+  if (
+    args.consecutive_breaks === 0 &&
+    args.behavior_patterns.length === 0 &&
+    args.weak_categories.length === 0
+  ) {
+    return null;
+  }
+
+  const prompt = `You are writing one sharp psychological observation for a trader, in 2-3 sentences. You DO NOT create rules. You DO NOT recommend setups. You name what is actually going on underneath the behavior, in plain language.
+
+Style:
+- Specific, not generic. Bad: "you need more discipline". Good: "you are entering before confirmation because you fear missing the move — that is impatience, not opportunity".
+- Direct. No softeners like "it might be that". State the pattern.
+- Never moralizing. Observation, not judgment.
+- Reference the data. Tie the pattern to the actual broken category or behavior pattern listed.
+- Do NOT invent rules, setups, or strategies.
+- Max 60 words. Plain prose. No bullets, no headings.
+
+Context:
+- Control state: ${args.control_state}
+- Consecutive broken trades: ${args.consecutive_breaks}
+- Current clean-trade streak: ${args.current_streak}
+- Weak rule categories: ${args.weak_categories.join(", ") || "none"}
+- Behavior patterns active: ${args.behavior_patterns.join(", ") || "none"}
+
+Return JSON: {"interpretation":"..."}.`;
+
+  try {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: "You output strict JSON only." },
+          { role: "user", content: prompt },
+        ],
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const content: string = data?.choices?.[0]?.message?.content ?? "";
+    const m = content.match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    const parsed = JSON.parse(m[0]);
+    const text = typeof parsed?.interpretation === "string" ? parsed.interpretation.trim() : "";
+    return text || null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------- Stable rule ID builder ----------
+
+type RuleEntry = {
+  id: string;
+  category: "entry" | "exit" | "risk" | "behavior" | "adaptive";
+  label: string;
+  weak: boolean;
+};
+
+function buildRuleList(
+  strategy_rules: { entry: string[]; exit: string[]; risk: string[]; behavior: string[] },
+  computed: Computed,
+): RuleEntry[] {
+  const out: RuleEntry[] = [];
+  const cats: Array<["entry" | "exit" | "risk" | "behavior", string[]]> = [
+    ["entry", strategy_rules.entry],
+    ["exit", strategy_rules.exit],
+    ["risk", strategy_rules.risk],
+    ["behavior", strategy_rules.behavior],
+  ];
+  for (const [cat, items] of cats) {
+    items.forEach((label, i) => {
+      out.push({
+        id: `${cat}-${i + 1}`,
+        category: cat,
+        label,
+        weak: computed.weak_categories.includes(cat),
+      });
+    });
+  }
+  computed.adaptive_rules.forEach((r, i) => {
+    out.push({
+      id: `adaptive-${i + 1}`,
+      category: "adaptive",
+      label: r.text,
+      weak: false,
+    });
+  });
+  return out;
+}
+
+
 
 const A4: [number, number] = [595.28, 841.89];
 const MARGIN = 56;
