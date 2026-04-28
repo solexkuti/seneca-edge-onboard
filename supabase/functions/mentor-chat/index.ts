@@ -401,11 +401,16 @@ Deno.serve(async (req) => {
         context.profileSummary ||
         context.intelligence ||
         (context.recentPatterns && context.recentPatterns.length > 0) ||
-        (context.lastTwoTrades && context.lastTwoTrades.length > 0))
+        (context.lastTwoTrades && context.lastTwoTrades.length > 0) ||
+        context.activeStrategy)
     );
     let contextBlock = "";
     if (hasContext) {
       contextBlock = "\n\nUSER CONTEXT (real data — weave in gently when it helps the user see themselves clearly):";
+      if (context!.activeStrategy) {
+        const s = context!.activeStrategy;
+        contextBlock += `\n\n[Active Strategy${s.locked ? " — LOCKED" : ""}: ${s.name}]\nThe user is committed to these rules. Reference them when relevant. NEVER suggest rules outside this set.\n${s.rules}`;
+      }
       if (context!.profileSummary) {
         contextBlock += `\n\n[Trader Profile]\n${context!.profileSummary}`;
       }
