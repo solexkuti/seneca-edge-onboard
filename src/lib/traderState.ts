@@ -181,9 +181,11 @@ export function onTraderStateChange(cb: () => void): () => void {
   const handler = () => cb();
   window.addEventListener(TRADE_LOCK_EVENT, handler);
   window.addEventListener(ANALYZER_EVENT_LOGGED, handler);
+  window.addEventListener(RECOVERY_EVENT, handler);
   return () => {
     window.removeEventListener(TRADE_LOCK_EVENT, handler);
     window.removeEventListener(ANALYZER_EVENT_LOGGED, handler);
+    window.removeEventListener(RECOVERY_EVENT, handler);
   };
 }
 
