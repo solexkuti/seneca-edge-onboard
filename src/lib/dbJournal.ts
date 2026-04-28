@@ -76,25 +76,81 @@ export async function submitJournalEntry(
   }
   const userId = userData.user.id;
 
-  // 1) Insert trade
-  const { data: trade, error: tradeError } = await supabase
+  // 0) Server-side de-dupe: if an identical trade was just inserted (same
+  // market/direction/result/rr/prices within the last 2 minutes), reuse it
+  // instead of writing a second row. Protects against double-tap, retries,
+  // and multi-tab submissions.
+  const dedupeSinceIso = new Date(Date.now() - 2 * 60_000).toISOString();
+  const { data: recent } = await supabase
     .from("trades")
-    .insert({
-      user_id: userId,
-      market: input.trade.market,
-      direction: input.trade.direction,
-      entry_price: input.trade.entry_price ?? null,
-      stop_loss: input.trade.stop_loss ?? null,
-      take_profit: input.trade.take_profit ?? null,
-      result: input.trade.result ?? null,
-      rr: input.trade.rr ?? null,
-    })
-    .select()
-    .single();
+    .select("id, market, direction, result, rr, entry_price, stop_loss, take_profit, executed_at")
+    .eq("user_id", userId)
+    .eq("market", input.trade.market)
+    .eq("direction", input.trade.direction)
+    .gte("executed_at", dedupeSinceIso)
+    .order("executed_at", { ascending: false })
+    .limit(5);
 
-  if (tradeError || !trade) {
-    return { ok: false, error: tradeError?.message ?? "Failed to save trade." };
+  const eq = (a: number | null | undefined, b: number | null | undefined) =>
+    (a ?? null) === (b ?? null);
+  const duplicateTrade = (recent ?? []).find(
+    (t) =>
+      (t.result ?? null) === (input.trade.result ?? null) &&
+      eq(Number(t.rr ?? null) || null, input.trade.rr ?? null) &&
+      eq(Number(t.entry_price ?? null) || null, input.trade.entry_price ?? null) &&
+      eq(Number(t.stop_loss ?? null) || null, input.trade.stop_loss ?? null) &&
+      eq(Number(t.take_profit ?? null) || null, input.trade.take_profit ?? null),
+  );
+
+  if (duplicateTrade) {
+    // Already saved (or saved+log written). Fetch the joined row and return ok.
+    const { data: existingLog } = await supabase
+      .from("discipline_logs")
+      .select(
+        `id, trade_id, followed_entry, followed_exit, followed_risk,
+         followed_behavior, discipline_score, emotional_state, notes,
+         trade:trades!inner (
+           id, market, direction, result, rr, executed_at, strategy_id,
+           strategy:strategies ( id, name, entry_rule, exit_rule, risk_rule, behavior_rule )
+         )`,
+      )
+      .eq("trade_id", duplicateTrade.id)
+      .maybeSingle();
+
+    if (existingLog) {
+      const row = combine(existingLog.trade as any, existingLog as any);
+      return { ok: true, row };
+    }
+    // Trade exists but log was missing — fall through to insert just the log
+    // by reusing the existing trade id.
   }
+
+  // 1) Insert trade (or reuse the duplicate's id when only the log is missing)
+  let trade: { id: string } & Record<string, unknown>;
+  if (duplicateTrade) {
+    trade = duplicateTrade as any;
+  } else {
+    const { data: inserted, error: tradeError } = await supabase
+      .from("trades")
+      .insert({
+        user_id: userId,
+        market: input.trade.market,
+        direction: input.trade.direction,
+        entry_price: input.trade.entry_price ?? null,
+        stop_loss: input.trade.stop_loss ?? null,
+        take_profit: input.trade.take_profit ?? null,
+        result: input.trade.result ?? null,
+        rr: input.trade.rr ?? null,
+      })
+      .select()
+      .single();
+
+    if (tradeError || !inserted) {
+      return { ok: false, error: tradeError?.message ?? "Failed to save trade." };
+    }
+    trade = inserted as any;
+  }
+
 
   // 2) Insert discipline log
   const { data: log, error: logError } = await supabase
