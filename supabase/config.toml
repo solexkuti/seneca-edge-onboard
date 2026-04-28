@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.validate-refinement-answer]
 verify_jwt = false
+
+[functions.validate-chart]
+verify_jwt = false
+
+[functions.extract-chart]
+verify_jwt = false
+
+[functions.explain-analysis]
+verify_jwt = false
