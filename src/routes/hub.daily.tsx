@@ -135,6 +135,8 @@ function DailyChecklistPage() {
   const [confirming, setConfirming] = useState(false);
   const [result, setResult] = useState<GenResult | null>(null);
   const [acks, setAcks] = useState<Record<string, boolean>>({});
+  const [strictAck, setStrictAck] = useState(false);
+  const [finalAck, setFinalAck] = useState(false);
   const [alreadyConfirmed, setAlreadyConfirmed] = useState<{
     confirmed_at: string;
   } | null>(null);
