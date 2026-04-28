@@ -122,7 +122,19 @@ export async function submitJournalEntry(
     return { ok: false, error: "Trade timestamp is invalid." };
   }
 
-  // 0) Server-side de-dupe: if an identical trade was just inserted (same
+  // 0a) HARD GATE — trade lock. The DB trigger will also reject locked
+  // inserts, but we check here to give a precise message and avoid a
+  // failed write. No bypass: skipping this check still hits the trigger.
+  const lock = await fetchTradeLockState();
+  if (lock.trade_lock) {
+    console.warn("[journal] BLOCKED by trade lock:", lock.reason);
+    return {
+      ok: false,
+      error: `TRADING_LOCKED: ${lock.message} Confirm today's checklist in Daily Checklist before logging trades.`,
+    };
+  }
+
+  // 0b) Server-side de-dupe: if an identical trade was just inserted (same
   // market/direction/result/rr/prices within the last 2 minutes), reuse it
   // instead of writing a second row. Protects against double-tap, retries,
   // and multi-tab submissions.
