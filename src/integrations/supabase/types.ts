@@ -287,6 +287,39 @@ export type Database = {
           },
         ]
       }
+      discipline_state: {
+        Row: {
+          decision_sample: number
+          decision_score: number
+          execution_sample: number
+          execution_score: number
+          score: number
+          state: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          decision_sample?: number
+          decision_score?: number
+          execution_sample?: number
+          execution_score?: number
+          score?: number
+          state?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          decision_sample?: number
+          decision_score?: number
+          execution_sample?: number
+          execution_score?: number
+          score?: number
+          state?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       emotional_events: {
         Row: {
           action_taken: string | null
@@ -543,6 +576,33 @@ export type Database = {
           trigger_reason?: string
           triggered_by_event_id?: string | null
           triggered_by_trade_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      session_state: {
+        Row: {
+          block_reason: string | null
+          checklist_confirmed: boolean
+          generated_for: string
+          trading_allowed: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          block_reason?: string | null
+          checklist_confirmed?: boolean
+          generated_for?: string
+          trading_allowed?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          block_reason?: string | null
+          checklist_confirmed?: boolean
+          generated_for?: string
+          trading_allowed?: boolean
           updated_at?: string
           user_id?: string
         }

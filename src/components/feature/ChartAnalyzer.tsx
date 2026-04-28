@@ -156,6 +156,26 @@ export default function ChartAnalyzer() {
       );
       return;
     }
+
+    // Centralized server-side gate (TRADING_BLOCKED). Single source of truth.
+    try {
+      const { enforceTradingAccess } = await import("@/server/seneca.functions");
+      const gate = await enforceTradingAccess();
+      if (!gate.allowed) {
+        const msg =
+          gate.reason === "NO_STRATEGY"
+            ? "No active strategy. Open Strategy Builder."
+            : gate.reason === "CHECKLIST_REQUIRED"
+              ? "Confirm today's checklist before analyzing."
+              : "Discipline locked. Recover with the mentor before analyzing.";
+        toast.error(msg);
+        void refreshTraderState();
+        return;
+      }
+    } catch (e) {
+      console.warn("[analyze] enforceTradingAccess unavailable, falling back:", e);
+    }
+
     setPhase("analyzing");
     setStep(0);
     setResult(null);

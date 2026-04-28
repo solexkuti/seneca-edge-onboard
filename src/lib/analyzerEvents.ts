@@ -77,6 +77,15 @@ export async function logAnalyzerEvent(args: {
     return null;
   }
   broadcastAnalyzerEvent();
+  // Centralized engine: refresh discipline_state + session_state snapshot.
+  try {
+    const { updateDiscipline } = await import("@/server/seneca.functions");
+    void updateDiscipline().catch((e) =>
+      console.warn("[analyzer-events] updateDiscipline failed:", e),
+    );
+  } catch (e) {
+    console.warn("[analyzer-events] engine unavailable:", e);
+  }
   return data as AnalyzerEvent;
 }
 
