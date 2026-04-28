@@ -387,6 +387,65 @@ export default function TradingJournalFlow() {
         </button>
       </div>
     </FeatureShell>
+    </>
+  );
+}
+
+// ───────── Discipline Impact (post-action feedback, < 300ms) ─────────
+
+function DisciplineImpactBanner({
+  executionDelta,
+  decisionDelta,
+}: {
+  executionDelta: number;
+  decisionDelta: number | null;
+}) {
+  // Translate execution discipline_score (0–100) into a familiar +2 / 0 / -5 / -10
+  // bucket so the user always sees a deterministic delta.
+  const exec =
+    executionDelta >= 100
+      ? "+2"
+      : executionDelta >= 75
+        ? "0"
+        : executionDelta >= 50
+          ? "-5"
+          : "-10";
+  const tone: "ok" | "warn" | "danger" =
+    executionDelta >= 75 ? "ok" : executionDelta >= 50 ? "warn" : "danger";
+  const reason =
+    executionDelta >= 100
+      ? "All four rules followed — clean execution."
+      : executionDelta >= 75
+        ? "Mostly followed plan — minor slip."
+        : executionDelta >= 50
+          ? "Two rules broken — discipline impacted."
+          : "Three or more rules broken — significant impact.";
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, delay: 0.05 }}
+      className={`mt-4 rounded-xl px-3.5 py-3 ring-1 ${
+        tone === "ok"
+          ? "bg-emerald-500/[0.06] ring-emerald-500/25 text-emerald-900"
+          : tone === "warn"
+            ? "bg-amber-500/[0.07] ring-amber-500/30 text-amber-900"
+            : "bg-red-600/[0.06] ring-red-600/30 text-red-900"
+      }`}
+    >
+      <p className="text-[10px] font-bold uppercase tracking-[0.22em] opacity-80">
+        Discipline impact
+      </p>
+      <p className="mt-1 text-[18px] font-bold tabular-nums leading-none">
+        Execution {exec}
+        {decisionDelta != null && (
+          <span className="ml-2 text-[12px] font-semibold opacity-70">
+            · last decision {decisionDelta >= 0 ? "+" : ""}{decisionDelta}
+          </span>
+        )}
+      </p>
+      <p className="mt-1.5 text-[12px] leading-snug opacity-90">{reason}</p>
+    </motion.div>
   );
 }
 
