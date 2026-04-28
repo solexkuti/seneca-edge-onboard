@@ -24,8 +24,16 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import FeatureShell from "./FeatureShell";
+import PreTradeIntercept from "./PreTradeIntercept";
 import { playFeedback } from "@/lib/feedback";
 import { supabase } from "@/integrations/supabase/client";
+import { useTraderState } from "@/hooks/useTraderState";
+import {
+  bumpPressureEscalation,
+  evaluatePressure,
+  logPressureEvent,
+  type PressureEvaluation,
+} from "@/lib/pressure";
 import type {
   EmotionalState,
   MistakeTagValue,
@@ -97,11 +105,15 @@ import {
 
 export default function TradingJournalFlow() {
   const navigate = useNavigate();
+  const { state: traderState } = useTraderState();
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [submitting, setSubmitting] = useState(false);
   const [doneScore, setDoneScore] = useState<number | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Pressure layer — evaluated when the user attempts to save the trade.
+  const [pressure, setPressure] = useState<PressureEvaluation | null>(null);
 
   const canContinue = useMemo(() => {
     if (step === 0) return !!draft.market.trim() && !!draft.direction && !!draft.result;
@@ -125,8 +137,40 @@ export default function TradingJournalFlow() {
       return;
     }
     playFeedback("press");
+
+    // ── Pressure intercept ──────────────────────────────────────────
+    // Evaluate against the live TRADER_STATE. If active, render the
+    // intercept and DO NOT submit until hold-to-confirm completes.
+    const evalResult = evaluatePressure(traderState);
+    if (evalResult.active) {
+      bumpPressureEscalation();
+      setPressure(evalResult);
+      return;
+    }
     await handleSubmit();
   };
+
+  const handleInterceptConfirm = async () => {
+    if (!pressure) return;
+    await logPressureEvent({ evaluation: pressure, proceeded: true });
+    setPressure(null);
+    await handleSubmit();
+  };
+
+  const handleInterceptCancel = async () => {
+    if (!pressure) return;
+    await logPressureEvent({ evaluation: pressure, proceeded: false });
+    setPressure(null);
+    // Soft exit → route to mentor for explanation.
+    navigate({ to: "/hub/mind" });
+  };
+
+  // Last analyzer event delta — used in post-action feedback.
+  const lastDecisionDelta = useMemo(() => {
+    const a = traderState.discipline.recent.find((d) => d.source === "analyzer");
+    return a ? a.score_delta : null;
+  }, [traderState.discipline.recent]);
+
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -213,6 +257,12 @@ export default function TradingJournalFlow() {
             </div>
           </div>
 
+          {/* Post-action: Discipline Impact (deterministic, < 300ms) */}
+          <DisciplineImpactBanner
+            executionDelta={doneScore}
+            decisionDelta={lastDecisionDelta}
+          />
+
           <p className="mt-5 text-[13.5px] leading-snug text-text-secondary">
             Saved locally. Sync status updates above.
           </p>
@@ -245,6 +295,14 @@ export default function TradingJournalFlow() {
   }
 
   return (
+    <>
+      {pressure && (
+        <PreTradeIntercept
+          evaluation={pressure}
+          onConfirm={handleInterceptConfirm}
+          onCancel={handleInterceptCancel}
+        />
+      )}
     <FeatureShell
       eyebrow="Trading Journal"
       title="Log a trade."
@@ -329,6 +387,65 @@ export default function TradingJournalFlow() {
         </button>
       </div>
     </FeatureShell>
+    </>
+  );
+}
+
+// ───────── Discipline Impact (post-action feedback, < 300ms) ─────────
+
+function DisciplineImpactBanner({
+  executionDelta,
+  decisionDelta,
+}: {
+  executionDelta: number;
+  decisionDelta: number | null;
+}) {
+  // Translate execution discipline_score (0–100) into a familiar +2 / 0 / -5 / -10
+  // bucket so the user always sees a deterministic delta.
+  const exec =
+    executionDelta >= 100
+      ? "+2"
+      : executionDelta >= 75
+        ? "0"
+        : executionDelta >= 50
+          ? "-5"
+          : "-10";
+  const tone: "ok" | "warn" | "danger" =
+    executionDelta >= 75 ? "ok" : executionDelta >= 50 ? "warn" : "danger";
+  const reason =
+    executionDelta >= 100
+      ? "All four rules followed — clean execution."
+      : executionDelta >= 75
+        ? "Mostly followed plan — minor slip."
+        : executionDelta >= 50
+          ? "Two rules broken — discipline impacted."
+          : "Three or more rules broken — significant impact.";
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, delay: 0.05 }}
+      className={`mt-4 rounded-xl px-3.5 py-3 ring-1 ${
+        tone === "ok"
+          ? "bg-emerald-500/[0.06] ring-emerald-500/25 text-emerald-900"
+          : tone === "warn"
+            ? "bg-amber-500/[0.07] ring-amber-500/30 text-amber-900"
+            : "bg-red-600/[0.06] ring-red-600/30 text-red-900"
+      }`}
+    >
+      <p className="text-[10px] font-bold uppercase tracking-[0.22em] opacity-80">
+        Discipline impact
+      </p>
+      <p className="mt-1 text-[18px] font-bold tabular-nums leading-none">
+        Execution {exec}
+        {decisionDelta != null && (
+          <span className="ml-2 text-[12px] font-semibold opacity-70">
+            · last decision {decisionDelta >= 0 ? "+" : ""}{decisionDelta}
+          </span>
+        )}
+      </p>
+      <p className="mt-1.5 text-[12px] leading-snug opacity-90">{reason}</p>
+    </motion.div>
   );
 }
 
