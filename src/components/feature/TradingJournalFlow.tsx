@@ -122,6 +122,14 @@ export default function TradingJournalFlow() {
     if (submitting) return;
     setSubmitting(true);
 
+    const d = draft.discipline;
+    const optimisticScore =
+      ((d.followed_entry ? 1 : 0) +
+        (d.followed_exit ? 1 : 0) +
+        (d.followed_risk ? 1 : 0) +
+        (d.followed_behavior ? 1 : 0)) *
+      25;
+
     const payload: NewJournalSubmission = {
       trade: {
         market: draft.market.trim().toUpperCase(),
@@ -133,23 +141,23 @@ export default function TradingJournalFlow() {
         rr: parseNumOrNull(draft.rr),
       },
       discipline: {
-        followed_entry: !!draft.discipline.followed_entry,
-        followed_exit: !!draft.discipline.followed_exit,
-        followed_risk: !!draft.discipline.followed_risk,
-        followed_behavior: !!draft.discipline.followed_behavior,
+        followed_entry: !!d.followed_entry,
+        followed_exit: !!d.followed_exit,
+        followed_risk: !!d.followed_risk,
+        followed_behavior: !!d.followed_behavior,
       },
       emotional_state: draft.emotional_state!,
       notes: draft.notes,
     };
 
-    const res = await submitJournalEntry(payload);
-    setSubmitting(false);
+    // 1. Move user forward immediately (optimistic UI).
+    setDoneScore(optimisticScore);
 
-    if (!res.ok) {
-      toast.error(res.error);
-      return;
-    }
-    setDoneScore(res.row.discipline_score);
+    // 2. Buffer locally so nothing is lost if the tab closes mid-sync.
+    bufferPendingSubmission(payload);
+
+    // 3. Sync in the background with silent retries.
+    void syncWithRetry(payload);
   };
 
   // ───────── confirmation screen ─────────
