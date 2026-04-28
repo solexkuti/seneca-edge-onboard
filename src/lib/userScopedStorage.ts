@@ -62,6 +62,26 @@ export function clearLegacyUnscopedKeys() {
 }
 
 /**
+ * Wipe every per-user namespaced key (`u:<uid>:*`) for a SPECIFIC previous
+ * user id. Called on sign-out / user switch so the next account on the same
+ * browser cannot read the prior user's caches.
+ */
+export function clearScopedKeysFor(uid: string | null) {
+  if (typeof window === "undefined" || !uid) return;
+  const prefix = `u:${uid}:`;
+  try {
+    const toRemove: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && k.startsWith(prefix)) toRemove.push(k);
+    }
+    for (const k of toRemove) window.localStorage.removeItem(k);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
  * Wire auth changes once at app boot. Updates the cached user id and clears
  * unscoped legacy keys whenever the user changes (sign-in, sign-out, switch).
  */
@@ -74,11 +94,14 @@ export function installUserScopedStorage() {
   // Always clear legacy keys on boot so a returning user never sees leftovers.
   clearLegacyUnscopedKeys();
 
-  supabase.auth.onAuthStateChange((_event, session) => {
+  supabase.auth.onAuthStateChange((event, session) => {
     const next = session?.user?.id ?? null;
     if (next !== cachedUserId) {
+      const prev = cachedUserId;
       cachedUserId = next;
       clearLegacyUnscopedKeys();
+      if (prev && prev !== next) clearScopedKeysFor(prev);
     }
+    if (event === "SIGNED_OUT") clearLegacyUnscopedKeys();
   });
 }

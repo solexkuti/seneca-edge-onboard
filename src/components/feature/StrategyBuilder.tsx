@@ -1,18 +1,24 @@
-// StrategyBuilder — 9-step guided flow that turns raw input into a locked,
-// enforceable trading system.
+// StrategyBuilder — premium guided flow that turns raw input into an
+// enforceable trading system. Designed to feel like a calm conversation,
+// not an exam.
+//
+// Principles:
+//   - One question per screen. No clutter.
+//   - Auto-save on every change. No "Submit" buttons.
+//   - Never block forward progress for vague input.
+//   - All AI calls have a hard timeout fallback.
+//   - PDF export runs in the browser; .txt fallback always available.
 //
 // Steps:
-// 1) Account type (multi-select)         -> adjusts strictness defaults
-// 2) Risk profile                        -> per-trade %, daily loss %, max DD %
-// 3) Raw strategy input                  -> free text
-// 4) Tier strictness                     -> A+ / B+ / C sliders
-// 5) AI interpretation                   -> structured rules + ambiguity flags
-// 6) Refinement loop                     -> 3-5 precise questions
-// 7) Output generation                   -> tier checklist + trading plan
-// 8) Export                              -> PDF (checklist / plan)
-// 9) Lock                                -> prevents casual edits
-//
-// Safety: AI never predicts direction; only restructures the user's own words.
+//   1) Account     — what kind of account
+//   2) Risk        — per-trade %, daily loss, max DD
+//   3) Strategy    — describe in own words
+//   4) Tiers       — A+ / B+ / C definitions
+//   5) AI parse    — structure rules
+//   6) Refine      — single optional "anything unclear?" screen
+//   7) Output      — checklist + plan
+//   8) Export      — PDF + txt
+//   9) Lock        — finalize
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -24,11 +30,13 @@ import {
   LockOpen,
   Loader2,
   Sparkles,
-  Download,
+  
   CheckCircle2,
   AlertTriangle,
   Plus,
   ShieldAlert,
+  FileText,
+  FileDown,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,7 +49,6 @@ import {
   type ChecklistByTier,
   type TierRules,
   EMPTY_RULES,
-  createBlueprint,
   findOrCreateDraft,
   getBlueprint,
   updateBlueprint,
@@ -49,6 +56,7 @@ import {
   unlockBlueprint,
 } from "@/lib/dbStrategyBlueprints";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadPdf, downloadTxt } from "@/lib/strategyExport";
 
 const ACCOUNT_OPTIONS: { value: AccountType; label: string; hint: string }[] = [
   { value: "prop", label: "Prop firm", hint: "Strict drawdown rules" },
@@ -72,12 +80,22 @@ const STEPS: { key: StepKey; label: string }[] = [
   { key: "risk", label: "Risk" },
   { key: "raw", label: "Strategy" },
   { key: "tiers", label: "Tiers" },
-  { key: "parse", label: "AI parse" },
+  { key: "parse", label: "Parse" },
   { key: "refine", label: "Refine" },
   { key: "output", label: "Output" },
   { key: "export", label: "Export" },
   { key: "lock", label: "Lock" },
 ];
+
+// Hard timeout helper so no async call can stall the UI.
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms),
+    ),
+  ]);
+}
 
 export default function StrategyBuilder({
   blueprintId,
@@ -89,56 +107,25 @@ export default function StrategyBuilder({
   const [stepIdx, setStepIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
-  const [slowLoad, setSlowLoad] = useState(false);
   const step = STEPS[stepIdx];
 
-  // Bootstrap: load existing or create new — exactly once per (blueprintId).
+  // Bootstrap: load existing or create draft. Hard 3s ceiling.
   useEffect(() => {
     setBp(null);
     setBootError(null);
-    setSlowLoad(false);
-
     let cancelled = false;
-    const timeoutMs = blueprintId ? 3000 : 5000;
-    const timeoutTimer = window.setTimeout(() => {
-      if (cancelled) return;
-      console.error("[StrategyBuilder] Strategy load timed out", { strategyId: blueprintId });
-      setSlowLoad(true);
-      setBootError("Strategy load timed out. Please retry or start fresh.");
-      setBp(null);
-      cancelled = true;
-    }, timeoutMs);
-
-    const finish = () => {
-      window.clearTimeout(timeoutTimer);
-    };
-
-    // Hard timeout helper — DB calls must NEVER hang the bootstrap.
-    const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
-      Promise.race([
-        p,
-        new Promise<T>((_, reject) =>
-          setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms),
-        ),
-      ]);
 
     (async () => {
       try {
         if (blueprintId) {
-          // eslint-disable-next-line no-console
-          console.log("[StrategyBuilder] fetch existing strategy", { strategyId: blueprintId });
           const existing = await withTimeout(
             getBlueprint(blueprintId),
             3000,
             "getBlueprint",
           );
           if (cancelled) return;
-          finish();
-          // eslint-disable-next-line no-console
-          console.log("[StrategyBuilder] fetch existing result", { strategyId: blueprintId, found: !!existing });
           if (!existing) {
-            console.error("[StrategyBuilder] strategy not found", { strategyId: blueprintId });
-            setBootError("Strategy not found or you do not have access to it.");
+            setBootError("This strategy doesn't exist or isn't yours.");
             return;
           }
           const idx = Math.max(
@@ -147,21 +134,9 @@ export default function StrategyBuilder({
           );
           setStepIdx(idx === -1 ? 0 : idx);
           setBp(existing);
-          // eslint-disable-next-line no-console
-          console.log("[StrategyBuilder] SESSION resumed:", existing.id, "STEP:", existing.current_step);
         } else {
-          // No id in URL → reuse most recent empty draft, else create one.
-          // findOrCreateDraft is in-flight-deduped so StrictMode double-invoke
-          // and back-to-back navigations cannot create duplicates.
-          const created = await withTimeout(
-            findOrCreateDraft(),
-            5000,
-            "findOrCreateDraft",
-          );
+          const created = await withTimeout(findOrCreateDraft(), 3000, "findOrCreateDraft");
           if (cancelled) return;
-          finish();
-          // eslint-disable-next-line no-console
-          console.log("[StrategyBuilder] SESSION ready:", created.id, "STEP:", created.current_step);
           void navigate({
             to: "/hub/strategy/$id",
             params: { id: created.id },
@@ -169,62 +144,50 @@ export default function StrategyBuilder({
           });
         }
       } catch (err) {
-        finish();
-        console.error("[StrategyBuilder] Strategy load failed", err);
-        const msg = err instanceof Error ? err.message : "Could not start a new strategy.";
-        setBootError(msg);
-        toast.error("Couldn't load existing strategy. Start fresh.");
+        if (cancelled) return;
+        console.error("[StrategyBuilder] bootstrap failed", err);
+        setBootError("Took too long to load. Try again.");
       }
     })();
+
     return () => {
       cancelled = true;
-      window.clearTimeout(timeoutTimer);
     };
-  }, [blueprintId]);
+  }, [blueprintId, navigate]);
 
   const startFresh = async () => {
     try {
       setBootError(null);
-      setSlowLoad(false);
       const created = await findOrCreateDraft();
       void navigate({
         to: "/hub/strategy/$id",
         params: { id: created.id },
         replace: true,
       });
-    } catch (err) {
-      console.error("[StrategyBuilder] startFresh failed", err);
-      toast.error("Could not start a new strategy. Are you signed in?");
+    } catch {
+      toast.error("Couldn't start a new strategy.");
     }
   };
 
+  // Optimistic local update + persist. Never blocks UI.
   const patch = async (p: Partial<StrategyBlueprint>) => {
     if (!bp) return;
     setBp({ ...bp, ...p });
     try {
-      const updated = await updateBlueprint(bp.id, p);
-      setBp(updated);
+      await updateBlueprint(bp.id, p);
     } catch (err) {
-      console.error("update failed", err);
-      toast.error("Could not save changes.");
+      console.error("[StrategyBuilder] patch failed", err);
     }
   };
 
-  // Single source of truth for step transitions: updates state AND persists.
   const goToStep = async (nextIdx: number) => {
     if (!bp) return;
     const clamped = Math.max(0, Math.min(STEPS.length - 1, nextIdx));
     const nextKey = STEPS[clamped].key;
     setStepIdx(clamped);
-    // eslint-disable-next-line no-console
-    console.log("[StrategyBuilder] STEP →", nextKey);
     if (bp.current_step !== nextKey) {
-      try {
-        const updated = await updateBlueprint(bp.id, { current_step: nextKey });
-        setBp(updated);
-      } catch (err) {
-        console.error("step persistence failed", err);
-      }
+      void updateBlueprint(bp.id, { current_step: nextKey }).catch(() => {});
+      setBp({ ...bp, current_step: nextKey });
     }
   };
 
@@ -240,83 +203,61 @@ export default function StrategyBuilder({
           (bp.max_drawdown_pct ?? 0) > 0
         );
       case "raw":
-        return (bp.raw_input?.trim().length ?? 0) >= 30;
-      case "tiers":
-        return true;
+        return (bp.raw_input?.trim().length ?? 0) >= 20;
       case "parse":
         return Object.values(bp.structured_rules ?? {}).some(
           (a) => Array.isArray(a) && a.length > 0,
         );
-      case "refine":
-        // Non-blocking: any forward progress is allowed. The system handles
-        // ambiguity in the background — the user is never gated here.
-        return true;
       case "output":
         return !!bp.trading_plan && (bp.checklist?.a_plus?.length ?? 0) > 0;
-      case "export":
-        return true;
-      case "lock":
+      // tiers / refine / export / lock — never block.
+      default:
         return true;
     }
   }, [bp, step.key]);
 
   if (bootError) {
     return (
-      <div className="flex min-h-[60svh] flex-col items-center justify-center gap-4 px-6 text-center">
-        <AlertTriangle className="h-6 w-6 text-amber-500" />
-        <p className="max-w-sm text-sm text-text-primary">
-          Couldn't load existing strategy. Start fresh.
-        </p>
-        <p className="max-w-sm text-xs text-muted-foreground">{bootError}</p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={startFresh}
-            className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95"
-          >
-            Start fresh
-          </button>
-          <button
-            type="button"
-            onClick={() => void navigate({ to: "/hub", replace: true })}
-            className="rounded-xl bg-card px-4 py-2 text-sm font-medium text-text-primary ring-1 ring-border shadow-soft hover:opacity-95"
-          >
-            Back to hub
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!bp) {
-    return (
-      <div className="flex min-h-[60svh] flex-col items-center justify-center gap-3 px-6 text-center">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          Preparing your system…
-        </p>
-        {slowLoad && (
-          <div className="mt-3 flex flex-col items-center gap-2">
-            <p className="max-w-xs text-sm text-text-primary">
-              Couldn't load existing strategy. Start fresh.
-            </p>
+      <Shell>
+        <div className="flex min-h-[60svh] flex-col items-center justify-center gap-4 px-6 text-center">
+          <AlertTriangle className="h-6 w-6 text-amber-500" />
+          <p className="max-w-sm text-sm text-foreground">{bootError}</p>
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={startFresh}
               className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95"
             >
-              Start a new strategy
+              Start fresh
             </button>
+            <Link
+              to="/hub/strategy"
+              className="rounded-xl bg-card px-4 py-2 text-sm font-medium text-foreground ring-1 ring-border shadow-soft hover:opacity-95"
+            >
+              Back
+            </Link>
           </div>
-        )}
-      </div>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (!bp) {
+    return (
+      <Shell>
+        <div className="flex min-h-[60svh] flex-col items-center justify-center gap-3">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            One moment
+          </p>
+        </div>
+      </Shell>
     );
   }
 
   return (
-    <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
-      <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-90" />
-      <div className="relative z-10 mx-auto w-full max-w-[640px] px-5 pt-6 pb-24">
+    <Shell>
+      <div className="mx-auto w-full max-w-[640px] px-5 pt-5 pb-24">
         {/* Top bar */}
         <div className="flex items-center justify-between">
           <Link
@@ -326,52 +267,41 @@ export default function StrategyBuilder({
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <div className="text-xs font-medium text-muted-foreground">
-            Step {stepIdx + 1} of {STEPS.length}
+          <div className="text-[11px] font-medium tracking-wide text-muted-foreground">
+            {stepIdx + 1} / {STEPS.length}
           </div>
           <div className="w-10" />
         </div>
 
-        {/* Header */}
-        <div className="mt-5">
-          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-            Strategy Builder
-          </div>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-            {bp.name}
-            {bp.locked && (
-              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary align-middle">
-                <Lock className="h-3 w-3" /> Locked
-              </span>
-            )}
-          </h1>
+        {/* Thin progress bar */}
+        <div className="mt-6 h-1 w-full overflow-hidden rounded-full bg-border/60">
+          <motion.div
+            className="h-full bg-primary"
+            initial={false}
+            animate={{ width: `${((stepIdx + 1) / STEPS.length) * 100}%` }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          />
         </div>
 
-        {/* Progress */}
-        <div className="mt-4 flex items-center gap-1.5">
-          {STEPS.map((s, i) => (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => void goToStep(i)}
-              className={`h-1.5 flex-1 rounded-full transition-colors ${
-                i <= stepIdx ? "bg-primary" : "bg-border"
-              }`}
-              aria-label={`Go to step ${i + 1}: ${s.label}`}
-            />
-          ))}
+        {/* Title row */}
+        <div className="mt-8 flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+          <span>{bp.name || "Untitled strategy"}</span>
+          {bp.locked && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+              <Lock className="h-3 w-3" /> Locked
+            </span>
+          )}
         </div>
 
         {/* Step body */}
-        <div className="mt-6">
+        <div className="mt-3 min-h-[420px]">
           <AnimatePresence mode="wait">
             <motion.div
               key={step.key}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.22 }}
-              className="rounded-2xl bg-card ring-1 ring-border shadow-soft p-5"
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             >
               {step.key === "account" && (
                 <StepAccount
@@ -382,10 +312,7 @@ export default function StrategyBuilder({
               )}
               {step.key === "risk" && <StepRisk bp={bp} patch={patch} />}
               {step.key === "raw" && (
-                <StepRaw
-                  bp={bp}
-                  onChange={(raw_input) => patch({ raw_input })}
-                />
+                <StepRaw bp={bp} onChange={(raw_input) => patch({ raw_input })} />
               )}
               {step.key === "tiers" && <StepTiers bp={bp} patch={patch} />}
               {step.key === "parse" && (
@@ -404,12 +331,12 @@ export default function StrategyBuilder({
         </div>
 
         {/* Nav */}
-        <div className="mt-5 flex items-center justify-between">
+        <div className="mt-10 flex items-center justify-between">
           <button
             type="button"
             onClick={() => void goToStep(stepIdx - 1)}
             disabled={stepIdx === 0}
-            className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-foreground/80 hover:bg-card disabled:opacity-40"
+            className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-foreground/70 transition hover:text-foreground disabled:opacity-30"
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
@@ -418,20 +345,29 @@ export default function StrategyBuilder({
               type="button"
               onClick={() => void goToStep(stepIdx + 1)}
               disabled={!canAdvance || busy}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-soft transition hover:opacity-95 disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-soft transition hover:opacity-95 disabled:opacity-40"
             >
-              Continue <ArrowRight className="h-4 w-4" />
+              Next <ArrowRight className="h-4 w-4" />
             </button>
           ) : (
             <Link
               to="/hub/strategy"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95"
             >
               Done
             </Link>
           )}
         </div>
       </div>
+    </Shell>
+  );
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
+      <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-90" />
+      <div className="relative z-10">{children}</div>
     </div>
   );
 }
@@ -453,44 +389,43 @@ function StepAccount({
     onChange(Array.from(set));
   };
   return (
-    <div className="space-y-4">
-      <Header
-        eyebrow="Step 1"
-        title="What account is this for?"
-        sub="We adjust strictness and risk defaults to match."
-      />
+    <div className="space-y-7">
+      <Question title="Name your strategy" sub="Anything works — you can change it later." />
       <input
-        value={bp.name}
-        onChange={(e) => onName(e.target.value)}
-        placeholder="Strategy name"
-        className="w-full rounded-xl bg-background px-3 py-2.5 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40"
+        value={bp.name === "Untitled Strategy" ? "" : bp.name}
+        onChange={(e) => onName(e.target.value || "Untitled Strategy")}
+        placeholder="e.g. London breakout"
+        className="w-full rounded-xl bg-card px-4 py-3 text-base ring-1 ring-border shadow-soft focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
-      <div className="grid grid-cols-1 gap-2">
-        {ACCOUNT_OPTIONS.map((opt) => {
-          const active = bp.account_types?.includes(opt.value);
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => toggle(opt.value)}
-              className={`flex items-center justify-between rounded-xl px-4 py-3 text-left ring-1 transition ${
-                active
-                  ? "bg-primary/10 ring-primary text-foreground"
-                  : "bg-background ring-border hover:ring-primary/40"
-              }`}
-            >
-              <div>
-                <div className="text-sm font-medium">{opt.label}</div>
-                <div className="text-xs text-muted-foreground">{opt.hint}</div>
-              </div>
-              <div
-                className={`h-4 w-4 rounded-full ring-1 ${
-                  active ? "bg-primary ring-primary" : "ring-border"
+      <div className="pt-2">
+        <p className="text-sm text-muted-foreground">What account is this for?</p>
+        <div className="mt-3 grid grid-cols-1 gap-2">
+          {ACCOUNT_OPTIONS.map((opt) => {
+            const active = bp.account_types?.includes(opt.value);
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => toggle(opt.value)}
+                className={`flex items-center justify-between rounded-xl px-4 py-3.5 text-left ring-1 transition ${
+                  active
+                    ? "bg-primary/10 ring-primary text-foreground shadow-soft"
+                    : "bg-card ring-border hover:ring-primary/40"
                 }`}
-              />
-            </button>
-          );
-        })}
+              >
+                <div>
+                  <div className="text-sm font-medium">{opt.label}</div>
+                  <div className="text-xs text-muted-foreground">{opt.hint}</div>
+                </div>
+                <div
+                  className={`h-4 w-4 rounded-full ring-1 transition ${
+                    active ? "bg-primary ring-primary" : "ring-border"
+                  }`}
+                />
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -510,63 +445,46 @@ function StepRisk({
     placeholder: string;
     hint: string;
   }> = [
-    {
-      key: "risk_per_trade_pct",
-      label: "Risk per trade (%)",
-      placeholder: "0.50",
-      hint: "Typical: 0.25 – 1.0",
-    },
-    {
-      key: "daily_loss_limit_pct",
-      label: "Daily loss limit (%)",
-      placeholder: "3.00",
-      hint: "Hard stop for the day",
-    },
-    {
-      key: "max_drawdown_pct",
-      label: "Max drawdown (%)",
-      placeholder: "10.00",
-      hint: "Account-wide cap",
-    },
+    { key: "risk_per_trade_pct", label: "Risk per trade", placeholder: "0.5", hint: "%" },
+    { key: "daily_loss_limit_pct", label: "Daily loss limit", placeholder: "3", hint: "%" },
+    { key: "max_drawdown_pct", label: "Max drawdown", placeholder: "10", hint: "%" },
   ];
   const overCap = (bp.risk_per_trade_pct ?? 0) > 5;
   return (
-    <div className="space-y-4">
-      <Header
-        eyebrow="Step 2"
+    <div className="space-y-7">
+      <Question
         title="Set your risk envelope"
-        sub="These numbers become hard stops in your checklist."
+        sub="These become hard stops — exceeding them flags the trade."
       />
       <div className="space-y-3">
         {fields.map((f) => (
-          <div key={String(f.key)}>
-            <label className="block text-xs font-medium text-muted-foreground">
+          <div key={String(f.key)} className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+            <label className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {f.label}
             </label>
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              min={0}
-              max={100}
-              value={(bp[f.key] as number | null) ?? ""}
-              placeholder={f.placeholder}
-              onChange={(e) => {
-                const v = e.target.value === "" ? null : Number(e.target.value);
-                void patch({ [f.key]: v } as Partial<StrategyBlueprint>);
-              }}
-              className="mt-1 w-full rounded-xl bg-background px-3 py-2.5 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
-            <div className="mt-1 text-xs text-muted-foreground">{f.hint}</div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                min={0}
+                max={100}
+                value={(bp[f.key] as number | null) ?? ""}
+                placeholder={f.placeholder}
+                onChange={(e) => {
+                  const v = e.target.value === "" ? null : Number(e.target.value);
+                  void patch({ [f.key]: v } as Partial<StrategyBlueprint>);
+                }}
+                className="w-full bg-transparent text-2xl font-semibold tracking-tight focus:outline-none"
+              />
+              <span className="text-sm text-muted-foreground">{f.hint}</span>
+            </div>
           </div>
         ))}
         {overCap && (
           <div className="flex items-start gap-2 rounded-xl bg-amber-500/5 p-3 ring-1 ring-amber-500/30 text-xs text-amber-700 dark:text-amber-400">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>
-              Risking more than 5% per trade is outside any sane discipline
-              envelope. Consider lowering this before locking.
-            </span>
+            <span>Above 5% per trade is unusually high. You can still continue.</span>
           </div>
         )}
       </div>
@@ -583,23 +501,18 @@ function StepRaw({
   onChange: (s: string) => void;
 }) {
   return (
-    <div className="space-y-4">
-      <Header
-        eyebrow="Step 3"
-        title="Describe your strategy in your own words"
-        sub="Don't worry about structure — write it like you'd explain it to a friend."
+    <div className="space-y-6">
+      <Question
+        title="Describe your strategy"
+        sub="Type it how you think. We'll refine it."
       />
       <textarea
         value={bp.raw_input ?? ""}
         onChange={(e) => onChange(e.target.value)}
         rows={10}
-        placeholder="Example: I trade NY session breakouts on EURUSD. I wait for a clean break of London high or low, then a retest with rejection wick. I risk 0.5% per trade, max 3 trades a day, no trading after 2 losses. Stop above the wick, target 2R minimum."
-        className="w-full rounded-xl bg-background px-3 py-2.5 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+        placeholder="I trade NY breakouts on EURUSD. Wait for a clean break of London high or low, then a retest. Risk 0.5%, max 3 trades a day, no trading after 2 losses..."
+        className="w-full rounded-xl bg-card px-4 py-3 text-sm leading-relaxed ring-1 ring-border shadow-soft focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
       />
-      <div className="text-xs text-muted-foreground">
-        Minimum 30 characters. The more detail you give, the fewer questions
-        we'll ask later.
-      </div>
     </div>
   );
 }
@@ -614,10 +527,8 @@ function StepTiers({
 }) {
   const t = bp.tier_strictness ?? { a_plus: 100, b_plus: 80, c: 60 };
   const r: TierRules = bp.tier_rules ?? { a_plus: "", b_plus: "", c: "" };
-  const updateStrict = (k: keyof typeof t, v: number) =>
-    void patch({ tier_strictness: { ...t, [k]: v } });
   const updateRule = (k: keyof TierRules, v: string) =>
-    void patch({ tier_rules: { ...r, [k]: v } });
+    void patch({ tier_rules: { ...r, [k]: v }, tier_strictness: t });
 
   const tiers: Array<{
     k: keyof TierRules;
@@ -627,41 +538,34 @@ function StepTiers({
   }> = [
     {
       k: "a_plus",
-      title: "A+ — Perfect execution only",
-      sub: "Every condition met. No tolerance.",
-      placeholder:
-        "e.g. HTF bias aligned, key level reaction, volume confirmation, news clear, R:R ≥ 2.5",
+      title: "A+   Perfect",
+      sub: "Every condition met.",
+      placeholder: "All confirmations. Clean structure. R:R ≥ 2.5",
     },
     {
       k: "b_plus",
-      title: "B+ — One tolerated flaw",
-      sub: "Strong setup, missing one non-critical item.",
-      placeholder:
-        "e.g. all A+ except either volume confirmation OR news clear can be missing",
+      title: "B+   Acceptable",
+      sub: "One non-critical item missing.",
+      placeholder: "Solid setup, missing one confirmation",
     },
     {
       k: "c",
-      title: "C — Minimum acceptable",
+      title: "C    Minimum",
       sub: "Bare baseline. Below this you stand down.",
-      placeholder:
-        "e.g. HTF bias aligned + key level + R:R ≥ 1.5 — anything less = no trade",
+      placeholder: "HTF bias + key level + R:R ≥ 1.5",
     },
   ];
 
   return (
-    <div className="space-y-4">
-      <Header
-        eyebrow="Step 4"
+    <div className="space-y-6">
+      <Question
         title="Define your standards"
-        sub="Strictness controls how rigidly each tier is enforced."
+        sub="Optional — leave blank to let AI infer them."
       />
       {tiers.map(({ k, title, sub, placeholder }) => (
-        <div
-          key={k}
-          className="rounded-xl bg-background p-3 ring-1 ring-border space-y-2"
-        >
+        <div key={k} className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft space-y-2">
           <div>
-            <div className="text-sm font-medium text-foreground">{title}</div>
+            <div className="text-sm font-semibold tracking-tight text-foreground">{title}</div>
             <div className="text-xs text-muted-foreground">{sub}</div>
           </div>
           <textarea
@@ -669,30 +573,15 @@ function StepTiers({
             onChange={(e) => updateRule(k, e.target.value)}
             rows={2}
             placeholder={placeholder}
-            className="w-full rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+            className="w-full rounded-lg bg-background px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
           />
-          <div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Strictness</span>
-              <span className="font-medium text-foreground/90">{t[k]}%</span>
-            </div>
-            <input
-              type="range"
-              min={20}
-              max={100}
-              step={5}
-              value={t[k]}
-              onChange={(e) => updateStrict(k, Number(e.target.value))}
-              className="mt-1 w-full accent-primary"
-            />
-          </div>
         </div>
       ))}
     </div>
   );
 }
 
-/* -------------------------- Step 5: AI parse ------------------------- */
+/* -------------------------- Step 5: Parse ---------------------------- */
 function StepParse({
   bp,
   patch,
@@ -704,14 +593,15 @@ function StepParse({
   setBusy: (b: boolean) => void;
   busy: boolean;
 }) {
+  const autoRanRef = useRef(false);
+  const rules = (bp.structured_rules ?? {}) as Partial<StructuredRules>;
+  const hasRules = Object.values(rules).some((a) => Array.isArray(a) && a.length > 0);
+
   const run = async () => {
-    if (!bp.raw_input || bp.raw_input.trim().length < 30) {
-      toast.error("Add more detail to Step 3 first.");
-      return;
-    }
+    if (!bp.raw_input || bp.raw_input.trim().length < 20) return;
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("parse-strategy", {
+      const call = supabase.functions.invoke("parse-strategy", {
         body: {
           rawInput: bp.raw_input,
           accountTypes: bp.account_types,
@@ -724,114 +614,96 @@ function StepParse({
           tierRules: bp.tier_rules,
         },
       });
+      const { data, error } = (await withTimeout(call, 25000, "parse")) as Awaited<typeof call>;
       if (error) throw error;
-      const rules = data.structured_rules as StructuredRules;
-      const flags = data.ambiguity_flags as AmbiguityFlag[];
-      const questions = data.refinement_questions as string[];
-      // Seed refinement_history with new questions (preserve existing answers).
+      const questions = (data.refinement_questions as string[]) ?? [];
       const prev = bp.refinement_history ?? [];
       const nextHistory: RefinementQA[] = questions.map((q) => {
         const found = prev.find((p) => p.question === q);
         return found ?? { question: q, answer: "", accepted: false };
       });
       await patch({
-        structured_rules: rules,
-        ambiguity_flags: flags,
+        structured_rules: data.structured_rules as StructuredRules,
+        ambiguity_flags: (data.ambiguity_flags as AmbiguityFlag[]) ?? [],
         refinement_history: nextHistory,
         status: "parsed",
       });
-      toast.success("Parsed your strategy.");
     } catch (err) {
-      console.error("parse error", err);
-      const msg = err instanceof Error ? err.message : "Parse failed";
-      toast.error(msg);
+      console.error("[parse] failed", err);
+      toast.error("Couldn't parse — try again.");
     } finally {
       setBusy(false);
     }
   };
 
-  const rules = bp.structured_rules as Partial<StructuredRules>;
-  const hasRules = Object.values(rules ?? {}).some(
-    (a) => Array.isArray(a) && a.length > 0,
-  );
+  // Auto-run once on mount if we have raw input but no rules yet.
+  useEffect(() => {
+    if (autoRanRef.current) return;
+    autoRanRef.current = true;
+    if (!hasRules && (bp.raw_input?.trim().length ?? 0) >= 20) {
+      void run();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div className="space-y-4">
-      <Header
-        eyebrow="Step 5"
-        title="AI structures your rules"
-        sub="The model only restructures what you wrote. It does not predict markets."
+    <div className="space-y-6">
+      <Question
+        title="Structuring your edge"
+        sub="The AI restates your words as binary rules. Nothing invented."
       />
-      <button
-        type="button"
-        onClick={run}
-        disabled={busy}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-50"
-      >
-        {busy ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Sparkles className="h-4 w-4" />
-        )}
-        {hasRules ? "Re-parse" : "Parse with AI"}
-      </button>
 
-      {hasRules && (
-        <div className="space-y-3">
-          {(Object.keys(EMPTY_RULES) as Array<keyof StructuredRules>).map(
-            (k) => {
-              const items = rules[k] ?? [];
-              if (!items.length) return null;
-              return (
-                <div
-                  key={k}
-                  className="rounded-xl bg-background p-3 ring-1 ring-border"
-                >
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {k}
+      {busy && !hasRules ? (
+        <div className="flex flex-col items-center gap-3 py-12">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            Reading your strategy
+          </p>
+        </div>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={run}
+            disabled={busy}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-card px-4 py-2.5 text-sm font-medium text-foreground ring-1 ring-border shadow-soft hover:bg-background disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {hasRules ? "Re-parse" : "Parse with AI"}
+          </button>
+
+          {hasRules && (
+            <div className="space-y-3">
+              {(Object.keys(EMPTY_RULES) as Array<keyof StructuredRules>).map((k) => {
+                const items = rules[k] ?? [];
+                if (!items.length) return null;
+                return (
+                  <div key={k} className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      {k}
+                    </div>
+                    <ul className="mt-2 space-y-1.5">
+                      {items.map((it, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/80" />
+                          <span>{it}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="mt-1 space-y-1">
-                    {items.map((it, i) => (
-                      <li
-                        key={i}
-                        className="flex items-start gap-2 text-sm text-foreground/90"
-                      >
-                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/80" />
-                        <span>{it}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            },
-          )}
-          {(bp.ambiguity_flags?.length ?? 0) > 0 && (
-            <div className="rounded-xl bg-amber-500/5 p-3 ring-1 ring-amber-500/30">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                <AlertTriangle className="h-3.5 w-3.5" /> Ambiguities to resolve
-              </div>
-              <ul className="mt-1 space-y-1 text-sm text-foreground/90">
-                {bp.ambiguity_flags.map((f, i) => (
-                  <li key={i}>
-                    <span className="text-xs uppercase text-amber-700 dark:text-amber-400">
-                      [{f.area}]
-                    </span>{" "}
-                    {f.note}
-                  </li>
-                ))}
-              </ul>
+                );
+              })}
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );
 }
 
-/* -------------------------- Step 6: Refinement ----------------------- */
-// Non-blocking refinement: every answer auto-saves as the user types. We never
-// reject vague input — instead we tag low-confidence answers and let the
-// background re-parse step interpret them. The user is always free to move on.
+/* -------------------------- Step 6: Refine --------------------------- */
+// Single optional screen. If AI returned no questions, we show a calm
+// "looking sharp" state and the user moves on. Never blocking.
 function StepRefine({
   bp,
   patch,
@@ -844,55 +716,36 @@ function StepRefine({
   busy: boolean;
 }) {
   const history = bp.refinement_history ?? [];
-  const [activeIdx, setActiveIdx] = useState(0);
-  const active = history[activeIdx];
-  const [draft, setDraft] = useState(active?.answer ?? "");
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [drafts, setDrafts] = useState<string[]>(() => history.map((h) => h.answer ?? ""));
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // When user navigates between questions, sync the local draft.
+  // Debounced bulk save.
   useEffect(() => {
-    setDraft(history[activeIdx]?.answer ?? "");
-  }, [activeIdx, history.length]);
-
-  // Auto-save the draft (debounced) as the user types. Marking accepted=true
-  // unblocks forward progress; the AI re-parse later decides what to do with
-  // ambiguous text (low-confidence answers are simply weighted less).
-  useEffect(() => {
-    if (!active) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    const trimmed = draft.trim();
-    // Only persist when something actually changed
-    if (trimmed === (active.answer ?? "").trim()) return;
-    saveTimerRef.current = setTimeout(() => {
-      const next = history.map((h, idx) =>
-        idx === activeIdx
-          ? { ...h, answer: trimmed, accepted: trimmed.length > 0 }
-          : h,
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      const next: RefinementQA[] = history.map((h, i) => ({
+        question: h.question,
+        answer: drafts[i] ?? "",
+        accepted: (drafts[i] ?? "").trim().length > 0,
+      }));
+      // Only persist if anything actually differs.
+      const changed = next.some(
+        (n, i) =>
+          n.answer !== (history[i]?.answer ?? "") ||
+          n.accepted !== (history[i]?.accepted ?? false),
       );
-      // Fire and forget — no spinner, no blocking UI.
-      void patch({ refinement_history: next });
-    }, 400);
+      if (changed) void patch({ refinement_history: next });
+    }, 500);
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (saveTimer.current) clearTimeout(saveTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft]);
-
-  const answeredCount = history.filter(
-    (h) => (h.answer ?? "").trim().length > 0,
-  ).length;
-
-  const goNext = () => {
-    if (activeIdx < history.length - 1) setActiveIdx(activeIdx + 1);
-  };
-  const goPrev = () => {
-    if (activeIdx > 0) setActiveIdx(activeIdx - 1);
-  };
+  }, [drafts]);
 
   const reparse = async () => {
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("parse-strategy", {
+      const call = supabase.functions.invoke("parse-strategy", {
         body: {
           rawInput: bp.raw_input,
           accountTypes: bp.account_types,
@@ -901,19 +754,21 @@ function StepRefine({
             daily_loss_limit_pct: bp.daily_loss_limit_pct,
             max_drawdown_pct: bp.max_drawdown_pct,
           },
-          refinementHistory: history.filter(
-            (h) => (h.answer ?? "").trim().length > 0,
-          ),
+          refinementHistory: history.map((h, i) => ({
+            question: h.question,
+            answer: drafts[i] ?? "",
+          })),
           tierRules: bp.tier_rules,
         },
       });
+      const { data, error } = (await withTimeout(call, 25000, "parse")) as Awaited<typeof call>;
       if (error) throw error;
       await patch({
         structured_rules: data.structured_rules,
         ambiguity_flags: data.ambiguity_flags,
         status: "refined",
       });
-      toast.success("Rules updated with your answers.");
+      toast.success("Refined.");
     } catch (err) {
       console.error(err);
       toast.error("Re-parse failed.");
@@ -924,114 +779,48 @@ function StepRefine({
 
   if (history.length === 0) {
     return (
-      <div className="space-y-4">
-        <Header
-          eyebrow="Step 6"
-          title="Refine the gaps"
-          sub="Run the AI parse step first to generate questions."
-        />
+      <div className="space-y-6">
+        <Question title="Looking sharp" sub="Nothing to clarify — your rules are clear enough." />
+        <div className="flex items-center gap-2 rounded-xl bg-card p-4 ring-1 ring-border shadow-soft text-sm text-foreground/80">
+          <CheckCircle2 className="h-4 w-4 text-primary" />
+          No clarifications needed.
+        </div>
       </div>
     );
   }
 
-  const isLast = activeIdx >= history.length - 1;
-
   return (
-    <div className="space-y-4">
-      <Header
-        eyebrow="Step 6"
-        title="Sharpen your logic"
-        sub="Type freely — answers save as you go. Skip or revisit anytime."
+    <div className="space-y-6">
+      <Question
+        title="Anything to tighten?"
+        sub="All optional. Skip what doesn't matter."
       />
-
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>
-          Question {Math.min(activeIdx + 1, history.length)} of {history.length}
-        </span>
-        <span>{answeredCount} answered</span>
-      </div>
-      <div className="flex items-center gap-1">
-        {history.map((h, i) => (
-          <button
-            type="button"
-            key={i}
-            onClick={() => setActiveIdx(i)}
-            className={`h-1 flex-1 rounded-full transition ${
-              (h.answer ?? "").trim().length > 0
-                ? "bg-primary"
-                : i === activeIdx
-                  ? "bg-primary/40"
-                  : "bg-border"
-            }`}
-            aria-label={`Go to question ${i + 1}`}
-          />
+      <div className="space-y-3">
+        {history.map((qa, i) => (
+          <div key={i} className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+            <div className="text-sm font-medium text-foreground">{qa.question}</div>
+            <input
+              value={drafts[i] ?? ""}
+              onChange={(e) => {
+                const next = drafts.slice();
+                next[i] = e.target.value;
+                setDrafts(next);
+              }}
+              placeholder="Type freely — optional"
+              className="mt-2 w-full rounded-lg bg-background px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
         ))}
       </div>
-
-      {active && (
-        <div className="rounded-xl bg-background p-3 ring-1 ring-border">
-          <div className="text-sm font-medium text-foreground">
-            {active.question}
-          </div>
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={3}
-            placeholder="Answer in your own words — the system will interpret it."
-            className="mt-2 w-full rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
-          />
-          <div className="mt-2 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={goPrev}
-              disabled={activeIdx === 0}
-              className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
-            >
-              ← Previous
-            </button>
-            <button
-              type="button"
-              onClick={isLast ? reparse : goNext}
-              disabled={busy}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-95 disabled:opacity-50"
-            >
-              {isLast ? (
-                <>
-                  {busy ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5" />
-                  )}
-                  Apply & re-parse
-                </>
-              ) : (
-                <>
-                  Next
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {answeredCount > 0 && (
-        <div className="space-y-2">
-          {history
-            .filter((h) => (h.answer ?? "").trim().length > 0)
-            .map((h, i) => (
-              <div
-                key={i}
-                className="rounded-xl bg-primary/5 p-3 ring-1 ring-primary/20"
-              >
-                <div className="text-xs font-medium text-foreground/80">
-                  {h.question}
-                </div>
-                <div className="mt-1 text-sm text-foreground">{h.answer}</div>
-              </div>
-            ))}
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={reparse}
+        disabled={busy}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-card px-4 py-2.5 text-sm font-medium text-foreground ring-1 ring-border shadow-soft hover:bg-background disabled:opacity-50"
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+        Apply answers
+      </button>
     </div>
   );
 }
@@ -1048,91 +837,79 @@ function StepOutput({
   setBusy: (b: boolean) => void;
   busy: boolean;
 }) {
+  const cl = (bp.checklist ?? {}) as Partial<ChecklistByTier>;
+  const has = !!bp.trading_plan && (cl?.a_plus?.length ?? 0) > 0;
+
   const generate = async () => {
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "generate-strategy-output",
-        {
-          body: {
-            name: bp.name,
-            accountTypes: bp.account_types,
-            riskProfile: {
-              risk_per_trade_pct: bp.risk_per_trade_pct,
-              daily_loss_limit_pct: bp.daily_loss_limit_pct,
-              max_drawdown_pct: bp.max_drawdown_pct,
-            },
-            structuredRules: bp.structured_rules,
-            tierStrictness: bp.tier_strictness,
+      const call = supabase.functions.invoke("generate-strategy-output", {
+        body: {
+          name: bp.name,
+          accountTypes: bp.account_types,
+          riskProfile: {
+            risk_per_trade_pct: bp.risk_per_trade_pct,
+            daily_loss_limit_pct: bp.daily_loss_limit_pct,
+            max_drawdown_pct: bp.max_drawdown_pct,
           },
+          structuredRules: bp.structured_rules,
+          tierStrictness: bp.tier_strictness,
         },
-      );
+      });
+      const { data, error } = (await withTimeout(call, 25000, "generate")) as Awaited<typeof call>;
       if (error) throw error;
       await patch({
         checklist: data.checklist as ChecklistByTier,
         trading_plan: data.trading_plan as string,
         status: "finalized",
       });
-      toast.success("Checklist & plan generated.");
     } catch (err) {
       console.error(err);
-      const msg = err instanceof Error ? err.message : "Generation failed";
-      toast.error(msg);
+      toast.error("Couldn't generate — try again.");
     } finally {
       setBusy(false);
     }
   };
 
-  const cl = bp.checklist as Partial<ChecklistByTier>;
-  const has = bp.trading_plan && (cl?.a_plus?.length ?? 0) > 0;
-
   return (
-    <div className="space-y-4">
-      <Header
-        eyebrow="Step 7"
-        title="Generate checklist & plan"
-        sub="A binary checklist per tier, plus a clean trading plan."
+    <div className="space-y-6">
+      <Question
+        title={has ? "Your system" : "Generate your system"}
+        sub={has ? "Short. Binary. Built from your rules." : "We'll turn your rules into a checklist + plan."}
       />
-      <button
-        type="button"
-        onClick={generate}
-        disabled={busy}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-50"
-      >
-        {busy ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Sparkles className="h-4 w-4" />
-        )}
-        {has ? "Regenerate" : "Generate"}
-      </button>
+
+      {!has && (
+        <button
+          type="button"
+          onClick={generate}
+          disabled={busy}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-50"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          Generate
+        </button>
+      )}
 
       {has && (
         <div className="space-y-3">
           {(
             [
-              ["a_plus", "A+ — Perfect"],
-              ["b_plus", "B+ — Acceptable"],
-              ["c", "C — Minimum"],
+              ["a_plus", "A+   Perfect"],
+              ["b_plus", "B+   Acceptable"],
+              ["c", "C    Minimum"],
             ] as const
           ).map(([k, label]) => {
             const items = cl?.[k] ?? [];
             if (!items.length) return null;
             return (
-              <div
-                key={k}
-                className="rounded-xl bg-background p-3 ring-1 ring-border"
-              >
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <div key={k} className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   {label}
                 </div>
-                <ul className="mt-1 space-y-1">
+                <ul className="mt-2 space-y-1.5">
                   {items.map((it, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-2 text-sm text-foreground/90"
-                    >
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/70" />
+                    <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/70" />
                       <span>{it}</span>
                     </li>
                   ))}
@@ -1140,14 +917,23 @@ function StepOutput({
               </div>
             );
           })}
-          <div className="rounded-xl bg-background p-3 ring-1 ring-border">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Trading plan
             </div>
-            <pre className="mt-1 whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground/90">
+            <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
               {bp.trading_plan}
             </pre>
           </div>
+          <button
+            type="button"
+            onClick={generate}
+            disabled={busy}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-card px-4 py-2 text-xs font-medium text-foreground/80 ring-1 ring-border hover:bg-background disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            Regenerate
+          </button>
         </div>
       )}
     </div>
@@ -1156,88 +942,79 @@ function StepOutput({
 
 /* -------------------------- Step 8: Export --------------------------- */
 function StepExport({ bp }: { bp: StrategyBlueprint }) {
-  const [downloading, setDownloading] = useState<"checklist" | "plan" | null>(
-    null,
-  );
-  const download = async (kind: "checklist" | "plan") => {
-    setDownloading(kind);
-    try {
-      const { data: sess } = await supabase.auth.getSession();
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-strategy-pdf`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(sess.session?.access_token
-            ? { Authorization: `Bearer ${sess.session.access_token}` }
-            : {}),
-        },
-        body: JSON.stringify({
-          kind,
-          name: bp.name,
-          accountTypes: bp.account_types,
-          riskProfile: {
-            risk_per_trade_pct: bp.risk_per_trade_pct,
-            daily_loss_limit_pct: bp.daily_loss_limit_pct,
-            max_drawdown_pct: bp.max_drawdown_pct,
-          },
-          checklist: bp.checklist,
-          trading_plan: bp.trading_plan,
-        }),
-      });
-      if (!res.ok) throw new Error(`Export failed (${res.status})`);
-      const blob = await res.blob();
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `${bp.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${kind}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(a.href);
-    } catch (err) {
-      console.error(err);
-      toast.error("Could not generate PDF.");
-    } finally {
-      setDownloading(null);
-    }
-  };
+  const [pending, setPending] = useState<string | null>(null);
   const ready = !!bp.trading_plan && (bp.checklist?.a_plus?.length ?? 0) > 0;
+
+  const doPdf = async (kind: "checklist" | "plan") => {
+    setPending(`pdf-${kind}`);
+    // jsPDF runs synchronously but we yield a frame so the spinner shows.
+    await new Promise((r) => setTimeout(r, 50));
+    const ok = downloadPdf(bp, kind);
+    if (!ok) {
+      toast.error("PDF failed — downloading text instead.");
+      downloadTxt(bp, kind);
+    }
+    setPending(null);
+  };
+
+  const doTxt = (kind: "checklist" | "plan") => {
+    setPending(`txt-${kind}`);
+    setTimeout(() => {
+      downloadTxt(bp, kind);
+      setPending(null);
+    }, 30);
+  };
+
+  if (!ready) {
+    return (
+      <div className="space-y-6">
+        <Question title="Export" sub="Generate your system first, then export it." />
+      </div>
+    );
+  }
+
+  const Row = ({ kind, label }: { kind: "checklist" | "plan"; label: string }) => (
+    <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm font-medium text-foreground">{label}</div>
+          <div className="text-xs text-muted-foreground">PDF or plain text</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void doPdf(kind)}
+            disabled={pending !== null}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-50"
+          >
+            {pending === `pdf-${kind}` ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FileDown className="h-3.5 w-3.5" />
+            )}
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={() => doTxt(kind)}
+            disabled={pending !== null}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-background px-3 py-2 text-xs font-medium text-foreground ring-1 ring-border hover:bg-card disabled:opacity-50"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Text
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-4">
-      <Header
-        eyebrow="Step 8"
-        title="Export"
-        sub="Download a clean PDF for your binder or screen-side reference."
-      />
-      {!ready ? (
-        <div className="text-sm text-muted-foreground">
-          Generate the checklist & plan first.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {(
-            [
-              ["checklist", "Download checklist"],
-              ["plan", "Download trading plan"],
-            ] as const
-          ).map(([kind, label]) => (
-            <button
-              key={kind}
-              type="button"
-              onClick={() => download(kind)}
-              disabled={downloading !== null}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-card px-4 py-3 text-sm font-medium text-foreground ring-1 ring-border hover:bg-background disabled:opacity-50"
-            >
-              {downloading === kind ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="space-y-6">
+      <Question title="Export" sub="Take it offline. Pin it next to your screen." />
+      <div className="space-y-3">
+        <Row kind="checklist" label="Checklist" />
+        <Row kind="plan" label="Trading plan" />
+      </div>
     </div>
   );
 }
@@ -1253,47 +1030,41 @@ function StepLock({
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState<"lock" | "unlock" | null>(null);
   const [confirmText, setConfirmText] = useState("");
-
   const requiredWord = bp.locked ? "UNLOCK" : "LOCK";
   const canConfirm = confirmText.trim().toUpperCase() === requiredWord;
-
-  const startConfirm = () => {
-    setConfirming(bp.locked ? "unlock" : "lock");
-    setConfirmText("");
-  };
 
   const apply = async () => {
     if (!canConfirm) return;
     setBusy(true);
     try {
-      const next = bp.locked
-        ? await unlockBlueprint(bp.id)
-        : await lockBlueprint(bp.id);
+      const next = bp.locked ? await unlockBlueprint(bp.id) : await lockBlueprint(bp.id);
       setBp(next);
-      toast.success(next.locked ? "Strategy locked." : "Strategy unlocked.");
+      toast.success(next.locked ? "Locked." : "Unlocked.");
       setConfirming(null);
       setConfirmText("");
     } catch (err) {
       console.error(err);
-      toast.error("Could not change lock state.");
+      toast.error("Couldn't change lock state.");
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="space-y-4">
-      <Header
-        eyebrow="Step 9"
-        title="Lock the strategy"
-        sub="Locked strategies feed your Chart, Trade Check, Journal scoring, and Mentor."
+    <div className="space-y-6">
+      <Question
+        title={bp.locked ? "Strategy is locked" : "Lock it in"}
+        sub={
+          bp.locked
+            ? "Live across Chart, Trade Check, Journal, and Mentor."
+            : "Locked strategies feed every other tool. You can unlock anytime."
+        }
       />
-      <div className="rounded-xl bg-background p-4 ring-1 ring-border">
+      <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
         <div className="flex items-start gap-3">
-          <ShieldAlert className="h-5 w-5 text-primary" />
-          <div className="text-sm text-foreground/90">
-            Locking prevents casual edits. You can unlock at any time, but every
-            unlock is a deliberate choice — type the keyword to confirm.
+          <ShieldAlert className="h-5 w-5 shrink-0 text-primary" />
+          <div className="text-sm text-foreground/80">
+            Type <span className="font-mono font-semibold text-foreground">{requiredWord}</span> to confirm.
           </div>
         </div>
       </div>
@@ -1301,35 +1072,27 @@ function StepLock({
       {confirming === null ? (
         <button
           type="button"
-          onClick={startConfirm}
+          onClick={() => {
+            setConfirming(bp.locked ? "unlock" : "lock");
+            setConfirmText("");
+          }}
           disabled={busy}
-          className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-soft hover:opacity-95 disabled:opacity-50 ${
+          className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium shadow-soft hover:opacity-95 disabled:opacity-50 ${
             bp.locked
               ? "bg-card text-foreground ring-1 ring-border"
               : "bg-primary text-primary-foreground"
           }`}
         >
-          {bp.locked ? (
-            <LockOpen className="h-4 w-4" />
-          ) : (
-            <Lock className="h-4 w-4" />
-          )}
-          {bp.locked ? "Unlock strategy" : "Lock strategy"}
+          {bp.locked ? <LockOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+          {bp.locked ? "Unlock" : "Lock strategy"}
         </button>
       ) : (
-        <div className="rounded-xl bg-background p-3 ring-1 ring-border space-y-3">
-          <div className="text-sm text-foreground/90">
-            Type{" "}
-            <span className="font-mono font-semibold text-foreground">
-              {requiredWord}
-            </span>{" "}
-            to confirm.
-          </div>
+        <div className="space-y-3 rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
           <input
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder={requiredWord}
-            className="w-full rounded-lg bg-card px-3 py-2 text-sm font-mono ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="w-full rounded-lg bg-background px-3 py-2 text-sm font-mono ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40"
             autoFocus
           />
           <div className="flex items-center justify-end gap-2">
@@ -1339,7 +1102,7 @@ function StepLock({
                 setConfirming(null);
                 setConfirmText("");
               }}
-              className="rounded-lg px-3 py-1.5 text-xs font-medium text-foreground/80 hover:bg-card"
+              className="rounded-lg px-3 py-1.5 text-xs font-medium text-foreground/70 hover:bg-background"
             >
               Cancel
             </button>
@@ -1349,14 +1112,8 @@ function StepLock({
               disabled={!canConfirm || busy}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-95 disabled:opacity-40"
             >
-              {busy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : bp.locked ? (
-                <LockOpen className="h-3.5 w-3.5" />
-              ) : (
-                <Lock className="h-3.5 w-3.5" />
-              )}
-              Confirm {bp.locked ? "unlock" : "lock"}
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Confirm
             </button>
           </div>
         </div>
@@ -1366,24 +1123,11 @@ function StepLock({
 }
 
 /* -------------------------- Shared ----------------------------------- */
-function Header({
-  eyebrow,
-  title,
-  sub,
-}: {
-  eyebrow: string;
-  title: string;
-  sub?: string;
-}) {
+function Question({ title, sub }: { title: string; sub?: string }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-        {eyebrow}
-      </div>
-      <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
-        {title}
-      </h2>
-      {sub && <p className="mt-1 text-sm text-muted-foreground">{sub}</p>}
+      <h2 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h2>
+      {sub && <p className="mt-2 text-sm text-muted-foreground">{sub}</p>}
     </div>
   );
 }
