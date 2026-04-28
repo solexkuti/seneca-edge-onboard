@@ -230,7 +230,7 @@ export default function ChartAnalyzer() {
         const cell = breakdown[section];
         if (!cell?.checks) continue;
         for (const c of cell.checks) {
-          if (!c.pass) violations.push(`${section}: ${c.rule}`);
+          if (!c.passed) violations.push(`${section}: ${c.rule}`);
         }
       }
       void logAnalyzerEvent({
