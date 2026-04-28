@@ -295,6 +295,14 @@ export default function TradingJournalFlow() {
   }
 
   return (
+    <>
+      {pressure && (
+        <PreTradeIntercept
+          evaluation={pressure}
+          onConfirm={handleInterceptConfirm}
+          onCancel={handleInterceptCancel}
+        />
+      )}
     <FeatureShell
       eyebrow="Trading Journal"
       title="Log a trade."
