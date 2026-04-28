@@ -2,12 +2,19 @@
 // Chart Analyzer produces a verdict. Feeds the Discipline Engine alongside
 // discipline_logs (which is execution quality, tied to actual trades).
 //
-// score_delta convention:
-//   valid   →  +5  (rewards disciplined chart selection)
-//   weak    →   0  (neutral — neither rewarded nor punished)
-//   invalid →  -10 (penalty for analyzing/forcing setups outside the system)
+// score_delta convention (raw event_score in [-20, +5]):
+//   valid                         →  +5
+//   weak                          →   0
+//   invalid + 1 rule              →  -5
+//   invalid + 2 rules             → -10
+//   invalid + 3+ rules / critical → -20
+//
+// The full discipline score (which combines this with execution logs and
+// applies recency weighting) lives in `@/lib/disciplineScore`. This file
+// only persists the raw per-event number.
 
 import { supabase } from "@/integrations/supabase/client";
+import { eventScoreFor } from "@/lib/disciplineScore";
 
 export type AnalyzerVerdict = "valid" | "weak" | "invalid";
 
@@ -34,10 +41,9 @@ export function broadcastAnalyzerEvent(): void {
   }
 }
 
+/** Back-compat shim — prefer `eventScoreFor(verdict, violations)` directly. */
 export function scoreDeltaFor(verdict: AnalyzerVerdict): number {
-  if (verdict === "valid") return 5;
-  if (verdict === "weak") return 0;
-  return -10;
+  return eventScoreFor(verdict, []);
 }
 
 export async function logAnalyzerEvent(args: {
@@ -51,7 +57,7 @@ export async function logAnalyzerEvent(args: {
   const uid = auth?.user?.id;
   if (!uid) return null;
 
-  const score_delta = scoreDeltaFor(args.verdict);
+  const score_delta = eventScoreFor(args.verdict, args.violations);
   const { data, error } = await supabase
     .from("analyzer_events")
     .insert({
@@ -73,6 +79,7 @@ export async function logAnalyzerEvent(args: {
   broadcastAnalyzerEvent();
   return data as AnalyzerEvent;
 }
+
 
 export type RecentDecision = {
   source: "analyzer" | "execution";
