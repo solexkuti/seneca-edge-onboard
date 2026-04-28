@@ -304,6 +304,16 @@ export async function submitJournalEntry(
     // ignore
   }
 
+  // Centralized engine: refresh discipline_state + session_state snapshot.
+  try {
+    const { updateDiscipline } = await import("@/server/seneca.functions");
+    void updateDiscipline().catch((e) =>
+      console.warn("[journal] updateDiscipline failed:", e),
+    );
+  } catch (e) {
+    console.warn("[journal] engine unavailable:", e);
+  }
+
   const row = combine(trade, log);
   return { ok: true, row };
 }
