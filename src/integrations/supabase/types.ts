@@ -20,10 +20,13 @@ export type Database = {
           detected_at: string
           id: string
           kind: Database["public"]["Enums"]["behavior_pattern_kind"]
+          last_triggered_at: string
           message: string
           meta: Json
+          pattern_type: string | null
           severity: number
           trade_ids: string[]
+          trigger_count: number
           user_id: string
         }
         Insert: {
@@ -31,10 +34,13 @@ export type Database = {
           detected_at?: string
           id?: string
           kind: Database["public"]["Enums"]["behavior_pattern_kind"]
+          last_triggered_at?: string
           message: string
           meta?: Json
+          pattern_type?: string | null
           severity?: number
           trade_ids?: string[]
+          trigger_count?: number
           user_id: string
         }
         Update: {
@@ -42,10 +48,13 @@ export type Database = {
           detected_at?: string
           id?: string
           kind?: Database["public"]["Enums"]["behavior_pattern_kind"]
+          last_triggered_at?: string
           message?: string
           meta?: Json
+          pattern_type?: string | null
           severity?: number
           trade_ids?: string[]
+          trigger_count?: number
           user_id?: string
         }
         Relationships: []
@@ -60,6 +69,7 @@ export type Database = {
           followed_exit: boolean
           followed_risk: boolean
           id: string
+          mistake_tag: Database["public"]["Enums"]["mistake_tag"] | null
           notes: string | null
           trade_id: string
           user_id: string
@@ -75,6 +85,7 @@ export type Database = {
           followed_exit?: boolean
           followed_risk?: boolean
           id?: string
+          mistake_tag?: Database["public"]["Enums"]["mistake_tag"] | null
           notes?: string | null
           trade_id: string
           user_id: string
@@ -90,6 +101,7 @@ export type Database = {
           followed_exit?: boolean
           followed_risk?: boolean
           id?: string
+          mistake_tag?: Database["public"]["Enums"]["mistake_tag"] | null
           notes?: string | null
           trade_id?: string
           user_id?: string
@@ -312,7 +324,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      detect_behavior_patterns: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       behavior_pattern_kind:
@@ -329,6 +344,14 @@ export type Database = {
         | "neutral"
         | "confused"
         | "calm"
+      mistake_tag:
+        | "fomo"
+        | "revenge"
+        | "overleveraged"
+        | "early_exit"
+        | "late_entry"
+        | "no_setup"
+        | "emotional"
       trade_direction: "long" | "short"
       trade_result: "win" | "loss" | "breakeven"
     }
@@ -473,6 +496,15 @@ export const Constants = {
         "neutral",
         "confused",
         "calm",
+      ],
+      mistake_tag: [
+        "fomo",
+        "revenge",
+        "overleveraged",
+        "early_exit",
+        "late_entry",
+        "no_setup",
+        "emotional",
       ],
       trade_direction: ["long", "short"],
       trade_result: ["win", "loss", "breakeven"],
