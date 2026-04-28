@@ -83,6 +83,15 @@ export default function AnalyzerLockScreen({ children }: Props) {
   const { state } = useTraderState();
   const navigate = useNavigate();
   const lastLoggedKeyRef = useRef<string | null>(null);
+  const [reduceMotion, setReduceMotion] = useState<boolean>(readInitialReduceMotion);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(REDUCE_MOTION_KEY, reduceMotion ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [reduceMotion]);
 
   const lock = useMemo(() => {
     if (state.loading) return { kind: "loading" as const };
