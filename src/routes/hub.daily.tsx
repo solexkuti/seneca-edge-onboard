@@ -42,7 +42,10 @@ export const Route = createFileRoute("/hub/daily")({
   }),
   component: () => (
     <RequireAuth>
-      <TraderStateGate surface="Daily Checklist" enforce={["no_strategy"]}>
+      <TraderStateGate
+        surface="Daily Checklist"
+        enforce={["no_strategy", "discipline_locked"]}
+      >
         <DailyChecklistPage />
       </TraderStateGate>
     </RequireAuth>
