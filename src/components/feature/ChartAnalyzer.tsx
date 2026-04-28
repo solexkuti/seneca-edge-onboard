@@ -59,12 +59,16 @@ export default function ChartAnalyzer() {
   const [phase, setPhase] = useState<Phase>("setup");
   const [step, setStep] = useState(0);
   const [invalidReason, setInvalidReason] = useState<string>("");
+  const [invalidDetails, setInvalidDetails] = useState<string[]>([]);
   const [result, setResult] = useState<{
     row: ChartAnalysisRow;
     breakdown: RuleBreakdown;
     insight: string;
     execPreview: string;
     higherPreview: string | null;
+    modelUsed: "primary" | "fallback";
+    pipelineConfidence: number; // 0–1
+    warnings: string[];
   } | null>(null);
 
   const execInputRef = useRef<HTMLInputElement>(null);
@@ -154,8 +158,10 @@ export default function ChartAnalyzer() {
       });
       if (error) throw new Error(error.message || "Analysis failed");
 
-      if (!data?.is_chart) {
+      // Pipeline rejected the image — show details from validation stage
+      if (data?.status === "rejected" || data?.is_chart === false) {
         setInvalidReason(data?.reason || "This is not a valid chart.");
+        setInvalidDetails(Array.isArray(data?.details) ? data.details : []);
         setPhase("invalid");
         return;
       }
@@ -165,13 +171,25 @@ export default function ChartAnalyzer() {
         exec: data.features?.exec ?? {},
         higher: data.features?.higher ?? null,
       };
+      // Pipeline confidence is 0–1; rule engine expects 0–100 chart confidence.
+      const pipelineConf: number = Number(data?.confidence ?? 0);
+      const validationConfPct: number = Number(
+        data?.confidence_pct ?? Math.round(pipelineConf * 100),
+      );
+
       const breakdown = evaluateChartAgainstStrategy(
         features,
         activeStrategy.structured_rules as never,
-        Number(data.confidence ?? 0),
+        validationConfPct,
       );
 
-      // Save to DB
+      const warnings: string[] = Array.isArray(data?.warnings)
+        ? [...data.warnings]
+        : [];
+      const modelUsed: "primary" | "fallback" =
+        data?.model_used === "fallback" ? "fallback" : "primary";
+
+      // Save to DB (back-compat shape preserved)
       const row = await saveChartAnalysis({
         blueprint_id: activeStrategy.id,
         strategy_name: activeStrategy.name,
@@ -180,7 +198,7 @@ export default function ChartAnalyzer() {
         exec_image_path: execPath,
         higher_image_path: higherPath,
         is_chart: true,
-        chart_confidence: Number(data.confidence ?? 0),
+        chart_confidence: validationConfPct,
         chart_reason: data.reason ?? null,
         features,
         rule_breakdown: breakdown,
@@ -195,6 +213,9 @@ export default function ChartAnalyzer() {
         insight: data.ai_insight ?? "",
         execPreview,
         higherPreview,
+        modelUsed,
+        pipelineConfidence: pipelineConf,
+        warnings,
       });
       setPhase("result");
     } catch (e) {
@@ -212,6 +233,7 @@ export default function ChartAnalyzer() {
     setStep(0);
     setResult(null);
     setInvalidReason("");
+    setInvalidDetails([]);
     if (execInputRef.current) execInputRef.current.value = "";
     if (higherInputRef.current) higherInputRef.current.value = "";
   }
@@ -367,11 +389,25 @@ export default function ChartAnalyzer() {
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20">
                   <XCircle className="h-4 w-4" strokeWidth={2.4} />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-[14px] font-semibold text-text-primary">
-                    This is not a valid chart
+                    Upload a valid trading chart
                   </p>
-                  <p className="mt-1 text-[12.5px] text-text-secondary">{invalidReason}</p>
+                  <p className="mt-1 text-[12.5px] text-text-secondary">
+                    {invalidReason} Candles, price axis, and time axis are required.
+                  </p>
+                  {invalidDetails.length > 0 && (
+                    <ul className="mt-2 space-y-1 pl-4">
+                      {invalidDetails.map((d, i) => (
+                        <li
+                          key={i}
+                          className="list-disc text-[12px] leading-snug text-rose-700/90"
+                        >
+                          {d}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
             </div>
@@ -519,6 +555,9 @@ function ResultView({
     insight: string;
     execPreview: string;
     higherPreview: string | null;
+    modelUsed: "primary" | "fallback";
+    pipelineConfidence: number;
+    warnings: string[];
   };
   onReset: () => void;
   navigate: ReturnType<typeof useNavigate>;
@@ -546,6 +585,34 @@ function ResultView({
       {result.higherPreview && (
         <div className="overflow-hidden rounded-2xl bg-card p-1 ring-1 ring-border shadow-soft">
           <img src={result.higherPreview} alt="Higher TF chart" className="h-32 w-full rounded-[14px] object-cover" />
+        </div>
+      )}
+
+      {/* Pipeline status — model used + confidence */}
+      <div className="flex items-center gap-2 rounded-2xl bg-card px-3.5 py-2.5 ring-1 ring-border shadow-soft">
+        <Sparkles
+          className={`h-3.5 w-3.5 ${
+            result.modelUsed === "fallback" ? "text-amber-600" : "text-brand"
+          }`}
+          strokeWidth={2.4}
+        />
+        <span className="text-[11.5px] font-semibold text-text-primary">
+          {result.modelUsed === "fallback"
+            ? "Deeper validation used"
+            : "Primary model"}
+        </span>
+        <span className="ml-auto text-[11.5px] text-text-secondary">
+          AI confidence {Math.round(result.pipelineConfidence * 100)}%
+        </span>
+      </div>
+
+      {result.modelUsed === "fallback" && (
+        <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <p className="text-[12.5px] leading-snug text-text-primary">
+            Analysis required deeper validation. Using advanced model for higher
+            accuracy.
+          </p>
         </div>
       )}
 
