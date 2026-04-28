@@ -8,11 +8,9 @@
 
 import { toast } from "sonner";
 import {
-  fetchJournal,
   submitJournalEntry,
   type NewJournalSubmission,
 } from "@/lib/dbJournal";
-import { detectAndStorePatterns } from "@/lib/dbBehaviorPatterns";
 
 const PENDING_KEY = "journal_pending_submissions_v1";
 const MAX_SYNC_ATTEMPTS = 3;
