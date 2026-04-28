@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { Lock, ShieldAlert, ArrowRight, Loader2, Target } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTraderState } from "@/hooks/useTraderState";
+import { enforcementDisabled } from "@/lib/enforcementFlag";
 
 type Block =
   | "loading"
@@ -36,12 +37,18 @@ export default function TraderStateGate({
 }: Props) {
   const { state } = useTraderState();
   const navigate = useNavigate();
+  const bypass = enforcementDisabled();
+  // When enforcement is disabled, only the no_strategy gate stays active —
+  // it is the redirect into onboarding, not a punitive lock.
+  const effectiveEnforce = bypass
+    ? enforce.filter((e) => e === "no_strategy")
+    : enforce;
 
   // Hard redirect: no strategy → builder. Per spec, this is not a soft block.
   useEffect(() => {
     if (
       !state.loading &&
-      enforce.includes("no_strategy") &&
+      effectiveEnforce.includes("no_strategy") &&
       state.blocks.no_strategy
     ) {
       void navigate({ to: "/hub/strategy/new", replace: true });
@@ -52,7 +59,7 @@ export default function TraderStateGate({
   useEffect(() => {
     if (
       !state.loading &&
-      enforce.includes("discipline_locked") &&
+      effectiveEnforce.includes("discipline_locked") &&
       (state.blocks.discipline_locked || state.blocks.in_recovery)
     ) {
       void navigate({ to: "/hub/recovery", replace: true });
@@ -67,12 +74,12 @@ export default function TraderStateGate({
 
   let block: Block = "ok";
   if (state.loading) block = "loading";
-  else if (enforce.includes("no_strategy") && state.blocks.no_strategy)
+  else if (effectiveEnforce.includes("no_strategy") && state.blocks.no_strategy)
     block = "no_strategy";
-  else if (enforce.includes("not_confirmed") && state.blocks.not_confirmed)
+  else if (effectiveEnforce.includes("not_confirmed") && state.blocks.not_confirmed)
     block = "not_confirmed";
   else if (
-    enforce.includes("discipline_locked") &&
+    effectiveEnforce.includes("discipline_locked") &&
     (state.blocks.discipline_locked || state.blocks.in_recovery)
   )
     block = "discipline_locked";
