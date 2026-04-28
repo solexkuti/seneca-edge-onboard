@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Sparkles } from "lucide-react";
+import { ArrowUp, Sparkles, AlertTriangle } from "lucide-react";
 import FeatureShell from "./FeatureShell";
 import { useDbJournal } from "@/hooks/useDbJournal";
 import { summarizeJournal } from "@/lib/journalSummary";
@@ -118,10 +118,13 @@ export default function AiMentorChat() {
     const intelligencePayload = intelligence.windowSize > 0
       ? {
           disciplineScore: intelligence.disciplineScore,
+          disciplineClass: intelligence.disciplineClass,
           windowSize: intelligence.windowSize,
           mostCommonMistake: intelligence.mostCommonMistake?.label ?? null,
+          mostCommonMistakeTag: intelligence.mostCommonMistakeTag?.label ?? null,
           disciplineStreak: intelligence.disciplineStreak,
           twoUndisciplinedInARow: intelligence.twoUndisciplinedInARow,
+          strictModeActive: intelligence.strictModeActive,
         }
       : undefined;
     const recentPatternsPayload = recentPatterns.length > 0
@@ -131,13 +134,37 @@ export default function AiMentorChat() {
           detected_at: p.detected_at,
         }))
       : undefined;
+    // Last two journal rows used by strict mode to name the pattern.
+    const lastTwoTrades = rows.slice(0, 2).map((r) => {
+      const broken: string[] = [];
+      if (!r.followed_entry) broken.push("entry");
+      if (!r.followed_exit) broken.push("exit");
+      if (!r.followed_risk) broken.push("risk");
+      if (!r.followed_behavior) broken.push("behavior");
+      return {
+        when: new Date(r.timestamp).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        market: r.pair,
+        direction: r.direction,
+        result: r.result,
+        followedPlan: r.followedPlan,
+        brokenRules: broken,
+        mistakeTag: r.mistake_tag,
+      };
+    });
+    const lastTwoPayload = lastTwoTrades.length > 0 ? lastTwoTrades : undefined;
     const ctx =
-      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload
+      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload
         ? {
             ...(journalSummary ? { journalSummary } : {}),
             ...(profileSummary ? { profileSummary } : {}),
             ...(intelligencePayload ? { intelligence: intelligencePayload } : {}),
             ...(recentPatternsPayload ? { recentPatterns: recentPatternsPayload } : {}),
+            ...(lastTwoPayload ? { lastTwoTrades: lastTwoPayload } : {}),
           }
         : undefined;
 
