@@ -142,15 +142,29 @@ export default function AnalyzerLockScreen({ children }: Props) {
             />
           </div>
 
-          {/* Reason */}
-          <div className="mt-4 flex items-start gap-2 rounded-xl bg-red-600/5 p-3 ring-1 ring-red-600/20">
-            <AlertTriangle
-              className="mt-0.5 h-4 w-4 flex-none text-red-700"
-              aria-hidden
-            />
-            <p className="text-xs leading-relaxed text-red-900/85">
-              {reasonLine}
-            </p>
+          {/* Structured lock reasons — one bullet per gate, showing
+             expected vs actual so the user knows exactly what changed. */}
+          <div className="mt-4 rounded-xl bg-red-600/5 p-3 ring-1 ring-red-600/20">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 flex-none text-red-700" aria-hidden />
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-700">
+                Why you're locked
+              </div>
+            </div>
+            <ul className="mt-2 space-y-1.5">
+              <ReasonBullet
+                failed={state.discipline.score < 40 || state.discipline.state === "locked"}
+                label="Discipline score"
+                expected="≥ 40 required"
+                actual={`${state.discipline.score}/100 · ${prettyState(state.discipline.state)}`}
+              />
+              <ReasonBullet
+                failed={!state.session.checklist_confirmed}
+                label="Daily checklist"
+                expected="Must be confirmed"
+                actual={state.session.checklist_confirmed ? "Confirmed" : "Not confirmed today"}
+              />
+            </ul>
           </div>
 
           {/* CTAs */}
