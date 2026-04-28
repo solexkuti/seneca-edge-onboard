@@ -4,12 +4,27 @@
 
 import type { StructuredRules } from "@/lib/dbStrategyBlueprints";
 
+// Citation: a normalized rectangle on a chart image (0–1 coords).
+// `chart` selects which image the box belongs to.
+// `kind` is the semantic feature label so the UI can color/label it.
+export type ChartRegion = {
+  chart: "exec" | "higher";
+  kind: "bos" | "sweep" | "key_zone" | "stop_tp" | "trend";
+  label: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
 export type ChartFeatures = {
   trend?: "uptrend" | "downtrend" | "ranging" | "unclear";
   structure?: "break_of_structure" | "consolidation" | "none" | "unclear";
   liquidity?: "above_highs" | "below_lows" | "both" | "none" | "unclear";
   volatility?: "high" | "normal" | "low" | "unclear";
   quality?: "clear" | "messy" | "unclear";
+  // Optional AI-supplied citations on this chart image.
+  regions?: ChartRegion[];
 };
 
 export type ChartFeaturesPair = {
@@ -21,6 +36,8 @@ export type RuleCheck = {
   rule: string; // the user's actual strategy rule text (or a synthetic label)
   passed: boolean;
   reason: string;
+  // Optional citations into the chart image(s) backing this check.
+  regions?: ChartRegion[];
 };
 
 export type SectionResult = {
@@ -28,6 +45,7 @@ export type SectionResult = {
   reasons: string[];
   checks: RuleCheck[]; // per-rule breakdown referencing strategy rules
 };
+
 
 export type RuleBreakdown = {
   entry: SectionResult;
