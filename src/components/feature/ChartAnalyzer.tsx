@@ -222,6 +222,29 @@ export default function ChartAnalyzer() {
         trade_id: null,
       });
 
+      // Write to TRADER_STATE: every analysis is a decision-quality event
+      // that feeds the discipline engine, separate from executed-trade logs.
+      const verdict = breakdown.overall as AnalyzerVerdict;
+      const violations: string[] = [];
+      for (const section of ["entry", "structure", "risk", "timing"] as const) {
+        const cell = breakdown[section];
+        if (!cell?.checks) continue;
+        for (const c of cell.checks) {
+          if (!c.pass) violations.push(`${section}: ${c.rule}`);
+        }
+      }
+      void logAnalyzerEvent({
+        analysis_id: row.id,
+        blueprint_id: activeStrategy.id,
+        verdict,
+        violations,
+        reason: data.reason ?? null,
+      }).then(() => {
+        // Refresh TRADER_STATE so discipline + lock state recompute
+        // immediately for any other surface the user opens.
+        void refreshTraderState();
+      });
+
       setResult({
         row,
         breakdown,
