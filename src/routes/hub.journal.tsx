@@ -4,6 +4,7 @@ import TradingJournalFlow from "@/components/feature/TradingJournalFlow";
 import JournalExportButton from "@/components/feature/JournalExportButton";
 import JournalSyncStatus from "@/components/feature/JournalSyncStatus";
 import RequireAuth from "@/components/auth/RequireAuth";
+import TradeLockGate from "@/components/feature/TradeLockGate";
 
 export const Route = createFileRoute("/hub/journal")({
   head: () => ({
@@ -18,7 +19,9 @@ export const Route = createFileRoute("/hub/journal")({
   }),
   component: () => (
     <RequireAuth>
-      <JournalRoute />
+      <TradeLockGate surface="Trading Journal">
+        <JournalRoute />
+      </TradeLockGate>
     </RequireAuth>
   ),
 });
