@@ -6,6 +6,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { JournalEntry } from "@/lib/tradingJournal";
 import { JOURNAL_EVENT, readJournal as readLocalJournal } from "@/lib/tradingJournal";
+import { fetchTradeLockState, broadcastLockChange } from "@/lib/tradeLock";
 
 export type EmotionalState =
   | "calm"
@@ -121,7 +122,19 @@ export async function submitJournalEntry(
     return { ok: false, error: "Trade timestamp is invalid." };
   }
 
-  // 0) Server-side de-dupe: if an identical trade was just inserted (same
+  // 0a) HARD GATE — trade lock. The DB trigger will also reject locked
+  // inserts, but we check here to give a precise message and avoid a
+  // failed write. No bypass: skipping this check still hits the trigger.
+  const lock = await fetchTradeLockState();
+  if (lock.trade_lock) {
+    console.warn("[journal] BLOCKED by trade lock:", lock.reason);
+    return {
+      ok: false,
+      error: `TRADING_LOCKED: ${lock.message} Confirm today's checklist in Daily Checklist before logging trades.`,
+    };
+  }
+
+  // 0b) Server-side de-dupe: if an identical trade was just inserted (same
   // market/direction/result/rr/prices within the last 2 minutes), reuse it
   // instead of writing a second row. Protects against double-tap, retries,
   // and multi-tab submissions.
@@ -203,6 +216,15 @@ export async function submitJournalEntry(
         full: tradeError,
         payload: tradePayload,
       });
+      // Surface the trigger's TRADING_LOCKED message cleanly.
+      if (tradeError?.message?.includes("TRADING_LOCKED")) {
+        broadcastLockChange();
+        return {
+          ok: false,
+          error:
+            "TRADING_LOCKED: Checklist confirmation required before trading. Open Daily Checklist.",
+        };
+      }
       return { ok: false, error: formatDbError(tradeError, "Failed to save trade.") };
     }
     console.log("[journal] trade inserted:", inserted.id);
@@ -271,11 +293,13 @@ export async function submitJournalEntry(
     };
   }
 
-  // Notify any subscribers (Control Hub, Mentor) to refresh.
+  // Notify any subscribers (Control Hub, Mentor, Trade Lock) to refresh.
   try {
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent(JOURNAL_EVENT));
     }
+    // The new discipline log may have flipped the re-lock condition.
+    broadcastLockChange();
   } catch {
     // ignore
   }
