@@ -533,6 +533,16 @@ function StepEmotion({
 
 // ───────── Step 4: Reflection ─────────
 
+const MISTAKE_TAGS: Array<{ key: MistakeTagValue; label: string }> = [
+  { key: "fomo", label: "FOMO" },
+  { key: "revenge", label: "Revenge trade" },
+  { key: "overleveraged", label: "Overleveraged" },
+  { key: "early_exit", label: "Early exit" },
+  { key: "late_entry", label: "Late entry" },
+  { key: "no_setup", label: "No clear setup" },
+  { key: "emotional", label: "Emotional decision" },
+];
+
 function StepReflection({
   draft,
   setDraft,
@@ -541,20 +551,56 @@ function StepReflection({
   setDraft: React.Dispatch<React.SetStateAction<Draft>>;
 }) {
   return (
-    <div>
-      <p className="mb-3 text-[14px] font-semibold tracking-tight text-text-primary">
-        What happened here?
-      </p>
-      <p className="mb-3 text-[12.5px] leading-snug text-text-secondary">
-        Optional. One or two lines is enough — write the truth.
-      </p>
-      <textarea
-        value={draft.notes}
-        onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-        placeholder="e.g. Took it too early before the retest. Felt the pressure to be in."
-        rows={5}
-        className="w-full resize-none rounded-xl bg-text-primary/[0.04] px-3.5 py-3 text-[13.5px] leading-snug text-text-primary placeholder:text-text-secondary/60 ring-1 ring-border focus:outline-none focus:ring-brand/40"
-      />
+    <div className="space-y-5">
+      <div>
+        <p className="mb-2 text-[14px] font-semibold tracking-tight text-text-primary">
+          Tag a behavioral mistake (optional)
+        </p>
+        <p className="mb-3 text-[12px] leading-snug text-text-secondary">
+          Captures the psychological trigger behind the trade. Skip if none applies.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {MISTAKE_TAGS.map((t) => {
+            const active = draft.mistake_tag === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => {
+                  playFeedback("tap");
+                  setDraft({
+                    ...draft,
+                    mistake_tag: active ? null : t.key,
+                  });
+                }}
+                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold ring-1 transition-all active:scale-[0.98] ${
+                  active
+                    ? "bg-gradient-mix text-white ring-transparent shadow-glow-primary"
+                    : "bg-text-primary/[0.04] text-text-primary ring-border hover:bg-text-primary/[0.08]"
+                }`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <p className="mb-2 text-[14px] font-semibold tracking-tight text-text-primary">
+          What happened here?
+        </p>
+        <p className="mb-3 text-[12.5px] leading-snug text-text-secondary">
+          Optional. One or two lines is enough — write the truth.
+        </p>
+        <textarea
+          value={draft.notes}
+          onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+          placeholder="e.g. Took it too early before the retest. Felt the pressure to be in."
+          rows={5}
+          className="w-full resize-none rounded-xl bg-text-primary/[0.04] px-3.5 py-3 text-[13.5px] leading-snug text-text-primary placeholder:text-text-secondary/60 ring-1 ring-border focus:outline-none focus:ring-brand/40"
+        />
+      </div>
     </div>
   );
 }
