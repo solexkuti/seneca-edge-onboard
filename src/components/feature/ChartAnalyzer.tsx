@@ -87,6 +87,7 @@ export default function ChartAnalyzer() {
 
   const execInputRef = useRef<HTMLInputElement>(null);
   const higherInputRef = useRef<HTMLInputElement>(null);
+  const { refresh: refreshTraderState } = useTraderState();
 
   useEffect(() => {
     let alive = true;
