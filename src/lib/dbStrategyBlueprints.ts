@@ -137,6 +137,55 @@ export async function createBlueprint(): Promise<StrategyBlueprint> {
   return data as unknown as StrategyBlueprint;
 }
 
+/**
+ * Reuse the user's most recent empty draft if one exists; otherwise create
+ * a fresh one. Prevents the "11 Untitled Strategy drafts" pile-up caused by
+ * StrictMode double-invoke and repeated visits to /hub/strategy/new.
+ *
+ * "Empty" = unlocked draft with no raw_input and no structured rules.
+ */
+let inflightFindOrCreate: Promise<StrategyBlueprint> | null = null;
+export function findOrCreateDraft(): Promise<StrategyBlueprint> {
+  if (inflightFindOrCreate) return inflightFindOrCreate;
+  inflightFindOrCreate = (async () => {
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      const uid = userRes.user?.id;
+      if (!uid) throw new Error("Not authenticated");
+
+      const { data: existing, error: selErr } = await supabase
+        .from("strategy_blueprints")
+        .select("*")
+        .eq("user_id", uid)
+        .eq("locked", false)
+        .eq("status", "draft")
+        .is("raw_input", null)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (selErr) throw selErr;
+
+      const empty = (existing?.[0] ?? null) as unknown as StrategyBlueprint | null;
+      if (empty) {
+        // eslint-disable-next-line no-console
+        console.log("[blueprints] reusing empty draft", empty.id);
+        return empty;
+      }
+
+      // eslint-disable-next-line no-console
+      console.log("[blueprints] creating new draft");
+      return await createBlueprint();
+    } finally {
+      // Clear AFTER a tick so concurrent callers in the same render share
+      // the same promise; subsequent fresh calls get a new lookup.
+      setTimeout(() => {
+        inflightFindOrCreate = null;
+      }, 0);
+    }
+  })();
+  return inflightFindOrCreate;
+}
+
+
 export async function updateBlueprint(
   id: string,
   patch: Partial<StrategyBlueprint>,
