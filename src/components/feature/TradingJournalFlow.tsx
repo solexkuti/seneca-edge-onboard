@@ -84,6 +84,58 @@ const EMPTY_DRAFT: Draft = {
   notes: "",
 };
 
+// ───────── background sync (optimistic) ─────────
+
+const PENDING_KEY = "journal_pending_submissions_v1";
+
+function bufferPendingSubmission(payload: NewJournalSubmission) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = window.localStorage.getItem(PENDING_KEY);
+    const list = raw ? (JSON.parse(raw) as Array<{ id: string; payload: NewJournalSubmission }>) : [];
+    list.push({ id: crypto.randomUUID(), payload });
+    window.localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function clearPendingSubmission(payload: NewJournalSubmission) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = window.localStorage.getItem(PENDING_KEY);
+    if (!raw) return;
+    const list = JSON.parse(raw) as Array<{ id: string; payload: NewJournalSubmission }>;
+    const next = list.filter((e) => JSON.stringify(e.payload) !== JSON.stringify(payload));
+    window.localStorage.setItem(PENDING_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+}
+
+async function syncWithRetry(payload: NewJournalSubmission) {
+  const delays = [0, 1500, 4000, 10000]; // silent retries
+  let warned = false;
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    if (delays[attempt] > 0) await new Promise((r) => setTimeout(r, delays[attempt]));
+    try {
+      const res = await submitJournalEntry(payload);
+      if (res.ok) {
+        clearPendingSubmission(payload);
+        return;
+      }
+    } catch {
+      /* fallthrough to retry */
+    }
+    if (!warned && attempt === 0) {
+      warned = true;
+      toast("Couldn't sync. Retrying…");
+    }
+  }
+  toast.error("Couldn't sync your trade. It's saved locally and will retry later.");
+}
+
+
 // ───────── component ─────────
 
 export default function TradingJournalFlow() {
@@ -122,6 +174,14 @@ export default function TradingJournalFlow() {
     if (submitting) return;
     setSubmitting(true);
 
+    const d = draft.discipline;
+    const optimisticScore =
+      ((d.followed_entry ? 1 : 0) +
+        (d.followed_exit ? 1 : 0) +
+        (d.followed_risk ? 1 : 0) +
+        (d.followed_behavior ? 1 : 0)) *
+      25;
+
     const payload: NewJournalSubmission = {
       trade: {
         market: draft.market.trim().toUpperCase(),
@@ -133,23 +193,23 @@ export default function TradingJournalFlow() {
         rr: parseNumOrNull(draft.rr),
       },
       discipline: {
-        followed_entry: !!draft.discipline.followed_entry,
-        followed_exit: !!draft.discipline.followed_exit,
-        followed_risk: !!draft.discipline.followed_risk,
-        followed_behavior: !!draft.discipline.followed_behavior,
+        followed_entry: !!d.followed_entry,
+        followed_exit: !!d.followed_exit,
+        followed_risk: !!d.followed_risk,
+        followed_behavior: !!d.followed_behavior,
       },
       emotional_state: draft.emotional_state!,
       notes: draft.notes,
     };
 
-    const res = await submitJournalEntry(payload);
-    setSubmitting(false);
+    // 1. Move user forward immediately (optimistic UI).
+    setDoneScore(optimisticScore);
 
-    if (!res.ok) {
-      toast.error(res.error);
-      return;
-    }
-    setDoneScore(res.row.discipline_score);
+    // 2. Buffer locally so nothing is lost if the tab closes mid-sync.
+    bufferPendingSubmission(payload);
+
+    // 3. Sync in the background with silent retries.
+    void syncWithRetry(payload);
   };
 
   // ───────── confirmation screen ─────────
@@ -275,8 +335,10 @@ export default function TradingJournalFlow() {
           disabled={!canContinue || submitting}
           className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-primary px-4 text-[14px] font-semibold text-white shadow-glow-primary transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {submitting ? (
-            "Saving…"
+          {submitting && step === 3 ? (
+            <>
+              <Check className="h-4 w-4" strokeWidth={2.4} /> Saved ✓
+            </>
           ) : step === 3 ? (
             <>
               <Check className="h-4 w-4" strokeWidth={2.4} /> Save trade
