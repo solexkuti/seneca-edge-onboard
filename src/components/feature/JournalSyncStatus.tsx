@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Cloud, CloudOff, Loader2 } from "lucide-react";
+import { Cloud, CloudOff, Loader2, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import {
   isSyncingNow,
   listPending,
+  retryNow,
   subscribePending,
 } from "@/lib/journalPendingQueue";
 
@@ -11,7 +13,7 @@ import {
  * Subtle pill that surfaces the background sync state of the journal queue.
  *   - Hidden when the queue is empty.
  *   - "Syncing…" while a flush is actively running.
- *   - "Saved locally · N" when entries are queued but no flush is in flight.
+ *   - "Saved locally · N · Retry sync" when entries are queued.
  */
 export default function JournalSyncStatus({
   className = "",
@@ -44,6 +46,19 @@ export default function JournalSyncStatus({
 
   const visible = count > 0 || syncing;
 
+  const handleRetry = async () => {
+    if (syncing) return;
+    const before = count;
+    const { remaining, synced } = await retryNow();
+    if (synced > 0 && remaining === 0) {
+      toast.success(synced === 1 ? "Trade synced." : `${synced} trades synced.`);
+    } else if (synced > 0) {
+      toast(`${synced} synced · ${remaining} still pending.`);
+    } else if (before > 0) {
+      toast("Still couldn't sync. We'll keep trying.");
+    }
+  };
+
   return (
     <AnimatePresence>
       {visible && (
@@ -62,15 +77,24 @@ export default function JournalSyncStatus({
               <Loader2 className="h-3 w-3 animate-spin text-text-secondary" strokeWidth={2.4} />
               Syncing…
             </>
-          ) : !online ? (
-            <>
-              <CloudOff className="h-3 w-3 text-text-secondary" strokeWidth={2.4} />
-              Saved locally · {count}
-            </>
           ) : (
             <>
-              <Cloud className="h-3 w-3 text-text-secondary" strokeWidth={2.4} />
+              {online ? (
+                <Cloud className="h-3 w-3 text-text-secondary" strokeWidth={2.4} />
+              ) : (
+                <CloudOff className="h-3 w-3 text-text-secondary" strokeWidth={2.4} />
+              )}
               Saved locally · {count}
+              <button
+                type="button"
+                onClick={handleRetry}
+                disabled={syncing}
+                className="ml-1 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-semibold text-text-primary/80 transition hover:bg-text-primary/[0.06] hover:text-text-primary disabled:opacity-50"
+                aria-label="Retry sync"
+              >
+                <RefreshCw className="h-3 w-3" strokeWidth={2.4} />
+                Retry sync
+              </button>
             </>
           )}
         </motion.div>
