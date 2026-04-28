@@ -268,6 +268,41 @@ type UserContext = {
     suggest_no_trade_day: boolean;
     strategy_name: string;
   };
+  /**
+   * TRADER_STATE — the read-only awareness payload required on every reply.
+   * Mentor MUST consult this before answering "why am I locked", "why did
+   * my score change", "can I analyze", "what should I do next" — anything
+   * touching system state. Mentor never mutates it.
+   */
+  traderState?: {
+    strategy: { exists: boolean; locked: boolean; name: string | null };
+    discipline: {
+      score: number;
+      state: "in_control" | "slipping" | "at_risk" | "locked";
+      consecutive_breaks: number;
+      last_score_delta: number | null;
+      last_reason: string | null;
+      last_source: "analyzer" | "execution" | null;
+    };
+    session: { checklist_confirmed: boolean; trading_allowed: boolean };
+    last_analyzer_event: {
+      verdict: "valid" | "invalid" | "weak";
+      score_delta: number;
+      reason: string | null;
+      created_at: string;
+    } | null;
+    blocks: {
+      no_strategy: boolean;
+      not_confirmed: boolean;
+      discipline_locked: boolean;
+      in_recovery: boolean;
+    };
+    recovery: {
+      active: boolean;
+      step: string | null;
+      probation_active: boolean;
+    };
+  };
 };
 
 const STRICT_MODE_ADDENDUM = `
@@ -283,6 +318,55 @@ Identity stays the same — you are still Seneca, the same calm partner. But the
 - Close with ONE direct challenge question that forces a process answer (not a feeling answer): "What rule was broken on both?" / "Why did you take the second one?" / "What is the cooldown rule before you re-enter?" — never "How do you feel?".
 - Stay under 110 words. No grounding-action paragraph. No spiral fallback. This overrides the normal structure.
 - Strict mode lifts automatically once the user logs two disciplined trades — do not announce that, just return to your normal voice when the snapshot says so.
+`;
+
+const AWARENESS_LAYER_ADDENDUM = `
+
+MENTOR AS AWARENESS LAYER (TRADER_STATE — read-only brain)
+You are the central awareness layer of the system. The [TRADER_STATE] block below, when present, is the source of truth for everything the system is doing right now. You READ from it. You NEVER unlock features, change scores, or bypass restrictions. The system enforces — you explain, interpret, and guide.
+
+PRINCIPLES
+- If [TRADER_STATE] is present, every answer about the system MUST use it. Never say "I don't know" or "I don't have access" — if data exists in the block, use it directly with concrete numbers and field names paraphrased into plain English.
+- You report the user's reality verbatim from the block: discipline score, state, what changed last, whether the checklist is confirmed, whether trading is allowed, whether they're in recovery.
+- You never invent values. You never round the score. You never claim a state that contradicts the block.
+
+RESTRICTION AWARENESS — when the user asks anything like "why can't I analyze", "why is it locked", "can I trade", check the block in this exact priority and answer with the matching case:
+  CASE 1 — strategy.exists is false → "You haven't defined your strategy yet. The system blocks analysis until your rules are clear. Go to Strategy Builder first."
+  CASE 2 — session.checklist_confirmed is false → "You haven't confirmed your checklist for today. Trading is locked until you do. Go to Daily and complete it."
+  CASE 3 — blocks.discipline_locked is true OR discipline.state is "locked" → "Your discipline score is too low (cite the exact number). You're currently in a locked state. This prevents further analysis to protect you from more mistakes."
+  CASE 4 — blocks.in_recovery is true → "You're in an active recovery flow (cite recovery.step if present). The system is gating analysis until you finish it."
+  Always give: REASON · SYSTEM LOGIC · NEXT ACTION. One short paragraph, no bullets.
+
+SCORE EXPLANATION — when the user asks "why did my score drop/move/change":
+- Cite discipline.last_score_delta and discipline.last_reason verbatim (translate values into plain English).
+- Then state the current score and state.
+- Example: "Your last analysis was flagged invalid for the entry rule. That cost -5. Your discipline score is now 62, which puts you at_risk."
+- If last_score_delta is null: "Nothing has moved your score recently — you're sitting at <score> (<state>)."
+
+LIGHT BEHAVIOR FEEDBACK
+- If discipline.consecutive_breaks >= 2, name it once: "You've had two invalid setups in a row — you're starting to force trades."
+- One simple observation, one redirect to process. No deep pattern engine here.
+
+TONE BY discipline.state
+  in_control → calm, reinforcing. "Good. Stay consistent." style.
+  slipping  → gentle warning, name the slip without alarm.
+  at_risk   → firm, corrective. "You're starting to slip. Slow down."
+  locked    → strict, controlled. "Stop. You are not following your system." (Stay warm — never harsh.)
+  No hype. No motivation talk. Only clarity.
+
+NO AUTHORITY OVERRIDE (non-negotiable)
+- You NEVER offer to unlock anything, change a score, bypass a rule, or "make an exception". If the user asks, refuse softly and re-explain the gate from [TRADER_STATE].
+- You NEVER contradict the system. If trading_allowed=false, you do not soften it.
+
+FALLBACK FOCUS
+- If the user asks something unrelated and a [TRADER_STATE] block exists, you may briefly redirect using their actual numbers: "Focus on your current state. Your discipline score is <score>. That's the priority right now." Then offer to think it through.
+
+RESPONSE STRUCTURE for state-related questions (woven into prose, in order):
+  1. WHAT is happening — name the system fact.
+  2. WHY it is happening — the rule or threshold that triggered it.
+  3. WHAT to do next — the single concrete action.
+
+If [TRADER_STATE] is missing, fall back to your normal warm guidance — never mention the missing block.
 `;
 
 // ── Hidden analytics helpers ───────────────────────────────────────────────
@@ -423,11 +507,47 @@ Deno.serve(async (req) => {
         (context.recentPatterns && context.recentPatterns.length > 0) ||
         (context.lastTwoTrades && context.lastTwoTrades.length > 0) ||
         context.activeStrategy ||
-        context.dailyChecklist)
+        context.dailyChecklist ||
+        context.traderState)
     );
     let contextBlock = "";
     if (hasContext) {
       contextBlock = "\n\nUSER CONTEXT (real data — weave in gently when it helps the user see themselves clearly):";
+
+      // [TRADER_STATE] — highest priority, read-only awareness payload.
+      // Mentor must consult this for every restriction, score, or "why"
+      // question. Rendered first so it anchors the rest of the context.
+      if (context!.traderState) {
+        const t = context!.traderState;
+        const stateLabel = t.discipline.state.toUpperCase();
+        const tradingAllowed = t.session.trading_allowed ? "YES" : "NO";
+        const checklist = t.session.checklist_confirmed ? "confirmed" : "NOT confirmed";
+        const strategyLine = t.strategy.exists
+          ? `defined${t.strategy.locked ? " · LOCKED" : ""}${t.strategy.name ? ` · "${t.strategy.name}"` : ""}`
+          : "NOT defined";
+        const lastEv = t.last_analyzer_event
+          ? `${t.last_analyzer_event.verdict}${t.last_analyzer_event.score_delta !== 0 ? ` (${t.last_analyzer_event.score_delta > 0 ? "+" : ""}${t.last_analyzer_event.score_delta})` : ""}${t.last_analyzer_event.reason ? ` — ${t.last_analyzer_event.reason}` : ""}`
+          : "none";
+        const lastDelta = t.discipline.last_score_delta;
+        const lastReason = t.discipline.last_reason;
+        const lastMove =
+          lastDelta !== null
+            ? `${lastDelta > 0 ? "+" : ""}${lastDelta}${lastReason ? ` — ${lastReason}` : ""}${t.discipline.last_source ? ` [${t.discipline.last_source}]` : ""}`
+            : "no recent move";
+        const blocks: string[] = [];
+        if (t.blocks.no_strategy) blocks.push("no_strategy");
+        if (t.blocks.not_confirmed) blocks.push("not_confirmed");
+        if (t.blocks.discipline_locked) blocks.push("discipline_locked");
+        if (t.blocks.in_recovery) blocks.push("in_recovery");
+        const blockLine = blocks.length ? blocks.join(", ") : "none";
+        const recoveryLine = t.recovery.active
+          ? `ACTIVE${t.recovery.step ? ` · step=${t.recovery.step}` : ""}${t.recovery.probation_active ? " · probation_active" : ""}`
+          : t.recovery.probation_active
+            ? "probation_active"
+            : "none";
+        contextBlock += `\n\n[TRADER_STATE — system source of truth, read-only]\nUse this to answer ANY question about the system: why a feature is locked, why the score moved, what's allowed today, what to do next. Cite numbers verbatim. Never override.\n- Strategy: ${strategyLine}\n- Discipline: score=${t.discipline.score}/100 · state=${stateLabel} · consecutive_breaks=${t.discipline.consecutive_breaks}\n- Last score move: ${lastMove}\n- Session: checklist ${checklist} · trading_allowed=${tradingAllowed}\n- Last analyzer event: ${lastEv}\n- Active blocks: ${blockLine}\n- Recovery: ${recoveryLine}`;
+      }
+
       if (context!.dailyChecklist) {
         const d = context!.dailyChecklist;
         const stateLabel =
@@ -497,8 +617,12 @@ Deno.serve(async (req) => {
     }
 
     const strictMode = !!context?.intelligence?.strictModeActive;
+    const hasTraderState = !!context?.traderState;
     const systemContent =
-      SYSTEM_PROMPT + contextBlock + (strictMode ? STRICT_MODE_ADDENDUM : "");
+      SYSTEM_PROMPT +
+      contextBlock +
+      (hasTraderState ? AWARENESS_LAYER_ADDENDUM : "") +
+      (strictMode ? STRICT_MODE_ADDENDUM : "");
 
     const upstream = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
