@@ -1119,7 +1119,19 @@ function StepLock({
   setBp: (b: StrategyBlueprint) => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const toggle = async () => {
+  const [confirming, setConfirming] = useState<"lock" | "unlock" | null>(null);
+  const [confirmText, setConfirmText] = useState("");
+
+  const requiredWord = bp.locked ? "UNLOCK" : "LOCK";
+  const canConfirm = confirmText.trim().toUpperCase() === requiredWord;
+
+  const startConfirm = () => {
+    setConfirming(bp.locked ? "unlock" : "lock");
+    setConfirmText("");
+  };
+
+  const apply = async () => {
+    if (!canConfirm) return;
     setBusy(true);
     try {
       const next = bp.locked
@@ -1127,6 +1139,8 @@ function StepLock({
         : await lockBlueprint(bp.id);
       setBp(next);
       toast.success(next.locked ? "Strategy locked." : "Strategy unlocked.");
+      setConfirming(null);
+      setConfirmText("");
     } catch (err) {
       console.error(err);
       toast.error("Could not change lock state.");
@@ -1134,6 +1148,7 @@ function StepLock({
       setBusy(false);
     }
   };
+
   return (
     <div className="space-y-4">
       <Header
@@ -1146,29 +1161,74 @@ function StepLock({
           <ShieldAlert className="h-5 w-5 text-primary" />
           <div className="text-sm text-foreground/90">
             Locking prevents casual edits. You can unlock at any time, but every
-            unlock is a deliberate choice.
+            unlock is a deliberate choice — type the keyword to confirm.
           </div>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={toggle}
-        disabled={busy}
-        className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-soft hover:opacity-95 disabled:opacity-50 ${
-          bp.locked
-            ? "bg-card text-foreground ring-1 ring-border"
-            : "bg-primary text-primary-foreground"
-        }`}
-      >
-        {busy ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : bp.locked ? (
-          <LockOpen className="h-4 w-4" />
-        ) : (
-          <Lock className="h-4 w-4" />
-        )}
-        {bp.locked ? "Unlock strategy" : "Lock strategy"}
-      </button>
+
+      {confirming === null ? (
+        <button
+          type="button"
+          onClick={startConfirm}
+          disabled={busy}
+          className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-soft hover:opacity-95 disabled:opacity-50 ${
+            bp.locked
+              ? "bg-card text-foreground ring-1 ring-border"
+              : "bg-primary text-primary-foreground"
+          }`}
+        >
+          {bp.locked ? (
+            <LockOpen className="h-4 w-4" />
+          ) : (
+            <Lock className="h-4 w-4" />
+          )}
+          {bp.locked ? "Unlock strategy" : "Lock strategy"}
+        </button>
+      ) : (
+        <div className="rounded-xl bg-background p-3 ring-1 ring-border space-y-3">
+          <div className="text-sm text-foreground/90">
+            Type{" "}
+            <span className="font-mono font-semibold text-foreground">
+              {requiredWord}
+            </span>{" "}
+            to confirm.
+          </div>
+          <input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder={requiredWord}
+            className="w-full rounded-lg bg-card px-3 py-2 text-sm font-mono ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40"
+            autoFocus
+          />
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setConfirming(null);
+                setConfirmText("");
+              }}
+              className="rounded-lg px-3 py-1.5 text-xs font-medium text-foreground/80 hover:bg-card"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={apply}
+              disabled={!canConfirm || busy}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-95 disabled:opacity-40"
+            >
+              {busy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : bp.locked ? (
+                <LockOpen className="h-3.5 w-3.5" />
+              ) : (
+                <Lock className="h-3.5 w-3.5" />
+              )}
+              Confirm {bp.locked ? "unlock" : "lock"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
