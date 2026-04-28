@@ -39,6 +39,8 @@ import {
   type ChartRegion,
 } from "@/lib/chartRuleCheck";
 import { supabase } from "@/integrations/supabase/client";
+import { logAnalyzerEvent, type AnalyzerVerdict } from "@/lib/analyzerEvents";
+import { useTraderState } from "@/hooks/useTraderState";
 
 type ChartExplanation = {
   summary: string;
