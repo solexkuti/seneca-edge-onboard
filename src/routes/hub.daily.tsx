@@ -18,6 +18,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import RequireAuth from "@/components/auth/RequireAuth";
+import TraderStateGate from "@/components/feature/TraderStateGate";
 import { supabase } from "@/integrations/supabase/client";
 import { saveDailyChecklist } from "@/lib/dailyChecklistCache";
 import {
@@ -41,7 +42,9 @@ export const Route = createFileRoute("/hub/daily")({
   }),
   component: () => (
     <RequireAuth>
-      <DailyChecklistPage />
+      <TraderStateGate surface="Daily Checklist" enforce={["no_strategy"]}>
+        <DailyChecklistPage />
+      </TraderStateGate>
     </RequireAuth>
   ),
 });
