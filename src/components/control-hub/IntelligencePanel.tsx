@@ -46,6 +46,8 @@ export default function IntelligencePanel() {
           label="Discipline streak"
           value={`${intel.disciplineStreak}`}
           suffix={intel.disciplineStreak === 1 ? "trade" : "trades"}
+          glow={intel.disciplineStreak > 0 ? "amber" : "none"}
+          delay={0.05}
           icon={
             intel.disciplineStreak > 0 ? (
               <Flame className="h-3.5 w-3.5 text-amber-600" strokeWidth={2.4} />
@@ -58,6 +60,14 @@ export default function IntelligencePanel() {
           label="Discipline (last 20)"
           value={`${intel.disciplineScore ?? 0}%`}
           suffix={`of ${intel.windowSize}`}
+          glow={
+            (intel.disciplineScore ?? 0) >= 80
+              ? "emerald"
+              : (intel.disciplineScore ?? 0) >= 50
+              ? "amber"
+              : "rose"
+          }
+          delay={0.1}
           icon={<ShieldCheck className="h-3.5 w-3.5 text-emerald-700" strokeWidth={2.4} />}
         />
       </div>
