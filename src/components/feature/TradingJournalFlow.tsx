@@ -84,57 +84,12 @@ const EMPTY_DRAFT: Draft = {
   notes: "",
 };
 
-// ───────── background sync (optimistic) ─────────
-
-const PENDING_KEY = "journal_pending_submissions_v1";
-
-function bufferPendingSubmission(payload: NewJournalSubmission) {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = window.localStorage.getItem(PENDING_KEY);
-    const list = raw ? (JSON.parse(raw) as Array<{ id: string; payload: NewJournalSubmission }>) : [];
-    list.push({ id: crypto.randomUUID(), payload });
-    window.localStorage.setItem(PENDING_KEY, JSON.stringify(list));
-  } catch {
-    /* ignore quota */
-  }
-}
-
-function clearPendingSubmission(payload: NewJournalSubmission) {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = window.localStorage.getItem(PENDING_KEY);
-    if (!raw) return;
-    const list = JSON.parse(raw) as Array<{ id: string; payload: NewJournalSubmission }>;
-    const next = list.filter((e) => JSON.stringify(e.payload) !== JSON.stringify(payload));
-    window.localStorage.setItem(PENDING_KEY, JSON.stringify(next));
-  } catch {
-    /* ignore */
-  }
-}
-
-async function syncWithRetry(payload: NewJournalSubmission) {
-  const delays = [0, 1500, 4000, 10000]; // silent retries
-  let warned = false;
-  for (let attempt = 0; attempt < delays.length; attempt++) {
-    if (delays[attempt] > 0) await new Promise((r) => setTimeout(r, delays[attempt]));
-    try {
-      const res = await submitJournalEntry(payload);
-      if (res.ok) {
-        clearPendingSubmission(payload);
-        return;
-      }
-    } catch {
-      /* fallthrough to retry */
-    }
-    if (!warned && attempt === 0) {
-      warned = true;
-      toast("Couldn't sync. Retrying…");
-    }
-  }
-  toast.error("Couldn't sync your trade. It's saved locally and will retry later.");
-}
-
+// Background sync + local-first persistence live in `journalPendingQueue`.
+import {
+  enqueuePending,
+  syncWithRetry,
+  flushPending,
+} from "@/lib/journalPendingQueue";
 
 // ───────── component ─────────
 
@@ -202,14 +157,14 @@ export default function TradingJournalFlow() {
       notes: draft.notes,
     };
 
-    // 1. Move user forward immediately (optimistic UI).
+    // 1. Persist locally FIRST — never advance UI before backup is written.
+    const pendingId = enqueuePending(payload);
+
+    // 2. Now safe to move the user forward (optimistic UI).
     setDoneScore(optimisticScore);
 
-    // 2. Buffer locally so nothing is lost if the tab closes mid-sync.
-    bufferPendingSubmission(payload);
-
     // 3. Sync in the background with silent retries.
-    void syncWithRetry(payload);
+    void syncWithRetry(pendingId, payload, { showToast: true });
   };
 
   // ───────── confirmation screen ─────────
