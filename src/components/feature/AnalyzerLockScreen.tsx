@@ -75,9 +75,9 @@ export default function AnalyzerLockScreen({ children }: Props) {
     ? `Your discipline score has dropped to ${state.discipline.score}/100. The system has forced a cooldown.`
     : "You have not confirmed today's checklist. Trading is blocked until you do.";
 
-  const fixTarget = isDiscipline ? "/hub/mentor" : "/hub/daily";
+  const fixTarget = isDiscipline ? "/hub/recovery" : "/hub/daily";
   const fixLabel = isDiscipline
-    ? "Fix My State (Reflect)"
+    ? "Start Recovery"
     : "Fix My State (Confirm Checklist)";
 
   const onFixState = () => {

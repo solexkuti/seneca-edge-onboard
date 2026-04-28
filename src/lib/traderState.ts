@@ -26,6 +26,13 @@ import {
   ANALYZER_EVENT_LOGGED,
   type RecentDecision,
 } from "@/lib/analyzerEvents";
+import {
+  getActiveRecoverySession,
+  evaluateProbation,
+  RECOVERY_EVENT,
+  type RecoverySession,
+  type ProbationStatus,
+} from "@/lib/recovery";
 
 export type DisciplineState = "optimal" | "at_risk" | "locked";
 
@@ -47,11 +54,17 @@ export type TraderState = {
   strategy: ActiveStrategyContext | null;
   discipline: DisciplineSummary;
   session: SessionSummary;
+  recovery: {
+    active_session: RecoverySession | null;
+    probation: ProbationStatus;
+  };
   /** Hard-block flags. If any is true, the matching surface MUST refuse to operate. */
   blocks: {
     no_strategy: boolean;
     not_confirmed: boolean;
     discipline_locked: boolean;
+    /** True whenever the user must complete recovery before doing anything else. */
+    in_recovery: boolean;
   };
 };
 
@@ -71,10 +84,22 @@ export const EMPTY_STATE: TraderState = {
     trade_lock: null,
     trading_allowed: false,
   },
+  recovery: {
+    active_session: null,
+    probation: {
+      active: false,
+      passed: false,
+      failed: false,
+      decisions_required: 2,
+      decisions_seen: 0,
+      last_session_id: null,
+    },
+  },
   blocks: {
     no_strategy: true,
     not_confirmed: true,
     discipline_locked: false,
+    in_recovery: false,
   },
 };
 
@@ -104,19 +129,29 @@ export function computeDiscipline(recent: RecentDecision[]): DisciplineSummary {
 }
 
 export async function loadTraderState(): Promise<TraderState> {
-  const [strategy, lock, recent] = await Promise.all([
+  const [strategy, lock, recent, activeRecovery, probation] = await Promise.all([
     loadActiveStrategyContext().catch(() => null),
     fetchTradeLockState().catch(() => null),
     fetchRecentDecisions(20).catch(() => [] as RecentDecision[]),
+    getActiveRecoverySession().catch(() => null),
+    evaluateProbation().catch(() => ({
+      active: false,
+      passed: false,
+      failed: false,
+      decisions_required: 2,
+      decisions_seen: 0,
+      last_session_id: null,
+    })),
   ]);
 
   const discipline = computeDiscipline(recent);
   const checklist_confirmed = !!lock && !lock.trade_lock;
   const has_strategy = !!strategy?.blueprint;
   const discipline_locked = discipline.state === "locked";
+  const in_recovery = !!activeRecovery || discipline_locked;
 
   const trading_allowed =
-    has_strategy && checklist_confirmed && !discipline_locked;
+    has_strategy && checklist_confirmed && !discipline_locked && !in_recovery;
 
   return {
     loading: false,
@@ -127,10 +162,15 @@ export async function loadTraderState(): Promise<TraderState> {
       trade_lock: lock,
       trading_allowed,
     },
+    recovery: {
+      active_session: activeRecovery,
+      probation,
+    },
     blocks: {
       no_strategy: !has_strategy,
       not_confirmed: !checklist_confirmed,
       discipline_locked,
+      in_recovery,
     },
   };
 }
@@ -141,9 +181,11 @@ export function onTraderStateChange(cb: () => void): () => void {
   const handler = () => cb();
   window.addEventListener(TRADE_LOCK_EVENT, handler);
   window.addEventListener(ANALYZER_EVENT_LOGGED, handler);
+  window.addEventListener(RECOVERY_EVENT, handler);
   return () => {
     window.removeEventListener(TRADE_LOCK_EVENT, handler);
     window.removeEventListener(ANALYZER_EVENT_LOGGED, handler);
+    window.removeEventListener(RECOVERY_EVENT, handler);
   };
 }
 

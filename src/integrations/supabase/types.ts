@@ -425,6 +425,84 @@ export type Database = {
         }
         Relationships: []
       }
+      recovery_sessions: {
+        Row: {
+          completed_time: string | null
+          cooldown_completed: boolean
+          cooldown_ends_at: string | null
+          cooldown_seconds: number
+          cooldown_started_at: string | null
+          created_at: string
+          id: string
+          probation_decisions_seen: number
+          probation_state: string
+          recommit_acks: Json
+          recommit_completed: boolean
+          reflection_completed: boolean
+          reflection_next_action: string | null
+          reflection_violation_match: string | null
+          reflection_why: string | null
+          start_time: string
+          step: string
+          success: boolean | null
+          trigger_reason: string
+          triggered_by_event_id: string | null
+          triggered_by_trade_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_time?: string | null
+          cooldown_completed?: boolean
+          cooldown_ends_at?: string | null
+          cooldown_seconds?: number
+          cooldown_started_at?: string | null
+          created_at?: string
+          id?: string
+          probation_decisions_seen?: number
+          probation_state?: string
+          recommit_acks?: Json
+          recommit_completed?: boolean
+          reflection_completed?: boolean
+          reflection_next_action?: string | null
+          reflection_violation_match?: string | null
+          reflection_why?: string | null
+          start_time?: string
+          step?: string
+          success?: boolean | null
+          trigger_reason?: string
+          triggered_by_event_id?: string | null
+          triggered_by_trade_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_time?: string | null
+          cooldown_completed?: boolean
+          cooldown_ends_at?: string | null
+          cooldown_seconds?: number
+          cooldown_started_at?: string | null
+          created_at?: string
+          id?: string
+          probation_decisions_seen?: number
+          probation_state?: string
+          recommit_acks?: Json
+          recommit_completed?: boolean
+          reflection_completed?: boolean
+          reflection_next_action?: string | null
+          reflection_violation_match?: string | null
+          reflection_why?: string | null
+          start_time?: string
+          step?: string
+          success?: boolean | null
+          trigger_reason?: string
+          triggered_by_event_id?: string | null
+          triggered_by_trade_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       strategies: {
         Row: {
           behavior_rule: string | null
