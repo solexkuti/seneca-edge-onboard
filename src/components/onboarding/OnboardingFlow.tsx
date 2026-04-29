@@ -157,7 +157,7 @@ export default function OnboardingFlow() {
         </div>
 
         {/* Slide stage */}
-        <div className="relative mt-10 flex flex-1 items-center justify-center">
+        <div className="relative mt-4 flex flex-1 items-center justify-center">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={slide.key}
