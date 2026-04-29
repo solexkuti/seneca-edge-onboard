@@ -290,8 +290,29 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
 
         {/* 2 · Next Action */}
         <Section delay={0.08} className="mt-5">
-          <div className="rounded-2xl bg-card/70 p-4">
-            <div className="flex items-start gap-3">
+          <div
+            className={`relative overflow-hidden rounded-2xl p-4 ring-1 ${
+              action.tone === "risk"
+                ? "bg-card/70 ring-rose-300/25"
+                : action.tone === "warn"
+                  ? "bg-card/70 ring-amber-400/25"
+                  : "bg-card/70 ring-border/60"
+            }`}
+          >
+            {/* Soft warning wash for warn/risk tones */}
+            {(action.tone === "warn" || action.tone === "risk") && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 opacity-90"
+                style={{
+                  background:
+                    action.tone === "risk"
+                      ? "radial-gradient(120% 80% at 0% 0%, rgba(194,138,138,0.10), transparent 60%)"
+                      : "radial-gradient(120% 80% at 0% 0%, rgba(231,201,138,0.10), transparent 60%)",
+                }}
+              />
+            )}
+            <div className="relative flex items-start gap-3">
               <span aria-hidden className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${TONE_DOT[action.tone]}`} />
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
@@ -309,7 +330,7 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
                       {action.title}
                     </p>
                     <p className="mt-1 text-[12px] leading-snug text-text-secondary/80">
-                      {shortLine(action.sub, 60)}
+                      {action.sub}
                     </p>
                   </motion.div>
                 </AnimatePresence>
