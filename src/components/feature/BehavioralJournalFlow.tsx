@@ -241,9 +241,12 @@ export default function BehavioralJournalFlow({
     return Number.isFinite(n) ? n : null;
   }, [resultStr]);
 
+  // Always prioritize calculated result (from Entry/SL/Exit) over manual input.
+  // Manual R is only used when Exit is empty (optional mode).
   const resultR = useMemo(() => {
+    if (autoRealizedR != null) return autoRealizedR;
     if (manualR != null) return manualR;
-    return autoRealizedR ?? NaN;
+    return NaN;
   }, [manualR, autoRealizedR]);
 
   // Parsed dollar PnL (optional). Empty → null. Non-numeric → null but flagged.
@@ -1005,7 +1008,8 @@ export default function BehavioralJournalFlow({
                       onChange={(e) => setExitStr(e.target.value)}
                       inputMode="decimal"
                       placeholder="0.00"
-                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
+                      disabled={exitStr.trim() === "" && manualR != null}
+                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed"
                     />
                   </Field>
                   <Field label="Stop loss">
@@ -1039,17 +1043,24 @@ export default function BehavioralJournalFlow({
                     />
                   </Field>
                   <Field label="Result (R)">
-                    <input
-                      value={resultStr}
-                      onChange={(e) => setResultStr(e.target.value)}
-                      placeholder={
-                        autoRealizedR != null
-                          ? `auto ${autoRealizedR > 0 ? "+" : ""}${autoRealizedR.toFixed(2)}`
-                          : "+1.5 / -1"
-                      }
-                      inputMode="decimal"
-                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
-                    />
+                    {exit !== null ? (
+                      <div className="w-full text-[15px] text-text-primary tabular-nums">
+                        {autoRealizedR != null
+                          ? `${autoRealizedR > 0 ? "+" : ""}${autoRealizedR.toFixed(2)}R`
+                          : "—"}
+                        <span className="ml-2 text-[10.5px] uppercase tracking-wider text-text-secondary/60">
+                          auto
+                        </span>
+                      </div>
+                    ) : (
+                      <input
+                        value={resultStr}
+                        onChange={(e) => setResultStr(e.target.value)}
+                        placeholder="+1.5 / -1"
+                        inputMode="decimal"
+                        className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
+                      />
+                    )}
                   </Field>
                 </div>
 
@@ -1226,11 +1237,8 @@ export default function BehavioralJournalFlow({
                   validation.calculatedR != null && manualR != null && (
                     <div className="rounded-lg bg-amber-500/10 ring-1 ring-amber-500/25 px-3 py-3 text-[12px] text-amber-100">
                       <p className="leading-relaxed">
-                        Your manual result ({manualR > 0 ? "+" : ""}
-                        {manualR.toFixed(2)}R) differs from the calculated value
-                        ({validation.calculatedR > 0 ? "+" : ""}
-                        {validation.calculatedR.toFixed(2)}R). Use calculated or
-                        keep yours?
+                        Your entered result does not match your trade prices.
+                        Please review.
                       </p>
                       <div className="mt-2.5 flex flex-wrap gap-2">
                         <button
