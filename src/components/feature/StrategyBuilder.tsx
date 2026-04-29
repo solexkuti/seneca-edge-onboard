@@ -60,7 +60,7 @@ import {
 } from "@/lib/dbStrategyBlueprints";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadPdf, downloadTxt, downloadJson } from "@/lib/strategyExport";
-import { buildCanonicalStrategy, CATEGORY_LABELS } from "@/lib/strategySchema";
+import { buildCanonicalStrategy } from "@/lib/strategySchema";
 import {
   interrogate,
   readRules,
