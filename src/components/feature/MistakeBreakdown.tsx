@@ -1,9 +1,9 @@
 // MistakeBreakdown — groups journal entries by mistake type and shows
 // count, win rate, and avg R for each. Read-only insight surface.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, CalendarIcon, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { ArrowLeft, CalendarIcon, ChevronDown, Download, FileSpreadsheet, FileText, ImageIcon } from "lucide-react";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
@@ -29,6 +29,8 @@ import {
   MISTAKES,
   MISTAKE_LABEL,
   SEVERE_IDS,
+  getScreenshotUrl,
+  type JournalEntry,
   type MistakeId,
 } from "@/lib/behavioralJournal";
 
@@ -65,6 +67,7 @@ type Row = {
   losses: number;
   breakeven: number;
   netR: number;
+  entries: JournalEntry[];
 };
 
 function fmtPct(num: number, denom: number): string {
@@ -81,6 +84,7 @@ export default function MistakeBreakdown() {
   const { entries, loading } = useBehavioralJournal(500);
   const [preset, setPreset] = useState<PresetId>("30d");
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const { fromMs, toMs, rangeLabel } = useMemo(() => {
     if (preset === "custom" && customRange?.from) {
@@ -126,6 +130,7 @@ export default function MistakeBreakdown() {
         losses: 0,
         breakeven: 0,
         netR: 0,
+        entries: [],
       });
     }
     seed.set("__clean", {
@@ -137,6 +142,7 @@ export default function MistakeBreakdown() {
       losses: 0,
       breakeven: 0,
       netR: 0,
+      entries: [],
     });
 
     for (const e of filteredEntries) {
@@ -149,6 +155,7 @@ export default function MistakeBreakdown() {
         if (!row) continue;
         row.count += 1;
         row.netR += r;
+        row.entries.push(e);
         if (w === "win") row.wins += 1;
         else if (w === "loss") row.losses += 1;
         else row.breakeven += 1;
@@ -303,6 +310,7 @@ export default function MistakeBreakdown() {
                 winRate === null
                   ? 0
                   : Math.min(1, Math.max(0, winRate));
+              const isOpen = expanded[r.id] ?? true;
               return (
                 <div
                   key={r.id}
@@ -329,9 +337,20 @@ export default function MistakeBreakdown() {
                     </p>
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between text-[10.5px] text-text-secondary tabular-nums">
-                    <span>
-                      W {r.wins} · L {r.losses} · BE {r.breakeven}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpanded((s) => ({ ...s, [r.id]: !isOpen }))
+                    }
+                    className="mt-2.5 -mx-1 flex w-[calc(100%+0.5rem)] items-center justify-between rounded-md px-1 py-1 text-[10.5px] text-text-secondary tabular-nums hover:text-text-primary transition"
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      <ChevronDown
+                        className={`h-3 w-3 transition-transform ${
+                          isOpen ? "" : "-rotate-90"
+                        }`}
+                      />
+                      {isOpen ? "Hide trades" : "Show trades"}
                     </span>
                     <span
                       className={
@@ -344,7 +363,22 @@ export default function MistakeBreakdown() {
                     >
                       Net {fmtR(r.netR)}
                     </span>
-                  </div>
+                  </button>
+
+                  {isOpen && r.entries.length > 0 && (
+                    <ul className="mt-2 space-y-1.5">
+                      {r.entries
+                        .slice()
+                        .sort(
+                          (a, b) =>
+                            new Date(b.created_at).getTime() -
+                            new Date(a.created_at).getTime(),
+                        )
+                        .map((e) => (
+                          <TradeRow key={e.id} entry={e} />
+                        ))}
+                    </ul>
+                  )}
                 </div>
               );
             })}
@@ -366,5 +400,63 @@ export default function MistakeBreakdown() {
         )}
       </div>
     </div>
+  );
+}
+
+function resultMeta(r: number): { label: "Win" | "Loss" | "BE"; tone: string } {
+  if (r > 0) return { label: "Win", tone: "text-emerald-300 ring-emerald-500/30 bg-emerald-500/10" };
+  if (r < 0) return { label: "Loss", tone: "text-rose-300 ring-rose-500/30 bg-rose-500/10" };
+  return { label: "BE", tone: "text-text-secondary ring-border bg-text-primary/5" };
+}
+
+function TradeRow({ entry }: { entry: JournalEntry }) {
+  const [thumb, setThumb] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!entry.screenshot_path) return;
+    getScreenshotUrl(entry.screenshot_path).then((url) => {
+      if (!cancelled) setThumb(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [entry.screenshot_path]);
+
+  const meta = resultMeta(entry.result_r);
+  const when = new Date(entry.created_at);
+
+  return (
+    <li className="flex items-center gap-2.5 rounded-lg bg-text-primary/[0.03] ring-1 ring-border/60 px-2.5 py-2">
+      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-md bg-text-primary/[0.06] ring-1 ring-border/40 flex items-center justify-center">
+        {thumb ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={thumb}
+            alt={`${entry.asset} screenshot`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <ImageIcon className="h-3.5 w-3.5 text-text-secondary/50" />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <p className="truncate text-[12.5px] font-semibold text-text-primary">
+            {entry.asset || "—"}
+          </p>
+          <p className="text-[10px] uppercase tracking-wider text-text-secondary/70 tabular-nums">
+            {format(when, "MMM d · HH:mm")}
+          </p>
+        </div>
+        <p className="text-[10.5px] tabular-nums text-text-secondary">
+          {fmtR(entry.result_r)}
+        </p>
+      </div>
+      <span
+        className={`shrink-0 rounded-full ring-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${meta.tone}`}
+      >
+        {meta.label}
+      </span>
+    </li>
   );
 }
