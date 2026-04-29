@@ -14,7 +14,7 @@
 //   6. Name      — input
 //   7. Auth      — sign in / sign up → /hub
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
 import {
