@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
+import { ChevronLeft } from "lucide-react";
 import SlideFeeling from "@/components/onboarding/SlideFeeling";
 import SlideSystem from "@/components/onboarding/SlideSystem";
 import SlideEdge from "@/components/onboarding/SlideEdge";
@@ -9,6 +10,7 @@ import Slide4Market from "@/components/onboarding/Slide4Market";
 import SlideExperience from "@/components/onboarding/SlideExperience";
 import SlideStruggle from "@/components/onboarding/SlideStruggle";
 import SlideGoal from "@/components/onboarding/SlideGoal";
+import SlideCalibration from "@/components/onboarding/SlideCalibration";
 import SlideName from "@/components/onboarding/SlideName";
 import SlideAuth from "@/components/onboarding/SlideAuth";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
@@ -39,6 +41,8 @@ const slideOrder = [
   { key: "q-experience", Component: SlideExperience },
   { key: "q-challenge", Component: SlideStruggle },
   { key: "q-goal", Component: SlideGoal },
+  // Calibration — auto-advance after ~2.6s
+  { key: "calibration", Component: SlideCalibration },
   // Identity → signup → control state
   { key: "name", Component: SlideName },
   { key: "auth", Component: SlideAuth },
