@@ -129,7 +129,7 @@ export default function MistakeBreakdown() {
       netR: 0,
     });
 
-    for (const e of entries) {
+    for (const e of filteredEntries) {
       const r = e.result_r;
       const w = r > 0 ? "win" : r < 0 ? "loss" : "be";
       const buckets: Array<MistakeId | "__clean"> =
