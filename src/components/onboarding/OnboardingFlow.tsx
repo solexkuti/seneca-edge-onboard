@@ -17,7 +17,7 @@ import PhoneFrame from "@/components/onboarding/PhoneFrame";
 import SegmentedProgress from "@/components/onboarding/SegmentedProgress";
 import { saveUserName, getUserName } from "@/lib/userName";
 import { supabase } from "@/integrations/supabase/client";
-import { syncProfileFromOnboarding } from "@/lib/auth";
+import { isOnboardingCompleted } from "@/lib/auth";
 
 export type SlideProps = {
   onNext: () => void;
@@ -54,15 +54,26 @@ export default function OnboardingFlow() {
   const [direction, setDirection] = useState<1 | -1>(1);
   const [userName, setUserName] = useState<string>(() => getUserName() ?? "");
 
-  // If the user already has a session (e.g. returning from Google OAuth),
-  // sync their profile and jump straight into the control state.
+  // Hard guard: if a session exists AND onboarding is already completed
+  // (returning user, e.g. after Google OAuth or a stale tab), bypass the
+  // entire flow — including Slide 4 — and jump straight to /hub.
+  // We do NOT call syncProfileFromOnboarding here, because that would
+  // force-mark onboarding complete for users mid-flow.
   useEffect(() => {
     let cancelled = false;
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (cancelled || !data.session?.user) return;
-      await syncProfileFromOnboarding(data.session.user.id);
-      if (!cancelled) navigate({ to: "/hub" });
-    });
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const userId = data.session?.user?.id;
+      if (cancelled || !userId) return;
+      const completed = await isOnboardingCompleted(userId);
+      if (cancelled || !completed) return;
+      try {
+        window.sessionStorage.setItem("seneca:welcomeBack", "1");
+      } catch {
+        /* ignore */
+      }
+      navigate({ to: "/hub", replace: true });
+    })();
     return () => {
       cancelled = true;
     };
