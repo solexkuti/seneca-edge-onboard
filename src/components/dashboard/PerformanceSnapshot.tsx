@@ -107,11 +107,18 @@ function Stat({
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary/55">
         {label}
       </p>
-      <p
-        className={`mt-1.5 text-[20px] font-semibold leading-none tabular-nums tracking-tight ${valueClass ?? "text-text-primary"}`}
-      >
-        {value}
-      </p>
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.p
+          key={value}
+          initial={{ opacity: 0, y: 4, filter: "blur(3px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, y: -4, filter: "blur(3px)" }}
+          transition={{ duration: 0.35, ease }}
+          className={`mt-1.5 text-[20px] font-semibold leading-none tabular-nums tracking-tight ${valueClass ?? "text-text-primary"}`}
+        >
+          {value}
+        </motion.p>
+      </AnimatePresence>
     </div>
   );
 }
