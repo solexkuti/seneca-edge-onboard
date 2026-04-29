@@ -1188,9 +1188,13 @@ function StepOutput({
       });
       const { data, error } = (await withTimeout(call, 25000, "generate")) as Awaited<typeof call>;
       if (error) throw error;
+      // Single source of truth: persist the canonical checklist + plan derived
+      // locally. The edge function's prose plan is kept as a fallback only.
+      const canonical = buildCanonicalStrategy(bp);
       await patch({
-        checklist: data.checklist as ChecklistByTier,
-        trading_plan: data.trading_plan as string,
+        checklist: canonical.checklist,
+        trading_plan:
+          (data?.trading_plan as string | undefined) ?? canonical.plan_lines.join("\n"),
         status: "finalized",
       });
     } catch (err) {
