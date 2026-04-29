@@ -175,6 +175,38 @@ export default function BehavioralJournalFlow({
     return autoRealizedR ?? NaN;
   }, [resultStr, autoRealizedR]);
 
+  // Parsed dollar PnL (optional). Empty → null. Non-numeric → null but flagged.
+  const pnlDollar = useMemo(() => {
+    const t = pnlDollarStr.trim().replace(/[$,\s]/g, "");
+    if (!t) return null;
+    const n = Number(t);
+    return Number.isFinite(n) ? n : null;
+  }, [pnlDollarStr]);
+  const pnlDollarInvalid = pnlDollarStr.trim().length > 0 && pnlDollar === null;
+
+  // Auto-suggest outcome from R (soft logic — does not lock).
+  const suggestedOutcome: Outcome | null = useMemo(() => {
+    if (!Number.isFinite(resultR)) return null;
+    if (resultR > 0) return "win";
+    if (resultR < 0) return "loss";
+    return "breakeven";
+  }, [resultR]);
+
+  useEffect(() => {
+    if (outcomeManuallySet) return;
+    if (suggestedOutcome && outcome !== suggestedOutcome) {
+      setOutcome(suggestedOutcome);
+    }
+  }, [suggestedOutcome, outcomeManuallySet, outcome]);
+
+  // Mismatch warning — non-blocking. R sign disagrees with manual outcome.
+  const outcomeMismatch = useMemo(() => {
+    if (!outcome || !Number.isFinite(resultR)) return false;
+    if (resultR > 0 && outcome === "loss") return true;
+    if (resultR < 0 && outcome === "win") return true;
+    return false;
+  }, [outcome, resultR]);
+
   const previewClass = useMemo(() => classify(mistakes), [mistakes]);
 
   // Contextual reinforcement line for clean executions. Looks at prior
@@ -190,8 +222,12 @@ export default function BehavioralJournalFlow({
     return "This is consistency forming.";
   }, [priorEntries]);
 
+  // Outcome is REQUIRED. R is required (existing rule).
   const canNextFromStep0 =
-    asset.trim().length > 0 && Number.isFinite(resultR);
+    asset.trim().length > 0 &&
+    Number.isFinite(resultR) &&
+    outcome !== null &&
+    !pnlDollarInvalid;
 
   function addFiles(list: FileList | null) {
     if (!list || list.length === 0) return;
