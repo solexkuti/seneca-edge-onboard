@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Sparkles, AlertTriangle } from "lucide-react";
+import { ArrowUp, Sparkles } from "lucide-react";
 import FeatureShell from "./FeatureShell";
 import { useDbJournal } from "@/hooks/useDbJournal";
 import { summarizeJournal } from "@/lib/journalSummary";
@@ -37,6 +37,12 @@ const SESSION_ID =
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+const QUICK_PROMPTS: { label: string; prompt: string }[] = [
+  { label: "Review my last trade", prompt: "Review my last trade. What did I do wrong, and what was right?" },
+  { label: "Why am I losing control?", prompt: "Look at my recent behavior. Why am I losing control, and what's the pattern?" },
+  { label: "Help me fix my exits", prompt: "My exits are an issue. Based on my last trades, how do I fix them?" },
+];
 
 export default function AiMentorChat() {
   const { state: traderState } = useTraderState();
