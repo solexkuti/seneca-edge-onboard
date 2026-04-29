@@ -462,21 +462,32 @@ export default function AiMentorChat() {
         }
       : undefined;
 
-    const ctx =
-      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload || dailyChecklistPayload || traderStatePayload || behavioralPayload || performancePayload
-        ? {
-            ...(journalSummary ? { journalSummary } : {}),
-            ...(profileSummary ? { profileSummary } : {}),
-            ...(intelligencePayload ? { intelligence: intelligencePayload } : {}),
-            ...(recentPatternsPayload ? { recentPatterns: recentPatternsPayload } : {}),
-            ...(lastTwoPayload ? { lastTwoTrades: lastTwoPayload } : {}),
-            ...(strategyPayload ? { activeStrategy: strategyPayload } : {}),
-            ...(dailyChecklistPayload ? { dailyChecklist: dailyChecklistPayload } : {}),
-            ...(traderStatePayload ? { traderState: traderStatePayload } : {}),
-            ...(behavioralPayload ? { behavioralJournal: behavioralPayload } : {}),
-            ...(performancePayload ? { performance: performancePayload } : {}),
-          }
-        : undefined;
+    // Per-turn hints so the model handles SYSTEM vs PERSONAL questions correctly.
+    const intentHint: { intent: Intent; tradeCount: number; note?: string } = {
+      intent,
+      tradeCount,
+    };
+    if (intent === "METRICS_SYSTEM" && tradeCount === 0) {
+      intentHint.note =
+        "This user has 0 trades. Explain clearly, but keep it simple and actionable. Do not reference their personal numbers — they don't have any yet.";
+    } else if (tradeCount > 0 && tradeCount < 20) {
+      intentHint.note =
+        "User has limited data (<20 trades). Avoid strong conclusions. Speak in probabilities, not certainty.";
+    }
+
+    const ctx = {
+      ...(journalSummary ? { journalSummary } : {}),
+      ...(profileSummary ? { profileSummary } : {}),
+      ...(intelligencePayload ? { intelligence: intelligencePayload } : {}),
+      ...(recentPatternsPayload ? { recentPatterns: recentPatternsPayload } : {}),
+      ...(lastTwoPayload ? { lastTwoTrades: lastTwoPayload } : {}),
+      ...(strategyPayload ? { activeStrategy: strategyPayload } : {}),
+      ...(dailyChecklistPayload ? { dailyChecklist: dailyChecklistPayload } : {}),
+      ...(traderStatePayload ? { traderState: traderStatePayload } : {}),
+      ...(behavioralPayload ? { behavioralJournal: behavioralPayload } : {}),
+      ...(performancePayload ? { performance: performancePayload } : {}),
+      turnHint: intentHint,
+    };
 
     // Strip the intro message from what we send to the model — it's UI only.
     const wireMessages = history
