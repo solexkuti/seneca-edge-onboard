@@ -188,10 +188,43 @@ export default function BehavioralJournalFlow({
       if (target) URL.revokeObjectURL(target.preview);
       return prev.filter((_, i) => i !== idx);
     });
+    // Close the lightbox if we just removed the item it was showing.
+    setLightboxIdx((cur) => {
+      if (cur === null) return cur;
+      if (cur === idx) return null;
+      return cur > idx ? cur - 1 : cur;
+    });
   }
 
   function setFileTag(idx: number, tag: ScreenshotTag) {
     setFiles((prev) => prev.map((f, i) => (i === idx ? { ...f, tag } : f)));
+  }
+
+  function clearAllFiles() {
+    setFiles((prev) => {
+      for (const f of prev) URL.revokeObjectURL(f.preview);
+      return [];
+    });
+    setLightboxIdx(null);
+  }
+
+  // Move the chosen screenshot to position 0 — that's the one persisted as
+  // the trade's primary `screenshot_url`; everything else uploads as extras.
+  function makePrimary(idx: number) {
+    setFiles((prev) => {
+      if (idx <= 0 || idx >= prev.length) return prev;
+      const next = [...prev];
+      const [picked] = next.splice(idx, 1);
+      next.unshift(picked);
+      return next;
+    });
+    setLightboxIdx((cur) => (cur === idx ? 0 : cur));
+  }
+
+  function formatBytes(n: number): string {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   function toggleMistake(id: MistakeId) {
