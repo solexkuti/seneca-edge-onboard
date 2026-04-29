@@ -763,6 +763,36 @@ Deno.serve(async (req) => {
           .join("\n");
         contextBlock += `\n\n[Performance Snapshot — last ${p.windowSize} trades, real data from trade_logs]\nUse these numbers verbatim when the user asks about performance, win rate, RR, PnL, or "review my trades". Never invent values.\n- Win rate: ${pct(p.winRate)}\n- Net PnL: ${r(p.netPnlR, 2)}\n- Avg RR: ${r(p.avgRR, 2)}\n- Profit factor: ${pf}\n- Rules followed: ${pct(p.rulesFollowedRate)}\n- Most common mistake: ${p.topMistake ? `${p.topMistake.id} (×${p.topMistake.count})` : "none"}\n- Recent trades:\n${recentLines || "  (none)"}`;
       }
+      if (context!.behaviorPatterns) {
+        const bp = context!.behaviorPatterns;
+        const trendLabel =
+          bp.trend === "improving"
+            ? "IMPROVING"
+            : bp.trend === "declining"
+              ? "DECLINING"
+              : bp.trend === "stable"
+                ? "STABLE"
+                : "INSUFFICIENT DATA";
+        const dom = bp.dominantWeakness
+          ? `${bp.dominantWeakness.label}${bp.dominantWeakness.severe ? " (severe)" : ""} — ${bp.dominantWeakness.count}/${bp.totalTrades} trades (${bp.dominantWeakness.pct}%)`
+          : "none — no repeated mistake stands out";
+        const freqLines = bp.mistakeFrequency.slice(0, 5)
+          .map((m) => `  - ${m.label}: ${m.count}× (${m.pct}% of trades)${m.severe ? " · severe" : ""}`)
+          .join("\n") || "  (none)";
+        const repeatLines = bp.repeatedInRecent.length > 0
+          ? bp.repeatedInRecent.slice(0, 5)
+              .map((m) => `  - ${m.label}: ${m.count}× in last ${bp.recentVsPrevious.recentCount}`)
+              .join("\n")
+          : "  (none recurring across windows)";
+        const rvp = bp.recentVsPrevious;
+        const recentSc = rvp.recentAvgScore == null ? "n/a" : `${rvp.recentAvgScore}`;
+        const prevSc = rvp.previousAvgScore == null ? "n/a" : `${rvp.previousAvgScore}`;
+        const deltaStr = rvp.delta == null
+          ? "n/a"
+          : `${rvp.delta >= 0 ? "+" : ""}${rvp.delta}`;
+        const headlines = bp.headlines.map((h) => `  • ${h}`).join("\n");
+        contextBlock += `\n\n[Behavior Patterns — multi-trade view, NOT single trade]\nUse this to anchor any answer about repeating behavior, weaknesses, or trend. Cite numbers verbatim. Never invent counts.\n- Total trades read: ${bp.totalTrades} · clean rate: ${bp.cleanRate}%\n- Dominant weakness: ${dom}\n- Trend (last ${rvp.recentCount} vs previous ${rvp.previousCount}): ${trendLabel} · avg score ${recentSc} vs ${prevSc} (Δ ${deltaStr}) · mistakes/trade ${rvp.recentMistakeRate} vs ${rvp.previousMistakeRate}\n- Mistake frequency (top 5):\n${freqLines}\n- Repeating in recent window (also seen earlier):\n${repeatLines}\n- Headlines you may quote verbatim:\n${headlines}`;
+      }
     } else {
       contextBlock =
         "\n\nUSER CONTEXT: none yet. Offer warm, general guidance. Do NOT mention missing data. Do NOT refuse. Invite the user to share more about their situation through your soft closing.";
@@ -773,7 +803,10 @@ Deno.serve(async (req) => {
     // observant turn.
     const patternActive = !!(
       context?.intelligence?.twoUndisciplinedInARow ||
-      (context?.traderState?.discipline?.consecutive_breaks ?? 0) >= 2
+      (context?.traderState?.discipline?.consecutive_breaks ?? 0) >= 2 ||
+      context?.behaviorPatterns?.trend === "declining" ||
+      (context?.behaviorPatterns?.repeatedInRecent?.length ?? 0) > 0 ||
+      (context?.behaviorPatterns?.dominantWeakness?.severe ?? false)
     );
     const tradeCount = context?.performance?.windowSize ?? null;
     const zeroData = tradeCount === 0;
