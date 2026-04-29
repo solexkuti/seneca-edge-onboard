@@ -95,31 +95,12 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
   const cleanStreak = last?.clean_streak_after ?? 0;
   const breakStreak = last?.break_streak_after ?? 0;
   const lastMistake = useMemo(() => lastMistakeOf(entries), [entries]);
-  const rawAction = useMemo(
-    () => nextActionFromBehavior({ entries, score }),
-    [entries, score],
-  );
 
-  // Dashboard-level copy overrides: sharpen the default "Stay in rhythm"
-  // case AND the soft "Tighten execution" warn case into more decision-
-  // discipline framing without touching the shared behavioral library.
-  const action = useMemo(() => {
-    if (rawAction.title === "Stay in rhythm") {
-      return {
-        ...rawAction,
-        title: "Maintain consistency",
-        sub: "Run every setup through the analyzer before execution.",
-      };
-    }
-    if (rawAction.title === "Tighten execution") {
-      return {
-        ...rawAction,
-        title: "Your discipline is drifting",
-        sub: "Vet your next setup with the analyzer before execution. Slow down. Confirm before you commit.",
-      };
-    }
-    return rawAction;
-  }, [rawAction]);
+  // Behavior intelligence — single primary insight + single next action,
+  // derived from the last 5 entries. Drives both the Control State presence
+  // line and the Next Action card. Pure read of journal data.
+  const insight = useMemo(() => generateInsight(entries, 5), [entries]);
+  const action = insight.action;
 
   const initial = userName ? userName.slice(0, 1).toUpperCase() : "S";
   const bp = state.strategy?.blueprint ?? null;
