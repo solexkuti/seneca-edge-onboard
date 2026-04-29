@@ -676,6 +676,7 @@ export default function BehavioralJournalFlow({
           emotional_state: null,
           note: note?.trim() || null,
           screenshot_url,
+          data_quality: lowDataQuality ? "low" : "normal",
         });
       } catch (perfErr) {
         console.warn("[trade_logs] insert failed:", perfErr);
