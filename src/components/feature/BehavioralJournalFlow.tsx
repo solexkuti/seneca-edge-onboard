@@ -351,7 +351,7 @@ export default function BehavioralJournalFlow({
       (e) => e.classification === "clean",
     ).length;
     const projectedStreak = priorCleanCount + 1; // including this trade
-    if (priorCleanCount === 0) return "Good. This is your baseline.";
+    if (priorCleanCount === 0) return "";
     if (projectedStreak <= 3) return "You're starting to build control.";
     return "This is consistency forming.";
   }, [priorEntries]);
@@ -755,7 +755,7 @@ export default function BehavioralJournalFlow({
             : "from-rose-500/[0.12] to-rose-500/[0.02] ring-rose-500/30 text-rose-300";
     return (
       <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
-        <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-50" />
+        <div className="pointer-events-none fixed inset-0 bg-app-glow opacity-60" />
         <div className="relative z-10 mx-auto w-full max-w-[480px] px-5 pt-12 pb-24">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -877,7 +877,7 @@ export default function BehavioralJournalFlow({
   // ── INPUT FLOW ───────────────────────────────────────────
   return (
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
-      <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-50" />
+      <div className="pointer-events-none fixed inset-0 bg-app-glow opacity-60" />
 
       <div className="relative z-10 mx-auto w-full max-w-[480px] px-5 pt-8 pb-28">
         <header className="flex items-center justify-between">
@@ -1415,9 +1415,11 @@ export default function BehavioralJournalFlow({
                   </p>
 
                   {/* Stoic, contextual reinforcement based on prior clean trades */}
-                  <p className="mt-4 text-[11.5px] italic text-text-secondary/75">
-                    {cleanContextLine}
-                  </p>
+                  {cleanContextLine && (
+                    <p className="mt-4 text-[11.5px] italic text-text-secondary/75">
+                      {cleanContextLine}
+                    </p>
+                  )}
 
                   {/* Optional identity affirmation */}
                   <button
