@@ -43,7 +43,7 @@ export function patchProfile(patch: Partial<OnboardingProfile>) {
 /** Human-readable summary used in the mentor's USER CONTEXT block. */
 export function summarizeProfile(p: OnboardingProfile): string | null {
   const parts: string[] = [];
-  if (p.market) {
+  if (p.markets && p.markets.length > 0) {
     const marketLabel: Record<MarketChoice, string> = {
       forex: "Forex",
       crypto: "Crypto",
@@ -51,7 +51,8 @@ export function summarizeProfile(p: OnboardingProfile): string | null {
       indices: "Indices",
       all: "All markets",
     };
-    parts.push(`Trades: ${marketLabel[p.market]}`);
+    const labels = p.markets.map((m) => marketLabel[m]).join(", ");
+    parts.push(`Trades: ${labels}`);
   }
   if (p.experience) {
     const expLabel: Record<ExperienceLevel, string> = {
