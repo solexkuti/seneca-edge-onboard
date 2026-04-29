@@ -87,6 +87,7 @@ export const EMPTY_RULES: StructuredRules = {
   risk: [],
   behavior: [],
   context: [],
+  invalidation: [],
 };
 
 export async function listBlueprints(): Promise<StrategyBlueprint[]> {
