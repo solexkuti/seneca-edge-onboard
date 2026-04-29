@@ -90,7 +90,52 @@ type FeedbackPayload = {
   breakStreakAfter: number;
   /** Per-mistake breakdown shown in the feedback card. */
   breakdown: { id: string; label: string; penalty: number }[];
+  /** Explicit outcome — used to render outcome × discipline feedback. */
+  outcome: Outcome;
+  /** True if any mistakes were logged for this trade. */
+  hadMistakes: boolean;
 };
+
+/** Outcome × discipline → a single qualitative feedback card.
+ *  Pure UI label — does NOT touch scoring. */
+function outcomeFeedback(outcome: Outcome, hadMistakes: boolean): {
+  title: string;
+  body: string;
+  tone: "gold" | "calm" | "warn" | "risk";
+} {
+  if (outcome === "win" && !hadMistakes) {
+    return {
+      title: "Clean execution",
+      body: "Disciplined win. This is repeatable.",
+      tone: "gold",
+    };
+  }
+  if (outcome === "loss" && !hadMistakes) {
+    return {
+      title: "Controlled loss",
+      body: "This is a correct loss. Your edge is intact.",
+      tone: "calm",
+    };
+  }
+  if (outcome === "win" && hadMistakes) {
+    return {
+      title: "Unstable win",
+      body: "You profited, but behavior broke rules.",
+      tone: "warn",
+    };
+  }
+  if (outcome === "loss" && hadMistakes) {
+    return {
+      title: "Behavior breakdown",
+      body: "This loss came from execution errors.",
+      tone: "risk",
+    };
+  }
+  // Breakeven
+  return hadMistakes
+    ? { title: "Breakeven — behavior slipped", body: "No damage on the book, but rules broke.", tone: "warn" }
+    : { title: "Breakeven — held the line", body: "No edge expressed, no rules broken.", tone: "calm" };
+}
 
 function parseNum(v: string): number | null {
   const t = v.trim();
