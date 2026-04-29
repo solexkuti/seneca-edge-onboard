@@ -292,7 +292,7 @@ export default function AiMentorChat() {
       : undefined;
 
     const ctx =
-      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload || dailyChecklistPayload || traderStatePayload || behavioralPayload
+      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload || dailyChecklistPayload || traderStatePayload || behavioralPayload || performancePayload
         ? {
             ...(journalSummary ? { journalSummary } : {}),
             ...(profileSummary ? { profileSummary } : {}),
@@ -303,6 +303,7 @@ export default function AiMentorChat() {
             ...(dailyChecklistPayload ? { dailyChecklist: dailyChecklistPayload } : {}),
             ...(traderStatePayload ? { traderState: traderStatePayload } : {}),
             ...(behavioralPayload ? { behavioralJournal: behavioralPayload } : {}),
+            ...(performancePayload ? { performance: performancePayload } : {}),
           }
         : undefined;
 
