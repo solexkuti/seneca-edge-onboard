@@ -386,7 +386,7 @@ function Tool({
 }: {
   to: "/hub/journal" | "/hub/journal/history" | "/hub/chart" | "/hub/mentor";
   label: string;
-  Icon: typeof Sparkles;
+  Icon: typeof BookOpenCheck;
 }) {
   return (
     <Link
