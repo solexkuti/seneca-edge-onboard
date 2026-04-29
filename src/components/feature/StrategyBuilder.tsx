@@ -806,9 +806,10 @@ function StepTiers({
                 autoFocus={isActive && !hasContent}
                 className="w-full rounded-xl bg-background/70 px-4 py-3 text-sm placeholder:text-muted-foreground/60 border-0 ring-1 ring-border/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none transition-all"
               />
-              <AnimatePresence>
-                {isActive && hasContent && (
+              <AnimatePresence mode="wait">
+                {isActive && hasContent ? (
                   <motion.div
+                    key="good"
                     initial={{ opacity: 0, y: -2 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
@@ -816,7 +817,27 @@ function StepTiers({
                   >
                     Good. This defines your standard.
                   </motion.div>
-                )}
+                ) : !hasContent && isActive ? (
+                  <motion.div
+                    key="hint"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-[11px] text-muted-foreground/80 mt-2 pl-1 italic"
+                  >
+                    Seneca will fill this based on your strategy…
+                  </motion.div>
+                ) : !hasContent && !isActive ? (
+                  <motion.div
+                    key="skipped"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-[11px] text-foreground/70 mt-2 pl-1"
+                  >
+                    Refined by Seneca ✓
+                  </motion.div>
+                ) : null}
               </AnimatePresence>
             </motion.div>
           );
