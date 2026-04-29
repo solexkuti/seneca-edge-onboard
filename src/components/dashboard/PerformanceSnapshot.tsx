@@ -64,7 +64,7 @@ export default function PerformanceSnapshot({ loading, hasTrades, metrics }: Pro
 
       <div className="mt-4 grid grid-cols-3 gap-3">
         <Stat label="Win rate" value={fmtPct(wr, 0)} />
-        <Stat label="Net PnL" value={fmtR(metrics.netPnlR, 1)} valueClass={netTone} />
+        <Stat label="Net PnL" value={fmtR(metrics.netPnlR, 2)} valueClass={netTone} />
         <Stat label="Avg RR" value={fmtR(metrics.avgRR, 2)} />
       </div>
 
