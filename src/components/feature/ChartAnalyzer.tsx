@@ -535,7 +535,7 @@ export default function ChartAnalyzer() {
           <ResultView result={result} onReset={reset} navigate={navigate} />
         )}
       </AnimatePresence>
-    </FeatureShell>
+    </SenecaScreen>
   );
 }
 
