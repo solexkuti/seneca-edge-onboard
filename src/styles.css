@@ -52,6 +52,174 @@
 
   --color-gold: var(--gold);
   --color-gold-soft: var(--gold-soft);
+
+  /* ─────────────────────────────────────────────────────────────
+     GLOBAL PALETTE ENFORCEMENT
+     Tailwind v4 reads color utilities from these tokens. By
+     remapping every "off-system" palette to our dark+gold
+     identity, any legacy class like `bg-emerald-500/10` or
+     `text-rose-700` automatically renders on-brand. This is what
+     makes onboarding → dashboard → mentor feel like ONE product.
+     ───────────────────────────────────────────────────────────── */
+
+  /* Greens / "ok" tones → muted gold */
+  --color-emerald-50:  #FBF4E4;
+  --color-emerald-100: #F4E4BE;
+  --color-emerald-200: #E7C98A;
+  --color-emerald-300: #DDB877;
+  --color-emerald-400: #D2AC6A;
+  --color-emerald-500: #C6A15B;
+  --color-emerald-600: #B08F4F;
+  --color-emerald-700: #8E7340;
+  --color-emerald-800: #6B5630;
+  --color-emerald-900: #4A3C22;
+  --color-green-50:  #FBF4E4;
+  --color-green-100: #F4E4BE;
+  --color-green-200: #E7C98A;
+  --color-green-300: #DDB877;
+  --color-green-400: #D2AC6A;
+  --color-green-500: #C6A15B;
+  --color-green-600: #B08F4F;
+  --color-green-700: #8E7340;
+  --color-green-800: #6B5630;
+  --color-green-900: #4A3C22;
+  --color-teal-300: #DDB877;
+  --color-teal-400: #D2AC6A;
+  --color-teal-500: #C6A15B;
+  --color-teal-600: #B08F4F;
+  --color-lime-300: #DDB877;
+  --color-lime-400: #D2AC6A;
+  --color-lime-500: #C6A15B;
+
+  /* Reds / "loss" tones → muted desaturated red */
+  --color-rose-50:  #2A1418;
+  --color-rose-100: #3A1A1F;
+  --color-rose-200: #5A2228;
+  --color-rose-300: #C28A8A;
+  --color-rose-400: #B57878;
+  --color-rose-500: #A66666;
+  --color-rose-600: #8E5454;
+  --color-rose-700: #C28A8A; /* keep readable on dark */
+  --color-rose-800: #6B3838;
+  --color-rose-900: #4A2424;
+  --color-red-300: #C28A8A;
+  --color-red-400: #B57878;
+  --color-red-500: #A66666;
+  --color-red-600: #8E5454;
+  --color-red-700: #C28A8A;
+
+  /* Amber / orange / yellow → warm gold variants */
+  --color-amber-200: #F4E4BE;
+  --color-amber-300: #E7C98A;
+  --color-amber-400: #DDB877;
+  --color-amber-500: #C6A15B;
+  --color-amber-600: #B08F4F;
+  --color-amber-700: #8E7340;
+  --color-orange-300: #E7C98A;
+  --color-orange-400: #DDB877;
+  --color-orange-500: #C6A15B;
+  --color-orange-600: #B08F4F;
+  --color-orange-700: #8E7340;
+  --color-yellow-300: #E7C98A;
+  --color-yellow-400: #DDB877;
+  --color-yellow-500: #C6A15B;
+
+  /* Purples / indigos / violets / blues / cyans / skies / pinks /
+     fuchsias → all collapse to the gold accent so legacy gradient
+     and accent classes stay on-brand. */
+  --color-purple-300: #E7C98A;
+  --color-purple-400: #DDB877;
+  --color-purple-500: #C6A15B;
+  --color-purple-600: #B08F4F;
+  --color-purple-700: #8E7340;
+  --color-indigo-300: #E7C98A;
+  --color-indigo-400: #DDB877;
+  --color-indigo-500: #C6A15B;
+  --color-indigo-600: #B08F4F;
+  --color-indigo-700: #8E7340;
+  --color-violet-300: #E7C98A;
+  --color-violet-400: #DDB877;
+  --color-violet-500: #C6A15B;
+  --color-violet-600: #B08F4F;
+  --color-blue-300: #E7C98A;
+  --color-blue-400: #DDB877;
+  --color-blue-500: #C6A15B;
+  --color-blue-600: #B08F4F;
+  --color-blue-700: #8E7340;
+  --color-cyan-300: #E7C98A;
+  --color-cyan-400: #DDB877;
+  --color-cyan-500: #C6A15B;
+  --color-cyan-600: #B08F4F;
+  --color-sky-300: #E7C98A;
+  --color-sky-400: #DDB877;
+  --color-sky-500: #C6A15B;
+  --color-sky-600: #B08F4F;
+  --color-pink-300: #E7C98A;
+  --color-pink-400: #DDB877;
+  --color-pink-500: #C6A15B;
+  --color-fuchsia-300: #E7C98A;
+  --color-fuchsia-400: #DDB877;
+  --color-fuchsia-500: #C6A15B;
+
+  /* Neutrals (gray/slate/zinc/neutral/stone) → our dark surfaces.
+     Light shades become elevated dark surfaces so any stray
+     `bg-gray-50` or `bg-slate-100` won't punch a white hole into
+     the UI. Dark shades stay close to our background ramp. */
+  --color-gray-50:  #18181B;
+  --color-gray-100: #1A1A1D;
+  --color-gray-200: #1E1E22;
+  --color-gray-300: #2A2A2F;
+  --color-gray-400: #6B6B72;
+  --color-gray-500: #8A8A90;
+  --color-gray-600: #9A9A9A;
+  --color-gray-700: #C8C8CC;
+  --color-gray-800: #DCDCE0;
+  --color-gray-900: #EDEDED;
+  --color-slate-50:  #18181B;
+  --color-slate-100: #1A1A1D;
+  --color-slate-200: #1E1E22;
+  --color-slate-300: #2A2A2F;
+  --color-slate-400: #6B6B72;
+  --color-slate-500: #8A8A90;
+  --color-slate-600: #9A9A9A;
+  --color-slate-700: #C8C8CC;
+  --color-slate-800: #DCDCE0;
+  --color-slate-900: #EDEDED;
+  --color-zinc-50:  #18181B;
+  --color-zinc-100: #1A1A1D;
+  --color-zinc-200: #1E1E22;
+  --color-zinc-300: #2A2A2F;
+  --color-zinc-400: #6B6B72;
+  --color-zinc-500: #8A8A90;
+  --color-zinc-600: #9A9A9A;
+  --color-zinc-700: #C8C8CC;
+  --color-zinc-800: #DCDCE0;
+  --color-zinc-900: #EDEDED;
+  --color-neutral-50:  #18181B;
+  --color-neutral-100: #1A1A1D;
+  --color-neutral-200: #1E1E22;
+  --color-neutral-300: #2A2A2F;
+  --color-neutral-400: #6B6B72;
+  --color-neutral-500: #8A8A90;
+  --color-neutral-600: #9A9A9A;
+  --color-neutral-700: #C8C8CC;
+  --color-neutral-800: #DCDCE0;
+  --color-neutral-900: #EDEDED;
+  --color-stone-50:  #18181B;
+  --color-stone-100: #1A1A1D;
+  --color-stone-200: #1E1E22;
+  --color-stone-300: #2A2A2F;
+  --color-stone-400: #6B6B72;
+  --color-stone-500: #8A8A90;
+  --color-stone-600: #9A9A9A;
+  --color-stone-700: #C8C8CC;
+  --color-stone-800: #DCDCE0;
+  --color-stone-900: #EDEDED;
+
+  /* Pure white/black → bend to our system so `bg-white` doesn't
+     blast through a dark screen and `text-black` stays legible. */
+  --color-white: #EDEDED;
+  --color-black: #0B0B0D;
 }
 
 :root {

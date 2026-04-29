@@ -398,9 +398,9 @@ export default function AiMentorChat() {
       <div className="flex h-[calc(100svh-220px)] min-h-[480px] flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-border shadow-soft">
         {/* Mentor identity */}
         <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-mix shadow-glow-primary">
-            <Sparkles className="h-4 w-4 text-white" strokeWidth={2.2} />
-            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-mix shadow-glow-gold">
+            <Sparkles className="h-4 w-4 text-[#0B0B0D]" strokeWidth={2.4} />
+            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-gold ring-2 ring-card" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-text-primary">Seneca</p>
@@ -443,8 +443,8 @@ export default function AiMentorChat() {
                 <div
                   className={
                     m.role === "user"
-                      ? "max-w-[82%] rounded-2xl rounded-br-md bg-gradient-primary px-3.5 py-2.5 text-[13.5px] leading-snug text-white shadow-glow-primary"
-                      : "max-w-[82%] whitespace-pre-wrap rounded-2xl rounded-bl-md bg-text-primary/[0.04] px-3.5 py-2.5 text-[13.5px] leading-snug text-text-primary ring-1 ring-border"
+                      ? "max-w-[82%] rounded-2xl rounded-br-md bg-gradient-primary px-3.5 py-2.5 text-[13.5px] leading-snug text-[#0B0B0D] font-medium shadow-glow-gold"
+                      : "max-w-[82%] whitespace-pre-wrap rounded-2xl rounded-bl-md bg-text-primary/[0.035] px-3.5 py-2.5 text-[13.5px] leading-snug text-text-primary ring-1 ring-gold-soft"
                   }
                 >
                   {m.content || (m.role === "assistant" && streaming ? "…" : "")}
@@ -499,10 +499,10 @@ export default function AiMentorChat() {
           <button
             type="submit"
             disabled={!draft.trim() || streaming}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary text-white shadow-glow-primary transition-all disabled:opacity-40"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary text-[#0B0B0D] shadow-glow-gold transition-all disabled:opacity-40"
             aria-label="Send"
           >
-            <ArrowUp className="h-4 w-4" strokeWidth={2.4} />
+            <ArrowUp className="h-4 w-4" strokeWidth={2.6} />
           </button>
         </form>
       </div>

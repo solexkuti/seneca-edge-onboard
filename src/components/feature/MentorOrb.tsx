@@ -32,7 +32,7 @@ export default function MentorOrb() {
           animate={{ opacity: [0.35, 0.6, 0.35], scale: [1, 1.12, 1] }}
           transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
         />
-        <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-card ring-1 ring-primary/35 shadow-[0_8px_24px_-12px_rgba(99,102,241,0.55)] active:scale-[0.96] transition-transform">
+        <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-card ring-1 ring-primary/40 shadow-glow-gold active:scale-[0.96] transition-transform">
           <Sparkles className="h-4 w-4 text-primary" strokeWidth={2.4} />
         </span>
       </motion.span>
