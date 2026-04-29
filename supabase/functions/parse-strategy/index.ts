@@ -74,7 +74,7 @@ const TOOL = {
             properties: {
               area: {
                 type: "string",
-                enum: ["entry", "confirmation", "risk", "behavior", "context", "general"],
+                enum: ["entry", "confirmation", "risk", "behavior", "context", "invalidation", "general"],
               },
               note: { type: "string" },
             },
