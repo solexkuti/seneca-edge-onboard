@@ -372,6 +372,8 @@ export default function BehavioralJournalFlow({
     setRiskStr("");
     setResultStr("");
     setMistakes([]);
+    setSelfConfirmedClean(false);
+    setCleanReason(null);
     setConfidence(null);
     setNote("");
     setFiles((prev) => {
