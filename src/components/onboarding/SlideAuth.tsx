@@ -58,21 +58,30 @@ export default function SlideAuth({ username, onAuthed }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="relative flex flex-col gap-6">
+      {/* Warm ambient glow behind the auth card — matches global background system */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -inset-x-10 -top-16 -bottom-10 -z-10"
+      >
+        <div className="absolute left-1/2 top-0 h-72 w-72 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(198,161,91,0.18),transparent_65%)] blur-2xl" />
+        <div className="absolute right-0 bottom-0 h-56 w-56 rounded-full bg-[radial-gradient(circle_at_center,rgba(230,194,122,0.10),transparent_70%)] blur-3xl" />
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="text-center"
       >
-        <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-gradient-primary" />
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
+        <div className="mx-auto inline-flex items-center gap-1.5 rounded-full border border-[rgba(198,161,91,0.30)] bg-[rgba(198,161,91,0.08)] px-3 py-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-gold" />
+          <span className="font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">
             One last step
           </span>
         </div>
-        <h1 className="mt-3 text-[26px] font-bold leading-[1.15] tracking-tight text-text-primary">
-          Everything is <span className="text-gradient-mix">ready.</span>
+        <h1 className="mt-3 font-display text-[28px] font-semibold leading-[1.1] tracking-tight text-text-primary">
+          Everything is <span className="text-gold-soft">ready.</span>
         </h1>
         <p className="mt-2 text-[14px] text-text-secondary">
           Save your setup and step into control.
@@ -85,131 +94,134 @@ export default function SlideAuth({ username, onAuthed }: Props) {
         )}
       </motion.div>
 
-      <AnimatePresence mode="wait">
-        {mode === "choose" ? (
-          <motion.div
-            key="choose"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.35 }}
-            className="space-y-2.5"
-          >
-            <SocialButton
-              label="Continue with Google"
-              onClick={handleGoogle}
-              icon={<GoogleIcon />}
-              loading={busy === "google"}
-              disabled={!!busy}
-            />
-
-            <div className="my-2 flex items-center gap-3">
-              <span className="h-px flex-1 bg-border" />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
-                or
-              </span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                setError(null);
-                setMode("email");
-              }}
-              disabled={!!busy}
-              className="interactive-glow flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-6 py-4 text-[15px] font-semibold text-text-primary shadow-soft transition-colors hover:border-brand/40 disabled:opacity-60"
+      {/* Glass auth card — same surface treatment as dashboard cards */}
+      <div className="card-premium rounded-3xl p-5 sm:p-6">
+        <AnimatePresence mode="wait">
+          {mode === "choose" ? (
+            <motion.div
+              key="choose"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.35 }}
+              className="space-y-2.5"
             >
-              <Mail className="h-4 w-4 text-brand" />
-              Sign up with email
-            </motion.button>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="email"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.35 }}
-            className="space-y-3"
-          >
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-text-secondary" />
-              <input
-                autoFocus
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@email.com"
-                className="h-14 w-full rounded-2xl border border-border bg-card pl-12 pr-4 text-[15px] font-semibold text-text-primary shadow-soft outline-none placeholder:font-normal placeholder:text-text-secondary/60 focus:border-brand focus:shadow-glow-primary"
+              <SocialButton
+                label="Continue with Google"
+                onClick={handleGoogle}
+                icon={<GoogleIcon />}
+                loading={busy === "google"}
+                disabled={!!busy}
               />
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-text-secondary" />
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleEmail();
+
+              <div className="my-2 flex items-center gap-3">
+                <span className="h-px flex-1 bg-[rgba(255,255,255,0.08)]" />
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-text-secondary/80">
+                  or
+                </span>
+                <span className="h-px flex-1 bg-[rgba(255,255,255,0.08)]" />
+              </div>
+
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  setError(null);
+                  setMode("email");
                 }}
-                placeholder="Password (min 6 chars)"
-                className="h-14 w-full rounded-2xl border border-border bg-card pl-12 pr-4 text-[15px] font-semibold text-text-primary shadow-soft outline-none placeholder:font-normal placeholder:text-text-secondary/60 focus:border-brand focus:shadow-glow-primary"
-              />
-            </div>
-
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              disabled={!canSubmitEmail}
-              onClick={handleEmail}
-              animate={{ opacity: canSubmitEmail ? 1 : 0.4 }}
-              className="interactive-glow group relative w-full overflow-hidden rounded-2xl bg-gradient-primary px-6 py-4 shadow-soft disabled:cursor-not-allowed"
+                disabled={!!busy}
+                className="focus-glow flex w-full items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-6 py-4 text-[15px] font-semibold text-text-primary backdrop-blur-md transition-colors hover:border-[rgba(198,161,91,0.35)] disabled:opacity-60"
+              >
+                <Mail className="h-4 w-4 text-gold" />
+                Sign up with email
+              </motion.button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="email"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.35 }}
+              className="space-y-3"
             >
-              <span className="relative flex items-center justify-center gap-2 text-[16px] font-semibold text-white">
-                {busy === "email" ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Creating account…
-                  </>
-                ) : (
-                  <>
-                    Create account
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </>
-                )}
-              </span>
-            </motion.button>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-text-secondary" />
+                <input
+                  autoFocus
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@email.com"
+                  className="focus-glow h-14 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] pl-12 pr-4 text-[15px] font-medium text-text-primary outline-none placeholder:font-normal placeholder:text-text-secondary/60 transition-colors focus:border-[rgba(198,161,91,0.45)]"
+                />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-text-secondary" />
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleEmail();
+                  }}
+                  placeholder="Password (min 6 chars)"
+                  className="focus-glow h-14 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] pl-12 pr-4 text-[15px] font-medium text-text-primary outline-none placeholder:font-normal placeholder:text-text-secondary/60 transition-colors focus:border-[rgba(198,161,91,0.45)]"
+                />
+              </div>
 
-            <button
-              onClick={() => setMode("choose")}
-              disabled={!!busy}
-              className="mx-auto flex items-center gap-1.5 text-[12px] font-semibold text-text-secondary hover:text-text-primary disabled:opacity-50"
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                disabled={!canSubmitEmail}
+                onClick={handleEmail}
+                animate={{ opacity: canSubmitEmail ? 1 : 0.45 }}
+                className="btn-gold focus-glow group relative w-full overflow-hidden px-6 py-4 disabled:cursor-not-allowed"
+              >
+                <span className="relative flex items-center justify-center gap-2 text-[16px] font-semibold text-[#0B0B0D]">
+                  {busy === "email" ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating account…
+                    </>
+                  ) : (
+                    <>
+                      Create account
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </>
+                  )}
+                </span>
+              </motion.button>
+
+              <button
+                onClick={() => setMode("choose")}
+                disabled={!!busy}
+                className="mx-auto flex items-center gap-1.5 text-[12px] font-semibold text-text-secondary hover:text-gold-soft disabled:opacity-50"
+              >
+                <ArrowLeft className="h-3 w-3" />
+                Back to options
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2 }}
+              role="alert"
+              className="mt-3 rounded-xl border border-[rgba(166,102,102,0.35)] bg-[rgba(166,102,102,0.08)] px-4 py-2.5 text-center text-[12.5px] font-medium text-[#D9A3A3]"
             >
-              <ArrowLeft className="h-3 w-3" />
-              Back to options
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.2 }}
-            role="alert"
-            className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-center text-[12.5px] font-medium text-destructive"
-          >
-            {error}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <p className="text-center text-[10px] leading-[1.5] text-text-secondary">
+      <p className="text-center text-[10.5px] leading-[1.5] text-text-secondary/80">
         By continuing you agree to SenecaEdge's Terms & Privacy.
       </p>
     </div>
@@ -220,7 +232,6 @@ function SocialButton({
   label,
   onClick,
   icon,
-  dark,
   loading,
   disabled,
 }: {
@@ -237,13 +248,9 @@ function SocialButton({
       whileHover={{ scale: disabled ? 1 : 1.01 }}
       onClick={onClick}
       disabled={disabled}
-      className={`interactive-glow flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-[15px] font-semibold shadow-soft transition-colors disabled:opacity-60 ${
-        dark
-          ? "bg-[#0F172A] text-white"
-          : "border border-border bg-card text-text-primary hover:border-brand/40"
-      }`}
+      className="focus-glow flex w-full items-center justify-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.10)] bg-[rgba(255,255,255,0.035)] px-6 py-4 text-[15px] font-semibold text-text-primary backdrop-blur-md transition-colors hover:border-[rgba(198,161,91,0.35)] disabled:opacity-60"
     >
-      {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : icon}
+      {loading ? <Loader2 className="h-5 w-5 animate-spin text-gold" /> : icon}
       {loading ? "Connecting…" : label}
     </motion.button>
   );
