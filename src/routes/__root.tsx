@@ -4,6 +4,7 @@ import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import DevResetOnboarding from "@/components/dev/DevResetOnboarding";
+import MentorOrb from "@/components/feature/MentorOrb";
 import { flushPending } from "@/lib/journalPendingQueue";
 import { TraderStateProvider } from "@/hooks/useTraderState";
 import { installUserScopedStorage } from "@/lib/userScopedStorage";
@@ -92,6 +93,7 @@ function RootComponent() {
   return (
     <TraderStateProvider>
       <Outlet />
+      <MentorOrb />
       <Toaster position="top-center" richColors closeButton />
       <DevResetOnboarding />
     </TraderStateProvider>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Sparkles, AlertTriangle } from "lucide-react";
+import { ArrowUp, Sparkles } from "lucide-react";
 import FeatureShell from "./FeatureShell";
 import { useDbJournal } from "@/hooks/useDbJournal";
 import { summarizeJournal } from "@/lib/journalSummary";
@@ -38,6 +38,12 @@ const SESSION_ID =
     ? crypto.randomUUID()
     : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
+const QUICK_PROMPTS: { label: string; prompt: string }[] = [
+  { label: "Review my last trade", prompt: "Review my last trade. What did I do wrong, and what was right?" },
+  { label: "Why am I losing control?", prompt: "Look at my recent behavior. Why am I losing control, and what's the pattern?" },
+  { label: "Help me fix my exits", prompt: "My exits are an issue. Based on my last trades, how do I fix them?" },
+];
+
 export default function AiMentorChat() {
   const { state: traderState } = useTraderState();
   const { rows, entries: journal } = useDbJournal();
@@ -59,14 +65,46 @@ export default function AiMentorChat() {
     };
   }, [rows.length]);
 
+  // Dynamic intro grounded in the user's real behavioral data.
+  const introContent = useMemo(() => {
+    const last = behavioralEntries[0];
+    const breakStreak = last?.break_streak_after ?? 0;
+    const cleanStreak = last?.clean_streak_after ?? 0;
+    const topMistake = mistakeFrequency(behavioralEntries)[0];
+    if (behavioralEntries.length === 0) {
+      return "I'm Seneca. Behavior-aware mentor.\n\nLog one trade and I'll tell you what's actually breaking your edge.";
+    }
+    if (last?.classification === "severe") {
+      return `Last trade was a severe break — ${last.mistakes.map((m) => MISTAKE_LABEL[m]).join(", ") || "rule violation"}.\n\nDiscipline is at ${behavioralScore}. Don't re-enter on tilt. Let's reset.`;
+    }
+    if (breakStreak >= 2) {
+      return `You've broken rules in your last ${breakStreak} trades.\n\n${topMistake ? `Your issue is ${topMistake.label.toLowerCase()}, not entries.` : "The pattern is in your execution, not your setups."}\n\nWhere do you want to start?`;
+    }
+    if (cleanStreak >= 3) {
+      return `${cleanStreak} clean trades in a row. Score ${behavioralScore}.\n\nThis is the version of you that wins. What do you want to lock in?`;
+    }
+    if (topMistake && topMistake.count >= 2) {
+      return `Score ${behavioralScore}. Your most repeated mistake: ${topMistake.label.toLowerCase()} (${topMistake.count}x).\n\nWant to work on that?`;
+    }
+    return `Score ${behavioralScore}. Behavior is in range.\n\nAsk me anything about your last trades.`;
+  }, [behavioralEntries, behavioralScore]);
+
   const [messages, setMessages] = useState<Msg[]>([
     {
       id: "intro",
       role: "assistant",
-      content:
-        "Hi. I'm Seneca — your trading mentor.\n\nI track how you think, not just what you do.\n\nIf something is off, I'll point it out. If you're aligned, I'll keep you there.\n\nAsk what matters.",
+      content: introContent,
     },
   ]);
+
+  // Keep intro fresh until the user sends their first message.
+  useEffect(() => {
+    setMessages((prev) =>
+      prev.length === 1 && prev[0].id === "intro"
+        ? [{ id: "intro", role: "assistant", content: introContent }]
+        : prev,
+    );
+  }, [introContent]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
   // Suggestions disappear permanently once the user types or picks one.
@@ -355,7 +393,7 @@ export default function AiMentorChat() {
     <FeatureShell
       eyebrow="AI Mentor"
       title="Seneca."
-      subtitle="A calm, supportive trading partner. Here to think things through with you."
+      subtitle="Behavior-aware mentor."
     >
       <div className="flex h-[calc(100svh-220px)] min-h-[480px] flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-border shadow-soft">
         {/* Mentor identity */}
@@ -366,26 +404,8 @@ export default function AiMentorChat() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-text-primary">Seneca</p>
-            <p className="text-[11px] text-text-secondary">
-              {journal.length > 0
-                ? `Aware of your last ${Math.min(journal.length, 10)} trades`
-                : "No journal data — answers will be general"}
-            </p>
+            <p className="text-[11px] text-text-secondary">Behavior-aware mentor</p>
           </div>
-          {intelligence.strictModeActive ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              title="Two undisciplined trades in a row — Seneca is firmer until you log two clean trades."
-              className="flex shrink-0 items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 ring-1 ring-rose-500/25"
-            >
-              <AlertTriangle className="h-3 w-3 text-rose-700" strokeWidth={2.6} />
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-rose-800">
-                Strict mode
-              </span>
-            </motion.div>
-          ) : null}
         </div>
 
         {intelligence.strictModeActive ? (
@@ -434,48 +454,24 @@ export default function AiMentorChat() {
           </AnimatePresence>
         </div>
 
-        {/* Intro suggestions — only when chat is empty; vanish on first interaction */}
-        {showSuggestions && suggestions.length > 0 ? (
-          <div className="border-t border-border/60 px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/80">
-              Try asking
-            </p>
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              <AnimatePresence mode="popLayout" initial={false}>
-                {suggestions.map((q, i) => {
-                  const Icon = q.icon;
-                  return (
-                    <motion.button
-                      key={q.id}
-                      type="button"
-                      onClick={() => {
-                        setSuggestionsDismissed(true);
-                        send(q.prompt);
-                      }}
-                      disabled={streaming}
-                      title={q.prompt}
-                      layout
-                      initial={{ opacity: 0, y: 6, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -4, scale: 0.96 }}
-                      transition={{
-                        duration: 0.22,
-                        delay: 0.04 * i,
-                        ease: [0.22, 1, 0.36, 1],
-                      }}
-                      whileHover={{ y: -1.5 }}
-                      whileTap={{ scale: 0.96 }}
-                      className="group inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[12px] font-medium text-text-primary/85 ring-1 ring-border/70 transition-colors hover:bg-text-primary/[0.03] hover:ring-brand/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <Icon
-                        className={`h-3.5 w-3.5 ${INTENT_STYLES[q.intent]} transition-transform group-hover:scale-110`}
-                        strokeWidth={2.2}
-                      />
-                      <span>{q.label}</span>
-                    </motion.button>
-                  );
-                })}
-              </AnimatePresence>
+        {/* Quick action prompts — always available above composer */}
+        {!streaming ? (
+          <div className="border-t border-border/60 px-4 py-2.5">
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+              {QUICK_PROMPTS.map((q) => (
+                <button
+                  key={q.label}
+                  type="button"
+                  onClick={() => {
+                    setSuggestionsDismissed(true);
+                    send(q.prompt);
+                  }}
+                  disabled={streaming}
+                  className="shrink-0 rounded-full bg-card px-3 py-1.5 text-[11.5px] font-medium text-text-primary/85 ring-1 ring-border/70 transition-all hover:bg-text-primary/[0.04] hover:ring-primary/25 active:scale-[0.97] disabled:opacity-40"
+                >
+                  {q.label}
+                </button>
+              ))}
             </div>
           </div>
         ) : null}
