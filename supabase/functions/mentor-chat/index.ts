@@ -374,6 +374,47 @@ type UserContext = {
       mistakes: string[];
     }>;
   };
+  /**
+   * Behavior pattern analysis — multi-trade view, not single-trade.
+   * Tells the mentor: dominant repeated weakness, last-5-vs-previous trend,
+   * which mistakes are recurring, and ready-to-quote headlines.
+   */
+  behaviorPatterns?: {
+    totalTrades: number;
+    cleanRate: number;
+    dominantWeakness: {
+      id: string;
+      label: string;
+      count: number;
+      pct: number;
+      severe: boolean;
+    } | null;
+    mistakeFrequency: Array<{
+      id: string;
+      label: string;
+      count: number;
+      pct: number;
+      severe: boolean;
+    }>;
+    recentVsPrevious: {
+      recentCount: number;
+      previousCount: number;
+      recentAvgScore: number | null;
+      previousAvgScore: number | null;
+      delta: number | null;
+      recentMistakeRate: number;
+      previousMistakeRate: number;
+    };
+    trend: "improving" | "declining" | "stable" | "insufficient_data";
+    repeatedInRecent: Array<{
+      id: string;
+      label: string;
+      count: number;
+      pct: number;
+      severe: boolean;
+    }>;
+    headlines: string[];
+  };
 };
 
 const ZERO_DATA_ADDENDUM = `
