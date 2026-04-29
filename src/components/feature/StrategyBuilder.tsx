@@ -30,7 +30,6 @@ import {
   LockOpen,
   Loader2,
   Sparkles,
-  
   CheckCircle2,
   AlertTriangle,
   Plus,
@@ -40,6 +39,7 @@ import {
   GitMerge,
   HelpCircle,
   X,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -63,8 +63,12 @@ import { downloadPdf, downloadTxt } from "@/lib/strategyExport";
 import {
   interrogate,
   readRules,
+  evaluateStrictness,
+  validateStructuredOutput,
   type IntelligenceReport,
   type RuleCategoryV2,
+  type StrictnessVerdict,
+  type RuleAtomicityIssue,
 } from "@/lib/strategyIntelligence";
 
 const ACCOUNT_OPTIONS: { value: AccountType; label: string; hint: string }[] = [
@@ -203,6 +207,20 @@ export default function StrategyBuilder({
     }
   };
 
+  // Soft re-validation: run deterministic interrogation whenever rules change.
+  const reportEarly = useMemo<IntelligenceReport | null>(
+    () => (bp ? interrogate(bp) : null),
+    [bp],
+  );
+  const verdictEarly = useMemo<StrictnessVerdict | null>(
+    () => (bp && reportEarly ? evaluateStrictness(reportEarly, { isLocked: bp.locked }) : null),
+    [bp, reportEarly],
+  );
+  const atomicityIssues = useMemo<RuleAtomicityIssue[]>(
+    () => (bp ? validateStructuredOutput(readRules(bp)) : []),
+    [bp],
+  );
+
   const canAdvance = useMemo(() => {
     if (!bp) return false;
     switch (step.key) {
@@ -216,17 +234,28 @@ export default function StrategyBuilder({
         );
       case "raw":
         return true;
-      case "parse":
-        return Object.values(bp.structured_rules ?? {}).some(
+      case "parse": {
+        const hasRules = Object.values(bp.structured_rules ?? {}).some(
           (a) => Array.isArray(a) && a.length > 0,
         );
+        // Active interrogation: if AI returned questions, require at least
+        // one answered (or explicitly skipped) before advancing. Locked
+        // blueprints are grandfathered.
+        const qs = bp.refinement_history ?? [];
+        const hasUnresolved = !bp.locked && qs.length > 0 && qs.every((q) => !q.answer?.trim() && !q.accepted);
+        return hasRules && !hasUnresolved;
+      }
+      case "interrogate":
+        // Block advance when contradictions, critical missing, or too many
+        // vague rules. Locked blueprints downgrade to "warn" inside evaluateStrictness.
+        return verdictEarly?.severity !== "block";
       case "output":
-        return !!bp.trading_plan && (bp.checklist?.a_plus?.length ?? 0) > 0;
+        return !!bp.trading_plan && (bp.checklist?.a_plus?.length ?? 0) > 0 && atomicityIssues.length === 0;
       // tiers / refine / export / lock — never block.
       default:
         return true;
     }
-  }, [bp, step.key]);
+  }, [bp, step.key, verdictEarly, atomicityIssues]);
 
   if (bootError) {
     return (
@@ -267,10 +296,9 @@ export default function StrategyBuilder({
     );
   }
 
-  // Soft re-validation: run deterministic interrogation whenever rules change.
-  // This drives the warning banner shown on every step, including for opened
-  // locked blueprints (non-blocking — purely informational).
-  const report = useMemo<IntelligenceReport>(() => interrogate(bp), [bp]);
+  // Reuse early-computed report (declared above for canAdvance).
+  const report = reportEarly!;
+  const verdict = verdictEarly!;
 
   return (
     <Shell>
@@ -345,13 +373,13 @@ export default function StrategyBuilder({
                 <StepParse bp={bp} patch={patch} setBusy={setBusy} busy={busy} />
               )}
               {step.key === "interrogate" && (
-                <StepInterrogate bp={bp} patch={patch} report={report} />
+                <StepInterrogate bp={bp} patch={patch} report={report} verdict={verdict} />
               )}
               {step.key === "refine" && (
                 <StepRefine bp={bp} patch={patch} setBusy={setBusy} busy={busy} />
               )}
               {step.key === "output" && (
-                <StepOutput bp={bp} patch={patch} setBusy={setBusy} busy={busy} />
+                <StepOutput bp={bp} patch={patch} setBusy={setBusy} busy={busy} atomicityIssues={atomicityIssues} />
               )}
               {step.key === "export" && <StepExport bp={bp} />}
               {step.key === "lock" && <StepLock bp={bp} setBp={setBp} />}
@@ -964,6 +992,11 @@ function StepParse({
             {hasRules ? "Refine again" : "Refine with Seneca"}
           </button>
 
+          {/* ACTIVE INTERROGATION — surface AI follow-up questions inline.
+             Each question must be answered or explicitly skipped before
+             advancing. This is the "Parse → Interrogate" handshake. */}
+          <ActiveInterrogationPanel bp={bp} patch={patch} />
+
           {hasRules && (
             <div className="space-y-3">
               {(Object.keys(EMPTY_RULES) as Array<keyof StructuredRules>).map((k) => {
@@ -1123,14 +1156,17 @@ function StepOutput({
   patch,
   setBusy,
   busy,
+  atomicityIssues,
 }: {
   bp: StrategyBlueprint;
   patch: (p: Partial<StrategyBlueprint>) => Promise<void>;
   setBusy: (b: boolean) => void;
   busy: boolean;
+  atomicityIssues: RuleAtomicityIssue[];
 }) {
   const cl = (bp.checklist ?? {}) as Partial<ChecklistByTier>;
   const has = !!bp.trading_plan && (cl?.a_plus?.length ?? 0) > 0;
+  const blocked = atomicityIssues.length > 0;
 
   const generate = async () => {
     setBusy(true);
@@ -1170,15 +1206,38 @@ function StepOutput({
         sub={has ? "Short. Binary. Built from your rules." : "We'll turn your rules into a checklist + plan."}
       />
 
+      {/* Atomicity / machine-readability gate for Chart Analyzer */}
+      {blocked && (
+        <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-400">
+            <ShieldAlert className="h-3.5 w-3.5" /> Rules not machine-readable
+          </div>
+          <p className="mt-1.5 text-[13px] text-foreground">
+            {atomicityIssues.length} rule{atomicityIssues.length === 1 ? "" : "s"} aren't atomic / binary. Fix them before generating — the Chart Analyzer can't enforce ambiguous logic.
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {atomicityIssues.slice(0, 4).map((i, idx) => (
+              <li key={idx} className="rounded-lg bg-card/60 px-3 py-2 text-[12.5px] ring-1 ring-border/60">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {i.category} · {i.problem.replace("_", " ")}
+                </div>
+                <div className="mt-0.5 text-foreground">{i.rule}</div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">{i.hint}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!has && (
         <button
           type="button"
           onClick={generate}
-          disabled={busy}
+          disabled={busy || blocked}
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-50"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          Generate
+          {blocked ? "Resolve issues to generate" : "Generate"}
         </button>
       )}
 
@@ -1417,6 +1476,149 @@ function StepLock({
   );
 }
 
+/* --------------- Active Interrogation Panel (parse step) ----------- */
+function ActiveInterrogationPanel({
+  bp,
+  patch,
+}: {
+  bp: StrategyBlueprint;
+  patch: (p: Partial<StrategyBlueprint>) => Promise<void>;
+}) {
+  const history = bp.refinement_history ?? [];
+  const [drafts, setDrafts] = useState<string[]>(() =>
+    history.map((h) => h.answer ?? ""),
+  );
+  const [validating, setValidating] = useState<number | null>(null);
+  const [errors, setErrors] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    setDrafts(history.map((h) => h.answer ?? ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history.length]);
+
+  if (history.length === 0) return null;
+
+  const acceptAnswer = async (i: number, answer: string) => {
+    const next = history.map((h, idx) =>
+      idx === i ? { ...h, answer, accepted: true } : h,
+    );
+    await patch({ refinement_history: next });
+    setErrors((e) => {
+      const copy = { ...e };
+      delete copy[i];
+      return copy;
+    });
+  };
+
+  const skipQuestion = async (i: number) => {
+    const next = history.map((h, idx) =>
+      idx === i ? { ...h, answer: h.answer ?? "", accepted: true } : h,
+    );
+    await patch({ refinement_history: next });
+  };
+
+  const validate = async (i: number) => {
+    const answer = drafts[i]?.trim() ?? "";
+    if (!answer) {
+      setErrors((e) => ({ ...e, [i]: "Type an answer or tap Skip." }));
+      return;
+    }
+    setValidating(i);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "validate-refinement-answer",
+        { body: { question: history[i].question, answer } },
+      );
+      if (error) throw error;
+      if (data.accept) {
+        await acceptAnswer(i, answer);
+      } else {
+        setErrors((e) => ({
+          ...e,
+          [i]: data.followup || data.reason || "Be more specific.",
+        }));
+      }
+    } catch (err) {
+      console.error("[validate]", err);
+      await acceptAnswer(i, answer);
+    } finally {
+      setValidating(null);
+    }
+  };
+
+  const allResolved = history.every(
+    (h) => h.accepted || (h.answer?.trim()?.length ?? 0) > 0,
+  );
+
+  return (
+    <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+      <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+        <HelpCircle className="h-3.5 w-3.5" /> A few questions
+      </div>
+      <p className="mt-1 text-[12.5px] text-muted-foreground">
+        Answer each — or skip if not relevant. Required to continue.
+      </p>
+      <div className="mt-3 space-y-3">
+        {history.map((qa, i) => {
+          const resolved = qa.accepted || (qa.answer?.trim().length ?? 0) > 0;
+          return (
+            <div
+              key={i}
+              className={`rounded-lg p-3 ring-1 ${resolved ? "bg-card ring-primary/30" : "bg-card ring-border"}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="text-sm font-medium text-foreground">{qa.question}</div>
+                {resolved && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}
+              </div>
+              <input
+                value={drafts[i] ?? ""}
+                onChange={(e) => {
+                  const n = drafts.slice();
+                  n[i] = e.target.value;
+                  setDrafts(n);
+                }}
+                placeholder="Type a precise, measurable answer…"
+                className="mt-2 w-full rounded-lg bg-background px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              {errors[i] && (
+                <p className="mt-1.5 text-[11.5px] text-amber-600 dark:text-amber-400">
+                  {errors[i]}
+                </p>
+              )}
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void validate(i)}
+                  disabled={validating === i}
+                  className="rounded-md bg-primary px-2.5 py-1.5 text-[11px] font-medium text-primary-foreground disabled:opacity-50"
+                >
+                  {validating === i ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    "Submit"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void skipQuestion(i)}
+                  className="rounded-md bg-background px-2.5 py-1.5 text-[11px] text-muted-foreground ring-1 ring-border hover:text-foreground"
+                >
+                  Skip
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {!allResolved && (
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Answer or skip every question to advance.
+        </p>
+      )}
+    </div>
+  );
+}
+
 /* -------------------------- Shared ----------------------------------- */
 function Question({ title, sub }: { title: string; sub?: string }) {
   return (
@@ -1472,10 +1674,12 @@ function StepInterrogate({
   bp,
   patch,
   report,
+  verdict,
 }: {
   bp: StrategyBlueprint;
   patch: (p: Partial<StrategyBlueprint>) => Promise<void>;
   report: IntelligenceReport;
+  verdict: StrictnessVerdict;
 }) {
   const rules = readRules(bp);
 
@@ -1524,6 +1728,28 @@ function StepInterrogate({
         title="Pressure-test your strategy"
         sub="I scanned your rules. Here's what doesn't hold up."
       />
+
+      {/* Strictness gate — block finalize when severity = "block" */}
+      {verdict.severity === "block" && (
+        <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-400">
+            <ShieldAlert className="h-3.5 w-3.5" /> Refinement required
+          </div>
+          <p className="mt-1.5 text-sm text-foreground">
+            Your strategy can't be finalized until the issues below are resolved.
+          </p>
+          <ul className="mt-2 space-y-1 text-[12.5px] text-foreground/80">
+            {verdict.reasons.map((r, i) => (
+              <li key={i}>· {r}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {verdict.severity === "warn" && !report.clean && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-[12.5px] text-foreground/80">
+          You can proceed, but tightening these rules will sharpen your edge.
+        </div>
+      )}
 
       {/* Live score */}
       <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
@@ -1717,22 +1943,78 @@ function VagueRuleRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(v.rule);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<string[] | null>(null);
+
+  const askAI = async () => {
+    setAiBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("tighten-rule", {
+        body: { rule: v.rule, trigger: v.trigger },
+      });
+      if (error) throw error;
+      const list = (data?.rewrites as string[]) ?? [];
+      setAiSuggestions(list);
+      if (list.length === 0) toast.info("No tighter rewrite found.");
+    } catch (err) {
+      console.error("[tighten-rule]", err);
+      toast.error("Couldn't fetch rewrites.");
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
   return (
     <li className="rounded-lg bg-background/60 px-3 py-2.5 ring-1 ring-border/60">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
           {v.category} · "{v.trigger}"
         </span>
-        <button
-          type="button"
-          onClick={() => setEditing((e) => !e)}
-          className="text-[11px] text-primary hover:underline"
-        >
-          {editing ? "Cancel" : "Tighten"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void askAI()}
+            disabled={aiBusy}
+            className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline disabled:opacity-50"
+          >
+            {aiBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+            Ask AI
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing((e) => !e)}
+            className="text-[11px] text-primary hover:underline"
+          >
+            {editing ? "Cancel" : "Edit"}
+          </button>
+        </div>
       </div>
       <p className="mt-1 text-[13px] text-foreground">{v.rule}</p>
       <p className="mt-1 text-[11px] text-muted-foreground">{v.suggestion}</p>
+
+      {aiSuggestions && aiSuggestions.length > 0 && (
+        <ul className="mt-2 space-y-1.5">
+          {aiSuggestions.map((s, i) => (
+            <li
+              key={i}
+              className="flex items-center justify-between gap-2 rounded-md bg-card px-2.5 py-1.5 ring-1 ring-border"
+            >
+              <span className="text-[12.5px] text-foreground">{s}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  onReplace(s);
+                  setAiSuggestions(null);
+                }}
+                className="rounded-md bg-primary px-2 py-1 text-[10.5px] font-medium text-primary-foreground"
+              >
+                Use
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {editing && (
         <div className="mt-2 flex items-center gap-2">
           <input
