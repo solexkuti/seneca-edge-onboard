@@ -373,13 +373,13 @@ export default function StrategyBuilder({
                 <StepParse bp={bp} patch={patch} setBusy={setBusy} busy={busy} />
               )}
               {step.key === "interrogate" && (
-                <StepInterrogate bp={bp} patch={patch} report={report} />
+                <StepInterrogate bp={bp} patch={patch} report={report} verdict={verdict} />
               )}
               {step.key === "refine" && (
                 <StepRefine bp={bp} patch={patch} setBusy={setBusy} busy={busy} />
               )}
               {step.key === "output" && (
-                <StepOutput bp={bp} patch={patch} setBusy={setBusy} busy={busy} />
+                <StepOutput bp={bp} patch={patch} setBusy={setBusy} busy={busy} atomicityIssues={atomicityIssues} />
               )}
               {step.key === "export" && <StepExport bp={bp} />}
               {step.key === "lock" && <StepLock bp={bp} setBp={setBp} />}
