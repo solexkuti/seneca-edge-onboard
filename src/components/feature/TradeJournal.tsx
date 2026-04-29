@@ -201,6 +201,11 @@ export default function TradeJournal() {
           </Link>
         </div>
 
+        {/* Trends — discipline over time + repeated mistakes */}
+        {!empty && !loading && trades.length > 0 && (
+          <DisciplineTrendsPanel trades={trades} />
+        )}
+
         {/* Filters */}
         {!empty && (
           <div className="mt-5 space-y-2.5">
