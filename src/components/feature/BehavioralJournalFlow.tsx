@@ -102,8 +102,7 @@ export default function BehavioralJournalFlow({
   const [mistakes, setMistakes] = useState<MistakeId[]>([]);
   const [confidence, setConfidence] = useState<number | null>(null);
   const [note, setNote] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [files, setFiles] = useState<{ file: File; preview: string; tag: ScreenshotTag }[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackPayload | null>(null);
