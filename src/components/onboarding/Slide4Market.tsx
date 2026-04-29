@@ -10,7 +10,7 @@ import {
 import SelectionCard from "./SelectionCard";
 import ContinueButton from "./ContinueButton";
 import type { SlideProps } from "./OnboardingFlow";
-import { patchProfile, readProfile, type MarketChoice } from "@/lib/onboardingProfile";
+import { patchProfile, type MarketChoice } from "@/lib/onboardingProfile";
 
 const markets: { id: MarketChoice; label: string; icon: React.ReactNode }[] = [
   { id: "forex", label: "Forex", icon: <DollarSign className="h-5 w-5" /> },
@@ -21,9 +21,11 @@ const markets: { id: MarketChoice; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function Slide4Market({ onNext }: SlideProps) {
-  const [selected, setSelected] = useState<MarketChoice[]>(
-    () => readProfile().markets ?? [],
-  );
+  // Always start with a clean, empty selection on mount. We never seed from
+  // localStorage here — returning users are routed straight to /hub by the
+  // entry router (src/routes/index.tsx) when onboarding_completed=true, so
+  // any cached `markets` value would be a stale ghost selection.
+  const [selected, setSelected] = useState<MarketChoice[]>([]);
 
   const toggle = (id: MarketChoice) => {
     setSelected((prev) => {
