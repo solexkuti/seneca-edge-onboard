@@ -795,6 +795,7 @@ export type Database = {
           closed_at: string | null
           confidence_rating: number | null
           created_at: string
+          data_quality: string
           direction: string
           emotional_state: string | null
           entry_price: number | null
@@ -823,6 +824,7 @@ export type Database = {
           closed_at?: string | null
           confidence_rating?: number | null
           created_at?: string
+          data_quality?: string
           direction: string
           emotional_state?: string | null
           entry_price?: number | null
@@ -851,6 +853,7 @@ export type Database = {
           closed_at?: string | null
           confidence_rating?: number | null
           created_at?: string
+          data_quality?: string
           direction?: string
           emotional_state?: string | null
           entry_price?: number | null
