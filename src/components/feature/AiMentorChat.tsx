@@ -413,13 +413,61 @@ export default function AiMentorChat() {
       role: "user",
       content: trimmed,
     };
-    const history = [...messages, userMsg];
+    const history = [...stripExistingChips(messages), userMsg];
     // Echo the user message immediately and flip streaming on the same tick
     // so the input clears and the typing indicator shows without waiting for
     // context-building or the network round-trip.
     setMessages(history);
     setDraft("");
     setStreaming(true);
+
+    // ─── GUIDED-MODE INTERCEPT ────────────────────────────────────────
+    // While Seneca is in a guided flow, NEVER fall back to general chat.
+    // We answer the user deterministically based on the active pattern.
+    if (convoState.mode === "pattern_detected") {
+      if (isYes(trimmed)) {
+        enterDeepDive(history);
+        return;
+      }
+      if (isNo(trimmed)) {
+        setConvoState(INITIAL_STATE);
+        respondLocally(history, "Understood. I'm here when you're ready.");
+        return;
+      }
+      // Free-text reply that isn't yes/no — treat it as the user wanting to
+      // engage with the pattern. Drop straight into the deep-dive script.
+      enterDeepDive(history);
+      return;
+    }
+
+    if (convoState.mode === "deep_dive") {
+      // The user typed instead of tapping an option. Match against option
+      // labels by keyword; otherwise acknowledge and drop to idle.
+      const script = getScript(convoState.active_pattern);
+      const t = trimmed.toLowerCase();
+      const matched = script.options.find((opt) => {
+        const k = opt.label.toLowerCase();
+        return t.includes(k.split(" ").slice(0, 2).join(" ")) || t.includes(opt.id.replace("_", " "));
+      });
+      if (matched) {
+        setStreaming(true);
+        appendAssistantSequence(history, [
+          { content: matched.response },
+          { content: DEEP_DIVE_CLOSING },
+        ]);
+        setConvoState(INITIAL_STATE);
+        return;
+      }
+      // Otherwise treat the free-form text as the user's own answer to
+      // "what happened?" — acknowledge it and close the loop without
+      // pretending to interpret it.
+      respondLocally(
+        history,
+        "Heard. Naming it is the work.\n\nIf you want, pick one of the options above to go deeper — or ask me anything.",
+      );
+      setConvoState(INITIAL_STATE);
+      return;
+    }
 
     // ---- HARD GATE (runs before any AI call) ----
     const tradeCount = Math.max(
