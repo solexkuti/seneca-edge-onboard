@@ -12,6 +12,40 @@ import {
   type Outcome,
   type TradeLog,
 } from "@/lib/tradeLogs";
+import {
+  MISTAKE_PENALTY,
+  PER_TRADE_BASE,
+  MAX_PENALTY,
+  MIN_TRADE_SCORE,
+} from "@/lib/behavioralJournal";
+
+type ScoreBreakdown = {
+  items: { id: string; label: string; penalty: number }[];
+  rawPenalty: number;
+  appliedPenalty: number;
+  cappedAt: number; // amount trimmed by the cap (rawPenalty - appliedPenalty)
+  score: number;
+  base: number;
+};
+
+function computeBreakdown(mistakes: string[]): ScoreBreakdown {
+  const items = mistakes.map((id) => ({
+    id,
+    label: prettyMistake(id),
+    penalty: MISTAKE_PENALTY[id as keyof typeof MISTAKE_PENALTY] ?? 0,
+  }));
+  const rawPenalty = items.reduce((s, b) => s + b.penalty, 0);
+  const appliedPenalty = Math.min(MAX_PENALTY, rawPenalty);
+  const score = Math.max(MIN_TRADE_SCORE, PER_TRADE_BASE - appliedPenalty);
+  return {
+    items,
+    rawPenalty,
+    appliedPenalty,
+    cappedAt: rawPenalty - appliedPenalty,
+    score,
+    base: PER_TRADE_BASE,
+  };
+}
 
 type OutcomeFilter = "all" | Outcome;
 type MarketFilter = "all" | string;
