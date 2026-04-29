@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, CalendarIcon } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
