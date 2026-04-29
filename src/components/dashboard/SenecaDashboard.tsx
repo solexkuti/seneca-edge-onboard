@@ -33,18 +33,21 @@ const TONE_TEXT: Record<string, string> = {
   drift: "text-amber-300",
   warn: "text-orange-300",
   risk: "text-rose-300",
+  inactive: "text-text-secondary/70",
 };
 const TONE_DOT: Record<string, string> = {
   ok: "bg-gold",
   drift: "bg-amber-400",
   warn: "bg-orange-400",
   risk: "bg-rose-400",
+  inactive: "bg-text-secondary/40",
 };
 const TONE_BAR: Record<string, string> = {
   ok: "bg-gold",
   drift: "bg-amber-400/80",
   warn: "bg-orange-400/80",
   risk: "bg-rose-400/80",
+  inactive: "bg-text-secondary/30",
 };
 
 function shortLine(input: string | null | undefined, max = 56): string | null {
