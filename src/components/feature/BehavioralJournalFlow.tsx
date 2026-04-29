@@ -763,9 +763,12 @@ export default function BehavioralJournalFlow({
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.35, ease }}
-                  className="mt-6 rounded-2xl bg-gradient-to-b from-primary/[0.10] to-primary/[0.04] ring-1 ring-primary/30 px-5 py-5 text-center shadow-glow-gold"
+                  className="mt-6 rounded-2xl bg-gradient-to-b from-primary/[0.12] to-primary/[0.04] ring-1 ring-primary/35 px-5 py-5 text-center shadow-glow-gold"
                 >
-                  <div className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 ring-1 ring-primary/40">
+                  <div
+                    className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/25 ring-1 ring-primary/50"
+                    style={{ boxShadow: "0 0 22px rgba(198,161,91,0.45)" }}
+                  >
                     <Check className="h-4 w-4 text-primary" strokeWidth={2.6} />
                   </div>
                   <p className="mt-3 text-[10.5px] font-semibold uppercase tracking-[0.24em] text-primary">
