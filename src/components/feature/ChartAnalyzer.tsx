@@ -349,11 +349,11 @@ export default function ChartAnalyzer() {
   }
 
   return (
-    <FeatureShell
-      eyebrow="Chart Analyzer"
-      title="Analyze against YOUR strategy."
-      subtitle="Validates chart structure, rules, and timeframe alignment."
-    >
+    <SenecaScreen back={{ to: "/hub", label: "Today" }}>
+      <SenecaHeader
+        title="Analyzer"
+        subtitle="Show me the setup. I'll check it against your rules."
+      >
       <input
         ref={execInputRef}
         type="file"
