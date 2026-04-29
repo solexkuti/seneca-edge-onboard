@@ -16,6 +16,16 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  exportMistakeBreakdownCSV,
+  exportMistakeBreakdownPDF,
+} from "@/lib/mistakeBreakdownExport";
+import {
   MISTAKES,
   MISTAKE_LABEL,
   SEVERE_IDS,
