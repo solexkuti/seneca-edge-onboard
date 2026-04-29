@@ -65,7 +65,7 @@ export default function SlideTestimonial({ onNext }: SlideProps) {
         className="font-display text-[24px] font-semibold leading-tight tracking-tight text-text-primary"
       >
         Built for traders<br />
-        <span className="text-gold-soft">who choose discipline</span>
+        <span className="text-gold-soft">who chose discipline</span>
       </motion.h2>
 
       <motion.figure
