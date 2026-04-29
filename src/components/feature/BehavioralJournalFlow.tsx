@@ -45,6 +45,8 @@ import {
   type Outcome,
 } from "@/lib/tradeLogs";
 import { supabase } from "@/integrations/supabase/client";
+import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
+import { detectRelapseAndLoops } from "@/lib/relapseAndLoopDetection";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -126,6 +128,14 @@ export default function BehavioralJournalFlow({
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackPayload | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Pre-trade awareness — quiet, deterministic line surfaced before the
+  // user logs the next trade when a relapse or behavioral loop is active.
+  const { entries: priorEntries } = useBehavioralJournal(50);
+  const preTradeAwareness = useMemo(() => {
+    if (!priorEntries || priorEntries.length < 3) return null;
+    return detectRelapseAndLoops(priorEntries).preTradeAwareness;
+  }, [priorEntries]);
 
   // Derived numerics
   const entry = useMemo(() => parseNum(entryStr), [entryStr]);
@@ -485,6 +495,17 @@ export default function BehavioralJournalFlow({
             />
           ))}
         </div>
+
+        {preTradeAwareness && step === 0 && (
+          <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/[0.06] px-4 py-3">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary/80">
+              Pre-trade awareness
+            </div>
+            <p className="mt-1 text-[13px] leading-snug text-text-primary">
+              {preTradeAwareness}
+            </p>
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
           {step === 0 && (
