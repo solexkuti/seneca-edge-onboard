@@ -121,11 +121,48 @@ export default function OnboardingFlow() {
   // the generic narrative/question slides callable with just `onNext`.
   const Component = slide.Component as React.ComponentType<SlideProps>;
 
+  // Subtle, per-slide motion variation. Stays minimal: small offsets,
+  // soft easings, no scale/rotate, no extra text. Auto timing untouched.
+  const MOTION_VARIANTS: Array<{
+    enter: { x?: number; y?: number; opacity: number };
+    exit: { x?: number; y?: number; opacity: number };
+    ease: [number, number, number, number];
+    duration: number;
+  }> = [
+    { enter: { y: 18, opacity: 0 }, exit: { y: -10, opacity: 0 }, ease: [0.22, 1, 0.36, 1], duration: 0.55 }, // soft rise
+    { enter: { x: 28, opacity: 0 }, exit: { x: -18, opacity: 0 }, ease: [0.16, 1, 0.3, 1],  duration: 0.5 },  // glide right→left
+    { enter: { y: -14, opacity: 0 }, exit: { y: 10, opacity: 0 }, ease: [0.4, 0, 0.2, 1],   duration: 0.6 },  // settle down
+    { enter: { x: -22, opacity: 0 }, exit: { x: 14, opacity: 0 }, ease: [0.22, 1, 0.36, 1], duration: 0.55 }, // glide left→right
+  ];
+  const variant = MOTION_VARIANTS[index % MOTION_VARIANTS.length];
+
+  // Ambient glow position drifts per slide — same warm gold token, just
+  // re-anchored each slide so the background feels alive between transitions.
+  const GLOW_POSITIONS = [
+    { top: "12%", left: "18%" },
+    { top: "22%", left: "72%" },
+    { top: "62%", left: "28%" },
+    { top: "68%", left: "78%" },
+    { top: "40%", left: "50%" },
+  ];
+  const glow = GLOW_POSITIONS[index % GLOW_POSITIONS.length];
+
   return (
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
       {/* Background ambient */}
       <div className="pointer-events-none absolute inset-0 bg-app-glow" />
       <BackdropLines />
+
+      {/* Per-slide warm ambient glow — shifts gently between slides */}
+      <motion.div
+        aria-hidden
+        key={`glow-${index}`}
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 1.4, ease: "easeOut" }}
+        className="pointer-events-none absolute z-0 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(198,161,91,0.16),transparent_65%)] blur-3xl"
+        style={{ top: glow.top, left: glow.left }}
+      />
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pb-8 pt-[40px]">
         {/* Progress bar */}
@@ -144,10 +181,10 @@ export default function OnboardingFlow() {
             <motion.div
               key={slide.key}
               custom={direction}
-              initial={{ opacity: 0, x: direction === 1 ? 30 : -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: direction === 1 ? -30 : 30 }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              initial={variant.enter}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              exit={variant.exit}
+              transition={{ duration: variant.duration, ease: variant.ease }}
               drag="x"
               dragElastic={0.18}
               dragMomentum={false}
