@@ -65,12 +65,20 @@ export default function TradeHistory() {
               {loading ? "Loading…" : `${entries.length} trades · score ${score}/100`}
             </p>
           </div>
-          <Link
-            to="/hub/journal"
-            className="rounded-full bg-primary/15 ring-1 ring-primary/30 px-3.5 py-2 text-[11.5px] font-semibold text-text-primary active:scale-[0.98] transition"
-          >
-            Log trade
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/hub/journal/breakdown"
+              className="rounded-full bg-card ring-1 ring-border px-3.5 py-2 text-[11.5px] font-semibold text-text-primary active:scale-[0.98] transition"
+            >
+              Breakdown
+            </Link>
+            <Link
+              to="/hub/journal"
+              className="rounded-full bg-primary/15 ring-1 ring-primary/30 px-3.5 py-2 text-[11.5px] font-semibold text-text-primary active:scale-[0.98] transition"
+            >
+              Log trade
+            </Link>
+          </div>
         </div>
 
         {!loading && entries.length === 0 && (
