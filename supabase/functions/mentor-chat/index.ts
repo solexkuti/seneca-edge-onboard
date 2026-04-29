@@ -591,8 +591,7 @@ Deno.serve(async (req) => {
           `Current discipline streak: ${i.disciplineStreak} clean trade${i.disciplineStreak === 1 ? "" : "s"}`,
           i.mostCommonMistake ? `Most common rule break: ${i.mostCommonMistake}` : null,
           i.mostCommonMistakeTag ? `Most common behavioral mistake: ${i.mostCommonMistakeTag}` : null,
-          i.twoUndisciplinedInARow ? `WARNING: last two trades both broke the plan.` : null,
-          i.strictModeActive ? `STRICT MODE: active.` : null,
+          i.twoUndisciplinedInARow ? `PATTERN: last two trades both broke the plan.` : null,
         ].filter(Boolean);
         contextBlock += `\n\n[Intelligence Snapshot]\n${lines.join("\n")}`;
       }
@@ -643,13 +642,19 @@ Deno.serve(async (req) => {
         "\n\nUSER CONTEXT: none yet. Offer warm, general guidance. Do NOT mention missing data. Do NOT refuse. Invite the user to share more about their situation through your soft closing.";
     }
 
-    const strictMode = !!context?.intelligence?.strictModeActive;
+    // Pattern-aware tone activates when a real repeating pattern shows up
+    // in the data. No enforcement, no strict mode — just a calmer, more
+    // observant turn.
+    const patternActive = !!(
+      context?.intelligence?.twoUndisciplinedInARow ||
+      (context?.traderState?.discipline?.consecutive_breaks ?? 0) >= 2
+    );
     const hasTraderState = !!context?.traderState;
     const systemContent =
       SYSTEM_PROMPT +
       contextBlock +
       (hasTraderState ? AWARENESS_LAYER_ADDENDUM : "") +
-      (strictMode ? STRICT_MODE_ADDENDUM : "");
+      (patternActive ? PATTERN_AWARE_ADDENDUM : "");
 
     const upstream = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
