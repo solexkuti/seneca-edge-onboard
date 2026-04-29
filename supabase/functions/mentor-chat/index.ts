@@ -429,6 +429,31 @@ type UserContext = {
     }>;
     headlines: string[];
   };
+  /**
+   * Relapse + behavioral loop detection. Builds on behaviorPatterns.
+   * Surfaces deterministic, ready-to-quote messages.
+   */
+  relapseLoops?: {
+    improving: boolean;
+    relapses: Array<{
+      mistakeId: string;
+      mistakeLabel: string;
+      recentOccurrences: number;
+      previousOccurrences: number;
+      severity: "light" | "medium" | "strong";
+      message: string;
+    }>;
+    loops: Array<{
+      context: "win" | "loss" | "high_confidence";
+      mistakeId: string;
+      mistakeLabel: string;
+      occurrences: number;
+      loopLabel: string | null;
+      message: string;
+    }>;
+    preTradeAwareness: string | null;
+    headlines: string[];
+  };
 };
 
 const ZERO_DATA_ADDENDUM = `
