@@ -207,6 +207,20 @@ export default function StrategyBuilder({
     }
   };
 
+  // Soft re-validation: run deterministic interrogation whenever rules change.
+  const reportEarly = useMemo<IntelligenceReport | null>(
+    () => (bp ? interrogate(bp) : null),
+    [bp],
+  );
+  const verdictEarly = useMemo<StrictnessVerdict | null>(
+    () => (bp && reportEarly ? evaluateStrictness(reportEarly, { isLocked: bp.locked }) : null),
+    [bp, reportEarly],
+  );
+  const atomicityIssues = useMemo<RuleAtomicityIssue[]>(
+    () => (bp ? validateStructuredOutput(readRules(bp)) : []),
+    [bp],
+  );
+
   const canAdvance = useMemo(() => {
     if (!bp) return false;
     switch (step.key) {
@@ -220,17 +234,28 @@ export default function StrategyBuilder({
         );
       case "raw":
         return true;
-      case "parse":
-        return Object.values(bp.structured_rules ?? {}).some(
+      case "parse": {
+        const hasRules = Object.values(bp.structured_rules ?? {}).some(
           (a) => Array.isArray(a) && a.length > 0,
         );
+        // Active interrogation: if AI returned questions, require at least
+        // one answered (or explicitly skipped) before advancing. Locked
+        // blueprints are grandfathered.
+        const qs = bp.refinement_history ?? [];
+        const hasUnresolved = !bp.locked && qs.length > 0 && qs.every((q) => !q.answer?.trim() && !q.accepted);
+        return hasRules && !hasUnresolved;
+      }
+      case "interrogate":
+        // Block advance when contradictions, critical missing, or too many
+        // vague rules. Locked blueprints downgrade to "warn" inside evaluateStrictness.
+        return verdictEarly?.severity !== "block";
       case "output":
-        return !!bp.trading_plan && (bp.checklist?.a_plus?.length ?? 0) > 0;
+        return !!bp.trading_plan && (bp.checklist?.a_plus?.length ?? 0) > 0 && atomicityIssues.length === 0;
       // tiers / refine / export / lock — never block.
       default:
         return true;
     }
-  }, [bp, step.key]);
+  }, [bp, step.key, verdictEarly, atomicityIssues]);
 
   if (bootError) {
     return (
