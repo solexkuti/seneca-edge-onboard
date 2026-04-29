@@ -244,31 +244,9 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
           </div>
         </Section>
 
-        {/* 3 · Seneca Insight */}
-        <Section delay={0.12} label="Seneca insight" className="mt-10">
-          <Link
-            to="/hub/mentor"
-            preload="intent"
-            className="block rounded-2xl bg-card p-5 ring-1 ring-border/60 active:scale-[0.99] transition-transform"
-          >
-            <div className="flex items-start gap-3">
-              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" strokeWidth={2.2} />
-              <div className="min-w-0 flex-1">
-                <p className="text-[13.5px] font-semibold leading-snug text-text-primary">
-                  {insight.headline}
-                </p>
-                <p className="mt-1 text-[12px] leading-snug text-text-secondary/85">
-                  {insight.suggestion}
-                </p>
-              </div>
-              <ArrowUpRight className="mt-0.5 h-3.5 w-3.5 text-text-secondary/70" strokeWidth={2.4} />
-            </div>
-          </Link>
-        </Section>
-
-        {/* 4 · Behavior Intelligence — compact */}
-        <Section delay={0.16} label="Behavior" className="mt-10">
-          <div className="rounded-2xl bg-card p-5">
+        {/* 3 · Behavior Intelligence — compact */}
+        <Section delay={0.12} label="Behavior" className="mt-10">
+          <div className="rounded-2xl bg-card p-5 ring-1 ring-border/60">
             <div className="flex items-baseline gap-2">
               <span className={`text-[26px] font-semibold leading-none tabular-nums ${TONE_TEXT[ds.tone]}`}>
                 {loading || score == null ? "—" : score}
@@ -288,14 +266,14 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
           </div>
         </Section>
 
-        {/* 5 · Performance Snapshot — real trade data */}
-        <Section delay={0.18} label="Performance" className="mt-10">
-          <PerformanceSnapshot
-            loading={performance.loading}
-            hasTrades={performance.hasTrades}
-            metrics={performance.metrics}
-          />
-          <div className="mt-3">
+        {/* 4 · Performance — unified Snapshot + Trend cards */}
+        <Section delay={0.16} label="Performance" className="mt-10">
+          <div className="space-y-3">
+            <PerformanceSnapshot
+              loading={performance.loading}
+              hasTrades={performance.hasTrades}
+              metrics={performance.metrics}
+            />
             <PerformanceTrends
               loading={performance.loading}
               hasTrades={performance.hasTrades}
