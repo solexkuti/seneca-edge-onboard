@@ -140,10 +140,63 @@ export default function AiMentorChat() {
   }, [messages, streaming]);
 
   // Hard-gated, deterministic mentor reply (no AI call).
+  // Adds a small humanizing delay so the response doesn't feel like a fake instant echo.
   const respondLocally = (history: Msg[], content: string) => {
     const id = `a-${Date.now()}`;
-    setMessages([...history, { id, role: "assistant", content }]);
-    setStreaming(false);
+    const delay = 300 + Math.floor(Math.random() * 500); // 300–800ms
+    window.setTimeout(() => {
+      setMessages([...history, { id, role: "assistant", content }]);
+      setStreaming(false);
+    }, delay);
+  };
+
+  // Lightweight intent classifier — keyword based, deterministic.
+  type Intent =
+    | "TRADE_REVIEW"
+    | "PATTERN_ANALYSIS"
+    | "METRICS_EXPLANATION"
+    | "GENERAL_TRADING_QUESTION"
+    | "GUIDANCE";
+
+  const classifyIntent = (text: string): Intent => {
+    const t = text.toLowerCase();
+
+    // TRADE_REVIEW — asking about own trades / mistakes
+    if (
+      /\b(review|recap|breakdown|analy[sz]e)\b.*\b(trade|setup|entry|exit)\b/.test(t) ||
+      /\b(my|last|recent)\s+(trade|trades|setup|entry|exit)\b/.test(t) ||
+      /\bwhat\s+did\s+i\s+do\s+(wrong|right)\b/.test(t)
+    ) {
+      return "TRADE_REVIEW";
+    }
+
+    // PATTERN_ANALYSIS — recurring behavior
+    if (
+      /\b(pattern|patterns|repeat|repeating|keeps?\s+happening|tendency|tendencies|habit|habits)\b/.test(t) ||
+      /\bspot\b.*\bpattern\b/.test(t)
+    ) {
+      return "PATTERN_ANALYSIS";
+    }
+
+    // METRICS_EXPLANATION — own stats / how scores work
+    if (
+      /\b(my\s+)?(stats|metrics|score|discipline|win\s*rate|winrate|rr|r:r|r\/r|expectancy|drawdown)\b/.test(t) ||
+      /\bhow\s+is\s+.*\s+(calculated|computed|measured)\b/.test(t) ||
+      /\bexplain\s+(my\s+)?(stats|metrics|score|numbers)\b/.test(t)
+    ) {
+      return "METRICS_EXPLANATION";
+    }
+
+    // GUIDANCE — improvement / something feels off
+    if (
+      /\b(how\s+(can|do)\s+i\s+improve|get\s+better|fix|feel(s)?\s+off|struggling|stuck)\b/.test(t) ||
+      /\b(my\s+)?(exits?|entries|risk|sizing)\s+(feel|feels|are)\b/.test(t)
+    ) {
+      return "GUIDANCE";
+    }
+
+    // Default — generic trading concept question (educational)
+    return "GENERAL_TRADING_QUESTION";
   };
 
   const send = async (text: string) => {
