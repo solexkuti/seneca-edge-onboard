@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HubIndexRouteImport } from './routes/hub.index'
+import { Route as HubTradesRouteImport } from './routes/hub.trades'
 import { Route as HubStrategyRouteImport } from './routes/hub.strategy'
+import { Route as HubStatsRouteImport } from './routes/hub.stats'
 import { Route as HubStateRouteImport } from './routes/hub.state'
 import { Route as HubRecoveryRouteImport } from './routes/hub.recovery'
 import { Route as HubMindRouteImport } from './routes/hub.mind'
@@ -36,9 +38,19 @@ const HubIndexRoute = HubIndexRouteImport.update({
   path: '/hub/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HubTradesRoute = HubTradesRouteImport.update({
+  id: '/hub/trades',
+  path: '/hub/trades',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HubStrategyRoute = HubStrategyRouteImport.update({
   id: '/hub/strategy',
   path: '/hub/strategy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HubStatsRoute = HubStatsRouteImport.update({
+  id: '/hub/stats',
+  path: '/hub/stats',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HubStateRoute = HubStateRouteImport.update({
@@ -118,7 +130,9 @@ export interface FileRoutesByFullPath {
   '/hub/mind': typeof HubMindRoute
   '/hub/recovery': typeof HubRecoveryRoute
   '/hub/state': typeof HubStateRoute
+  '/hub/stats': typeof HubStatsRoute
   '/hub/strategy': typeof HubStrategyRouteWithChildren
+  '/hub/trades': typeof HubTradesRoute
   '/hub/': typeof HubIndexRoute
   '/hub/journal/history': typeof HubJournalHistoryRoute
   '/hub/strategy/$id': typeof HubStrategyIdRoute
@@ -136,6 +150,8 @@ export interface FileRoutesByTo {
   '/hub/mind': typeof HubMindRoute
   '/hub/recovery': typeof HubRecoveryRoute
   '/hub/state': typeof HubStateRoute
+  '/hub/stats': typeof HubStatsRoute
+  '/hub/trades': typeof HubTradesRoute
   '/hub': typeof HubIndexRoute
   '/hub/journal/history': typeof HubJournalHistoryRoute
   '/hub/strategy/$id': typeof HubStrategyIdRoute
@@ -154,7 +170,9 @@ export interface FileRoutesById {
   '/hub/mind': typeof HubMindRoute
   '/hub/recovery': typeof HubRecoveryRoute
   '/hub/state': typeof HubStateRoute
+  '/hub/stats': typeof HubStatsRoute
   '/hub/strategy': typeof HubStrategyRouteWithChildren
+  '/hub/trades': typeof HubTradesRoute
   '/hub/': typeof HubIndexRoute
   '/hub/journal/history': typeof HubJournalHistoryRoute
   '/hub/strategy/$id': typeof HubStrategyIdRoute
@@ -174,7 +192,9 @@ export interface FileRouteTypes {
     | '/hub/mind'
     | '/hub/recovery'
     | '/hub/state'
+    | '/hub/stats'
     | '/hub/strategy'
+    | '/hub/trades'
     | '/hub/'
     | '/hub/journal/history'
     | '/hub/strategy/$id'
@@ -192,6 +212,8 @@ export interface FileRouteTypes {
     | '/hub/mind'
     | '/hub/recovery'
     | '/hub/state'
+    | '/hub/stats'
+    | '/hub/trades'
     | '/hub'
     | '/hub/journal/history'
     | '/hub/strategy/$id'
@@ -209,7 +231,9 @@ export interface FileRouteTypes {
     | '/hub/mind'
     | '/hub/recovery'
     | '/hub/state'
+    | '/hub/stats'
     | '/hub/strategy'
+    | '/hub/trades'
     | '/hub/'
     | '/hub/journal/history'
     | '/hub/strategy/$id'
@@ -228,7 +252,9 @@ export interface RootRouteChildren {
   HubMindRoute: typeof HubMindRoute
   HubRecoveryRoute: typeof HubRecoveryRoute
   HubStateRoute: typeof HubStateRoute
+  HubStatsRoute: typeof HubStatsRoute
   HubStrategyRoute: typeof HubStrategyRouteWithChildren
+  HubTradesRoute: typeof HubTradesRoute
   HubIndexRoute: typeof HubIndexRoute
 }
 
@@ -248,11 +274,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HubIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hub/trades': {
+      id: '/hub/trades'
+      path: '/hub/trades'
+      fullPath: '/hub/trades'
+      preLoaderRoute: typeof HubTradesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/hub/strategy': {
       id: '/hub/strategy'
       path: '/hub/strategy'
       fullPath: '/hub/strategy'
       preLoaderRoute: typeof HubStrategyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hub/stats': {
+      id: '/hub/stats'
+      path: '/hub/stats'
+      fullPath: '/hub/stats'
+      preLoaderRoute: typeof HubStatsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hub/state': {
@@ -388,7 +428,9 @@ const rootRouteChildren: RootRouteChildren = {
   HubMindRoute: HubMindRoute,
   HubRecoveryRoute: HubRecoveryRoute,
   HubStateRoute: HubStateRoute,
+  HubStatsRoute: HubStatsRoute,
   HubStrategyRoute: HubStrategyRouteWithChildren,
+  HubTradesRoute: HubTradesRoute,
   HubIndexRoute: HubIndexRoute,
 }
 export const routeTree = rootRouteImport

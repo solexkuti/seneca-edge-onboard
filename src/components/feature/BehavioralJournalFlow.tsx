@@ -1,10 +1,10 @@
-// BehavioralJournalFlow — clean 5-step trade logging.
+// BehavioralJournalFlow — clean 4-step trade logging.
 //
-// Steps:
-//   1. Result   (asset + R)
+// Steps (kept structure intact, extended fields):
+//   1. Trade   (asset/pair + market + direction + entry/exit/SL/TP + risk% + R)
 //   2. Mistakes (multi-select fixed list)
-//   3. Note     (optional) + screenshot
-//   4. Submit → applies score delta, updates streaks
+//   3. Note     (optional) + confidence (1–5) + screenshot
+//   4. Confirm  → applies score delta, updates streaks, ALSO writes to trade_logs
 //   5. Feedback card (mandatory: shows reason, delta, before → after)
 //
 // Calm dark premium UI. No blocking, no enforcement.
@@ -18,6 +18,8 @@ import {
   Check,
   ImagePlus,
   Loader2,
+  TrendingDown,
+  TrendingUp,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,6 +31,17 @@ import {
   type Classification,
   type MistakeId,
 } from "@/lib/behavioralJournal";
+import {
+  insertTradeLog,
+  deriveRR,
+  realizedR,
+  derivePnlPercent,
+  sessionTagFor,
+  type Direction,
+  type Market,
+  type Outcome,
+} from "@/lib/tradeLogs";
+import { supabase } from "@/integrations/supabase/client";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -38,6 +51,15 @@ const CLASS_TONE: Record<Classification, { label: string; tone: string; chip: st
   bad:    { label: "Bad trade",       tone: "text-orange-300",  chip: "bg-orange-500/10 ring-orange-500/20 text-orange-300" },
   severe: { label: "Severe violation",tone: "text-rose-300",    chip: "bg-rose-500/10 ring-rose-500/20 text-rose-300" },
 };
+
+const MARKET_OPTIONS: { id: Market; label: string }[] = [
+  { id: "forex", label: "Forex" },
+  { id: "crypto", label: "Crypto" },
+  { id: "indices", label: "Indices" },
+  { id: "stocks", label: "Stocks" },
+  { id: "metals", label: "Metals" },
+  { id: "other", label: "Other" },
+];
 
 type Step = 0 | 1 | 2 | 3;
 
@@ -51,31 +73,72 @@ type FeedbackPayload = {
   breakStreakAfter: number;
 };
 
+function parseNum(v: string): number | null {
+  const t = v.trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
 export default function BehavioralJournalFlow({
   onLogged,
 }: {
   onLogged?: () => void;
 }) {
   const [step, setStep] = useState<Step>(0);
+
+  // Trade core
   const [asset, setAsset] = useState("");
+  const [market, setMarket] = useState<Market>("forex");
+  const [direction, setDirection] = useState<Direction>("buy");
+  const [entryStr, setEntryStr] = useState("");
+  const [exitStr, setExitStr] = useState("");
+  const [slStr, setSlStr] = useState("");
+  const [tpStr, setTpStr] = useState("");
+  const [riskStr, setRiskStr] = useState("");
   const [resultStr, setResultStr] = useState("");
+
+  // Behavior + journal
   const [mistakes, setMistakes] = useState<MistakeId[]>([]);
+  const [confidence, setConfidence] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackPayload | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Derived numerics
+  const entry = useMemo(() => parseNum(entryStr), [entryStr]);
+  const exit = useMemo(() => parseNum(exitStr), [exitStr]);
+  const sl = useMemo(() => parseNum(slStr), [slStr]);
+  const tp = useMemo(() => parseNum(tpStr), [tpStr]);
+  const risk = useMemo(() => parseNum(riskStr), [riskStr]);
+
+  // Auto: planned RR (from entry/SL/TP)
+  const plannedRR = useMemo(
+    () => deriveRR({ direction, entry, stop: sl, target: tp }),
+    [direction, entry, sl, tp],
+  );
+
+  // Auto: realized R from exit (used when user leaves R blank)
+  const autoRealizedR = useMemo(
+    () => realizedR({ direction, entry, exit, stop: sl }),
+    [direction, entry, exit, sl],
+  );
+
   const resultR = useMemo(() => {
     const cleaned = resultStr.replace(/[+rR\s]/g, "");
     const n = parseFloat(cleaned);
-    return Number.isFinite(n) ? n : NaN;
-  }, [resultStr]);
+    if (Number.isFinite(n)) return n;
+    return autoRealizedR ?? NaN;
+  }, [resultStr, autoRealizedR]);
 
   const previewClass = useMemo(() => classify(mistakes), [mistakes]);
 
-  const canNextFromStep0 = asset.trim().length > 0 && Number.isFinite(resultR);
+  const canNextFromStep0 =
+    asset.trim().length > 0 && Number.isFinite(resultR);
 
   function pickFile(f: File | null) {
     if (!f) {
@@ -107,6 +170,7 @@ export default function BehavioralJournalFlow({
     if (!canNextFromStep0 || submitting) return;
     setSubmitting(true);
     try {
+      // 1) Behavioral journal — drives discipline_score
       const r = await logTrade({
         asset,
         result_r: resultR,
@@ -114,6 +178,63 @@ export default function BehavioralJournalFlow({
         note,
         screenshotFile: file,
       });
+
+      // 2) Trade Performance log — drives metrics
+      const outcome: Outcome =
+        resultR > 0 ? "win" : resultR < 0 ? "loss" : "breakeven";
+      const now = new Date();
+      const opened_at = now.toISOString();
+      const closed_at = now.toISOString();
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+      const session_tag = sessionTagFor(now);
+
+      // Use realized R from exit when entry/exit/SL are present, otherwise the
+      // value the user typed. RR sign matches outcome.
+      const finalR = Number.isFinite(autoRealizedR ?? NaN)
+        ? (autoRealizedR as number)
+        : resultR;
+
+      const pnl_percent = derivePnlPercent(finalR, risk);
+
+      // Reuse the screenshot path saved by behavioralJournal as the public URL.
+      let screenshot_url: string | null = null;
+      if (r.entry.screenshot_path) {
+        const { data } = await supabase.storage
+          .from("trade-screenshots")
+          .createSignedUrl(r.entry.screenshot_path, 60 * 60 * 24 * 365);
+        screenshot_url = data?.signedUrl ?? r.entry.screenshot_path;
+      }
+
+      try {
+        await insertTradeLog({
+          market,
+          pair: asset.trim().toUpperCase(),
+          direction,
+          entry_price: entry,
+          exit_price: exit,
+          stop_loss: sl,
+          take_profit: tp,
+          risk_percent: risk,
+          rr: Number.isFinite(finalR) ? finalR : null,
+          pnl: null,
+          pnl_percent,
+          outcome,
+          opened_at,
+          closed_at,
+          timezone: tz,
+          session_tag,
+          rules_followed: mistakes.length === 0,
+          mistakes,
+          confidence_rating: confidence,
+          emotional_state: null,
+          note: note?.trim() || null,
+          screenshot_url,
+        });
+      } catch (perfErr) {
+        // Performance row is best-effort; never break the behavioral flow.
+        console.warn("[trade_logs] insert failed:", perfErr);
+      }
+
       setFeedback({
         classification: r.classification,
         reasonLabel: r.reasonLabel,
@@ -135,8 +256,16 @@ export default function BehavioralJournalFlow({
   function reset() {
     setStep(0);
     setAsset("");
+    setMarket("forex");
+    setDirection("buy");
+    setEntryStr("");
+    setExitStr("");
+    setSlStr("");
+    setTpStr("");
+    setRiskStr("");
     setResultStr("");
     setMistakes([]);
+    setConfidence(null);
     setNote("");
     setFile(null);
     setFilePreview(null);
@@ -263,7 +392,7 @@ export default function BehavioralJournalFlow({
         <AnimatePresence mode="wait">
           {step === 0 && (
             <motion.section
-              key="step-result"
+              key="step-trade"
               initial={{ opacity: 0, x: 12 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -12 }}
@@ -274,11 +403,11 @@ export default function BehavioralJournalFlow({
                 What did you trade?
               </h1>
               <p className="mt-1.5 text-[12.5px] text-text-secondary">
-                Asset and result in R-multiples.
+                Asset, market, direction. Prices auto-calculate RR.
               </p>
 
               <div className="mt-6 space-y-4">
-                <Field label="Asset">
+                <Field label="Asset / Pair">
                   <input
                     autoFocus
                     value={asset}
@@ -287,15 +416,134 @@ export default function BehavioralJournalFlow({
                     className="w-full bg-transparent text-[16px] font-medium text-text-primary outline-none placeholder:text-text-secondary/40"
                   />
                 </Field>
-                <Field label="Result (R)">
-                  <input
-                    value={resultStr}
-                    onChange={(e) => setResultStr(e.target.value)}
-                    placeholder="e.g. 1.5  or  -1"
-                    inputMode="decimal"
-                    className="w-full bg-transparent text-[16px] font-medium text-text-primary outline-none placeholder:text-text-secondary/40"
-                  />
-                </Field>
+
+                <div>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
+                    Market
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {MARKET_OPTIONS.map((m) => {
+                      const active = market === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setMarket(m.id)}
+                          className={`rounded-xl px-2.5 py-2.5 text-[12px] font-semibold ring-1 transition active:scale-[0.98] ${
+                            active
+                              ? "bg-primary/15 ring-primary/40 text-text-primary"
+                              : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                          }`}
+                        >
+                          {m.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
+                    Direction
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDirection("buy")}
+                      className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-[13px] font-semibold ring-1 transition active:scale-[0.98] ${
+                        direction === "buy"
+                          ? "bg-emerald-500/15 ring-emerald-500/35 text-emerald-200"
+                          : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      <TrendingUp className="h-3.5 w-3.5" /> Buy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDirection("sell")}
+                      className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-[13px] font-semibold ring-1 transition active:scale-[0.98] ${
+                        direction === "sell"
+                          ? "bg-rose-500/15 ring-rose-500/35 text-rose-200"
+                          : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      <TrendingDown className="h-3.5 w-3.5" /> Sell
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Entry">
+                    <input
+                      value={entryStr}
+                      onChange={(e) => setEntryStr(e.target.value)}
+                      inputMode="decimal"
+                      placeholder="—"
+                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
+                    />
+                  </Field>
+                  <Field label="Exit">
+                    <input
+                      value={exitStr}
+                      onChange={(e) => setExitStr(e.target.value)}
+                      inputMode="decimal"
+                      placeholder="—"
+                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
+                    />
+                  </Field>
+                  <Field label="Stop loss">
+                    <input
+                      value={slStr}
+                      onChange={(e) => setSlStr(e.target.value)}
+                      inputMode="decimal"
+                      placeholder="—"
+                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
+                    />
+                  </Field>
+                  <Field label="Take profit">
+                    <input
+                      value={tpStr}
+                      onChange={(e) => setTpStr(e.target.value)}
+                      inputMode="decimal"
+                      placeholder="—"
+                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
+                    />
+                  </Field>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Risk %">
+                    <input
+                      value={riskStr}
+                      onChange={(e) => setRiskStr(e.target.value)}
+                      inputMode="decimal"
+                      placeholder="e.g. 1"
+                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
+                    />
+                  </Field>
+                  <Field label="Result (R)">
+                    <input
+                      value={resultStr}
+                      onChange={(e) => setResultStr(e.target.value)}
+                      placeholder={
+                        autoRealizedR != null
+                          ? `auto ${autoRealizedR > 0 ? "+" : ""}${autoRealizedR.toFixed(2)}`
+                          : "e.g. 1.5  or  -1"
+                      }
+                      inputMode="decimal"
+                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
+                    />
+                  </Field>
+                </div>
+
+                {plannedRR != null && (
+                  <p className="text-[11px] text-text-secondary/70">
+                    Planned RR auto-calculated:{" "}
+                    <span className="text-text-primary font-semibold tabular-nums">
+                      {plannedRR.toFixed(2)}R
+                    </span>
+                  </p>
+                )}
               </div>
             </motion.section>
           )}
@@ -392,10 +640,35 @@ export default function BehavioralJournalFlow({
                 Anything to remember?
               </h1>
               <p className="mt-1.5 text-[12.5px] text-text-secondary">
-                Optional note and screenshot.
+                Confidence, note, screenshot — all optional.
               </p>
 
               <div className="mt-6 space-y-4">
+                <div>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
+                    Confidence (1–5)
+                  </p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {[1, 2, 3, 4, 5].map((n) => {
+                      const active = confidence === n;
+                      return (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setConfidence(active ? null : n)}
+                          className={`rounded-xl px-2 py-2.5 text-[13px] font-semibold tabular-nums ring-1 transition active:scale-[0.98] ${
+                            active
+                              ? "bg-primary/20 ring-primary/45 text-text-primary"
+                              : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <Field label="Note">
                   <textarea
                     value={note}
@@ -466,11 +739,20 @@ export default function BehavioralJournalFlow({
 
               <div className="mt-6 rounded-2xl bg-card ring-1 ring-border p-5 space-y-3">
                 <Row k="Asset" v={asset.toUpperCase()} />
+                <Row k="Market" v={market} />
+                <Row k="Direction" v={direction.toUpperCase()} />
                 <Row
                   k="Result"
                   v={`${resultR > 0 ? "+" : ""}${resultR.toFixed(2)}R`}
                   tone={resultR >= 0 ? "ok" : "risk"}
                 />
+                {plannedRR != null && (
+                  <Row k="Planned RR" v={`${plannedRR.toFixed(2)}R`} />
+                )}
+                {risk != null && <Row k="Risk %" v={`${risk}%`} />}
+                {confidence != null && (
+                  <Row k="Confidence" v={`${confidence}/5`} />
+                )}
                 <Row
                   k="Mistakes"
                   v={mistakes.length === 0 ? "None" : `${mistakes.length}`}
