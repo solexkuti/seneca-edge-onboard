@@ -125,6 +125,13 @@ export default function BehavioralJournalFlow({
   // Index of the screenshot currently shown full-size in the lightbox, or null.
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
+  // Identity reinforcement (clean execution only). These do NOT touch the
+  // scoring engine — they are persisted as structured tags appended to the
+  // note so the pattern engine can read them later.
+  const [selfConfirmedClean, setSelfConfirmedClean] = useState(false);
+  type CleanReason = "discipline" | "patience" | "clear_setup" | "rules_followed" | "other";
+  const [cleanReason, setCleanReason] = useState<CleanReason | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackPayload | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -164,6 +171,19 @@ export default function BehavioralJournalFlow({
   }, [resultStr, autoRealizedR]);
 
   const previewClass = useMemo(() => classify(mistakes), [mistakes]);
+
+  // Contextual reinforcement line for clean executions. Looks at prior
+  // clean trades to deliver a calm, stoic acknowledgement — never hype.
+  // Read-only: derived from existing journal data, no scoring impact.
+  const cleanContextLine = useMemo(() => {
+    const priorCleanCount = (priorEntries ?? []).filter(
+      (e) => e.classification === "clean",
+    ).length;
+    const projectedStreak = priorCleanCount + 1; // including this trade
+    if (priorCleanCount === 0) return "Good. This is your baseline.";
+    if (projectedStreak <= 3) return "You're starting to build control.";
+    return "This is consistency forming.";
+  }, [priorEntries]);
 
   const canNextFromStep0 =
     asset.trim().length > 0 && Number.isFinite(resultR);
@@ -238,9 +258,16 @@ export default function BehavioralJournalFlow({
   }
 
   function toggleMistake(id: MistakeId) {
-    setMistakes((prev) =>
-      prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id],
-    );
+    setMistakes((prev) => {
+      const next = prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id];
+      // Clean-execution reinforcement only applies when zero mistakes are
+      // selected — clear it the moment the user marks a mistake.
+      if (next.length > 0) {
+        setSelfConfirmedClean(false);
+        setCleanReason(null);
+      }
+      return next;
+    });
   }
 
   async function submit() {
@@ -250,12 +277,25 @@ export default function BehavioralJournalFlow({
       const allFiles = files.map((f) => f.file);
       const [primary, ...extras] = allFiles;
 
+      // Pattern-engine tags. Only attached on clean executions and never
+      // affect scoring — they're appended to the note string so they're
+      // persisted alongside the trade for later behavioral analysis.
+      const cleanTags: string[] = [];
+      if (mistakes.length === 0) {
+        cleanTags.push("clean_execution");
+        if (selfConfirmedClean) cleanTags.push("self_confirmed_clean_execution");
+        if (cleanReason) cleanTags.push(`clean_reason:${cleanReason}`);
+      }
+      const noteWithTags = cleanTags.length > 0
+        ? `${note ? `${note}\n\n` : ""}[tags] ${cleanTags.join(" ")}`.trim()
+        : note;
+
       // 1) Behavioral journal — drives discipline_score (now an average).
       const r = await logTrade({
         asset,
         result_r: resultR,
         mistakes,
-        note,
+        note: noteWithTags,
         screenshotFile: primary ?? null,
         extraScreenshotFiles: extras,
       });
@@ -345,6 +385,8 @@ export default function BehavioralJournalFlow({
     setRiskStr("");
     setResultStr("");
     setMistakes([]);
+    setSelfConfirmedClean(false);
+    setCleanReason(null);
     setConfidence(null);
     setNote("");
     setFiles((prev) => {
@@ -716,9 +758,85 @@ export default function BehavioralJournalFlow({
               </div>
 
               {mistakes.length === 0 && (
-                <p className="mt-5 text-center text-[11.5px] text-text-secondary/70">
-                  No mistakes selected — clean execution.
-                </p>
+                <motion.div
+                  key="clean-execution"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, ease }}
+                  className="mt-6 rounded-2xl bg-gradient-to-b from-primary/[0.10] to-primary/[0.04] ring-1 ring-primary/30 px-5 py-5 text-center shadow-glow-gold"
+                >
+                  <div className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 ring-1 ring-primary/40">
+                    <Check className="h-4 w-4 text-primary" strokeWidth={2.6} />
+                  </div>
+                  <p className="mt-3 text-[10.5px] font-semibold uppercase tracking-[0.24em] text-primary">
+                    Clean execution
+                  </p>
+                  <p className="mt-2 text-[14px] font-semibold leading-snug text-text-primary">
+                    You followed your rules completely.
+                  </p>
+                  <p className="mt-1 text-[12px] leading-snug text-text-secondary/85">
+                    This is the behavior that builds consistency.
+                  </p>
+
+                  {/* Stoic, contextual reinforcement based on prior clean trades */}
+                  <p className="mt-4 text-[11.5px] italic text-text-secondary/75">
+                    {cleanContextLine}
+                  </p>
+
+                  {/* Optional identity affirmation */}
+                  <button
+                    type="button"
+                    onClick={() => setSelfConfirmedClean((v) => !v)}
+                    aria-pressed={selfConfirmedClean}
+                    className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-semibold transition active:scale-[0.97] ring-1 ${
+                      selfConfirmedClean
+                        ? "bg-primary/25 ring-primary/55 text-text-primary"
+                        : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    <span
+                      className={`inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm ring-1 ${
+                        selfConfirmedClean ? "bg-primary/40 ring-primary/65" : "ring-border"
+                      }`}
+                    >
+                      {selfConfirmedClean && <Check className="h-2.5 w-2.5" strokeWidth={3.5} />}
+                    </span>
+                    I followed my plan fully
+                  </button>
+
+                  {/* Optional micro-reflection — feeds the pattern engine */}
+                  <div className="mt-5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
+                      What made this trade clean?
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
+                      {([
+                        { id: "discipline", label: "Discipline" },
+                        { id: "patience", label: "Patience" },
+                        { id: "clear_setup", label: "Clear setup" },
+                        { id: "rules_followed", label: "Rules followed" },
+                        { id: "other", label: "Other" },
+                      ] as const).map((opt) => {
+                        const active = cleanReason === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setCleanReason(active ? null : opt.id)}
+                            aria-pressed={active}
+                            className={`rounded-full px-3 py-1.5 text-[11.5px] font-medium transition active:scale-[0.97] ring-1 ${
+                              active
+                                ? "bg-primary/20 ring-primary/45 text-text-primary"
+                                : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
               )}
             </motion.section>
           )}
