@@ -30,6 +30,7 @@ const SESSIONS: { id: SessionFilter; label: string }[] = [
 
 export default function TradeStats() {
   const [range, setRange] = useState<TimeRange>("week");
+  const [session, setSession] = useState<SessionFilter>("all");
   const [trades, setTrades] = useState<TradeLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,8 +54,12 @@ export default function TradeStats() {
     };
   }, [range]);
 
-  const m = useMemo(() => computeMetrics(trades), [trades]);
-  const empty = !loading && trades.length === 0;
+  const filtered = useMemo(
+    () => (session === "all" ? trades : trades.filter((t) => t.session_tag === session)),
+    [trades, session],
+  );
+  const m = useMemo(() => computeMetrics(filtered), [filtered]);
+  const empty = !loading && filtered.length === 0;
 
   return (
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
