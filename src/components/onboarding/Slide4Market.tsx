@@ -8,6 +8,7 @@ import {
   LineChart,
 } from "lucide-react";
 import SelectionCard from "./SelectionCard";
+import ContinueButton from "./ContinueButton";
 import type { SlideProps } from "./OnboardingFlow";
 import { patchProfile, readProfile, type MarketChoice } from "@/lib/onboardingProfile";
 
@@ -59,11 +60,18 @@ export default function Slide4Market({ onNext }: SlideProps) {
               onClick={() => {
                 setSelected(m.id);
                 patchProfile({ market: m.id });
-                window.setTimeout(onNext, 200);
               }}
             />
           </motion.div>
         ))}
+      </div>
+
+      <div className="flex justify-center pt-2">
+        <ContinueButton
+          onClick={onNext}
+          delay={0.2}
+          disabled={!selected}
+        />
       </div>
     </div>
   );

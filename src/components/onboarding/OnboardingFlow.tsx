@@ -133,8 +133,11 @@ export default function OnboardingFlow() {
             duration={0}
             onSelect={goTo}
           />
-          {/* Subtle back button — appears once the user has progressed past the first slide.
-              Hidden on calibration (auto) and auth (terminal). */}
+        </header>
+
+        {/* Back button — sits BELOW the progress bar with comfortable spacing
+            so it never overlaps. Hidden on first, calibration, and auth. */}
+        <div className="relative mt-5 h-5 px-1">
           {index > 0 &&
             slide.key !== "calibration" &&
             slide.key !== "auth" && (
@@ -145,16 +148,16 @@ export default function OnboardingFlow() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 aria-label="Back"
-                className="absolute -top-2 left-0 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:text-gold-soft"
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:text-gold-soft"
               >
                 <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2.4} />
                 Back
               </motion.button>
             )}
-        </header>
+        </div>
 
         {/* Slide stage */}
-        <div className="relative mt-10 flex flex-1 items-center justify-center">
+        <div className="relative mt-4 flex flex-1 items-center justify-center">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={slide.key}

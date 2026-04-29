@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import type { SlideProps } from "./OnboardingFlow";
 import ContinueButton from "./ContinueButton";
@@ -5,14 +6,23 @@ import ContinueButton from "./ContinueButton";
 const BULLETS = [
   "Upload your chart. Get real feedback.",
   "Build your rules. Trade with structure.",
-  "Stay in control. Think before you act.",
+  "Talk to your AI mentor. Think before you act.",
 ];
 
 /**
  * Slide 2 — SYSTEM
- * One headline + max 3 short bullets. Generous spacing.
+ * On Continue: bullets fade out top→bottom, then advance.
  */
 export default function SlideSystem({ onNext }: SlideProps) {
+  const [exiting, setExiting] = useState(false);
+
+  const handleContinue = () => {
+    if (exiting) return;
+    setExiting(true);
+    // last bullet fades around 80ms*2 + 280ms ≈ 440ms
+    window.setTimeout(onNext, 520);
+  };
+
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-12 px-2 text-center">
       <motion.h1
@@ -31,10 +41,14 @@ export default function SlideSystem({ onNext }: SlideProps) {
           <motion.li
             key={b}
             initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            animate={
+              exiting
+                ? { opacity: 0, y: -6 }
+                : { opacity: 1, y: 0 }
+            }
             transition={{
-              duration: 0.55,
-              delay: 0.25 + i * 0.12,
+              duration: exiting ? 0.28 : 0.55,
+              delay: exiting ? i * 0.08 : 0.25 + i * 0.12,
               ease: [0.22, 1, 0.36, 1],
             }}
             className="card-premium flex items-center gap-3 rounded-2xl px-5 py-3.5 text-left"
@@ -50,7 +64,7 @@ export default function SlideSystem({ onNext }: SlideProps) {
         ))}
       </ul>
 
-      <ContinueButton onClick={onNext} delay={0.85} />
+      <ContinueButton onClick={handleContinue} delay={0.85} />
     </div>
   );
 }

@@ -27,10 +27,10 @@ export default function SlideEdge({ onNext }: SlideProps) {
         className="space-y-1.5"
       >
         <p className="text-[15px] leading-relaxed text-text-secondary">
-          Most traders don't lose from bad strategy.
+          Most traders don't lack strategy.
         </p>
         <p className="text-[15px] leading-relaxed text-text-primary">
-          They lose from broken discipline.
+          They lack control.
         </p>
       </motion.div>
 

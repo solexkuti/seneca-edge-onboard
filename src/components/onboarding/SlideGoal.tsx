@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Target, Crosshair, Shield, Settings2 } from "lucide-react";
 import SelectionCard from "./SelectionCard";
+import ContinueButton from "./ContinueButton";
 import type { SlideProps } from "./OnboardingFlow";
 import { patchProfile, readProfile, type GoalChoice } from "@/lib/onboardingProfile";
 
@@ -38,42 +39,32 @@ export default function SlideGoal({ onNext }: SlideProps) {
       </motion.div>
 
       <div className="space-y-2.5">
-        {goals.map((m, i) => {
-          const isSelected = selected === m.id;
-          const isOther = selected !== null && !isSelected;
-          return (
-            <motion.div
-              key={m.id}
-              initial={{ opacity: 0, x: -16 }}
-              animate={
-                isOther
-                  ? { opacity: 0, y: -6, filter: "blur(2px)" }
-                  : isSelected
-                    ? { opacity: 1, y: -2, scale: 1.012 }
-                    : { opacity: 1, x: 0, y: 0, scale: 1 }
-              }
-              transition={{
-                delay: selected ? 0 : 0.1 + i * 0.06,
-                duration: isOther ? 0.32 : 0.4,
-                ease: [0.22, 1, 0.36, 1],
+        {goals.map((m, i) => (
+          <motion.div
+            key={m.id}
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{
+              delay: 0.1 + i * 0.06,
+              duration: 0.4,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+          >
+            <SelectionCard
+              icon={m.icon}
+              label={m.label}
+              selected={selected === m.id}
+              onClick={() => {
+                setSelected(m.id);
+                patchProfile({ goal: m.id });
               }}
-            >
-              <SelectionCard
-                icon={m.icon}
-                label={m.label}
-                selected={isSelected}
-                onClick={() => {
-                  if (selected) return;
-                  setSelected(m.id);
-                  patchProfile({ goal: m.id });
-                  // Slightly longer dwell so the confirming motion lands
-                  // before the slide hand-off begins.
-                  window.setTimeout(onNext, 360);
-                }}
-              />
-            </motion.div>
-          );
-        })}
+            />
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="flex justify-center pt-2">
+        <ContinueButton onClick={onNext} delay={0.2} disabled={!selected} />
       </div>
     </div>
   );

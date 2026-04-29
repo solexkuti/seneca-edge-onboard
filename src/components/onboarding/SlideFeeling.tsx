@@ -28,7 +28,7 @@ export default function SlideFeeling({ onNext }: SlideProps) {
         transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
         className="font-display text-[34px] font-semibold leading-[1.12] tracking-[-0.01em] text-text-primary sm:text-[38px]"
       >
-        It watches your discipline
+        It tracks your discipline
         <br />
         <span className="text-gold-soft">while you trade</span>
       </motion.h1>
@@ -39,7 +39,7 @@ export default function SlideFeeling({ onNext }: SlideProps) {
         transition={{ duration: 0.7, delay: 0.4 }}
         className="text-[15px] leading-relaxed text-text-secondary"
       >
-        So you stop breaking your own rules.
+        Stay aligned when it matters most.
       </motion.p>
 
       <ContinueButton onClick={onNext} delay={0.7} />
