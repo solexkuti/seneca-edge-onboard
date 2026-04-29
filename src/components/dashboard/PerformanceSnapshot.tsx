@@ -91,7 +91,16 @@ export default function PerformanceSnapshot({ loading, hasTrades, trades }: Prop
 
       <div className="mt-5 grid grid-cols-3 gap-3">
         <Stat label="Win rate" value={fmtPct(wr, 0)} glow={wr === 1} />
-        <Stat label="Net PnL" value={fmtR(r, 2)} valueClass={netTone} glow={r > 0} />
+        <Stat
+          label={typeof latest.pnl === "number" && Number.isFinite(latest.pnl) ? "Net PnL ($)" : "Net PnL"}
+          value={
+            typeof latest.pnl === "number" && Number.isFinite(latest.pnl)
+              ? `${latest.pnl > 0 ? "+" : latest.pnl < 0 ? "−" : ""}$${Math.abs(latest.pnl).toFixed(2)}`
+              : fmtR(r, 2)
+          }
+          valueClass={netTone}
+          glow={r > 0}
+        />
         <Stat label="RR" value={fmtR(rr, 2)} glow />
       </div>
 

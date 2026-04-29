@@ -149,6 +149,14 @@ export default function PerformanceTrends({
   const absDisabled = !series.hasAbs;
   const activeMetric: Metric = absDisabled ? "r" : metric;
 
+  // Mixed: in $ mode, only some windowed trades carry pnl values.
+  const dollarTradeCount = useMemo(
+    () => windowed.filter((t) => typeof t.pnl === "number" && Number.isFinite(t.pnl)).length,
+    [windowed],
+  );
+  const mixedDollarData =
+    activeMetric === "abs" && dollarTradeCount > 0 && dollarTradeCount < windowed.length;
+
   const activeSeries = activeMetric === "r" ? series.pnlR : series.pnlAbs;
   const finalPnl =
     activeMetric === "r" ? series.finalPnlR : series.finalPnlAbs;
@@ -194,7 +202,7 @@ export default function PerformanceTrends({
           role="tablist"
           aria-label="Chart metric"
           className="inline-flex items-center rounded-full bg-background/60 p-0.5 ring-1 ring-border"
-          title={absDisabled ? "Add position size to view results in $" : undefined}
+          title={absDisabled ? "Log dollar results to enable currency view" : undefined}
         >
           <ToggleSeg
             active={activeMetric === "r"}
@@ -374,15 +382,20 @@ export default function PerformanceTrends({
 
       {/* Legend */}
       {showChart && (
-        <div className="flex items-center gap-4 border-t border-border/50 px-5 py-2.5">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/50 px-5 py-2.5">
           <span className="inline-flex items-center gap-1.5 text-[10.5px] font-medium text-text-secondary/80">
             <span className="h-[2px] w-3 rounded-full bg-gold" />
-            Net PnL (R)
+            Net PnL {activeMetric === "r" ? "(R)" : "($)"}
           </span>
           <span className="inline-flex items-center gap-1.5 text-[10.5px] font-medium text-text-secondary/65">
             <span className="h-[2px] w-3 rounded-full border-t border-dashed border-text-secondary/55" />
             Win rate
           </span>
+          {mixedDollarData && (
+            <span className="ml-auto text-[10px] italic text-text-secondary/65">
+              Based on trades with dollar data
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -417,7 +430,7 @@ function ToggleSeg({
             ? "text-text-secondary/35 cursor-not-allowed"
             : "text-text-secondary/75 hover:text-text-primary"
       }`}
-      title={disabled ? "Add position size to view results in $" : undefined}
+      title={disabled ? "Log dollar results to enable currency view" : undefined}
     >
       {label}
     </button>

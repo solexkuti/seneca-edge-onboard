@@ -9,7 +9,7 @@
 //
 // Calm dark premium UI. No blocking, no enforcement.
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -90,7 +90,52 @@ type FeedbackPayload = {
   breakStreakAfter: number;
   /** Per-mistake breakdown shown in the feedback card. */
   breakdown: { id: string; label: string; penalty: number }[];
+  /** Explicit outcome — used to render outcome × discipline feedback. */
+  outcome: Outcome;
+  /** True if any mistakes were logged for this trade. */
+  hadMistakes: boolean;
 };
+
+/** Outcome × discipline → a single qualitative feedback card.
+ *  Pure UI label — does NOT touch scoring. */
+function outcomeFeedback(outcome: Outcome, hadMistakes: boolean): {
+  title: string;
+  body: string;
+  tone: "gold" | "calm" | "warn" | "risk";
+} {
+  if (outcome === "win" && !hadMistakes) {
+    return {
+      title: "Clean execution",
+      body: "Disciplined win. This is repeatable.",
+      tone: "gold",
+    };
+  }
+  if (outcome === "loss" && !hadMistakes) {
+    return {
+      title: "Controlled loss",
+      body: "This is a correct loss. Your edge is intact.",
+      tone: "calm",
+    };
+  }
+  if (outcome === "win" && hadMistakes) {
+    return {
+      title: "Unstable win",
+      body: "You profited, but behavior broke rules.",
+      tone: "warn",
+    };
+  }
+  if (outcome === "loss" && hadMistakes) {
+    return {
+      title: "Behavior breakdown",
+      body: "This loss came from execution errors.",
+      tone: "risk",
+    };
+  }
+  // Breakeven
+  return hadMistakes
+    ? { title: "Breakeven — behavior slipped", body: "No damage on the book, but rules broke.", tone: "warn" }
+    : { title: "Breakeven — held the line", body: "No edge expressed, no rules broken.", tone: "calm" };
+}
 
 function parseNum(v: string): number | null {
   const t = v.trim();
@@ -116,6 +161,11 @@ export default function BehavioralJournalFlow({
   const [tpStr, setTpStr] = useState("");
   const [riskStr, setRiskStr] = useState("");
   const [resultStr, setResultStr] = useState("");
+  const [pnlDollarStr, setPnlDollarStr] = useState("");
+  // Explicit user-selected outcome. Auto-suggested from R but user-overridable.
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  // True once the user has manually picked — auto-suggest stops overriding.
+  const [outcomeManuallySet, setOutcomeManuallySet] = useState(false);
 
   // Behavior + journal
   const [mistakes, setMistakes] = useState<MistakeId[]>([]);
@@ -170,6 +220,38 @@ export default function BehavioralJournalFlow({
     return autoRealizedR ?? NaN;
   }, [resultStr, autoRealizedR]);
 
+  // Parsed dollar PnL (optional). Empty → null. Non-numeric → null but flagged.
+  const pnlDollar = useMemo(() => {
+    const t = pnlDollarStr.trim().replace(/[$,\s]/g, "");
+    if (!t) return null;
+    const n = Number(t);
+    return Number.isFinite(n) ? n : null;
+  }, [pnlDollarStr]);
+  const pnlDollarInvalid = pnlDollarStr.trim().length > 0 && pnlDollar === null;
+
+  // Auto-suggest outcome from R (soft logic — does not lock).
+  const suggestedOutcome: Outcome | null = useMemo(() => {
+    if (!Number.isFinite(resultR)) return null;
+    if (resultR > 0) return "win";
+    if (resultR < 0) return "loss";
+    return "breakeven";
+  }, [resultR]);
+
+  useEffect(() => {
+    if (outcomeManuallySet) return;
+    if (suggestedOutcome && outcome !== suggestedOutcome) {
+      setOutcome(suggestedOutcome);
+    }
+  }, [suggestedOutcome, outcomeManuallySet, outcome]);
+
+  // Mismatch warning — non-blocking. R sign disagrees with manual outcome.
+  const outcomeMismatch = useMemo(() => {
+    if (!outcome || !Number.isFinite(resultR)) return false;
+    if (resultR > 0 && outcome === "loss") return true;
+    if (resultR < 0 && outcome === "win") return true;
+    return false;
+  }, [outcome, resultR]);
+
   const previewClass = useMemo(() => classify(mistakes), [mistakes]);
 
   // Contextual reinforcement line for clean executions. Looks at prior
@@ -185,8 +267,12 @@ export default function BehavioralJournalFlow({
     return "This is consistency forming.";
   }, [priorEntries]);
 
+  // Outcome is REQUIRED. R is required (existing rule).
   const canNextFromStep0 =
-    asset.trim().length > 0 && Number.isFinite(resultR);
+    asset.trim().length > 0 &&
+    Number.isFinite(resultR) &&
+    outcome !== null &&
+    !pnlDollarInvalid;
 
   function addFiles(list: FileList | null) {
     if (!list || list.length === 0) return;
@@ -301,8 +387,10 @@ export default function BehavioralJournalFlow({
       });
 
       // 2) Trade Performance log — drives metrics
-      const outcome: Outcome =
-        resultR > 0 ? "win" : resultR < 0 ? "loss" : "breakeven";
+      // Use explicit user-selected outcome (falls back to R-derived if somehow null,
+      // but validation prevents that).
+      const finalOutcome: Outcome =
+        outcome ?? (resultR > 0 ? "win" : resultR < 0 ? "loss" : "breakeven");
       const now = new Date();
       const opened_at = now.toISOString();
       const closed_at = now.toISOString();
@@ -336,9 +424,9 @@ export default function BehavioralJournalFlow({
           take_profit: tp,
           risk_percent: risk,
           rr: Number.isFinite(finalR) ? finalR : null,
-          pnl: null,
+          pnl: pnlDollar,
           pnl_percent,
-          outcome,
+          outcome: finalOutcome,
           opened_at,
           closed_at,
           timezone: tz,
@@ -363,6 +451,8 @@ export default function BehavioralJournalFlow({
         cleanStreakAfter: r.cleanStreakAfter,
         breakStreakAfter: r.breakStreakAfter,
         breakdown: previewClass.breakdown,
+        outcome: finalOutcome,
+        hadMistakes: mistakes.length > 0,
       });
       onLogged?.();
     } catch (err) {
@@ -384,6 +474,9 @@ export default function BehavioralJournalFlow({
     setTpStr("");
     setRiskStr("");
     setResultStr("");
+    setPnlDollarStr("");
+    setOutcome(null);
+    setOutcomeManuallySet(false);
     setMistakes([]);
     setSelfConfirmedClean(false);
     setCleanReason(null);
@@ -400,6 +493,15 @@ export default function BehavioralJournalFlow({
   if (feedback) {
     const ds = disciplineState(feedback.scoreAfter);
     const ct = CLASS_TONE[feedback.classification];
+    const ofb = outcomeFeedback(feedback.outcome, feedback.hadMistakes);
+    const ofbCls =
+      ofb.tone === "gold"
+        ? "from-primary/[0.14] to-primary/[0.04] ring-primary/35 text-primary"
+        : ofb.tone === "calm"
+          ? "from-emerald-500/[0.10] to-emerald-500/[0.02] ring-emerald-500/25 text-emerald-300"
+          : ofb.tone === "warn"
+            ? "from-amber-500/[0.12] to-amber-500/[0.02] ring-amber-500/30 text-amber-300"
+            : "from-rose-500/[0.12] to-rose-500/[0.02] ring-rose-500/30 text-rose-300";
     return (
       <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
         <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-50" />
@@ -419,6 +521,16 @@ export default function BehavioralJournalFlow({
               <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
                 Logged
               </span>
+            </div>
+
+            {/* Outcome × Discipline qualitative feedback */}
+            <div className={`mt-5 rounded-xl bg-gradient-to-b ${ofbCls} ring-1 px-4 py-3.5`}>
+              <p className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${ofb.tone === "gold" ? "text-primary" : ofb.tone === "calm" ? "text-emerald-300" : ofb.tone === "warn" ? "text-amber-300" : "text-rose-300"}`}>
+                {ofb.title}
+              </p>
+              <p className="mt-1 text-[13.5px] leading-snug text-text-primary">
+                {ofb.body}
+              </p>
             </div>
 
             <p className="mt-6 text-[12px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
@@ -694,6 +806,65 @@ export default function BehavioralJournalFlow({
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
+                </div>
+
+                {/* Profit / Loss ($) — optional but encouraged */}
+                <Field label="Profit / Loss ($) — optional">
+                  <input
+                    value={pnlDollarStr}
+                    onChange={(e) => setPnlDollarStr(e.target.value)}
+                    placeholder="e.g. +150  or  -75"
+                    inputMode="decimal"
+                    className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
+                  />
+                </Field>
+                {pnlDollarInvalid && (
+                  <p className="text-[11px] text-rose-300">
+                    Enter a valid number (e.g. 150, -75) or leave it blank.
+                  </p>
+                )}
+
+                {/* Trade Outcome — explicit selection, required */}
+                <div>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
+                    Trade Outcome
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { id: "win", label: "Win", activeCls: "bg-emerald-500/15 ring-emerald-500/35 text-emerald-200" },
+                      { id: "loss", label: "Loss", activeCls: "bg-rose-500/15 ring-rose-500/35 text-rose-200" },
+                      { id: "breakeven", label: "Break-even", activeCls: "bg-primary/15 ring-primary/40 text-text-primary" },
+                    ] as const).map((opt) => {
+                      const active = outcome === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            setOutcome(opt.id);
+                            setOutcomeManuallySet(true);
+                          }}
+                          className={`rounded-xl px-2.5 py-2.5 text-[12.5px] font-semibold ring-1 transition active:scale-[0.98] ${
+                            active
+                              ? opt.activeCls
+                              : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {outcome === null && Number.isFinite(resultR) && (
+                    <p className="mt-2 text-[11px] text-text-secondary/70">
+                      Select an outcome to continue.
+                    </p>
+                  )}
+                  {outcomeMismatch && (
+                    <p className="mt-2 text-[11px] text-amber-300">
+                      Your result suggests a different outcome. Confirm if intentional.
+                    </p>
+                  )}
                 </div>
 
                 {plannedRR != null && (
@@ -1129,6 +1300,20 @@ export default function BehavioralJournalFlow({
                   v={`${resultR > 0 ? "+" : ""}${resultR.toFixed(2)}R`}
                   tone={resultR >= 0 ? "ok" : "risk"}
                 />
+                {outcome && (
+                  <Row
+                    k="Outcome"
+                    v={outcome === "breakeven" ? "Break-even" : outcome === "win" ? "Win" : "Loss"}
+                    tone={outcome === "win" ? "ok" : outcome === "loss" ? "risk" : undefined}
+                  />
+                )}
+                {pnlDollar != null && (
+                  <Row
+                    k="P/L ($)"
+                    v={`${pnlDollar > 0 ? "+" : ""}$${pnlDollar.toFixed(2)}`}
+                    tone={pnlDollar > 0 ? "ok" : pnlDollar < 0 ? "risk" : undefined}
+                  />
+                )}
                 {plannedRR != null && (
                   <Row k="Planned RR" v={`${plannedRR.toFixed(2)}R`} />
                 )}
