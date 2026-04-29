@@ -305,27 +305,27 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
                 </p>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
-                    key={`${action.title}|${action.sub}`}
+                    key="analyze-first"
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
                     transition={{ duration: 0.32, ease }}
                   >
                     <p className="mt-1 text-[14.5px] font-semibold leading-snug tracking-tight text-text-primary">
-                      {action.title}
+                      Don't trade blind. Analyze first.
                     </p>
                     <p className="mt-1 text-[12px] leading-snug text-text-secondary/80">
-                      {action.sub}
+                      Run your setup through the analyzer before entering.
                     </p>
                   </motion.div>
                 </AnimatePresence>
               </div>
               <Link
-                to={entries.length === 0 ? "/hub/journal" : "/hub/chart"}
+                to="/hub/chart"
                 preload="intent"
                 className="btn-gold shrink-0 inline-flex items-center gap-1.5 self-center px-3.5 py-1.5 text-[11.5px] font-semibold"
               >
-                Go <ArrowUpRight className="h-3 w-3" strokeWidth={2.4} />
+                Analyze Trade <ArrowUpRight className="h-3 w-3" strokeWidth={2.4} />
               </Link>
             </div>
           </div>
