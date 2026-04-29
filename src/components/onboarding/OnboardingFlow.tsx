@@ -126,13 +126,31 @@ export default function OnboardingFlow() {
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pb-10 pt-[40px]">
         {/* Progress bar — manual flow, no dwell timer */}
-        <header className="px-1">
+        <header className="relative px-1">
           <SegmentedProgress
             count={slideOrder.length}
             active={index}
             duration={0}
             onSelect={goTo}
           />
+          {/* Subtle back button — appears once the user has progressed past the first slide.
+              Hidden on calibration (auto) and auth (terminal). */}
+          {index > 0 &&
+            slide.key !== "calibration" &&
+            slide.key !== "auth" && (
+              <motion.button
+                type="button"
+                onClick={goPrev}
+                initial={{ opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                aria-label="Back"
+                className="absolute -top-2 left-0 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:text-gold-soft"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2.4} />
+                Back
+              </motion.button>
+            )}
         </header>
 
         {/* Slide stage */}
