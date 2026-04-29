@@ -303,6 +303,25 @@ type UserContext = {
       probation_active: boolean;
     };
   };
+  /** Performance Engine snapshot — derived from real `trade_logs` rows. */
+  performance?: {
+    windowSize: number;
+    winRate: number | null;
+    avgRR: number | null;
+    netPnlR: number;
+    profitFactor: number | null;
+    rulesFollowedRate: number | null;
+    topMistake: { id: string; count: number } | null;
+    recent: Array<{
+      when: string;
+      pair: string;
+      direction: string;
+      outcome: string;
+      r: number;
+      rules_followed: boolean;
+      mistakes: string[];
+    }>;
+  };
 };
 
 const STRICT_MODE_ADDENDUM = `
@@ -508,7 +527,8 @@ Deno.serve(async (req) => {
         (context.lastTwoTrades && context.lastTwoTrades.length > 0) ||
         context.activeStrategy ||
         context.dailyChecklist ||
-        context.traderState)
+        context.traderState ||
+        context.performance)
     );
     let contextBlock = "";
     if (hasContext) {
@@ -610,6 +630,25 @@ Deno.serve(async (req) => {
       }
       if (context!.systemRules) {
         contextBlock += `\n\n[User's Trading System]\n${context!.systemRules}`;
+      }
+      if (context!.performance) {
+        const p = context!.performance;
+        const pct = (v: number | null) => (v == null ? "n/a" : `${Math.round(v * 100)}%`);
+        const r = (v: number | null, d = 2) => (v == null ? "n/a" : `${v >= 0 ? "+" : ""}${v.toFixed(d)}R`);
+        const pf = p.profitFactor == null
+          ? "n/a"
+          : !Number.isFinite(p.profitFactor)
+            ? "∞ (no losses)"
+            : p.profitFactor.toFixed(2);
+        const recentLines = p.recent
+          .slice(0, 10)
+          .map((t) => {
+            const rules = t.rules_followed ? "FOLLOWED" : "BROKE";
+            const mist = t.mistakes && t.mistakes.length > 0 ? ` | mistakes: ${t.mistakes.join(", ")}` : "";
+            return `- [${t.when}] ${t.pair} ${t.direction.toUpperCase()} | ${t.outcome} ${r(t.r, 2)} | ${rules}${mist}`;
+          })
+          .join("\n");
+        contextBlock += `\n\n[Performance Snapshot — last ${p.windowSize} trades, real data from trade_logs]\nUse these numbers verbatim when the user asks about performance, win rate, RR, PnL, or "review my trades". Never invent values.\n- Win rate: ${pct(p.winRate)}\n- Net PnL: ${r(p.netPnlR, 2)}\n- Avg RR: ${r(p.avgRR, 2)}\n- Profit factor: ${pf}\n- Rules followed: ${pct(p.rulesFollowedRate)}\n- Most common mistake: ${p.topMistake ? `${p.topMistake.id} (×${p.topMistake.count})` : "none"}\n- Recent trades:\n${recentLines || "  (none)"}`;
       }
     } else {
       contextBlock =

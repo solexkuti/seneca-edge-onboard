@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
+import { usePerformance } from "@/hooks/usePerformance";
 import { useTraderState } from "@/hooks/useTraderState";
+import PerformanceSnapshot from "@/components/dashboard/PerformanceSnapshot";
 import {
   disciplineState,
   lastMistakeOf,
@@ -126,6 +128,7 @@ function senecaInsight(args: {
 export default function SenecaDashboard({ userName }: { userName?: string }) {
   const { entries, score, loading } = useBehavioralJournal(20);
   const { state } = useTraderState();
+  const performance = usePerformance(20);
 
   const ds = disciplineState(score);
   const last = entries[0];
@@ -319,7 +322,16 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
           </div>
         </Section>
 
-        {/* 5 · Your System */}
+        {/* 5 · Performance Snapshot — real trade data */}
+        <Section delay={0.18} label="Performance" className="mt-10">
+          <PerformanceSnapshot
+            loading={performance.loading}
+            hasTrades={performance.hasTrades}
+            metrics={performance.metrics}
+          />
+        </Section>
+
+        {/* 6 · Your System */}
         <Section delay={0.2} label="Your system" className="mt-10">
           {!hasStrategy ? (
             <div className="rounded-2xl bg-card p-5 ring-1 ring-accent-primary">
