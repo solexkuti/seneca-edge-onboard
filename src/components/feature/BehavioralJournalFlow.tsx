@@ -1862,10 +1862,26 @@ export default function BehavioralJournalFlow({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  subtle = false,
+}: {
+  label: string;
+  children: React.ReactNode;
+  subtle?: boolean;
+}) {
   return (
-    <label className="block rounded-xl bg-card ring-1 ring-border px-4 py-3.5">
-      <span className="block text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
+    <label
+      className={`block rounded-xl px-4 py-3.5 ring-1 ${
+        subtle ? "bg-card/60 ring-border/60" : "bg-card ring-border"
+      }`}
+    >
+      <span
+        className={`block text-[10px] font-semibold uppercase tracking-[0.22em] ${
+          subtle ? "text-text-secondary/45" : "text-text-secondary/60"
+        }`}
+      >
         {label}
       </span>
       <div className="mt-1.5">{children}</div>
