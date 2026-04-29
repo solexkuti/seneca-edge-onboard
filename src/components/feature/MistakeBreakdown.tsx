@@ -176,9 +176,47 @@ export default function MistakeBreakdown() {
           >
             <ArrowLeft className="h-3.5 w-3.5" /> History
           </Link>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
-            Breakdown
-          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={rows.length === 0}
+                className="h-auto rounded-full px-3 py-1.5 text-[11px] font-semibold gap-1.5 bg-card ring-1 ring-border text-text-primary hover:text-text-primary border-transparent disabled:opacity-50"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem
+                onSelect={() =>
+                  exportMistakeBreakdownPDF(rows, {
+                    rangeLabel,
+                    total,
+                    totalClean,
+                    generatedAt: new Date(),
+                  })
+                }
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Download PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  exportMistakeBreakdownCSV(rows, {
+                    rangeLabel,
+                    total,
+                    totalClean,
+                    generatedAt: new Date(),
+                  })
+                }
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Download CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
 
         <h1 className="mt-6 text-[22px] font-semibold tracking-tight text-text-primary">
