@@ -806,9 +806,10 @@ function StepTiers({
                 autoFocus={isActive && !hasContent}
                 className="w-full rounded-xl bg-background/70 px-4 py-3 text-sm placeholder:text-muted-foreground/60 border-0 ring-1 ring-border/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none transition-all"
               />
-              <AnimatePresence>
-                {isActive && hasContent && (
+              <AnimatePresence mode="wait">
+                {isActive && hasContent ? (
                   <motion.div
+                    key="good"
                     initial={{ opacity: 0, y: -2 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
@@ -816,7 +817,27 @@ function StepTiers({
                   >
                     Good. This defines your standard.
                   </motion.div>
-                )}
+                ) : !hasContent && isActive ? (
+                  <motion.div
+                    key="hint"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-[11px] text-muted-foreground/80 mt-2 pl-1 italic"
+                  >
+                    Seneca will fill this based on your strategy…
+                  </motion.div>
+                ) : !hasContent && !isActive ? (
+                  <motion.div
+                    key="skipped"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-[11px] text-foreground/70 mt-2 pl-1"
+                  >
+                    Refined by Seneca ✓
+                  </motion.div>
+                ) : null}
               </AnimatePresence>
             </motion.div>
           );
@@ -824,7 +845,7 @@ function StepTiers({
       </div>
 
       <p className="text-[11px] text-muted-foreground/70 text-center">
-        Fill any combination. We'll infer the rest.
+        Leave it blank — Seneca will refine the rest.
       </p>
     </div>
   );
@@ -899,14 +920,14 @@ function StepParse({
     <div className="space-y-6">
       <Question
         title="Structuring your edge"
-        sub="The AI restates your words as binary rules. Nothing invented."
+        sub="Seneca restates your words as binary rules. Nothing invented."
       />
 
       {busy && !hasRules ? (
         <div className="flex flex-col items-center gap-3 py-12">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Reading your strategy
+            Seneca is reading your strategy
           </p>
         </div>
       ) : (
@@ -918,7 +939,7 @@ function StepParse({
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-card px-4 py-2.5 text-sm font-medium text-foreground ring-1 ring-border shadow-soft hover:bg-background disabled:opacity-50"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {hasRules ? "Re-parse" : "Parse with AI"}
+            {hasRules ? "Refine again" : "Refine with Seneca"}
           </button>
 
           {hasRules && (
