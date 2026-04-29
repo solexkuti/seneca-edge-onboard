@@ -402,3 +402,61 @@ export default function MistakeBreakdown() {
     </div>
   );
 }
+
+function resultMeta(r: number): { label: "Win" | "Loss" | "BE"; tone: string } {
+  if (r > 0) return { label: "Win", tone: "text-emerald-300 ring-emerald-500/30 bg-emerald-500/10" };
+  if (r < 0) return { label: "Loss", tone: "text-rose-300 ring-rose-500/30 bg-rose-500/10" };
+  return { label: "BE", tone: "text-text-secondary ring-border bg-text-primary/5" };
+}
+
+function TradeRow({ entry }: { entry: JournalEntry }) {
+  const [thumb, setThumb] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!entry.screenshot_path) return;
+    getScreenshotUrl(entry.screenshot_path).then((url) => {
+      if (!cancelled) setThumb(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [entry.screenshot_path]);
+
+  const meta = resultMeta(entry.result_r);
+  const when = new Date(entry.created_at);
+
+  return (
+    <li className="flex items-center gap-2.5 rounded-lg bg-text-primary/[0.03] ring-1 ring-border/60 px-2.5 py-2">
+      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-md bg-text-primary/[0.06] ring-1 ring-border/40 flex items-center justify-center">
+        {thumb ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={thumb}
+            alt={`${entry.asset} screenshot`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <ImageIcon className="h-3.5 w-3.5 text-text-secondary/50" />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <p className="truncate text-[12.5px] font-semibold text-text-primary">
+            {entry.asset || "—"}
+          </p>
+          <p className="text-[10px] uppercase tracking-wider text-text-secondary/70 tabular-nums">
+            {format(when, "MMM d · HH:mm")}
+          </p>
+        </div>
+        <p className="text-[10.5px] tabular-nums text-text-secondary">
+          {fmtR(entry.result_r)}
+        </p>
+      </div>
+      <span
+        className={`shrink-0 rounded-full ring-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${meta.tone}`}
+      >
+        {meta.label}
+      </span>
+    </li>
+  );
+}
