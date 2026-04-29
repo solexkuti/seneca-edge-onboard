@@ -431,14 +431,9 @@ export default function ChartAnalyzer() {
               }}
             />
 
-            <button
-              onClick={handleAnalyze}
-              disabled={!canAnalyze}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-mix px-4 py-3.5 text-[14px] font-semibold text-white shadow-soft transition hover:shadow-card-premium disabled:opacity-40"
-            >
-              <Sparkles className="h-4 w-4" />
-              Analyze chart
-            </button>
+            <PrimaryAction onClick={handleAnalyze} disabled={!canAnalyze}>
+              Run it through your rules
+            </PrimaryAction>
           </motion.div>
         )}
 
@@ -451,35 +446,32 @@ export default function ChartAnalyzer() {
             transition={{ duration: 0.35 }}
             className="space-y-3"
           >
-            <div className="rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft">
-              <div className="flex items-center gap-3">
-                <Loader2 className="h-5 w-5 animate-spin text-brand" />
-                <p className="text-[13.5px] font-semibold text-text-primary">
-                  Analyzing your chart…
-                </p>
-              </div>
-            </div>
+            <MentorLine>{SenecaVoice.reading}</MentorLine>
             {STEP_LABELS.map((label, i) => {
               const done = step > i;
               const active = step === i;
               return (
                 <div
                   key={label}
-                  className="flex items-center gap-3 rounded-xl bg-card px-3 py-2.5 ring-1 ring-border shadow-soft"
-                  style={{ opacity: done || active ? 1 : 0.45 }}
+                  className="flex items-center gap-3 rounded-xl bg-card/60 px-3 py-2.5 ring-1 ring-foreground/10 backdrop-blur"
+                  style={{ opacity: done || active ? 1 : 0.4 }}
                 >
                   <div
-                    className={`flex h-7 w-7 items-center justify-center rounded-full ${
-                      done ? "bg-emerald-500" : active ? "bg-gradient-mix animate-pulse" : "bg-text-secondary/15"
+                    className={`flex h-6 w-6 items-center justify-center rounded-full ${
+                      done
+                        ? "bg-foreground/80"
+                        : active
+                          ? "bg-foreground/30 animate-pulse"
+                          : "bg-foreground/10"
                     }`}
                   >
                     {done ? (
-                      <CheckCircle2 className="h-4 w-4 text-white" strokeWidth={3} />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-background" strokeWidth={3} />
                     ) : (
-                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-background/80" />
                     )}
                   </div>
-                  <span className="text-[13px] font-medium text-text-primary">{label}</span>
+                  <span className="text-sm text-foreground/80">{label}</span>
                 </div>
               );
             })}
@@ -494,40 +486,21 @@ export default function ChartAnalyzer() {
             exit={{ opacity: 0, y: -8 }}
             className="space-y-4"
           >
-            <div className="rounded-2xl bg-card p-5 ring-1 ring-rose-500/30 shadow-soft">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20">
-                  <XCircle className="h-4 w-4" strokeWidth={2.4} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-[14px] font-semibold text-text-primary">
-                    Upload a valid trading chart
-                  </p>
-                  <p className="mt-1 text-[12.5px] text-text-secondary">
-                    {invalidReason} Candles, price axis, and time axis are required.
-                  </p>
-                  {invalidDetails.length > 0 && (
-                    <ul className="mt-2 space-y-1 pl-4">
-                      {invalidDetails.map((d, i) => (
-                        <li
-                          key={i}
-                          className="list-disc text-[12px] leading-snug text-rose-700/90"
-                        >
-                          {d}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={reset}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-card px-4 py-3 text-[13.5px] font-semibold text-text-primary ring-1 ring-border shadow-soft hover:shadow-card-premium"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Upload a different image
-            </button>
+            <MentorLine tone="block">
+              That doesn't look like a tradable chart. {invalidReason} Show me one with candles, price, and time.
+            </MentorLine>
+            {invalidDetails.length > 0 && (
+              <FadeIn>
+                <ul className="space-y-1 rounded-2xl bg-card/60 p-4 text-xs leading-relaxed text-muted-foreground ring-1 ring-foreground/10">
+                  {invalidDetails.map((d, i) => (
+                    <li key={i} className="list-disc pl-4">
+                      {d}
+                    </li>
+                  ))}
+                </ul>
+              </FadeIn>
+            )}
+            <SecondaryAction onClick={reset}>Try another chart</SecondaryAction>
           </motion.div>
         )}
 
