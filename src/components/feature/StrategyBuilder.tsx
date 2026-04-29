@@ -1500,10 +1500,12 @@ function StepInterrogate({
   bp,
   patch,
   report,
+  verdict,
 }: {
   bp: StrategyBlueprint;
   patch: (p: Partial<StrategyBlueprint>) => Promise<void>;
   report: IntelligenceReport;
+  verdict: StrictnessVerdict;
 }) {
   const rules = readRules(bp);
 
