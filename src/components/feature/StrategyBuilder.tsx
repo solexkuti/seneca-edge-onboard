@@ -1300,19 +1300,20 @@ function StepLock({
   setBp: (b: StrategyBlueprint) => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const [confirming, setConfirming] = useState<"lock" | "unlock" | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const requiredWord = bp.locked ? "UNLOCK" : "LOCK";
-  const canConfirm = confirmText.trim().toUpperCase() === requiredWord;
+  // Strict, case-sensitive match — must be exactly LOCK (or UNLOCK).
+  const canConfirm = confirmText === requiredWord;
 
   const apply = async () => {
-    if (!canConfirm) return;
+    if (!canConfirm || busy) return;
     setBusy(true);
     try {
-      const next = bp.locked ? await unlockBlueprint(bp.id) : await lockBlueprint(bp.id);
+      const next = bp.locked
+        ? await unlockBlueprint(bp.id)
+        : await lockBlueprint(bp.id);
       setBp(next);
       toast.success(next.locked ? "Locked." : "Unlocked.");
-      setConfirming(null);
       setConfirmText("");
     } catch (err) {
       console.error(err);
@@ -1336,60 +1337,54 @@ function StepLock({
         <div className="flex items-start gap-3">
           <ShieldAlert className="h-5 w-5 shrink-0 text-primary" />
           <div className="text-sm text-foreground/80">
-            Type <span className="font-mono font-semibold text-foreground">{requiredWord}</span> to confirm.
+            Type{" "}
+            <span className="font-mono font-semibold text-foreground">
+              {requiredWord}
+            </span>{" "}
+            to confirm.
           </div>
         </div>
       </div>
 
-      {confirming === null ? (
+      <div className="space-y-3 rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+        <input
+          type="text"
+          value={confirmText}
+          onChange={(e) => setConfirmText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && canConfirm) {
+              e.preventDefault();
+              void apply();
+            }
+          }}
+          placeholder={requiredWord}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          disabled={busy}
+          className="w-full rounded-lg bg-background px-3 py-2 text-sm font-mono ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
         <button
           type="button"
-          onClick={() => {
-            setConfirming(bp.locked ? "unlock" : "lock");
-            setConfirmText("");
-          }}
-          disabled={busy}
-          className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium shadow-soft hover:opacity-95 disabled:opacity-50 ${
+          onClick={apply}
+          disabled={!canConfirm || busy}
+          className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium shadow-soft transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40 ${
             bp.locked
               ? "bg-card text-foreground ring-1 ring-border"
               : "bg-primary text-primary-foreground"
           }`}
         >
-          {bp.locked ? <LockOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : bp.locked ? (
+            <LockOpen className="h-4 w-4" />
+          ) : (
+            <Lock className="h-4 w-4" />
+          )}
           {bp.locked ? "Unlock" : "Lock strategy"}
         </button>
-      ) : (
-        <div className="space-y-3 rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
-          <input
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            placeholder={requiredWord}
-            className="w-full rounded-lg bg-background px-3 py-2 text-sm font-mono ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40"
-            autoFocus
-          />
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setConfirming(null);
-                setConfirmText("");
-              }}
-              className="rounded-lg px-3 py-1.5 text-xs font-medium text-foreground/70 hover:bg-background"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={apply}
-              disabled={!canConfirm || busy}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-95 disabled:opacity-40"
-            >
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-              Confirm
-            </button>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
