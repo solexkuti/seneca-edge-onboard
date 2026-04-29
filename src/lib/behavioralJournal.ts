@@ -87,7 +87,7 @@ export function classify(mistakes: MistakeId[]): {
     };
   }
   if (mistakes.length === 0) {
-    return { classification: "clean", delta: CLEAN_DELTA, reasonLabel: "Clean trade" };
+    return { classification: "clean", delta: CLEAN_DELTA, reasonLabel: "Clean execution" };
   }
   if (mistakes.length === 1) {
     return {
