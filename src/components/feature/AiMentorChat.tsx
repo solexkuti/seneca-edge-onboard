@@ -499,10 +499,10 @@ export default function AiMentorChat() {
           <button
             type="submit"
             disabled={!draft.trim() || streaming}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary text-white shadow-glow-primary transition-all disabled:opacity-40"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary text-[#0B0B0D] shadow-glow-gold transition-all disabled:opacity-40"
             aria-label="Send"
           >
-            <ArrowUp className="h-4 w-4" strokeWidth={2.4} />
+            <ArrowUp className="h-4 w-4" strokeWidth={2.6} />
           </button>
         </form>
       </div>
