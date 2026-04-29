@@ -107,6 +107,7 @@ export default function StrategyBuilder({
   const [stepIdx, setStepIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
+  const [structuring, setStructuring] = useState(false);
   const step = STEPS[stepIdx];
 
   // Bootstrap: load existing or create draft. Hard 3s ceiling.
