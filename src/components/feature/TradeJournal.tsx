@@ -269,12 +269,7 @@ export default function TradeJournal() {
             </p>
             <button
               type="button"
-              onClick={() => {
-                setOutcome("all");
-                setMarket("all");
-                setMistakesOnly(false);
-                setQuery("");
-              }}
+              onClick={clearFilters}
               className="mt-3 text-[11.5px] font-semibold text-text-primary underline underline-offset-2"
             >
               Reset filters
