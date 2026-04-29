@@ -4,7 +4,7 @@
 // (No second "Seneca insight" surface — duplicate routing was removed.)
 
 import { Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowUpRight,
   BookOpenCheck,
