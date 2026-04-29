@@ -296,10 +296,9 @@ export default function StrategyBuilder({
     );
   }
 
-  // Soft re-validation: run deterministic interrogation whenever rules change.
-  // This drives the warning banner shown on every step, including for opened
-  // locked blueprints (non-blocking — purely informational).
-  const report = useMemo<IntelligenceReport>(() => interrogate(bp), [bp]);
+  // Reuse early-computed report (declared above for canAdvance).
+  const report = reportEarly!;
+  const verdict = verdictEarly!;
 
   return (
     <Shell>
