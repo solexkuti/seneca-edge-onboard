@@ -451,6 +451,8 @@ export default function BehavioralJournalFlow({
         cleanStreakAfter: r.cleanStreakAfter,
         breakStreakAfter: r.breakStreakAfter,
         breakdown: previewClass.breakdown,
+        outcome: finalOutcome,
+        hadMistakes: mistakes.length > 0,
       });
       onLogged?.();
     } catch (err) {
