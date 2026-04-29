@@ -20,6 +20,14 @@ const RANGES: { id: TimeRange; label: string }[] = [
   { id: "all", label: "All time" },
 ];
 
+type SessionFilter = "all" | "London" | "NY" | "Asia";
+const SESSIONS: { id: SessionFilter; label: string }[] = [
+  { id: "all", label: "All sessions" },
+  { id: "London", label: "London" },
+  { id: "NY", label: "NY" },
+  { id: "Asia", label: "Asia" },
+];
+
 export default function TradeStats() {
   const [range, setRange] = useState<TimeRange>("week");
   const [trades, setTrades] = useState<TradeLog[]>([]);
