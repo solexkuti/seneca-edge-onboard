@@ -22,7 +22,7 @@ jsPDF.prototype.save = function (filename) {
   console.log("WROTE", out, "bytes=", Buffer.from(ab).length);
 };
 
-const { downloadPdf } = await import("/dev-server/src/lib/strategyExport.ts");
+const { downloadPdf } = await import("../src/lib/strategyExport.ts");
 
 const bp = {
   id: "sample-bp",
