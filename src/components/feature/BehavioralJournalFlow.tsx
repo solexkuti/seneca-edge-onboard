@@ -338,34 +338,59 @@ export default function BehavioralJournalFlow({
               {feedback.reasonLabel}
             </p>
 
+            {/* Per-trade score (the strict number, never inflated) */}
             <div className="mt-6 flex items-end gap-3">
               <span
                 className={`text-[44px] font-semibold leading-none tabular-nums ${ct.tone}`}
               >
-                {feedback.delta > 0 ? "+" : ""}
-                {feedback.delta}
+                {feedback.perTradeScore}
               </span>
               <span className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
-                Discipline change
+                / 100 · trade score
               </span>
             </div>
 
+            {/* Per-mistake breakdown — every mistake shown equally, no severity hint */}
+            {feedback.breakdown.length > 0 && (
+              <ul className="mt-4 space-y-1.5">
+                {feedback.breakdown.map((b) => (
+                  <li
+                    key={b.id}
+                    className="flex items-center justify-between rounded-lg bg-background/40 px-3 py-2 text-[12px] ring-1 ring-border/60"
+                  >
+                    <span className="text-text-primary/85">{b.label}</span>
+                    <span className="font-semibold tabular-nums text-rose-300">
+                      −{b.penalty}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Overall (avg) score block */}
             <div className="mt-6 rounded-xl bg-background/60 ring-1 ring-border px-4 py-3.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] uppercase tracking-[0.18em] text-text-secondary/70">
-                  Score
+                  Overall score
                 </span>
                 <span className="text-[11px] uppercase tracking-[0.18em] text-text-secondary/60">
                   {ds.label}
                 </span>
               </div>
               <div className="mt-2 flex items-baseline gap-3">
-                <span className="text-[22px] font-semibold tabular-nums text-text-secondary/70 line-through decoration-text-secondary/40">
-                  {feedback.scoreBefore}
-                </span>
-                <ArrowRight className="h-4 w-4 text-text-secondary/60" />
+                {feedback.scoreBefore != null && (
+                  <>
+                    <span className="text-[22px] font-semibold tabular-nums text-text-secondary/70">
+                      {feedback.scoreBefore}
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-text-secondary/60" />
+                  </>
+                )}
                 <span className={`text-[28px] font-semibold tabular-nums ${ct.tone}`}>
                   {feedback.scoreAfter}
+                </span>
+                <span className="text-[11px] text-text-secondary/55">
+                  avg of all trades
                 </span>
               </div>
             </div>
