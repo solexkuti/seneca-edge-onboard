@@ -299,7 +299,7 @@ export default function PerformanceTrends({
             className="h-[140px] w-full"
             preserveAspectRatio="none"
             role="img"
-            aria-label="Performance trend over the last 20 trades"
+            aria-label="Performance trend over the last trades"
           >
             <defs>
               <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
@@ -417,7 +417,7 @@ function ToggleSeg({
             ? "text-text-secondary/35 cursor-not-allowed"
             : "text-text-secondary/75 hover:text-text-primary"
       }`}
-      title={disabled ? "Log $ PnL to enable" : undefined}
+      title={disabled ? "Add position size to view results in $" : undefined}
     >
       {label}
     </button>
