@@ -1813,23 +1813,36 @@ export default function BehavioralJournalFlow({
           </button>
 
           {step < 3 ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (step === 0) runCorrectionGuard("continue");
-                else setStep((s) => (Math.min(3, s + 1) as Step));
-              }}
-              disabled={step === 0 && !canNextFromStep0}
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 ring-1 ring-primary/30 px-5 py-2.5 text-[12.5px] font-semibold text-text-primary disabled:opacity-30 active:scale-[0.98] transition"
-            >
-              Continue <ArrowRight className="h-3.5 w-3.5" />
-            </button>
+            (() => {
+              const ready = step !== 0 || canNextFromStep0;
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (step === 0) runCorrectionGuard("continue");
+                    else setStep((s) => (Math.min(3, s + 1) as Step));
+                  }}
+                  disabled={step === 0 && !canNextFromStep0}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-[12.5px] font-semibold text-text-primary ring-1 transition active:scale-[0.98] ${
+                    ready
+                      ? "bg-primary/25 ring-primary/55 shadow-glow-gold hover:bg-primary/30"
+                      : "bg-primary/8 ring-primary/15 opacity-40"
+                  }`}
+                >
+                  Continue <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              );
+            })()
           ) : (
             <button
               type="button"
               onClick={() => runCorrectionGuard("submit")}
               disabled={submitting || !canNextFromStep0}
-              className="inline-flex items-center gap-2 rounded-full bg-primary/20 ring-1 ring-primary/40 px-5 py-2.5 text-[12.5px] font-semibold text-text-primary disabled:opacity-30 active:scale-[0.98] transition"
+              className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[12.5px] font-semibold text-text-primary ring-1 transition active:scale-[0.98] ${
+                canNextFromStep0 && !submitting
+                  ? "bg-primary/25 ring-primary/55 shadow-glow-gold hover:bg-primary/30"
+                  : "bg-primary/8 ring-primary/15 opacity-40"
+              }`}
             >
               {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {submitting ? "Saving…" : "Save trade"}
