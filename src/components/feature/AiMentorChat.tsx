@@ -193,7 +193,8 @@ export default function AiMentorChat() {
   type Intent =
     | "TRADE_REVIEW"
     | "PATTERN_ANALYSIS"
-    | "METRICS_EXPLANATION"
+    | "METRICS_PERSONAL"
+    | "METRICS_SYSTEM"
     | "GENERAL_TRADING_QUESTION"
     | "GUIDANCE";
 
@@ -217,13 +218,25 @@ export default function AiMentorChat() {
       return "PATTERN_ANALYSIS";
     }
 
-    // METRICS_EXPLANATION — own stats / how scores work
-    if (
-      /\b(my\s+)?(stats|metrics|score|discipline|win\s*rate|winrate|rr|r:r|r\/r|expectancy|drawdown)\b/.test(t) ||
-      /\bhow\s+is\s+.*\s+(calculated|computed|measured)\b/.test(t) ||
-      /\bexplain\s+(my\s+)?(stats|metrics|score|numbers)\b/.test(t)
-    ) {
-      return "METRICS_EXPLANATION";
+    // METRICS — split between SYSTEM (how it works) vs PERSONAL (their data).
+    const mentionsMetric =
+      /\b(stats|metrics|score|discipline|win\s*rate|winrate|rr|r:r|r\/r|expectancy|drawdown)\b/.test(t);
+    if (mentionsMetric) {
+      const personalMarker =
+        /\bmy\b/.test(t) ||
+        /\d+\s*%/.test(t) ||
+        /\b\d{1,3}\b/.test(t) ||
+        /\bwhat\s+am\s+i\s+doing\s+wrong\b/.test(t);
+      const systemMarker =
+        /\bhow\s+(is|does|do)\b/.test(t) ||
+        /\bwhat\s+determines\b/.test(t) ||
+        /\bwhat\s+affects\b/.test(t) ||
+        /\b(calculated|computed|measured|work|works)\b/.test(t) ||
+        /\bexplain\s+(the\s+)?(stats|metrics|score|discipline)\b/.test(t);
+      if (systemMarker && !personalMarker) return "METRICS_SYSTEM";
+      if (personalMarker) return "METRICS_PERSONAL";
+      // Bare keyword like "discipline" — treat as personal (their dashboard).
+      return "METRICS_PERSONAL";
     }
 
     // GUIDANCE — improvement / something feels off
@@ -266,6 +279,8 @@ export default function AiMentorChat() {
     const intent = classifyIntent(trimmed);
 
     // CASE A: zero trades — branch by intent. Only block data-dependent intents.
+    // METRICS_SYSTEM and GENERAL_TRADING_QUESTION are educational — always
+    // allowed to hit the AI even with no data.
     if (tradeCount === 0) {
       if (intent === "TRADE_REVIEW") {
         respondLocally(
@@ -281,10 +296,10 @@ export default function AiMentorChat() {
         );
         return;
       }
-      if (intent === "METRICS_EXPLANATION") {
+      if (intent === "METRICS_PERSONAL") {
         respondLocally(
           history,
-          "Your metrics aren't active yet because nothing has been logged.\n\nOnce you start trading, I'll calculate things like win rate, RR, and discipline automatically.",
+          "You don't have any data yet — log your first trade and I'll break it down for you.",
         );
         return;
       }
@@ -295,7 +310,7 @@ export default function AiMentorChat() {
         );
         return;
       }
-      // GENERAL_TRADING_QUESTION → fall through to AI (education is allowed).
+      // METRICS_SYSTEM and GENERAL_TRADING_QUESTION → fall through to AI.
     }
 
     // CASE B: user asks about "last trade" but none exists.
@@ -447,21 +462,32 @@ export default function AiMentorChat() {
         }
       : undefined;
 
-    const ctx =
-      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload || dailyChecklistPayload || traderStatePayload || behavioralPayload || performancePayload
-        ? {
-            ...(journalSummary ? { journalSummary } : {}),
-            ...(profileSummary ? { profileSummary } : {}),
-            ...(intelligencePayload ? { intelligence: intelligencePayload } : {}),
-            ...(recentPatternsPayload ? { recentPatterns: recentPatternsPayload } : {}),
-            ...(lastTwoPayload ? { lastTwoTrades: lastTwoPayload } : {}),
-            ...(strategyPayload ? { activeStrategy: strategyPayload } : {}),
-            ...(dailyChecklistPayload ? { dailyChecklist: dailyChecklistPayload } : {}),
-            ...(traderStatePayload ? { traderState: traderStatePayload } : {}),
-            ...(behavioralPayload ? { behavioralJournal: behavioralPayload } : {}),
-            ...(performancePayload ? { performance: performancePayload } : {}),
-          }
-        : undefined;
+    // Per-turn hints so the model handles SYSTEM vs PERSONAL questions correctly.
+    const intentHint: { intent: Intent; tradeCount: number; note?: string } = {
+      intent,
+      tradeCount,
+    };
+    if (intent === "METRICS_SYSTEM" && tradeCount === 0) {
+      intentHint.note =
+        "This user has 0 trades. Explain clearly, but keep it simple and actionable. Do not reference their personal numbers — they don't have any yet.";
+    } else if (tradeCount > 0 && tradeCount < 20) {
+      intentHint.note =
+        "User has limited data (<20 trades). Avoid strong conclusions. Speak in probabilities, not certainty.";
+    }
+
+    const ctx = {
+      ...(journalSummary ? { journalSummary } : {}),
+      ...(profileSummary ? { profileSummary } : {}),
+      ...(intelligencePayload ? { intelligence: intelligencePayload } : {}),
+      ...(recentPatternsPayload ? { recentPatterns: recentPatternsPayload } : {}),
+      ...(lastTwoPayload ? { lastTwoTrades: lastTwoPayload } : {}),
+      ...(strategyPayload ? { activeStrategy: strategyPayload } : {}),
+      ...(dailyChecklistPayload ? { dailyChecklist: dailyChecklistPayload } : {}),
+      ...(traderStatePayload ? { traderState: traderStatePayload } : {}),
+      ...(behavioralPayload ? { behavioralJournal: behavioralPayload } : {}),
+      ...(performancePayload ? { performance: performancePayload } : {}),
+      turnHint: intentHint,
+    };
 
     // Strip the intro message from what we send to the model — it's UI only.
     const wireMessages = history
