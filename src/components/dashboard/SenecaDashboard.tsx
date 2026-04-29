@@ -215,18 +215,18 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
                   className={`text-[56px] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[ds.tone]}`}
                   style={ds.tone === "ok" ? { textShadow: "0 0 25px rgba(198,161,91,0.35)" } : undefined}
                 >
-                  {loading ? "—" : score}
+                  {loading || score == null ? "—" : score}
                 </span>
                 <span className="mb-2 text-[14px] font-medium text-text-secondary/70 tabular-nums">/100</span>
                 <span className="mb-2 ml-auto text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
-                  Discipline
+                  {score == null ? "Inactive" : "Discipline"}
                 </span>
               </div>
 
               <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-text-primary/[0.05]">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${score}%` }}
+                  animate={{ width: `${score ?? 0}%` }}
                   transition={{ duration: 0.7, ease }}
                   className={`h-full rounded-full ${TONE_BAR[ds.tone]} ${ds.tone === "ok" ? "shadow-glow-gold" : ""}`}
                 />
