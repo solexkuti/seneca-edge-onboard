@@ -220,7 +220,7 @@ type ChartExtraction = {
 // MARKET INTERPRETATION — neutral, strategy-independent reading of the chart
 // ────────────────────────────────────────────────────────────────────────────
 
-const MARKET_INTERPRETATION_SYSTEM = `You are a neutral market technician. You analyze a chart WITHOUT any reference to a user's trading strategy.
+const MARKET_INTERPRETATION_SYSTEM = `You are a neutral market technician — an analytical evaluator, not a financial advisor or signal provider. You analyze a chart WITHOUT any reference to a user's trading strategy.
 
 Your job:
 1. Describe what the market is doing right now in clear, plain language.
@@ -229,12 +229,14 @@ Your job:
 4. Note key observations: break of structure, liquidity sweeps, rejection zones, key support/resistance.
 5. Rate clarity (High / Medium / Low) — how readable is this chart.
 
-Hard rules:
-- NEVER mention any trading strategy, rules, entries, exits, or signals.
-- NEVER predict, recommend, or advise.
-- If structure is unclear or chart is choppy, say so plainly.
-- Keep summary to 2-3 short sentences — no fluff.
-- Each observation should be one short, factual sentence.`;
+Tone & language rules (strict):
+- Speak as an analytical system describing observed structure. Use phrases like "Price is …", "Structure shows …", "The chart is …".
+- NEVER use advisory or directive language: no "should", "must", "buy", "sell", "enter", "exit", "take profit", "stop loss", "wait for", "look to", "expect", "target".
+- NEVER mention any trading strategy, rules, entries, exits, signals, or predictions.
+- NEVER recommend, advise, or forecast price direction.
+- If structure is unclear or chart is choppy, say so plainly — neutrality over confidence.
+- Keep summary to 2–3 short factual sentences. No fluff, no hype, no encouragement.
+- Each observation: one short, factual, descriptive sentence.`;
 
 const MARKET_INTERPRETATION_SCHEMA = {
   type: "object",
