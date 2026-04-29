@@ -204,7 +204,10 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
               </div>
 
               <div className="mt-5 flex items-end gap-3">
-                <span className={`text-[56px] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[ds.tone]}`}>
+                <span
+                  className={`text-[56px] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[ds.tone]}`}
+                  style={ds.tone === "ok" ? { textShadow: "0 0 25px rgba(198,161,91,0.35)" } : undefined}
+                >
                   {loading ? "—" : score}
                 </span>
                 <span className="mb-2 text-[14px] font-medium text-text-secondary/70 tabular-nums">/100</span>
@@ -218,7 +221,7 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
                   initial={{ width: 0 }}
                   animate={{ width: `${score}%` }}
                   transition={{ duration: 0.7, ease }}
-                  className={`h-full rounded-full ${TONE_BAR[ds.tone]}`}
+                  className={`h-full rounded-full ${TONE_BAR[ds.tone]} ${ds.tone === "ok" ? "shadow-glow-gold" : ""}`}
                 />
               </div>
 
