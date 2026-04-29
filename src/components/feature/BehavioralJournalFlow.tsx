@@ -1008,7 +1008,8 @@ export default function BehavioralJournalFlow({
                       onChange={(e) => setExitStr(e.target.value)}
                       inputMode="decimal"
                       placeholder="0.00"
-                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
+                      disabled={exitStr.trim() === "" && manualR != null}
+                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed"
                     />
                   </Field>
                   <Field label="Stop loss">
