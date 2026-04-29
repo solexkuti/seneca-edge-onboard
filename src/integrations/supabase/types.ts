@@ -528,6 +528,7 @@ export type Database = {
           id: string
           market: string | null
           onboarded_at: string | null
+          onboarding_completed: boolean
           updated_at: string
           username: string | null
         }
@@ -540,6 +541,7 @@ export type Database = {
           id: string
           market?: string | null
           onboarded_at?: string | null
+          onboarding_completed?: boolean
           updated_at?: string
           username?: string | null
         }
@@ -552,6 +554,7 @@ export type Database = {
           id?: string
           market?: string | null
           onboarded_at?: string | null
+          onboarding_completed?: boolean
           updated_at?: string
           username?: string | null
         }

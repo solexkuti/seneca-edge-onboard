@@ -120,6 +120,7 @@ export async function syncProfileFromOnboarding(
           challenge: profile.challenge ?? null,
           goal: profile.goal ?? null,
           onboarded_at: new Date().toISOString(),
+          onboarding_completed: true,
         },
         { onConflict: "id" },
       );
@@ -137,6 +138,7 @@ export async function syncProfileFromOnboarding(
               challenge: profile.challenge ?? null,
               goal: profile.goal ?? null,
               onboarded_at: new Date().toISOString(),
+              onboarding_completed: true,
             },
             { onConflict: "id" },
           );
@@ -149,10 +151,58 @@ export async function syncProfileFromOnboarding(
   }
 }
 
+/**
+ * Returning-user check. Looks up the profile row and returns whether
+ * onboarding has been completed. Falls back to `false` on any error so
+ * a new user always sees onboarding.
+ */
+export async function isOnboardingCompleted(userId: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) return false;
+    return !!data?.onboarding_completed;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Sign out and aggressively clear all client-side caches so no data from the
+ * previous user can leak to the next person who signs in on this browser.
+ *
+ * The `onAuthStateChange` listener in `installUserScopedStorage` also clears
+ * scoped keys, but we do it here too defensively in case the listener is
+ * unmounted or the page is about to navigate.
+ */
 export async function signOut() {
   try {
     await supabase.auth.signOut();
   } catch {
-    // ignore — local state will be cleared by caller
+    // ignore — we still want to clear local state below
+  }
+  if (typeof window !== "undefined") {
+    try {
+      // Wipe every seneca_* / seneca: / u:* key. The auth listener targets
+      // only the previous user id; this is a belt-and-braces sweep.
+      const toRemove: string[] = [];
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (!k) continue;
+        if (
+          k.startsWith("seneca_") ||
+          k.startsWith("seneca:") ||
+          k.startsWith("u:")
+        ) {
+          toRemove.push(k);
+        }
+      }
+      for (const k of toRemove) window.localStorage.removeItem(k);
+    } catch {
+      /* ignore */
+    }
   }
 }
