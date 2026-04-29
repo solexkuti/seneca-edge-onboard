@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
 import { supabase } from "@/integrations/supabase/client";
 import { isOnboardingCompleted } from "@/lib/auth";
+import { hasCompletedOnboardingLocal } from "@/lib/userState";
 
 export const Route = createFileRoute("/")({
   head: () => ({
