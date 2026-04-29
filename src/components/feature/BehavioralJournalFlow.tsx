@@ -342,12 +342,36 @@ export default function BehavioralJournalFlow({
     return "This is consistency forming.";
   }, [priorEntries]);
 
-  // Outcome is REQUIRED. R is required (existing rule).
+  // Price + RR validation. Surfaces hard blocks (impossible structure) and
+  // warnings (suspicious but possible). Warnings require explicit confirm.
+  const validation = useMemo(
+    () =>
+      validateTradePrices({
+        direction,
+        entry,
+        exit,
+        stop: sl,
+        manualR,
+      }),
+    [direction, entry, exit, sl, manualR],
+  );
+
+  // Confirmation flag for the Trade Preview card. Resets automatically
+  // whenever any input that affects validation changes.
+  const [previewConfirmed, setPreviewConfirmed] = useState(false);
+  useEffect(() => {
+    setPreviewConfirmed(false);
+  }, [direction, entryStr, exitStr, slStr, resultStr]);
+
+  // Outcome is REQUIRED. R is required (existing rule). Hard validation
+  // blocks must be cleared. Warnings require explicit preview confirmation.
   const canNextFromStep0 =
     asset.trim().length > 0 &&
     Number.isFinite(resultR) &&
     outcome !== null &&
-    !pnlDollarInvalid;
+    !pnlDollarInvalid &&
+    !validation.hasBlock &&
+    (!validation.hasWarn || previewConfirmed);
 
   function addFiles(list: FileList | null) {
     if (!list || list.length === 0) return;
