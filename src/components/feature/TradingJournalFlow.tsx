@@ -35,7 +35,7 @@ import { SenecaVoice } from "@/lib/senecaVoice";
 import { useSenecaContext } from "@/hooks/useSenecaContext";
 import { playFeedback } from "@/lib/feedback";
 import { supabase } from "@/integrations/supabase/client";
-import { useTraderState } from "@/hooks/useTraderState";
+
 import {
   bumpPressureEscalation,
   evaluatePressure,
