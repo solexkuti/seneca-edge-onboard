@@ -232,7 +232,6 @@ function SocialButton({
   label,
   onClick,
   icon,
-  dark,
   loading,
   disabled,
 }: {
@@ -249,13 +248,9 @@ function SocialButton({
       whileHover={{ scale: disabled ? 1 : 1.01 }}
       onClick={onClick}
       disabled={disabled}
-      className={`interactive-glow flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-[15px] font-semibold shadow-soft transition-colors disabled:opacity-60 ${
-        dark
-          ? "bg-[#0F172A] text-white"
-          : "border border-border bg-card text-text-primary hover:border-brand/40"
-      }`}
+      className="focus-glow flex w-full items-center justify-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.10)] bg-[rgba(255,255,255,0.035)] px-6 py-4 text-[15px] font-semibold text-text-primary backdrop-blur-md transition-colors hover:border-[rgba(198,161,91,0.35)] disabled:opacity-60"
     >
-      {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : icon}
+      {loading ? <Loader2 className="h-5 w-5 animate-spin text-gold" /> : icon}
       {loading ? "Connecting…" : label}
     </motion.button>
   );
