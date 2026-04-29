@@ -4,32 +4,30 @@ globalThis.atob = (s) => Buffer.from(s, "base64").toString("binary");
 globalThis.btoa = (s) => Buffer.from(s, "binary").toString("base64");
 globalThis.window = { atob: globalThis.atob, btoa: globalThis.btoa };
 globalThis.document = {
-  createElement: () => ({ getContext: () => null, style: {}, setAttribute() {}, appendChild() {}, click() {}, set href(_v){}, get href(){return ""}, set download(_v){} }),
+  createElement: () => ({ getContext: () => null, style: {}, setAttribute() {}, appendChild() {}, click() {}, set href(_v){}, set download(_v){} }),
   body: { appendChild() {}, removeChild() {} },
 };
 globalThis.navigator = { userAgent: "node" };
-globalThis.URL = globalThis.URL ?? class { static createObjectURL() { return "blob:x"; } static revokeObjectURL() {} };
-globalThis.Blob = globalThis.Blob ?? class { constructor(p){ this.p=p; } };
+globalThis.URL = class { static createObjectURL() { return "blob:x"; } static revokeObjectURL() {} };
+globalThis.Blob = class { constructor(p){ this.p=p; } };
 
-// Patch BOTH jsPDF builds so whichever strategyExport pulls in is covered.
-async function patch(modPath) {
-  try {
-    const mod = await import(modPath);
-    const J = mod.jsPDF ?? mod.default;
-    if (!J?.prototype) return;
-    J.prototype.save = function (filename) {
-      const ab = this.output("arraybuffer");
-      const out = `/tmp/${filename}`;
-      writeFileSync(out, Buffer.from(ab));
-      console.log("WROTE", out, "bytes=", Buffer.from(ab).length);
-      return this;
-    };
-    console.log("patched", modPath);
-  } catch (e) { console.log("skip", modPath, e.message); }
+// Patch jsPDF constructor to wrap every instance's save() before strategyExport imports it.
+const jspdfMod = await import("jspdf");
+const RealJsPDF = jspdfMod.jsPDF;
+function PatchedJsPDF(...args) {
+  const inst = new RealJsPDF(...args);
+  inst.save = function (filename) {
+    const ab = this.output("arraybuffer");
+    writeFileSync(`/tmp/${filename}`, Buffer.from(ab));
+    console.log("WROTE /tmp/" + filename, "bytes=", Buffer.from(ab).length);
+    return this;
+  };
+  return inst;
 }
-await patch("jspdf");
-await patch("/dev-server/node_modules/jspdf/dist/jspdf.es.min.js");
-await patch("/dev-server/node_modules/jspdf/dist/jspdf.node.min.js");
+PatchedJsPDF.prototype = RealJsPDF.prototype;
+Object.assign(PatchedJsPDF, RealJsPDF);
+jspdfMod.jsPDF = PatchedJsPDF;
+jspdfMod.default = PatchedJsPDF;
 
 const { downloadPdf } = await import("../src/lib/strategyExport.ts");
 
@@ -76,8 +74,7 @@ const bp = {
   trading_plan: "seed",
   locked: false, locked_at: null, version: 1,
   status: "finalized", current_step: "output",
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
+  created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
 };
 
 console.log("FULL  ->", downloadPdf(bp, "full"));
