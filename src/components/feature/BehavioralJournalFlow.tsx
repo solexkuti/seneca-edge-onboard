@@ -755,7 +755,7 @@ export default function BehavioralJournalFlow({
             : "from-rose-500/[0.12] to-rose-500/[0.02] ring-rose-500/30 text-rose-300";
     return (
       <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
-        <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-50" />
+        <div className="pointer-events-none fixed inset-0 bg-app-glow opacity-60" />
         <div className="relative z-10 mx-auto w-full max-w-[480px] px-5 pt-12 pb-24">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
