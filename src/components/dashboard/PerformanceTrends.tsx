@@ -282,10 +282,11 @@ export default function PerformanceTrends({
               preload="intent"
               className="group m-3 block rounded-xl bg-background/40 px-4 py-6 text-center ring-1 ring-border/50 transition-all hover:bg-background/60 hover:ring-primary/30 hover:shadow-glow-gold active:scale-[0.99]"
             >
-              <p className="text-[12.5px] text-text-primary group-hover:underline underline-offset-4 decoration-primary/50">
-                {!hasTrades
-                  ? "Log your first trade to activate performance tracking."
-                  : "Log one more trade to see the trend."}
+              <p className="text-[13px] font-semibold text-text-primary">
+                Not enough data yet
+              </p>
+              <p className="mt-1 text-[11.5px] text-text-secondary/80">
+                Log at least 2 trades to unlock your performance trend.
               </p>
               <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3.5 py-1.5 text-[11.5px] font-semibold text-text-primary ring-1 ring-primary/30 transition group-hover:bg-primary/25">
                 Log a trade <ArrowUpRight className="h-3 w-3" strokeWidth={2.4} />
