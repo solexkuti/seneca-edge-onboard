@@ -27,6 +27,14 @@ import {
   X,
 } from "lucide-react";
 import { validateTradePrices } from "@/lib/priceValidation";
+import {
+  analyzeForCorrection,
+  fieldLabel,
+  type CorrectionAnalysis,
+  type FieldId,
+  type PriceCandidate,
+} from "@/lib/priceCorrection";
+import { PriceCorrectionModal } from "@/components/feature/PriceCorrectionModal";
 import { toast } from "sonner";
 import {
   MISTAKES,
@@ -52,6 +60,9 @@ import { detectRelapseAndLoops } from "@/lib/relapseAndLoopDetection";
 import { userKey } from "@/lib/userScopedStorage";
 
 const ACCOUNT_SIZE_STORAGE_SUFFIX = "journal:account_size";
+/** Per-user repeat-mistake counters for the price-correction engine. */
+const CORRECTION_REPEAT_STORAGE_SUFFIX = "journal:correction_repeats";
+const REPEAT_HINT_THRESHOLD = 3;
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -363,6 +374,73 @@ export default function BehavioralJournalFlow({
     setPreviewConfirmed(false);
   }, [direction, entryStr, exitStr, slStr, resultStr]);
 
+  // ── Intelligent Price Correction wiring ──────────────────────────────
+  // The modal opens when analyzeForCorrection() flags suspicious inputs
+  // AND the user has not already acknowledged the current values. We track
+  // a fingerprint of the four price-relevant inputs so we don't re-pop the
+  // modal after the user explicitly chose "Keep original".
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [correctionAnalysis, setCorrectionAnalysis] =
+    useState<CorrectionAnalysis | null>(null);
+  /** What action to perform after the user resolves the modal. */
+  const [pendingAction, setPendingAction] = useState<"continue" | "submit" | null>(null);
+  /** Inputs fingerprint the user already acknowledged via "Keep original". */
+  const [acknowledgedFingerprint, setAcknowledgedFingerprint] = useState<string | null>(null);
+  /** Marks the trade as low data-quality on submission. */
+  const [lowDataQuality, setLowDataQuality] = useState(false);
+
+  const inputsFingerprint = `${direction}|${entryStr}|${exitStr}|${slStr}`;
+
+  // When the user changes inputs, drop the acknowledgement so the engine
+  // can re-evaluate cleanly. Also clear low-quality flag.
+  useEffect(() => {
+    setAcknowledgedFingerprint(null);
+    setLowDataQuality(false);
+  }, [inputsFingerprint]);
+
+  // Per-user, per-field repeat counters → power the subtle "you often…" hint.
+  const [repeatCounts, setRepeatCounts] = useState<Record<FieldId, number>>({
+    entry: 0,
+    exit: 0,
+    stop: 0,
+  });
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(userKey(CORRECTION_REPEAT_STORAGE_SUFFIX));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          setRepeatCounts({
+            entry: Number(parsed.entry) || 0,
+            exit: Number(parsed.exit) || 0,
+            stop: Number(parsed.stop) || 0,
+          });
+        }
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+  function bumpRepeatCount(field: FieldId) {
+    setRepeatCounts((prev) => {
+      const next = { ...prev, [field]: (prev[field] ?? 0) + 1 };
+      try {
+        localStorage.setItem(userKey(CORRECTION_REPEAT_STORAGE_SUFFIX), JSON.stringify(next));
+      } catch {
+        // ignore storage errors
+      }
+      return next;
+    });
+  }
+  /** Hint string when one field has been corrected ≥ threshold times. */
+  const repeatHint = useMemo(() => {
+    const offender = (Object.entries(repeatCounts) as [FieldId, number][])
+      .filter(([, count]) => count >= REPEAT_HINT_THRESHOLD)
+      .sort((a, b) => b[1] - a[1])[0];
+    if (!offender) return null;
+    return `You often enter extra digits in ${fieldLabel(offender[0]).toLowerCase()}. Be careful with scaling.`;
+  }, [repeatCounts]);
+
   // Outcome is REQUIRED. R is required (existing rule). Hard validation
   // blocks must be cleared. Warnings require explicit preview confirmation.
   const canNextFromStep0 =
@@ -372,6 +450,68 @@ export default function BehavioralJournalFlow({
     !pnlDollarInvalid &&
     !validation.hasBlock &&
     (!validation.hasWarn || previewConfirmed);
+
+  /**
+   * Run the correction engine before performing `action`. If suspicious
+   * inputs are detected and not yet acknowledged, open the modal and stash
+   * the action for later. Otherwise run the action immediately.
+   */
+  function runCorrectionGuard(action: "continue" | "submit") {
+    const a = analyzeForCorrection({ direction, entry, exit, stop: sl });
+    if (a.triggered && acknowledgedFingerprint !== inputsFingerprint) {
+      setCorrectionAnalysis(a);
+      setPendingAction(action);
+      setCorrectionOpen(true);
+      return;
+    }
+    performAction(action);
+  }
+
+  function performAction(action: "continue" | "submit") {
+    if (action === "continue") {
+      setStep((s) => (Math.min(3, s + 1) as Step));
+    } else {
+      void submit();
+    }
+  }
+
+  function applyCandidate(field: FieldId, candidate: PriceCandidate) {
+    const v = candidate.suggested;
+    const formatted = String(v);
+    if (field === "entry") setEntryStr(formatted);
+    else if (field === "exit") setExitStr(formatted);
+    else if (field === "stop") setSlStr(formatted);
+    bumpRepeatCount(field);
+    setLowDataQuality(false);
+    // Close the modal but DO NOT auto-advance — let the user re-validate
+    // the new values. They click Continue/Save again, which will re-run
+    // the guard against the corrected inputs.
+    setCorrectionOpen(false);
+    setCorrectionAnalysis(null);
+    setPendingAction(null);
+    toast.success(`${fieldLabel(field)} updated to ${formatted}`);
+  }
+
+  function keepOriginalCorrection() {
+    setLowDataQuality(true);
+    setAcknowledgedFingerprint(inputsFingerprint);
+    setCorrectionOpen(false);
+    const action = pendingAction;
+    setCorrectionAnalysis(null);
+    setPendingAction(null);
+    if (action) performAction(action);
+  }
+
+  function editManuallyCorrection() {
+    setCorrectionOpen(false);
+    setCorrectionAnalysis(null);
+    setPendingAction(null);
+    // Focus the first price field so the user can immediately edit.
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLInputElement>('input[inputmode="decimal"]');
+      el?.focus();
+    });
+  }
 
   function addFiles(list: FileList | null) {
     if (!list || list.length === 0) return;
@@ -536,6 +676,7 @@ export default function BehavioralJournalFlow({
           emotional_state: null,
           note: note?.trim() || null,
           screenshot_url,
+          data_quality: lowDataQuality ? "low" : "normal",
         });
       } catch (perfErr) {
         console.warn("[trade_logs] insert failed:", perfErr);
@@ -1686,7 +1827,10 @@ export default function BehavioralJournalFlow({
           {step < 3 ? (
             <button
               type="button"
-              onClick={() => setStep((s) => (Math.min(3, s + 1) as Step))}
+              onClick={() => {
+                if (step === 0) runCorrectionGuard("continue");
+                else setStep((s) => (Math.min(3, s + 1) as Step));
+              }}
               disabled={step === 0 && !canNextFromStep0}
               className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 ring-1 ring-primary/30 px-5 py-2.5 text-[12.5px] font-semibold text-text-primary disabled:opacity-30 active:scale-[0.98] transition"
             >
@@ -1695,7 +1839,7 @@ export default function BehavioralJournalFlow({
           ) : (
             <button
               type="button"
-              onClick={submit}
+              onClick={() => runCorrectionGuard("submit")}
               disabled={submitting || !canNextFromStep0}
               className="inline-flex items-center gap-2 rounded-full bg-primary/20 ring-1 ring-primary/40 px-5 py-2.5 text-[12.5px] font-semibold text-text-primary disabled:opacity-30 active:scale-[0.98] transition"
             >
@@ -1704,6 +1848,27 @@ export default function BehavioralJournalFlow({
             </button>
           )}
         </div>
+
+        {/* Low data-quality banner — visible after the user kept their
+            originally-flagged values. Honest, non-blocking. */}
+        {lowDataQuality && (
+          <p className="mt-3 text-[11px] text-amber-300/90">
+            This trade will be saved with{" "}
+            <span className="font-semibold">low data quality</span> — it may be
+            excluded from analytics.
+          </p>
+        )}
+
+        {/* Intelligent price-correction modal. */}
+        <PriceCorrectionModal
+          open={correctionOpen}
+          analysis={correctionAnalysis}
+          repeatHint={repeatHint}
+          onApplyCandidate={applyCandidate}
+          onKeepOriginal={keepOriginalCorrection}
+          onEditManually={editManuallyCorrection}
+          onClose={editManuallyCorrection}
+        />
       </div>
     </div>
   );
