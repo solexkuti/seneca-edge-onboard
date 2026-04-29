@@ -35,7 +35,7 @@ import type { TradeLog } from "@/lib/tradeLogs";
 const MISTAKE_DISPLAY: Record<string, string> = {
   overleveraged: "Overleveraged",
   revenge_trade: "Revenge Trade",
-  no_setup: "Entered Without Setup",
+  no_setup: "Entered Without Confirmation",
   ignored_sl: "Ignored Stop Loss",
   early_entry: "Early Entry",
   late_entry: "Late Entry",
