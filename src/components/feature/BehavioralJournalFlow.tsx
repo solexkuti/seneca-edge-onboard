@@ -1281,6 +1281,20 @@ export default function BehavioralJournalFlow({
                   v={`${resultR > 0 ? "+" : ""}${resultR.toFixed(2)}R`}
                   tone={resultR >= 0 ? "ok" : "risk"}
                 />
+                {outcome && (
+                  <Row
+                    k="Outcome"
+                    v={outcome === "breakeven" ? "Break-even" : outcome === "win" ? "Win" : "Loss"}
+                    tone={outcome === "win" ? "ok" : outcome === "loss" ? "risk" : undefined}
+                  />
+                )}
+                {pnlDollar != null && (
+                  <Row
+                    k="P/L ($)"
+                    v={`${pnlDollar > 0 ? "+" : ""}$${pnlDollar.toFixed(2)}`}
+                    tone={pnlDollar > 0 ? "ok" : pnlDollar < 0 ? "risk" : undefined}
+                  />
+                )}
                 {plannedRR != null && (
                   <Row k="Planned RR" v={`${plannedRR.toFixed(2)}R`} />
                 )}
