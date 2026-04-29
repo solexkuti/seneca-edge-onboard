@@ -30,7 +30,6 @@ import {
   LockOpen,
   Loader2,
   Sparkles,
-  
   CheckCircle2,
   AlertTriangle,
   Plus,
@@ -40,6 +39,7 @@ import {
   GitMerge,
   HelpCircle,
   X,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 
