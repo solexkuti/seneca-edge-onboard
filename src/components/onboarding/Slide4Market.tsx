@@ -10,7 +10,7 @@ import {
 import SelectionCard from "./SelectionCard";
 import ContinueButton from "./ContinueButton";
 import type { SlideProps } from "./OnboardingFlow";
-import { patchProfile, readProfile, type MarketChoice } from "@/lib/onboardingProfile";
+import { patchProfile, type MarketChoice } from "@/lib/onboardingProfile";
 
 const markets: { id: MarketChoice; label: string; icon: React.ReactNode }[] = [
   { id: "forex", label: "Forex", icon: <DollarSign className="h-5 w-5" /> },
