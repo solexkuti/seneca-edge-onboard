@@ -84,6 +84,7 @@ export default function MistakeBreakdown() {
   const { entries, loading } = useBehavioralJournal(500);
   const [preset, setPreset] = useState<PresetId>("30d");
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const { fromMs, toMs, rangeLabel } = useMemo(() => {
     if (preset === "custom" && customRange?.from) {
