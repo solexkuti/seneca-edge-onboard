@@ -199,13 +199,17 @@ export default function BehavioralJournalFlow({
     if (!canNextFromStep0 || submitting) return;
     setSubmitting(true);
     try {
-      // 1) Behavioral journal — drives discipline_score
+      const allFiles = files.map((f) => f.file);
+      const [primary, ...extras] = allFiles;
+
+      // 1) Behavioral journal — drives discipline_score (now an average).
       const r = await logTrade({
         asset,
         result_r: resultR,
         mistakes,
         note,
-        screenshotFile: files[0]?.file ?? null,
+        screenshotFile: primary ?? null,
+        extraScreenshotFiles: extras,
       });
 
       // 2) Trade Performance log — drives metrics
@@ -217,15 +221,14 @@ export default function BehavioralJournalFlow({
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
       const session_tag = sessionTagFor(now);
 
-      // Use realized R from exit when entry/exit/SL are present, otherwise the
-      // value the user typed. RR sign matches outcome.
       const finalR = Number.isFinite(autoRealizedR ?? NaN)
         ? (autoRealizedR as number)
         : resultR;
 
       const pnl_percent = derivePnlPercent(finalR, risk);
 
-      // Reuse the screenshot path saved by behavioralJournal as the public URL.
+      // Reuse the primary screenshot path saved by behavioralJournal as the
+      // public URL for trade_logs.
       let screenshot_url: string | null = null;
       if (r.entry.screenshot_path) {
         const { data } = await supabase.storage
@@ -260,18 +263,18 @@ export default function BehavioralJournalFlow({
           screenshot_url,
         });
       } catch (perfErr) {
-        // Performance row is best-effort; never break the behavioral flow.
         console.warn("[trade_logs] insert failed:", perfErr);
       }
 
       setFeedback({
         classification: r.classification,
         reasonLabel: r.reasonLabel,
-        delta: r.delta,
+        perTradeScore: r.perTradeScore,
         scoreBefore: r.scoreBefore,
         scoreAfter: r.scoreAfter,
         cleanStreakAfter: r.cleanStreakAfter,
         breakStreakAfter: r.breakStreakAfter,
+        breakdown: previewClass.breakdown,
       });
       onLogged?.();
     } catch (err) {
