@@ -1415,9 +1415,11 @@ export default function BehavioralJournalFlow({
                   </p>
 
                   {/* Stoic, contextual reinforcement based on prior clean trades */}
-                  <p className="mt-4 text-[11.5px] italic text-text-secondary/75">
-                    {cleanContextLine}
-                  </p>
+                  {cleanContextLine && (
+                    <p className="mt-4 text-[11.5px] italic text-text-secondary/75">
+                      {cleanContextLine}
+                    </p>
+                  )}
 
                   {/* Optional identity affirmation */}
                   <button
