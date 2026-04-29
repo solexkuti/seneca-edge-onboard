@@ -303,6 +303,25 @@ type UserContext = {
       probation_active: boolean;
     };
   };
+  /** Performance Engine snapshot — derived from real `trade_logs` rows. */
+  performance?: {
+    windowSize: number;
+    winRate: number | null;
+    avgRR: number | null;
+    netPnlR: number;
+    profitFactor: number | null;
+    rulesFollowedRate: number | null;
+    topMistake: { id: string; count: number } | null;
+    recent: Array<{
+      when: string;
+      pair: string;
+      direction: string;
+      outcome: string;
+      r: number;
+      rules_followed: boolean;
+      mistakes: string[];
+    }>;
+  };
 };
 
 const STRICT_MODE_ADDENDUM = `
@@ -508,7 +527,8 @@ Deno.serve(async (req) => {
         (context.lastTwoTrades && context.lastTwoTrades.length > 0) ||
         context.activeStrategy ||
         context.dailyChecklist ||
-        context.traderState)
+        context.traderState ||
+        context.performance)
     );
     let contextBlock = "";
     if (hasContext) {
