@@ -31,6 +31,8 @@ export type QuickPromptInputs = {
   disciplineScore: number | null;
   winRate: number | null;   // 0..1
   avgRR: number | null;
+  /** How many user messages have been sent in this session. */
+  conversationCount?: number;
 };
 
 const EDUCATION: QuickPrompt = {
