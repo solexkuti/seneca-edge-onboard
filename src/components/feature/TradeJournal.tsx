@@ -191,8 +191,8 @@ export default function TradeJournal() {
               )}
             </div>
 
-            {/* Outcome pills */}
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+            {/* Group A — Result */}
+            <FilterGroup label="Result">
               {OUTCOME_PILLS.map((p) => (
                 <Pill
                   key={p.id}
@@ -202,11 +202,11 @@ export default function TradeJournal() {
                   {p.label}
                 </Pill>
               ))}
-              <span className="mx-1 self-center text-text-secondary/30">|</span>
-              <Pill
-                active={market === "all"}
-                onClick={() => setMarket("all")}
-              >
+            </FilterGroup>
+
+            {/* Group B — Market */}
+            <FilterGroup label="Market">
+              <Pill active={market === "all"} onClick={() => setMarket("all")}>
                 All markets
               </Pill>
               {markets.map((m) => (
@@ -215,17 +215,36 @@ export default function TradeJournal() {
                   active={market === m}
                   onClick={() => setMarket(m)}
                 >
-                  {m}
+                  {m.charAt(0).toUpperCase() + m.slice(1)}
                 </Pill>
               ))}
-              <span className="mx-1 self-center text-text-secondary/30">|</span>
+            </FilterGroup>
+
+            {/* Group C — Mistakes */}
+            <FilterGroup label="Mistakes">
               <Pill
-                active={mistakesOnly}
-                onClick={() => setMistakesOnly((v) => !v)}
+                active={mistakeFilter === "all"}
+                onClick={() => setMistakeFilter("all")}
+              >
+                All
+              </Pill>
+              <Pill
+                active={mistakeFilter === "mistakes_only"}
+                onClick={() => setMistakeFilter("mistakes_only")}
               >
                 Mistakes only
               </Pill>
-            </div>
+            </FilterGroup>
+
+            {filtersActive && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-[11px] font-semibold text-text-secondary hover:text-text-primary underline underline-offset-2"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         )}
 
