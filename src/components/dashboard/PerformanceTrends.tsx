@@ -202,7 +202,7 @@ export default function PerformanceTrends({
           role="tablist"
           aria-label="Chart metric"
           className="inline-flex items-center rounded-full bg-background/60 p-0.5 ring-1 ring-border"
-          title={absDisabled ? "Add position size to view results in $" : undefined}
+          title={absDisabled ? "Log dollar results to enable currency view" : undefined}
         >
           <ToggleSeg
             active={activeMetric === "r"}
@@ -425,7 +425,7 @@ function ToggleSeg({
             ? "text-text-secondary/35 cursor-not-allowed"
             : "text-text-secondary/75 hover:text-text-primary"
       }`}
-      title={disabled ? "Add position size to view results in $" : undefined}
+      title={disabled ? "Log dollar results to enable currency view" : undefined}
     >
       {label}
     </button>
