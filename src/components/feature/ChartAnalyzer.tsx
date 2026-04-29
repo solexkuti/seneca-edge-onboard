@@ -24,7 +24,15 @@ import {
   MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
-import FeatureShell from "./FeatureShell";
+import {
+  SenecaScreen,
+  SenecaHeader,
+  MentorLine,
+  PrimaryAction,
+  SecondaryAction,
+  FadeIn,
+} from "@/components/seneca";
+import { SenecaVoice, senecaVerdict } from "@/lib/senecaVoice";
 import { listBlueprints, type StrategyBlueprint } from "@/lib/dbStrategyBlueprints";
 import {
   uploadChartImage,
