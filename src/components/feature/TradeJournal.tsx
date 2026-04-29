@@ -66,8 +66,21 @@ export default function TradeJournal() {
   // Filters
   const [outcome, setOutcome] = useState<OutcomeFilter>("all");
   const [market, setMarket] = useState<MarketFilter>("all");
-  const [mistakesOnly, setMistakesOnly] = useState(false);
+  const [mistakeFilter, setMistakeFilter] = useState<MistakeFilter>("all");
   const [query, setQuery] = useState("");
+
+  const filtersActive =
+    outcome !== "all" ||
+    market !== "all" ||
+    mistakeFilter !== "all" ||
+    query.trim().length > 0;
+
+  function clearFilters() {
+    setOutcome("all");
+    setMarket("all");
+    setMistakeFilter("all");
+    setQuery("");
+  }
 
   useEffect(() => {
     let c = false;
@@ -92,15 +105,20 @@ export default function TradeJournal() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return trades.filter((t) => {
+      // Group A: Result
       if (outcome !== "all" && t.outcome !== outcome) return false;
+      // Group B: Market
       if (market !== "all" && t.market !== market) return false;
-      if (mistakesOnly && t.mistakes.length === 0 && t.rules_followed) return false;
+      // Group C: Mistakes
+      if (mistakeFilter === "mistakes_only" && t.mistakes.length === 0 && t.rules_followed) {
+        return false;
+      }
       if (q) {
         const hay = [
           t.pair,
           t.market,
           t.note ?? "",
-          ...(t.mistakes ?? []),
+          ...(t.mistakes ?? []).map(prettyMistake),
         ]
           .join(" ")
           .toLowerCase();
@@ -108,7 +126,7 @@ export default function TradeJournal() {
       }
       return true;
     });
-  }, [trades, outcome, market, mistakesOnly, query]);
+  }, [trades, outcome, market, mistakeFilter, query]);
 
   const empty = !loading && trades.length === 0;
   const noMatch = !loading && trades.length > 0 && filtered.length === 0;
