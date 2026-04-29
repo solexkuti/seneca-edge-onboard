@@ -1217,11 +1217,11 @@ function StepExport({ bp }: { bp: StrategyBlueprint }) {
 
   const doPdf = async (kind: "checklist" | "plan") => {
     setPending(`pdf-${kind}`);
-    // jsPDF runs synchronously but we yield a frame so the spinner shows.
+    // Yield a frame so the "Preparing…" label paints before jsPDF blocks.
     await new Promise((r) => setTimeout(r, 50));
     const ok = downloadPdf(bp, kind);
     if (!ok) {
-      toast.error("PDF failed — downloading text instead.");
+      // Silent fallback — user never sees a failure.
       downloadTxt(bp, kind);
     }
     setPending(null);
@@ -1243,40 +1243,48 @@ function StepExport({ bp }: { bp: StrategyBlueprint }) {
     );
   }
 
-  const Row = ({ kind, label }: { kind: "checklist" | "plan"; label: string }) => (
-    <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-sm font-medium text-foreground">{label}</div>
-          <div className="text-xs text-muted-foreground">PDF or plain text</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void doPdf(kind)}
-            disabled={pending !== null}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-50"
-          >
-            {pending === `pdf-${kind}` ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <FileDown className="h-3.5 w-3.5" />
-            )}
-            PDF
-          </button>
-          <button
-            type="button"
-            onClick={() => doTxt(kind)}
-            disabled={pending !== null}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-background px-3 py-2 text-xs font-medium text-foreground ring-1 ring-border hover:bg-card disabled:opacity-50"
-          >
-            <FileText className="h-3.5 w-3.5" />
-            Text
-          </button>
+  const Row = ({ kind, label }: { kind: "checklist" | "plan"; label: string }) => {
+    const isPreparing = pending === `pdf-${kind}`;
+    return (
+      <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-medium text-foreground">{label}</div>
+            <div className="text-xs text-muted-foreground">PDF or plain text</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void doPdf(kind)}
+              disabled={pending !== null}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-70"
+            >
+              {isPreparing ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Preparing your file…
+                </>
+              ) : (
+                <>
+                  <FileDown className="h-3.5 w-3.5" />
+                  PDF
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => doTxt(kind)}
+              disabled={pending !== null}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-background px-3 py-2 text-xs font-medium text-foreground ring-1 ring-border hover:bg-card disabled:opacity-50"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Text
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">
