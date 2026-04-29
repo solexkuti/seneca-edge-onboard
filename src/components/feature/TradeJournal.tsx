@@ -12,6 +12,7 @@ import {
   type Outcome,
   type TradeLog,
 } from "@/lib/tradeLogs";
+import DisciplineTrendsPanel from "./DisciplineTrendsPanel";
 import {
   MISTAKE_PENALTY,
   PER_TRADE_BASE,
