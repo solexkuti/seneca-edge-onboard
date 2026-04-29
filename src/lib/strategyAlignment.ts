@@ -247,20 +247,21 @@ function buildInsight(a: {
   verdict: "aligned" | "partially_aligned" | "not_aligned";
 }): string {
   const { passed, failed, verdict } = a;
+  // Neutral, evaluator tone: describe alignment, never advise.
   if (verdict === "aligned" && failed.length === 0) {
     const top = passed.slice(0, 2).map((r) => r.condition).join(" · ");
-    return `Setup matches your defined system. Strongest alignments: ${top || "—"}.`;
+    return `This setup matches the conditions defined in your system. Strongest alignments observed: ${top || "—"}.`;
   }
   if (verdict === "not_aligned") {
     const broken = failed.slice(0, 2).map((r) => r.condition).join("; ");
     return broken
-      ? `Setup does not align with your system. Key conflicts: ${broken}.`
-      : "Setup does not align with your system.";
+      ? `This setup does not match the conditions defined in your system. Unmet conditions: ${broken}.`
+      : "This setup does not match the conditions defined in your system.";
   }
   const broken = failed.slice(0, 2).map((r) => r.condition).join("; ");
   return broken
-    ? `Setup partially aligns. Outstanding conditions: ${broken}.`
-    : "Setup partially aligns. Some conditions could not be verified from the chart.";
+    ? `This setup partially matches your system. Conditions not satisfied: ${broken}.`
+    : "This setup partially matches your system. Some conditions could not be verified from the chart alone.";
 }
 
 function buildBehavioralNote(failed: RuleAlignment[]): string | null {
