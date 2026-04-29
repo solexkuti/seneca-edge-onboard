@@ -140,14 +140,13 @@ export default function AiMentorChat() {
   }, [messages, streaming]);
 
   // Hard-gated, deterministic mentor reply (no AI call).
-  // Adds a small humanizing delay so the response doesn't feel like a fake instant echo.
+  // Tiny delay just to feel natural — short enough to stay snappy.
   const respondLocally = (history: Msg[], content: string) => {
     const id = `a-${Date.now()}`;
-    const delay = 300 + Math.floor(Math.random() * 500); // 300–800ms
     window.setTimeout(() => {
       setMessages([...history, { id, role: "assistant", content }]);
       setStreaming(false);
-    }, delay);
+    }, 120);
   };
 
   // Lightweight intent classifier — keyword based, deterministic.
@@ -209,6 +208,9 @@ export default function AiMentorChat() {
       content: trimmed,
     };
     const history = [...messages, userMsg];
+    // Echo the user message immediately and flip streaming on the same tick
+    // so the input clears and the typing indicator shows without waiting for
+    // context-building or the network round-trip.
     setMessages(history);
     setDraft("");
     setStreaming(true);
