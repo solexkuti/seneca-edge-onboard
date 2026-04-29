@@ -148,24 +148,40 @@ export default function BehavioralJournalFlow({
   const canNextFromStep0 =
     asset.trim().length > 0 && Number.isFinite(resultR);
 
-  function pickFile(f: File | null) {
-    if (!f) {
-      setFile(null);
-      setFilePreview(null);
+  function addFiles(list: FileList | null) {
+    if (!list || list.length === 0) return;
+    const incoming = Array.from(list);
+    const room = MAX_SCREENSHOTS - files.length;
+    if (room <= 0) {
+      toast.error(`Maximum ${MAX_SCREENSHOTS} screenshots.`);
       return;
     }
-    if (!f.type.startsWith("image/")) {
-      toast.error("Screenshot must be an image.");
-      return;
+    const next: { file: File; preview: string; tag: ScreenshotTag }[] = [];
+    for (const f of incoming.slice(0, room)) {
+      if (!f.type.startsWith("image/")) {
+        toast.error("Each screenshot must be an image.");
+        continue;
+      }
+      if (f.size > 8 * 1024 * 1024) {
+        toast.error("Each screenshot must be under 8MB.");
+        continue;
+      }
+      const preview = URL.createObjectURL(f);
+      next.push({ file: f, preview, tag: "none" });
     }
-    if (f.size > 8 * 1024 * 1024) {
-      toast.error("Screenshot must be under 8MB.");
-      return;
-    }
-    setFile(f);
-    const reader = new FileReader();
-    reader.onload = (e) => setFilePreview((e.target?.result as string) ?? null);
-    reader.readAsDataURL(f);
+    if (next.length > 0) setFiles((prev) => [...prev, ...next]);
+  }
+
+  function removeFileAt(idx: number) {
+    setFiles((prev) => {
+      const target = prev[idx];
+      if (target) URL.revokeObjectURL(target.preview);
+      return prev.filter((_, i) => i !== idx);
+    });
+  }
+
+  function setFileTag(idx: number, tag: ScreenshotTag) {
+    setFiles((prev) => prev.map((f, i) => (i === idx ? { ...f, tag } : f)));
   }
 
   function toggleMistake(id: MistakeId) {
