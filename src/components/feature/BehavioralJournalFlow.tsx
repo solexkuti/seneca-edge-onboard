@@ -493,6 +493,15 @@ export default function BehavioralJournalFlow({
   if (feedback) {
     const ds = disciplineState(feedback.scoreAfter);
     const ct = CLASS_TONE[feedback.classification];
+    const ofb = outcomeFeedback(feedback.outcome, feedback.hadMistakes);
+    const ofbCls =
+      ofb.tone === "gold"
+        ? "from-primary/[0.14] to-primary/[0.04] ring-primary/35 text-primary"
+        : ofb.tone === "calm"
+          ? "from-emerald-500/[0.10] to-emerald-500/[0.02] ring-emerald-500/25 text-emerald-300"
+          : ofb.tone === "warn"
+            ? "from-amber-500/[0.12] to-amber-500/[0.02] ring-amber-500/30 text-amber-300"
+            : "from-rose-500/[0.12] to-rose-500/[0.02] ring-rose-500/30 text-rose-300";
     return (
       <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
         <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-50" />
