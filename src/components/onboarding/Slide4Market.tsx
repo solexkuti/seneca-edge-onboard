@@ -21,9 +21,25 @@ const markets: { id: MarketChoice; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function Slide4Market({ onNext }: SlideProps) {
-  const [selected, setSelected] = useState<MarketChoice | null>(
-    () => readProfile().market ?? null,
+  const [selected, setSelected] = useState<MarketChoice[]>(
+    () => readProfile().markets ?? [],
   );
+
+  const toggle = (id: MarketChoice) => {
+    setSelected((prev) => {
+      let next: MarketChoice[];
+      if (id === "all") {
+        // Selecting "All Markets" clears every other choice.
+        next = prev.includes("all") ? [] : ["all"];
+      } else {
+        // Selecting any specific market deselects "All Markets".
+        const without = prev.filter((m) => m !== "all" && m !== id);
+        next = prev.includes(id) ? without : [...without, id];
+      }
+      patchProfile({ markets: next });
+      return next;
+    });
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -40,9 +56,12 @@ export default function Slide4Market({ onNext }: SlideProps) {
           </span>
         </div>
         <h1 className="mt-3 text-[26px] font-bold leading-[1.15] tracking-tight text-text-primary">
-          Which market do you{" "}
-          <span className="text-gradient-primary">trade most?</span>
+          Which markets do you{" "}
+          <span className="text-gradient-primary">trade?</span>
         </h1>
+        <p className="mt-2 text-[12.5px] text-text-secondary/70">
+          Select all that apply
+        </p>
       </motion.div>
 
       <div className="space-y-2.5">
@@ -56,11 +75,8 @@ export default function Slide4Market({ onNext }: SlideProps) {
             <SelectionCard
               icon={m.icon}
               label={m.label}
-              selected={selected === m.id}
-              onClick={() => {
-                setSelected(m.id);
-                patchProfile({ market: m.id });
-              }}
+              selected={selected.includes(m.id)}
+              onClick={() => toggle(m.id)}
             />
           </motion.div>
         ))}
@@ -70,7 +86,7 @@ export default function Slide4Market({ onNext }: SlideProps) {
         <ContinueButton
           onClick={onNext}
           delay={0.2}
-          disabled={!selected}
+          disabled={selected.length === 0}
         />
       </div>
     </div>

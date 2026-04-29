@@ -115,7 +115,7 @@ export async function syncProfileFromOnboarding(
         {
           id: userId,
           username: username ?? null,
-          market: profile.market ?? null,
+          market: profile.markets && profile.markets.length > 0 ? profile.markets.join(",") : null,
           experience: profile.experience ?? null,
           challenge: profile.challenge ?? null,
           goal: profile.goal ?? null,
@@ -132,7 +132,7 @@ export async function syncProfileFromOnboarding(
           .upsert(
             {
               id: userId,
-              market: profile.market ?? null,
+              market: profile.markets && profile.markets.length > 0 ? profile.markets.join(",") : null,
               experience: profile.experience ?? null,
               challenge: profile.challenge ?? null,
               goal: profile.goal ?? null,
