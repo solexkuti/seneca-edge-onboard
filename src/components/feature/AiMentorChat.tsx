@@ -432,25 +432,35 @@ export default function AiMentorChat() {
           className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
         >
           <AnimatePresence initial={false}>
-            {messages.map((m) => (
-              <motion.div
-                key={m.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={
-                    m.role === "user"
-                      ? "max-w-[82%] rounded-2xl rounded-br-md bg-gradient-primary px-3.5 py-2.5 text-[13.5px] leading-snug text-[#0B0B0D] font-medium shadow-glow-gold"
-                      : "max-w-[82%] whitespace-pre-wrap rounded-2xl rounded-bl-md bg-text-primary/[0.035] px-3.5 py-2.5 text-[13.5px] leading-snug text-text-primary ring-1 ring-gold-soft"
-                  }
+            {messages.map((m, i) => {
+              const isUser = m.role === "user";
+              const isLatestAssistant =
+                !isUser &&
+                !streaming &&
+                m.content.length > 0 &&
+                i === messages.length - 1;
+              return (
+                <motion.div
+                  key={m.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                  className={`flex ${isUser ? "justify-end" : "justify-start"}`}
                 >
-                  {m.content || (m.role === "assistant" && streaming ? "…" : "")}
-                </div>
-              </motion.div>
-            ))}
+                  <div
+                    className={
+                      isUser
+                        ? "bubble-user max-w-[82%] px-3.5 py-2.5 text-[13.5px] leading-snug font-medium"
+                        : `bubble-assistant max-w-[82%] whitespace-pre-wrap px-3.5 py-2.5 text-[13.5px] leading-snug ${
+                            isLatestAssistant ? "bubble-pulse" : ""
+                          }`
+                    }
+                  >
+                    {m.content || (m.role === "assistant" && streaming ? "…" : "")}
+                  </div>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         </div>
 
