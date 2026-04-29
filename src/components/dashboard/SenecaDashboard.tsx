@@ -242,12 +242,22 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
                   Next action
                 </p>
-                <p className="mt-1 text-[14.5px] font-semibold leading-snug tracking-tight text-text-primary">
-                  {action.title}
-                </p>
-                <p className="mt-1 text-[12px] leading-snug text-text-secondary/80">
-                  {shortLine(action.sub, 60)}
-                </p>
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={`${action.title}|${action.sub}`}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.32, ease }}
+                  >
+                    <p className="mt-1 text-[14.5px] font-semibold leading-snug tracking-tight text-text-primary">
+                      {action.title}
+                    </p>
+                    <p className="mt-1 text-[12px] leading-snug text-text-secondary/80">
+                      {shortLine(action.sub, 60)}
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
               </div>
               <Link
                 to={entries.length === 0 ? "/hub/journal" : "/hub/chart"}
