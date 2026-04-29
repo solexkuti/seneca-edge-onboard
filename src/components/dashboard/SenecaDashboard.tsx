@@ -267,7 +267,7 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
               <Link
                 to={entries.length === 0 ? "/hub/journal" : "/hub/chart"}
                 preload="intent"
-                className="shrink-0 inline-flex items-center gap-1.5 self-center rounded-full bg-primary/15 px-3 py-1.5 text-[11.5px] font-semibold text-text-primary ring-1 ring-primary/25 active:scale-[0.97] transition-transform"
+                className="btn-gold shrink-0 inline-flex items-center gap-1.5 self-center px-3.5 py-1.5 text-[11.5px] font-semibold"
               >
                 Go <ArrowUpRight className="h-3 w-3" strokeWidth={2.4} />
               </Link>
