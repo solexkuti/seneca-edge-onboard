@@ -942,27 +942,61 @@ export default function BehavioralJournalFlow({
                   </p>
                   <div className="grid grid-cols-3 gap-2">
                     {([
-                      { id: "win", label: "Win", activeCls: "bg-emerald-500/15 ring-emerald-500/35 text-emerald-200" },
-                      { id: "loss", label: "Loss", activeCls: "bg-rose-500/15 ring-rose-500/35 text-rose-200" },
-                      { id: "breakeven", label: "Break-even", activeCls: "bg-primary/15 ring-primary/40 text-text-primary" },
+                      {
+                        id: "win",
+                        label: "Win",
+                        activeCls: "bg-emerald-500/15 ring-emerald-500/40 text-emerald-200",
+                        glow: "0 0 22px rgba(198,161,91,0.45), 0 0 6px rgba(231,201,138,0.35) inset",
+                      },
+                      {
+                        id: "loss",
+                        label: "Loss",
+                        activeCls: "bg-rose-500/15 ring-rose-500/40 text-rose-200",
+                        glow: "0 0 22px rgba(220,90,90,0.35), 0 0 6px rgba(220,90,90,0.25) inset",
+                      },
+                      {
+                        id: "breakeven",
+                        label: "Break-even",
+                        activeCls: "bg-primary/15 ring-primary/45 text-text-primary",
+                        glow: "0 0 20px rgba(198,161,91,0.30), 0 0 6px rgba(198,161,91,0.20) inset",
+                      },
                     ] as const).map((opt) => {
                       const active = outcome === opt.id;
                       return (
-                        <button
+                        <motion.button
                           key={opt.id}
                           type="button"
                           onClick={() => {
                             setOutcome(opt.id);
                             setOutcomeManuallySet(true);
                           }}
-                          className={`rounded-xl px-2.5 py-2.5 text-[12.5px] font-semibold ring-1 transition active:scale-[0.98] ${
+                          initial={false}
+                          animate={
+                            active
+                              ? {
+                                  scale: [1, 1.08, 0.97, 1.02, 1],
+                                  boxShadow: opt.glow,
+                                }
+                              : {
+                                  scale: 1,
+                                  boxShadow: "0 0 0 rgba(0,0,0,0)",
+                                }
+                          }
+                          transition={
+                            active
+                              ? { duration: 0.55, times: [0, 0.3, 0.55, 0.8, 1], ease: "easeOut" }
+                              : { duration: 0.25, ease: "easeOut" }
+                          }
+                          whileHover={{ scale: active ? 1.02 : 1.03 }}
+                          whileTap={{ scale: 0.96 }}
+                          className={`rounded-xl px-2.5 py-2.5 text-[12.5px] font-semibold ring-1 ${
                             active
                               ? opt.activeCls
                               : "bg-card ring-border text-text-secondary hover:text-text-primary"
                           }`}
                         >
                           {opt.label}
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
