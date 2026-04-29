@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { RotateCcw, Eraser } from "lucide-react";
+import { RotateCcw, Eraser, Wrench, X } from "lucide-react";
 import { signOut } from "@/lib/auth";
 import { resetCurrentUserAccount } from "@/lib/devResetAccount";
 
@@ -8,18 +8,26 @@ import { resetCurrentUserAccount } from "@/lib/devResetAccount";
  * Dev-only floating panel — completely stripped from production builds via
  * the `import.meta.env.DEV` guard.
  *
- * Two actions:
+ * Layout rules:
+ *  - Anchored bottom-LEFT (CTAs and primary actions live bottom-right /
+ *    bottom-center, so the left corner stays clear).
+ *  - Sits ~96px above the viewport edge + respects iOS safe-area inset, so
+ *    it never overlaps a primary "Continue" button.
+ *  - Collapses to a single small icon by default; expand on tap.
+ *  - z-index 40 — below modals (which use z-50+) so it never blocks dialogs.
+ *  - 85% opacity at rest, 100% on hover/expand — visible but not dominant.
+ *
+ * Two actions when expanded:
  *  1. Restart session  — sign out + clear caches, land on onboarding fresh.
  *  2. Reset account    — keep the same login, but wipe ALL data tied to the
- *                        current user_id (trades, journal, metrics, mentor
- *                        history, profile flags) and route to onboarding.
- *                        Auth account is NOT deleted.
+ *                        current user_id and route to onboarding.
  */
 export default function DevResetOnboarding() {
   if (!import.meta.env.DEV) return null;
 
   const navigate = useNavigate();
   const [busy, setBusy] = useState<"none" | "restart" | "reset">("none");
+  const [expanded, setExpanded] = useState(false);
 
   const restart = async () => {
     if (busy !== "none") return;
@@ -60,17 +68,56 @@ export default function DevResetOnboarding() {
       setBusy("none");
       return;
     }
-    // Hard reload onto the entry route — re-fetches profile and routes to
-    // onboarding (since onboarding_completed is now false).
     navigate({ to: "/" });
     window.setTimeout(() => window.location.reload(), 50);
   };
 
+  // Anchor: bottom-left, lifted above CTAs, with safe-area padding.
+  // z-40 keeps it strictly below modal overlays (which run z-50+).
+  const wrapStyle: React.CSSProperties = {
+    bottom: "calc(96px + env(safe-area-inset-bottom, 0px))",
+    left: "calc(16px + env(safe-area-inset-left, 0px))",
+  };
+
   const baseBtn =
-    "flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-2 text-xs font-medium text-muted-foreground shadow-lg backdrop-blur transition hover:text-foreground hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed";
+    "flex items-center gap-2 rounded-full border border-border/60 bg-background/85 px-3 py-2 text-xs font-medium text-muted-foreground shadow-lg backdrop-blur transition hover:bg-background hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed";
+
+  // Collapsed state: tiny icon-only chip.
+  if (!expanded) {
+    return (
+      <div
+        className="fixed z-40 opacity-85 hover:opacity-100 transition-opacity"
+        style={wrapStyle}
+      >
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          title="Dev tools"
+          aria-label="Open dev tools"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/85 text-muted-foreground shadow-lg backdrop-blur transition hover:bg-background hover:text-foreground"
+        >
+          <Wrench className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-2">
+    <div
+      className="fixed z-40 flex flex-col items-start gap-2 opacity-90 hover:opacity-100 transition-opacity"
+      style={wrapStyle}
+    >
+      <button
+        type="button"
+        onClick={() => setExpanded(false)}
+        title="Hide dev tools"
+        aria-label="Hide dev tools"
+        className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background/85 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground shadow-lg backdrop-blur transition hover:text-foreground"
+      >
+        <X className="h-3 w-3" />
+        Dev
+      </button>
+
       <button
         type="button"
         onClick={resetAccount}
@@ -80,9 +127,6 @@ export default function DevResetOnboarding() {
       >
         <Eraser className="h-3.5 w-3.5" />
         {busy === "reset" ? "Resetting…" : "Reset account"}
-        <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
-          dev
-        </span>
       </button>
 
       <button
@@ -94,9 +138,6 @@ export default function DevResetOnboarding() {
       >
         <RotateCcw className="h-3.5 w-3.5" />
         {busy === "restart" ? "Restarting…" : "Restart session"}
-        <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
-          dev
-        </span>
       </button>
     </div>
   );
