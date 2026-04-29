@@ -76,6 +76,7 @@ export type BuilderStep =
   | "raw"
   | "tiers"
   | "parse"
+  | "interrogate"
   | "refine"
   | "output"
   | "export"
