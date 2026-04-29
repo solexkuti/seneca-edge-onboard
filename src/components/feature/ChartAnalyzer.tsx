@@ -141,41 +141,12 @@ export default function ChartAnalyzer() {
     );
   }
 
-  const isLocked =
-    traderState.blocks.discipline_locked || traderState.blocks.not_confirmed;
-  const canAnalyze = !!activeStrategy && !!execFile && !!execTf && !isLocked;
+  // Seneca Edge no longer blocks the analyzer based on discipline state or
+  // checklist. Analysis always runs as long as the user has a strategy + image.
+  const canAnalyze = !!activeStrategy && !!execFile && !!execTf;
 
   async function handleAnalyze() {
     if (!activeStrategy || !execFile) return;
-    // Defense-in-depth: refuse to even attempt the API call if the session
-    // entered lock state mid-flow. The lock screen will mount on next render.
-    if (isLocked) {
-      toast.error(
-        traderState.blocks.discipline_locked
-          ? "Discipline locked. Reflect with the mentor before analyzing again."
-          : "Confirm today's checklist before analyzing.",
-      );
-      return;
-    }
-
-    // Centralized server-side gate (TRADING_BLOCKED). Single source of truth.
-    try {
-      const { enforceTradingAccess } = await import("@/server/seneca.functions");
-      const gate = await enforceTradingAccess();
-      if (!gate.allowed) {
-        const msg =
-          gate.reason === "NO_STRATEGY"
-            ? "No active strategy. Open Strategy Builder."
-            : gate.reason === "CHECKLIST_REQUIRED"
-              ? "Confirm today's checklist before analyzing."
-              : "Discipline locked. Recover with the mentor before analyzing.";
-        toast.error(msg);
-        void refreshTraderState();
-        return;
-      }
-    } catch (e) {
-      console.warn("[analyze] enforceTradingAccess unavailable, falling back:", e);
-    }
 
     setPhase("analyzing");
     setStep(0);
