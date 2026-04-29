@@ -818,18 +818,20 @@ export default function BehavioralJournalFlow({
                 )}
                 <Row
                   k="Mistakes"
-                  v={mistakes.length === 0 ? "None" : `${mistakes.length}`}
+                  v={
+                    mistakes.length === 0
+                      ? "None"
+                      : mistakes
+                          .map((m) => MISTAKES.find((x) => x.id === m)?.label ?? m)
+                          .join(", ")
+                  }
                 />
-                <Row
-                  k="Classification"
-                  v={CLASS_TONE[previewClass.classification].label}
-                />
-                <Row
-                  k="Score change"
-                  v={`${previewClass.delta > 0 ? "+" : ""}${previewClass.delta}`}
-                  tone={previewClass.delta >= 0 ? "ok" : "risk"}
-                />
-                {file && <Row k="Screenshot" v="Attached" />}
+                {files.length > 0 && (
+                  <Row
+                    k="Screenshots"
+                    v={`${files.length} attached`}
+                  />
+                )}
               </div>
             </motion.section>
           )}
