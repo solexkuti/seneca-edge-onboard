@@ -1555,6 +1555,28 @@ function StepInterrogate({
         sub="I scanned your rules. Here's what doesn't hold up."
       />
 
+      {/* Strictness gate — block finalize when severity = "block" */}
+      {verdict.severity === "block" && (
+        <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-400">
+            <ShieldAlert className="h-3.5 w-3.5" /> Refinement required
+          </div>
+          <p className="mt-1.5 text-sm text-foreground">
+            Your strategy can't be finalized until the issues below are resolved.
+          </p>
+          <ul className="mt-2 space-y-1 text-[12.5px] text-foreground/80">
+            {verdict.reasons.map((r, i) => (
+              <li key={i}>· {r}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {verdict.severity === "warn" && !report.clean && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-[12.5px] text-foreground/80">
+          You can proceed, but tightening these rules will sharpen your edge.
+        </div>
+      )}
+
       {/* Live score */}
       <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
         <div className="flex items-baseline justify-between">
