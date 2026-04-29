@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { readProfile } from "@/lib/onboardingProfile";
 import { getUserName } from "@/lib/userName";
+import { markOnboardingCompleted } from "@/lib/userState";
 
 const FRIENDLY_ERROR = "Something went wrong. Try again.";
 
