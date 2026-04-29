@@ -116,6 +116,11 @@ export default function BehavioralJournalFlow({
   const [tpStr, setTpStr] = useState("");
   const [riskStr, setRiskStr] = useState("");
   const [resultStr, setResultStr] = useState("");
+  const [pnlDollarStr, setPnlDollarStr] = useState("");
+  // Explicit user-selected outcome. Auto-suggested from R but user-overridable.
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  // True once the user has manually picked — auto-suggest stops overriding.
+  const [outcomeManuallySet, setOutcomeManuallySet] = useState(false);
 
   // Behavior + journal
   const [mistakes, setMistakes] = useState<MistakeId[]>([]);
