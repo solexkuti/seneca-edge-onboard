@@ -351,7 +351,7 @@ export default function BehavioralJournalFlow({
       (e) => e.classification === "clean",
     ).length;
     const projectedStreak = priorCleanCount + 1; // including this trade
-    if (priorCleanCount === 0) return "Good. This is your baseline.";
+    if (priorCleanCount === 0) return "";
     if (projectedStreak <= 3) return "You're starting to build control.";
     return "This is consistency forming.";
   }, [priorEntries]);
