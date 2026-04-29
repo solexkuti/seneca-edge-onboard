@@ -193,7 +193,8 @@ export default function AiMentorChat() {
   type Intent =
     | "TRADE_REVIEW"
     | "PATTERN_ANALYSIS"
-    | "METRICS_EXPLANATION"
+    | "METRICS_PERSONAL"
+    | "METRICS_SYSTEM"
     | "GENERAL_TRADING_QUESTION"
     | "GUIDANCE";
 
@@ -217,13 +218,25 @@ export default function AiMentorChat() {
       return "PATTERN_ANALYSIS";
     }
 
-    // METRICS_EXPLANATION — own stats / how scores work
-    if (
-      /\b(my\s+)?(stats|metrics|score|discipline|win\s*rate|winrate|rr|r:r|r\/r|expectancy|drawdown)\b/.test(t) ||
-      /\bhow\s+is\s+.*\s+(calculated|computed|measured)\b/.test(t) ||
-      /\bexplain\s+(my\s+)?(stats|metrics|score|numbers)\b/.test(t)
-    ) {
-      return "METRICS_EXPLANATION";
+    // METRICS — split between SYSTEM (how it works) vs PERSONAL (their data).
+    const mentionsMetric =
+      /\b(stats|metrics|score|discipline|win\s*rate|winrate|rr|r:r|r\/r|expectancy|drawdown)\b/.test(t);
+    if (mentionsMetric) {
+      const personalMarker =
+        /\bmy\b/.test(t) ||
+        /\d+\s*%/.test(t) ||
+        /\b\d{1,3}\b/.test(t) ||
+        /\bwhat\s+am\s+i\s+doing\s+wrong\b/.test(t);
+      const systemMarker =
+        /\bhow\s+(is|does|do)\b/.test(t) ||
+        /\bwhat\s+determines\b/.test(t) ||
+        /\bwhat\s+affects\b/.test(t) ||
+        /\b(calculated|computed|measured|work|works)\b/.test(t) ||
+        /\bexplain\s+(the\s+)?(stats|metrics|score|discipline)\b/.test(t);
+      if (systemMarker && !personalMarker) return "METRICS_SYSTEM";
+      if (personalMarker) return "METRICS_PERSONAL";
+      // Bare keyword like "discipline" — treat as personal (their dashboard).
+      return "METRICS_PERSONAL";
     }
 
     // GUIDANCE — improvement / something feels off
