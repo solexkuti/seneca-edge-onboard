@@ -26,22 +26,22 @@ import {
 const ease = [0.22, 1, 0.36, 1] as const;
 
 const TONE_TEXT: Record<string, string> = {
-  ok: "text-emerald-300",
+  ok: "text-gold",
   drift: "text-amber-300",
   warn: "text-orange-300",
   risk: "text-rose-300",
 };
 const TONE_DOT: Record<string, string> = {
-  ok: "bg-emerald-400",
+  ok: "bg-gold",
   drift: "bg-amber-400",
   warn: "bg-orange-400",
   risk: "bg-rose-400",
 };
 const TONE_BAR: Record<string, string> = {
-  ok: "bg-emerald-400/70",
-  drift: "bg-amber-400/70",
-  warn: "bg-orange-400/70",
-  risk: "bg-rose-400/70",
+  ok: "bg-gold",
+  drift: "bg-amber-400/80",
+  warn: "bg-orange-400/80",
+  risk: "bg-rose-400/80",
 };
 
 function shortLine(input: string | null | undefined, max = 56): string | null {
@@ -187,7 +187,7 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
             <div
               aria-hidden
               className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent ${
-                ds.tone === "ok" ? "via-emerald-400/50" : ds.tone === "drift" ? "via-amber-400/50" : ds.tone === "warn" ? "via-orange-400/50" : "via-rose-400/50"
+                ds.tone === "ok" ? "via-gold/60" : ds.tone === "drift" ? "via-amber-400/50" : ds.tone === "warn" ? "via-orange-400/50" : "via-rose-400/50"
               } to-transparent`}
             />
             <div className="px-6 pt-6 pb-5">
@@ -204,7 +204,10 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
               </div>
 
               <div className="mt-5 flex items-end gap-3">
-                <span className={`text-[56px] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[ds.tone]}`}>
+                <span
+                  className={`text-[56px] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[ds.tone]}`}
+                  style={ds.tone === "ok" ? { textShadow: "0 0 25px rgba(198,161,91,0.35)" } : undefined}
+                >
                   {loading ? "—" : score}
                 </span>
                 <span className="mb-2 text-[14px] font-medium text-text-secondary/70 tabular-nums">/100</span>
@@ -218,7 +221,7 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
                   initial={{ width: 0 }}
                   animate={{ width: `${score}%` }}
                   transition={{ duration: 0.7, ease }}
-                  className={`h-full rounded-full ${TONE_BAR[ds.tone]}`}
+                  className={`h-full rounded-full ${TONE_BAR[ds.tone]} ${ds.tone === "ok" ? "shadow-glow-gold" : ""}`}
                 />
               </div>
 
@@ -264,7 +267,7 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
               <Link
                 to={entries.length === 0 ? "/hub/journal" : "/hub/chart"}
                 preload="intent"
-                className="shrink-0 inline-flex items-center gap-1.5 self-center rounded-full bg-primary/15 px-3 py-1.5 text-[11.5px] font-semibold text-text-primary ring-1 ring-primary/25 active:scale-[0.97] transition-transform"
+                className="btn-gold shrink-0 inline-flex items-center gap-1.5 self-center px-3.5 py-1.5 text-[11.5px] font-semibold"
               >
                 Go <ArrowUpRight className="h-3 w-3" strokeWidth={2.4} />
               </Link>
@@ -306,9 +309,9 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
               </span>
             </div>
             <p className="mt-2 text-[12.5px] text-text-secondary/85 tabular-nums">
-              <span className="text-emerald-300">{cleanStreak} clean</span>
+              <span className="text-gold">{cleanStreak} clean</span>
               <span className="mx-1.5 text-text-secondary/40">•</span>
-              <span className="text-rose-300">{breakStreak} break</span>
+              <span className="text-text-secondary">{breakStreak} break</span>
             </p>
             <p className="mt-1 text-[12px] text-text-secondary/75 truncate">
               Last: {lastMistake?.label ?? (entries.length === 0 ? "—" : "Clean")}
