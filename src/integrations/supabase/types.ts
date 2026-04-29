@@ -787,6 +787,93 @@ export type Database = {
           },
         ]
       }
+      trade_logs: {
+        Row: {
+          closed_at: string | null
+          confidence_rating: number | null
+          created_at: string
+          direction: string
+          emotional_state: string | null
+          entry_price: number | null
+          exit_price: number | null
+          id: string
+          market: string
+          mistakes: string[]
+          note: string | null
+          opened_at: string
+          outcome: string
+          pair: string
+          pnl: number | null
+          pnl_percent: number | null
+          risk_percent: number | null
+          rr: number | null
+          rules_followed: boolean
+          screenshot_url: string | null
+          session_tag: string | null
+          stop_loss: number | null
+          take_profit: number | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          confidence_rating?: number | null
+          created_at?: string
+          direction: string
+          emotional_state?: string | null
+          entry_price?: number | null
+          exit_price?: number | null
+          id?: string
+          market: string
+          mistakes?: string[]
+          note?: string | null
+          opened_at: string
+          outcome: string
+          pair: string
+          pnl?: number | null
+          pnl_percent?: number | null
+          risk_percent?: number | null
+          rr?: number | null
+          rules_followed?: boolean
+          screenshot_url?: string | null
+          session_tag?: string | null
+          stop_loss?: number | null
+          take_profit?: number | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          confidence_rating?: number | null
+          created_at?: string
+          direction?: string
+          emotional_state?: string | null
+          entry_price?: number | null
+          exit_price?: number | null
+          id?: string
+          market?: string
+          mistakes?: string[]
+          note?: string | null
+          opened_at?: string
+          outcome?: string
+          pair?: string
+          pnl?: number | null
+          pnl_percent?: number | null
+          risk_percent?: number | null
+          rr?: number | null
+          rules_followed?: boolean
+          screenshot_url?: string | null
+          session_tag?: string | null
+          stop_loss?: number | null
+          take_profit?: number | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       trades: {
         Row: {
           analysis_id: string | null
