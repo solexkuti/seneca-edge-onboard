@@ -23,6 +23,8 @@ import { getDailyChecklist } from "@/lib/dailyChecklistCache";
 import { toast } from "sonner";
 import MentorRecoveryChecklist from "./MentorRecoveryChecklist";
 import { useTraderState } from "@/hooks/useTraderState";
+import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
+import { mistakeFrequency, MISTAKE_LABEL } from "@/lib/behavioralJournal";
 
 type Msg = {
   id: string;
