@@ -95,10 +95,24 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
   const cleanStreak = last?.clean_streak_after ?? 0;
   const breakStreak = last?.break_streak_after ?? 0;
   const lastMistake = useMemo(() => lastMistakeOf(entries), [entries]);
-  const action = useMemo(
+  const rawAction = useMemo(
     () => nextActionFromBehavior({ entries, score }),
     [entries, score],
   );
+
+  // Dashboard-level copy override: sharpen the default "Stay in rhythm"
+  // case into a more decision-discipline framing without touching the
+  // shared behavioral library.
+  const action = useMemo(() => {
+    if (rawAction.title === "Stay in rhythm") {
+      return {
+        ...rawAction,
+        title: "Maintain consistency",
+        sub: "Run every setup through the analyzer before execution.",
+      };
+    }
+    return rawAction;
+  }, [rawAction]);
 
   const initial = userName ? userName.slice(0, 1).toUpperCase() : "S";
   const bp = state.strategy?.blueprint ?? null;
@@ -114,14 +128,6 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
     hasEntries: entries.length > 0,
     classification: last?.classification,
     breakStreak,
-    score,
-  });
-  const insight = senecaInsight({
-    hasEntries: entries.length > 0,
-    classification: last?.classification,
-    breakStreak,
-    cleanStreak,
-    lastMistakeLabel: lastMistake?.label,
     score,
   });
 
