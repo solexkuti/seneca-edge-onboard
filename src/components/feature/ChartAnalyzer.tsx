@@ -1,18 +1,19 @@
-// Chart Analyzer — production flow:
-// 1) Require strategy (redirect to builder if none)
-// 2) Strategy + timeframe selection
-// 3) Upload exec (required) + higher (optional) chart images
-// 4) Pre-validation via AI (is this even a chart?)
-// 5) AI feature extraction (observable structure only)
-// 6) Deterministic rule check vs strategy
-// 7) Display verdict + breakdown + AI insight + actions
+// Chart Analyzer — high-intelligence market analysis & strategy validation.
+//
+// Design principles (do NOT regress):
+//   1. Understand and explain the market FIRST (strategy-agnostic).
+//   2. THEN validate against the user's canonical strategy rules.
+//   3. NEVER enforce or block user actions — the analyzer is informational.
+//   4. Always neutral, professional tone with mandatory disclaimer.
+//
+// Pipeline: validate image → market interpretation + feature extraction →
+// per-rule alignment → grade & verdict → premium card layout.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Upload,
-  Image as ImageIcon,
   Sparkles,
   CheckCircle2,
   AlertTriangle,
@@ -21,11 +22,17 @@ import {
   Loader2,
   ArrowRight,
   Save,
-  MapPin,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  CircleDashed,
 } from "lucide-react";
 import { toast } from "sonner";
 import FeatureShell from "./FeatureShell";
-import { listBlueprints, type StrategyBlueprint } from "@/lib/dbStrategyBlueprints";
+import {
+  listBlueprints,
+  type StrategyBlueprint,
+} from "@/lib/dbStrategyBlueprints";
 import {
   uploadChartImage,
   signedUrl,
@@ -35,19 +42,26 @@ import {
 import {
   evaluateChartAgainstStrategy,
   type ChartFeaturesPair,
-  type RuleBreakdown,
-  type ChartRegion,
 } from "@/lib/chartRuleCheck";
+import {
+  evaluateAlignment,
+  VERDICT_LABEL,
+  ANALYZER_DISCLAIMER,
+  type StrategyAlignment,
+  type RuleAlignment,
+} from "@/lib/strategyAlignment";
+import { buildCanonicalStrategy } from "@/lib/strategySchema";
 import { supabase } from "@/integrations/supabase/client";
 import { logAnalyzerEvent, type AnalyzerVerdict } from "@/lib/analyzerEvents";
 import { useTraderState } from "@/hooks/useTraderState";
-import ScoreCalculationTrace from "./ScoreCalculationTrace";
 
-type ChartExplanation = {
+type MarketInterpretation = {
   summary: string;
-  aligns: string[];
-  misaligns: string[];
-  final_assessment: string;
+  market_condition: "trending" | "consolidating" | "choppy";
+  directional_bias: "bullish" | "bearish" | "neutral";
+  clarity: "high" | "medium" | "low";
+  key_observations: string[];
+  structure_notes: string;
 };
 
 const TIMEFRAMES = ["1m", "5m", "15m", "1H", "4H", "1D", "1W"] as const;
@@ -56,7 +70,7 @@ type Phase = "setup" | "analyzing" | "result" | "invalid";
 
 const STEP_LABELS = [
   "Validating image",
-  "Extracting market structure",
+  "Reading the market",
   "Checking against your strategy",
 ];
 
@@ -74,21 +88,16 @@ export default function ChartAnalyzer() {
   const [invalidDetails, setInvalidDetails] = useState<string[]>([]);
   const [result, setResult] = useState<{
     row: ChartAnalysisRow;
-    breakdown: RuleBreakdown;
-    insight: string;
+    alignment: StrategyAlignment;
+    marketInterp: MarketInterpretation | null;
     execPreview: string;
     higherPreview: string | null;
-    modelUsed: "primary" | "fallback";
     pipelineConfidence: number; // 0–1
-    warnings: string[];
-    explanation: ChartExplanation | null;
-    explanationLoading: boolean;
-    explanationError: string | null;
   } | null>(null);
 
   const execInputRef = useRef<HTMLInputElement>(null);
   const higherInputRef = useRef<HTMLInputElement>(null);
-  const { state: traderState, refresh: refreshTraderState } = useTraderState();
+  const { refresh: refreshTraderState } = useTraderState();
 
   useEffect(() => {
     let alive = true;
@@ -112,7 +121,7 @@ export default function ChartAnalyzer() {
     [strategies, strategyId],
   );
 
-  // Strategy gate
+  // Strategy gate — analyzer is meaningless without a strategy to validate against.
   if (strategies !== null && strategies.length === 0) {
     return (
       <FeatureShell
@@ -126,7 +135,8 @@ export default function ChartAnalyzer() {
               <AlertTriangle className="h-4 w-4" strokeWidth={2.4} />
             </div>
             <p className="text-[13px] leading-snug text-text-primary">
-              No strategy found. Create and lock one in the Strategy Builder before analyzing charts.
+              No strategy found. Create and lock one in the Strategy Builder
+              before analyzing charts.
             </p>
           </div>
           <button
@@ -141,8 +151,6 @@ export default function ChartAnalyzer() {
     );
   }
 
-  // Seneca Edge no longer blocks the analyzer based on discipline state or
-  // checklist. Analysis always runs as long as the user has a strategy + image.
   const canAnalyze = !!activeStrategy && !!execFile && !!execTf;
 
   async function handleAnalyze() {
@@ -156,10 +164,11 @@ export default function ChartAnalyzer() {
     const higherPreview = higherFile ? URL.createObjectURL(higherFile) : null;
 
     try {
-      // Upload images first (in parallel)
       const [execPath, higherPath] = await Promise.all([
         uploadChartImage(execFile, "exec"),
-        higherFile ? uploadChartImage(higherFile, "higher") : Promise.resolve<string | null>(null),
+        higherFile
+          ? uploadChartImage(higherFile, "higher")
+          : Promise.resolve<string | null>(null),
       ]);
       setStep(1);
 
@@ -168,17 +177,11 @@ export default function ChartAnalyzer() {
         higherPath ? signedUrl(higherPath) : Promise.resolve<string | null>(null),
       ]);
 
-      // Call analyze-chart edge function
       const { data, error } = await supabase.functions.invoke("analyze-chart", {
-        body: {
-          exec_image_url: execUrl,
-          higher_image_url: higherUrl,
-        },
+        body: { exec_image_url: execUrl, higher_image_url: higherUrl },
       });
       if (error) throw new Error(error.message || "Analysis failed");
 
-      // Server-side lock enforcement (403). Force a state refresh so the
-      // <AnalyzerLockScreen /> takes over on next render.
       if (data?.status === "locked") {
         toast.error(data?.reason || "Analyzer is locked.");
         void refreshTraderState();
@@ -186,9 +189,12 @@ export default function ChartAnalyzer() {
         return;
       }
 
-      // Pipeline rejected the image — show details from validation stage
+      // SECTION 1 — input validation. Non-charts get a clear, calm rejection.
       if (data?.status === "rejected" || data?.is_chart === false) {
-        setInvalidReason(data?.reason || "This is not a valid chart.");
+        setInvalidReason(
+          data?.reason ||
+            "This does not appear to be a valid trading chart. Please upload a chart showing price data.",
+        );
         setInvalidDetails(Array.isArray(data?.details) ? data.details : []);
         setPhase("invalid");
         return;
@@ -199,25 +205,25 @@ export default function ChartAnalyzer() {
         exec: data.features?.exec ?? {},
         higher: data.features?.higher ?? null,
       };
-      // Pipeline confidence is 0–1; rule engine expects 0–100 chart confidence.
       const pipelineConf: number = Number(data?.confidence ?? 0);
       const validationConfPct: number = Number(
         data?.confidence_pct ?? Math.round(pipelineConf * 100),
       );
+      const marketInterp = (data?.market_interpretation ??
+        null) as MarketInterpretation | null;
 
-      const breakdown = evaluateChartAgainstStrategy(
+      // New alignment layer (canonical rules → per-rule pass/fail/NA + grade).
+      const canonical = buildCanonicalStrategy(activeStrategy);
+      const alignment = evaluateAlignment(canonical, features);
+
+      // Legacy breakdown — kept ONLY for the chart_analyses storage shape and
+      // the discipline engine, which still consumes the 4-section format.
+      const legacy = evaluateChartAgainstStrategy(
         features,
         activeStrategy.structured_rules as never,
         validationConfPct,
       );
 
-      const warnings: string[] = Array.isArray(data?.warnings)
-        ? [...data.warnings]
-        : [];
-      const modelUsed: "primary" | "fallback" =
-        data?.model_used === "fallback" ? "fallback" : "primary";
-
-      // Save to DB (back-compat shape preserved)
       const row = await saveChartAnalysis({
         blueprint_id: activeStrategy.id,
         strategy_name: activeStrategy.name,
@@ -229,81 +235,34 @@ export default function ChartAnalyzer() {
         chart_confidence: validationConfPct,
         chart_reason: data.reason ?? null,
         features,
-        rule_breakdown: breakdown,
-        verdict: breakdown.overall,
-        ai_insight: data.ai_insight ?? null,
+        rule_breakdown: legacy,
+        verdict: legacy.overall,
+        ai_insight: alignment.insight,
         trade_id: null,
       });
 
-      // Write to TRADER_STATE: every analysis is a decision-quality event
-      // that feeds the discipline engine, separate from executed-trade logs.
-      const verdict = breakdown.overall as AnalyzerVerdict;
-      const violations: string[] = [];
-      for (const section of ["entry", "structure", "risk", "timing"] as const) {
-        const cell = breakdown[section];
-        if (!cell?.checks) continue;
-        for (const c of cell.checks) {
-          if (!c.passed) violations.push(`${section}: ${c.rule}`);
-        }
-      }
+      // TRADER_STATE event — analyzer remains a *signal*, not an enforcer.
+      const verdictForState: AnalyzerVerdict = legacy.overall;
+      const violations = alignment.failed.map(
+        (r) => `${r.category}: ${r.condition}`,
+      );
       void logAnalyzerEvent({
         analysis_id: row.id,
         blueprint_id: activeStrategy.id,
-        verdict,
+        verdict: verdictForState,
         violations,
-        reason: data.reason ?? null,
-      }).then(() => {
-        // Refresh TRADER_STATE so discipline + lock state recompute
-        // immediately for any other surface the user opens.
-        void refreshTraderState();
-      });
+        reason: alignment.insight,
+      }).then(() => void refreshTraderState());
 
       setResult({
         row,
-        breakdown,
-        insight: data.ai_insight ?? "",
+        alignment,
+        marketInterp,
         execPreview,
         higherPreview,
-        modelUsed,
         pipelineConfidence: pipelineConf,
-        warnings,
-        explanation: null,
-        explanationLoading: true,
-        explanationError: null,
       });
       setPhase("result");
-
-      // Fire-and-update: fetch the structured mentor explanation.
-      void (async () => {
-        try {
-          const { data: exp, error: expErr } = await supabase.functions.invoke(
-            "explain-chart",
-            {
-              body: {
-                strategy_name: activeStrategy.name,
-                strategy_rules: activeStrategy.structured_rules,
-                chart_features: features,
-                rule_breakdown: breakdown,
-              },
-            },
-          );
-          if (expErr) throw new Error(expErr.message);
-          const explanation = (exp as { explanation?: ChartExplanation } | null)
-            ?.explanation;
-          if (!explanation) throw new Error("No explanation returned");
-          setResult((prev) =>
-            prev ? { ...prev, explanation, explanationLoading: false } : prev,
-          );
-        } catch (err) {
-          const m = err instanceof Error ? err.message : "Explanation failed";
-          console.error("[chart-analyzer] explanation failed:", err);
-          setResult((prev) =>
-            prev
-              ? { ...prev, explanationLoading: false, explanationError: m }
-              : prev,
-          );
-        }
-      })();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Analysis failed";
       console.error("[chart-analyzer] failed:", e);
@@ -327,8 +286,8 @@ export default function ChartAnalyzer() {
   return (
     <FeatureShell
       eyebrow="Chart Analyzer"
-      title="Analyze against YOUR strategy."
-      subtitle="Validates chart structure, rules, and timeframe alignment."
+      title="Read the market. Validate your system."
+      subtitle="Neutral chart interpretation, then a check against your strategy."
     >
       <input
         ref={execInputRef}
@@ -361,7 +320,6 @@ export default function ChartAnalyzer() {
             transition={{ duration: 0.35 }}
             className="space-y-4"
           >
-            {/* Strategy */}
             <Field label="Strategy">
               <select
                 value={strategyId}
@@ -376,7 +334,6 @@ export default function ChartAnalyzer() {
               </select>
             </Field>
 
-            {/* Timeframes */}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Execution TF (required)">
                 <TfSelect value={execTf} onChange={setExecTf} />
@@ -386,7 +343,6 @@ export default function ChartAnalyzer() {
               </Field>
             </div>
 
-            {/* Uploads */}
             <UploadCard
               label="Execution chart *"
               file={execFile}
@@ -431,7 +387,7 @@ export default function ChartAnalyzer() {
               <div className="flex items-center gap-3">
                 <Loader2 className="h-5 w-5 animate-spin text-brand" />
                 <p className="text-[13.5px] font-semibold text-text-primary">
-                  Analyzing your chart…
+                  Reading your chart…
                 </p>
               </div>
             </div>
@@ -446,16 +402,25 @@ export default function ChartAnalyzer() {
                 >
                   <div
                     className={`flex h-7 w-7 items-center justify-center rounded-full ${
-                      done ? "bg-emerald-500" : active ? "bg-gradient-mix animate-pulse" : "bg-text-secondary/15"
+                      done
+                        ? "bg-emerald-500"
+                        : active
+                          ? "bg-gradient-mix animate-pulse"
+                          : "bg-text-secondary/15"
                     }`}
                   >
                     {done ? (
-                      <CheckCircle2 className="h-4 w-4 text-white" strokeWidth={3} />
+                      <CheckCircle2
+                        className="h-4 w-4 text-white"
+                        strokeWidth={3}
+                      />
                     ) : (
                       <span className="h-1.5 w-1.5 rounded-full bg-white" />
                     )}
                   </div>
-                  <span className="text-[13px] font-medium text-text-primary">{label}</span>
+                  <span className="text-[13px] font-medium text-text-primary">
+                    {label}
+                  </span>
                 </div>
               );
             })}
@@ -470,24 +435,25 @@ export default function ChartAnalyzer() {
             exit={{ opacity: 0, y: -8 }}
             className="space-y-4"
           >
-            <div className="rounded-2xl bg-card p-5 ring-1 ring-rose-500/30 shadow-soft">
+            <div className="rounded-2xl bg-card p-5 ring-1 ring-amber-500/30 shadow-soft">
               <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20">
-                  <XCircle className="h-4 w-4" strokeWidth={2.4} />
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20">
+                  <AlertTriangle className="h-4 w-4" strokeWidth={2.4} />
                 </div>
                 <div className="flex-1">
                   <p className="text-[14px] font-semibold text-text-primary">
-                    Upload a valid trading chart
+                    This does not appear to be a valid trading chart
                   </p>
                   <p className="mt-1 text-[12.5px] text-text-secondary">
-                    {invalidReason} Candles, price axis, and time axis are required.
+                    Please upload a chart showing price data — candles, a price
+                    axis, and a time axis. {invalidReason}
                   </p>
                   {invalidDetails.length > 0 && (
                     <ul className="mt-2 space-y-1 pl-4">
                       {invalidDetails.map((d, i) => (
                         <li
                           key={i}
-                          className="list-disc text-[12px] leading-snug text-rose-700/90"
+                          className="list-disc text-[12px] leading-snug text-text-secondary"
                         >
                           {d}
                         </li>
@@ -508,16 +474,22 @@ export default function ChartAnalyzer() {
         )}
 
         {phase === "result" && result && (
-          <ResultView result={result} onReset={reset} navigate={navigate} />
+          <ResultView result={result} onReset={reset} />
         )}
       </AnimatePresence>
     </FeatureShell>
   );
 }
 
-// ── subcomponents ──────────────────────────────────────────────────────────
+// ── shared subcomponents ─────────────────────────────────────────────────────
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block">
       <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
@@ -566,7 +538,10 @@ function UploadCard({
   onPick: () => void;
   onClear: () => void;
 }) {
-  const preview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  const preview = useMemo(
+    () => (file ? URL.createObjectURL(file) : null),
+    [file],
+  );
   return (
     <div className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
       <div className="mb-2 flex items-center justify-between">
@@ -574,7 +549,9 @@ function UploadCard({
           {label}
         </span>
         {optional && (
-          <span className="text-[10px] font-medium text-text-secondary/70">optional</span>
+          <span className="text-[10px] font-medium text-text-secondary/70">
+            optional
+          </span>
         )}
       </div>
       {preview ? (
@@ -595,152 +572,35 @@ function UploadCard({
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-mix">
             <Upload className="h-4 w-4 text-white" />
           </div>
-          <span className="text-[12px] font-medium text-text-primary">Tap to upload</span>
-          <span className="text-[10.5px] text-text-secondary">PNG / JPG · TradingView works best</span>
+          <span className="text-[12px] font-medium text-text-primary">
+            Tap to upload
+          </span>
+          <span className="text-[10.5px] text-text-secondary">
+            PNG / JPG · TradingView works best
+          </span>
         </button>
       )}
     </div>
   );
 }
 
-const VERDICT_STYLES: Record<
-  RuleBreakdown["overall"],
-  { label: string; ring: string; bg: string; fg: string; Icon: typeof CheckCircle2 }
-> = {
-  valid: {
-    label: "Valid setup",
-    ring: "ring-emerald-500/30",
-    bg: "bg-emerald-500/10",
-    fg: "text-emerald-700",
-    Icon: CheckCircle2,
-  },
-  weak: {
-    label: "Weak — review carefully",
-    ring: "ring-amber-500/30",
-    bg: "bg-amber-500/10",
-    fg: "text-amber-700",
-    Icon: AlertTriangle,
-  },
-  invalid: {
-    label: "Invalid — does not match strategy",
-    ring: "ring-rose-500/30",
-    bg: "bg-rose-500/10",
-    fg: "text-rose-700",
-    Icon: XCircle,
-  },
-};
-
-// Suggest a concrete next action when a strategy rule fails.
-// Keeps language strict: never tells the user to take the trade.
-function nextActionFor(
-  section: "entry" | "structure" | "risk" | "timing",
-  rule: string,
-): string {
-  const r = rule.toLowerCase();
-  if (section === "entry") {
-    if (r.includes("liquidity") || r.includes("sweep"))
-      return "Wait for a clean liquidity sweep before considering entry.";
-    if (r.includes("confirm") || r.includes("close"))
-      return "Wait for confirmation candle close in your direction.";
-    if (r.includes("retest") || r.includes("pullback"))
-      return "Wait for price to retest the level before entering.";
-    return "Do not enter. Wait for this entry condition to actually appear.";
-  }
-  if (section === "structure") {
-    if (r.includes("trend"))
-      return "Skip until trend direction is unambiguous on this timeframe.";
-    if (r.includes("range") || r.includes("consolidat"))
-      return "Avoid trading mid-range. Wait for a clean break or reclaim.";
-    return "Structure is unclear. Re-check on a higher timeframe before acting.";
-  }
-  if (section === "risk") {
-    if (r.includes("stop") || r.includes("sl"))
-      return "Do not widen stop. Skip the trade if invalidation is too far.";
-    if (r.includes("rr") || r.includes("reward"))
-      return "Skip — reward-to-risk does not meet your minimum.";
-    if (r.includes("volatil"))
-      return "Volatility is off. Reduce size or wait for conditions to normalize.";
-    return "Risk profile does not match your rules. Stand down.";
-  }
-  // timing
-  if (r.includes("higher") || r.includes("htf") || r.includes("alignment"))
-    return "Wait for higher-timeframe alignment before taking this setup.";
-  if (r.includes("session") || r.includes("hour") || r.includes("time"))
-    return "Outside your session window. Wait for your defined trading hours.";
-  return "Timing is off. Do not force this trade.";
-}
+// ── result view ──────────────────────────────────────────────────────────────
 
 function ResultView({
   result,
   onReset,
-  navigate,
 }: {
   result: {
     row: ChartAnalysisRow;
-    breakdown: RuleBreakdown;
-    insight: string;
+    alignment: StrategyAlignment;
+    marketInterp: MarketInterpretation | null;
     execPreview: string;
     higherPreview: string | null;
-    modelUsed: "primary" | "fallback";
     pipelineConfidence: number;
-    warnings: string[];
-    explanation: ChartExplanation | null;
-    explanationLoading: boolean;
-    explanationError: string | null;
   };
   onReset: () => void;
-  navigate: ReturnType<typeof useNavigate>;
 }) {
-  const v = VERDICT_STYLES[result.breakdown.overall];
-  const sections: Array<{
-    key: "entry" | "structure" | "risk" | "timing";
-    title: string;
-    subtitle: string;
-  }> = [
-    { key: "entry", title: "Entry", subtitle: "Your strategy entry rules vs the chart" },
-    { key: "structure", title: "Structure alignment", subtitle: "Readable price structure" },
-    { key: "risk", title: "Risk alignment", subtitle: "Your strategy risk rules vs current volatility" },
-    { key: "timing", title: "Timing alignment", subtitle: "Higher-timeframe alignment" },
-  ];
-
-  // Active citation: which rule/region is currently highlighted on the charts.
-  const [activeCitation, setActiveCitation] = useState<{
-    section: "entry" | "structure" | "risk" | "timing";
-    checkIdx: number;
-    regionIdx: number;
-    region: ChartRegion;
-  } | null>(null);
-
-  const execChartRef = useRef<HTMLDivElement | null>(null);
-  const higherChartRef = useRef<HTMLDivElement | null>(null);
-
-  function onCite(
-    section: "entry" | "structure" | "risk" | "timing",
-    checkIdx: number,
-    regionIdx: number,
-    region: ChartRegion,
-  ) {
-    // Toggle off if the same chip is clicked again.
-    setActiveCitation((prev) =>
-      prev &&
-      prev.section === section &&
-      prev.checkIdx === checkIdx &&
-      prev.regionIdx === regionIdx
-        ? null
-        : { section, checkIdx, regionIdx, region },
-    );
-    const target = region.chart === "higher" ? higherChartRef.current : execChartRef.current;
-    target?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-
-  const execActive =
-    activeCitation && activeCitation.region.chart === "exec"
-      ? activeCitation.region
-      : null;
-  const higherActive =
-    activeCitation && activeCitation.region.chart === "higher"
-      ? activeCitation.region
-      : null;
+  const { alignment, marketInterp } = result;
 
   return (
     <motion.div
@@ -750,561 +610,496 @@ function ResultView({
       exit={{ opacity: 0, y: -8 }}
       className="space-y-4"
     >
-      {/* Charts */}
-      <div ref={execChartRef}>
-        <CitedChart
-          src={result.execPreview}
-          alt="Execution chart"
-          label="Execution chart"
-          heightClass="h-44"
-          activeRegion={execActive}
-          onClear={() => setActiveCitation(null)}
-        />
-      </div>
+      {/* Charts (preview only — no enforcement overlays) */}
+      <ChartPreview
+        src={result.execPreview}
+        label="Execution chart"
+        heightClass="h-44"
+      />
       {result.higherPreview && (
-        <div ref={higherChartRef}>
-          <CitedChart
-            src={result.higherPreview}
-            alt="Higher TF chart"
-            label="Higher timeframe"
-            heightClass="h-32"
-            activeRegion={higherActive}
-            onClear={() => setActiveCitation(null)}
-          />
-        </div>
-      )}
-
-      {/* Pipeline status — model used + confidence */}
-      <div className="flex items-center gap-2 rounded-2xl bg-card px-3.5 py-2.5 ring-1 ring-border shadow-soft">
-        <Sparkles
-          className={`h-3.5 w-3.5 ${
-            result.modelUsed === "fallback" ? "text-amber-600" : "text-brand"
-          }`}
-          strokeWidth={2.4}
+        <ChartPreview
+          src={result.higherPreview}
+          label="Higher timeframe"
+          heightClass="h-32"
         />
-        <span className="text-[11.5px] font-semibold text-text-primary">
-          {result.modelUsed === "fallback"
-            ? "Deeper validation used"
-            : "Primary model"}
-        </span>
-        <span className="ml-auto text-[11.5px] text-text-secondary">
-          AI confidence {Math.round(result.pipelineConfidence * 100)}%
-        </span>
-      </div>
-
-      {/* Transparent Decision Score math — refreshed after every analyzer event. */}
-      <ScoreCalculationTrace />
-
-      {result.modelUsed === "fallback" && (
-        <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-[12.5px] leading-snug text-text-primary">
-            Analysis required deeper validation. Using advanced model for higher
-            accuracy.
-          </p>
-        </div>
       )}
 
-      {/* Verdict */}
-      <div className={`rounded-2xl p-4 ring-1 shadow-soft ${v.bg} ${v.ring}`}>
-        <div className="flex items-center gap-3">
-          <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-card ring-1 ring-border ${v.fg}`}>
-            <v.Icon className="h-4 w-4" strokeWidth={2.4} />
-          </div>
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-              Verdict
-            </p>
-            <p className={`text-[14.5px] font-semibold ${v.fg}`}>{v.label}</p>
-          </div>
-          <div className="ml-auto text-right">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-              Score
-            </p>
-            <p className="text-[18px] font-bold text-text-primary">{result.breakdown.score}/100</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Low-confidence warning */}
-      {result.breakdown.low_confidence && (
-        <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-[12.5px] leading-snug text-text-primary">
-            {result.breakdown.confidence_note ??
-              "Analysis confidence is low due to unclear chart structure."}
-          </p>
-        </div>
-      )}
-
-      {/* Strategy mismatch warning */}
-      {result.breakdown.overall !== "valid" && !result.breakdown.low_confidence && (
-        <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-[12.5px] leading-snug text-text-primary">
-            This setup does not fully match your strategy. Do not force it.
-          </p>
-        </div>
-      )}
-
-      {/* Trade Readiness — one-screen checklist with next actions */}
-      {(() => {
-        const items = sections.flatMap((s) =>
-          result.breakdown[s.key].checks.map((c) => ({
-            section: s.key,
-            sectionLabel: s.title,
-            rule: c.rule,
-            passed: c.passed,
-          })),
-        );
-        const total = items.length;
-        const passedCount = items.filter((i) => i.passed).length;
-        const failed = items.filter((i) => !i.passed);
-        const allPassed = failed.length === 0 && total > 0;
-        const readiness =
-          result.breakdown.overall === "valid" && allPassed
-            ? { label: "Ready to trade", tone: "emerald" as const }
-            : result.breakdown.overall === "invalid"
-              ? { label: "Do not trade", tone: "rose" as const }
-              : { label: "Not ready — conditions missing", tone: "amber" as const };
-
-        const toneRing =
-          readiness.tone === "emerald"
-            ? "ring-emerald-500/30"
-            : readiness.tone === "rose"
-              ? "ring-rose-500/30"
-              : "ring-amber-500/30";
-        const toneFg =
-          readiness.tone === "emerald"
-            ? "text-emerald-700"
-            : readiness.tone === "rose"
-              ? "text-rose-700"
-              : "text-amber-700";
-        const toneDot =
-          readiness.tone === "emerald"
-            ? "bg-emerald-500"
-            : readiness.tone === "rose"
-              ? "bg-rose-500"
-              : "bg-amber-500";
-
-        return (
-          <div className={`rounded-2xl bg-card p-3.5 ring-1 shadow-soft ${toneRing}`}>
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${toneDot}`} />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-                Trade readiness
-              </span>
-              <span className={`ml-auto text-[12.5px] font-semibold ${toneFg}`}>
-                {readiness.label}
-              </span>
-            </div>
-
-            <p className="mt-1 text-[11.5px] text-text-secondary">
-              {passedCount}/{total} conditions met
-            </p>
-
-            <ul className="mt-3 space-y-1.5">
-              {items.map((it, i) => (
-                <li key={i} className="flex items-start gap-2 px-1 py-1">
-                  {it.passed ? (
-                    <CheckCircle2
-                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600"
-                      strokeWidth={2.6}
-                    />
-                  ) : (
-                    <XCircle
-                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-600"
-                      strokeWidth={2.6}
-                    />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={`text-[12.5px] leading-snug ${
-                        it.passed ? "text-text-primary" : "font-medium text-text-primary"
-                      }`}
-                    >
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-                        {it.sectionLabel}:
-                      </span>{" "}
-                      {it.rule}
-                    </p>
-                    {!it.passed && (
-                      <p className="mt-0.5 text-[11.5px] leading-snug text-rose-700">
-                        → {nextActionFor(it.section, it.rule)}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-
-            {failed.length > 0 && (
-              <p className="mt-3 text-[11px] italic text-text-secondary">
-                Address every failed condition before considering this trade.
-              </p>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* Breakdown */}
-      <div className="space-y-2.5">
-        {sections.map((s) => {
-          const cell = result.breakdown[s.key];
-          return (
-            <div
-              key={s.key}
-              className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft"
-            >
-              <div className="flex items-center gap-2">
-                {cell.passed ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" strokeWidth={2.4} />
-                ) : (
-                  <XCircle className="h-4 w-4 text-rose-600" strokeWidth={2.4} />
-                )}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-semibold text-text-primary">
-                      {s.title}
-                    </span>
-                    <span
-                      className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${
-                        cell.passed
-                          ? "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20"
-                          : "bg-rose-500/10 text-rose-700 ring-rose-500/20"
-                      }`}
-                    >
-                      {cell.passed ? "PASS" : "FAIL"}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-[11px] text-text-secondary">{s.subtitle}</p>
-                </div>
-              </div>
-
-              <ul className="mt-3 space-y-2">
-                {cell.checks.map((c, idx) => (
-                  <li
-                    key={idx}
-                    className={`rounded-xl px-3 py-2 ring-1 ${
-                      c.passed
-                        ? "bg-emerald-500/[0.06] ring-emerald-500/20"
-                        : "bg-rose-500/[0.06] ring-rose-500/20"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      {c.passed ? (
-                        <CheckCircle2
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600"
-                          strokeWidth={2.6}
-                        />
-                      ) : (
-                        <XCircle
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-600"
-                          strokeWidth={2.6}
-                        />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[12.5px] font-medium leading-snug text-text-primary">
-                          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-                            Your rule:
-                          </span>{" "}
-                          {c.rule}
-                        </p>
-                        <p className="mt-1 text-[11.5px] leading-snug text-text-secondary">
-                          {c.reason}
-                        </p>
-                        {c.regions && c.regions.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {c.regions.map((rg, ri) => {
-                              const isActive =
-                                activeCitation?.section === s.key &&
-                                activeCitation?.checkIdx === idx &&
-                                activeCitation?.regionIdx === ri;
-                              return (
-                                <button
-                                  key={ri}
-                                  type="button"
-                                  onClick={() => onCite(s.key, idx, ri, rg)}
-                                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold ring-1 transition ${
-                                    isActive
-                                      ? "bg-brand/15 text-brand ring-brand/40"
-                                      : "bg-card text-text-secondary ring-border hover:ring-brand/30 hover:text-brand"
-                                  }`}
-                                  aria-label={`Show ${rg.label} on ${rg.chart === "exec" ? "execution" : "higher-timeframe"} chart`}
-                                >
-                                  <MapPin className="h-3 w-3" strokeWidth={2.6} />
-                                  Show on {rg.chart === "exec" ? "exec" : "higher"} chart
-                                  <span className="opacity-70">· {rg.label}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Structured AI Explanation */}
-      <ExplanationCard
-        loading={result.explanationLoading}
-        error={result.explanationError}
-        explanation={result.explanation}
+      {/* SECTION 1 — Market Summary (top card, no strategy reference) */}
+      <MarketSummaryCard
+        marketInterp={marketInterp}
+        pipelineConfidence={result.pipelineConfidence}
       />
 
-      {/* AI Insight (legacy short observation, only if present) */}
-      {result.insight && (
-        <div className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-              AI Insight · general market analysis
-            </span>
-          </div>
-          <p className="mt-2 text-[13px] leading-snug text-text-primary">{result.insight}</p>
-          <p className="mt-2 text-[10.5px] italic text-text-secondary/80">
-            Observation only. Does not override your rules.
-          </p>
-        </div>
+      {/* SECTION 2 — Trade Grade (prominent) + Verdict */}
+      <TradeGradeCard alignment={alignment} />
+
+      {/* SECTION 3 — Strategy Alignment (expandable) */}
+      <StrategyAlignmentCard alignment={alignment} />
+
+      {/* SECTION 4 — Detailed Breakdown (collapsible) */}
+      <DetailedBreakdownCard alignment={alignment} />
+
+      {/* SECTION 5 — Insight Feedback */}
+      <InsightCard alignment={alignment} />
+
+      {/* SECTION 6 — Behavioral Note (optional) */}
+      {alignment.behavioral_note && (
+        <BehavioralNoteCard note={alignment.behavioral_note} />
       )}
 
-      {/* Actions */}
+      {/* Disclaimer (mandatory) */}
+      <DisclaimerCard />
+
+      {/* Actions — never block. "Outside your defined system" is just a tag. */}
       <div className="grid grid-cols-2 gap-2.5">
-        <button
-          onClick={() => {
-            if (result.breakdown.overall === "invalid") {
-              toast.error("Setup is invalid — does not match strategy. Do not trade this.");
-              return;
-            }
-            if (result.breakdown.overall === "weak") {
-              toast.warning("Proceeding with a weak setup — review carefully.");
-            }
-            navigate({ to: "/hub/mind" });
-          }}
-          disabled={result.breakdown.overall === "invalid"}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-mix px-4 py-3 text-[13.5px] font-semibold text-white shadow-soft hover:shadow-card-premium disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {result.breakdown.overall === "invalid" ? "Blocked" : "Trade Gate"}
-          <ArrowRight className="h-4 w-4" />
-        </button>
         <button
           onClick={onReset}
           className="flex items-center justify-center gap-2 rounded-2xl bg-card px-4 py-3 text-[13.5px] font-semibold text-text-primary ring-1 ring-border shadow-soft hover:shadow-card-premium"
         >
           <RefreshCw className="h-4 w-4" />
-          Re-analyze
+          New analysis
+        </button>
+        <button
+          onClick={() => {
+            if (alignment.verdict === "not_aligned") {
+              toast.message("Outside your defined system", {
+                description:
+                  "Logged. You can still record this trade — the analyzer never blocks you.",
+              });
+            }
+          }}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-mix px-4 py-3 text-[13.5px] font-semibold text-white shadow-soft hover:shadow-card-premium"
+        >
+          <Save className="h-4 w-4" />
+          Saved
         </button>
       </div>
-      <div className="flex items-center justify-center gap-2 rounded-xl bg-card/60 px-3 py-2 ring-1 ring-border">
-        <Save className="h-3.5 w-3.5 text-text-secondary" />
-        <p className="text-[11.5px] text-text-secondary">Saved · ID {result.row.id.slice(0, 8)}</p>
-      </div>
+      <p className="text-center text-[10.5px] text-text-secondary">
+        Saved · ID {result.row.id.slice(0, 8)}
+      </p>
     </motion.div>
   );
 }
 
-function ExplanationCard({
-  loading,
-  error,
-  explanation,
-}: {
-  loading: boolean;
-  error: string | null;
-  explanation: ChartExplanation | null;
-}) {
-  if (loading) {
-    return (
-      <div className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-brand" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-            Mentor explanation · generating
-          </span>
-        </div>
-        <div className="mt-3 space-y-2">
-          <div className="h-3 w-3/4 animate-pulse rounded bg-text-secondary/15" />
-          <div className="h-3 w-2/3 animate-pulse rounded bg-text-secondary/15" />
-          <div className="h-3 w-1/2 animate-pulse rounded bg-text-secondary/15" />
-        </div>
-      </div>
-    );
-  }
+// ── result subcomponents ─────────────────────────────────────────────────────
 
-  if (error || !explanation) {
-    return (
-      <div className="rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
-        <div className="flex items-start gap-2">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-[12.5px] leading-snug text-text-primary">
-            Mentor explanation unavailable. Rule breakdown above is authoritative.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2.5">
-      {/* Summary */}
-      <div className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-            Summary
-          </span>
-        </div>
-        <p className="mt-2 text-[13px] leading-snug text-text-primary">
-          {explanation.summary}
-        </p>
-      </div>
-
-      {/* Aligns */}
-      <div className="rounded-2xl bg-card p-3.5 ring-1 ring-emerald-500/25 shadow-soft">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" strokeWidth={2.4} />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-            What aligns with strategy
-          </span>
-        </div>
-        {explanation.aligns.length === 0 ? (
-          <p className="mt-2 text-[12.5px] italic text-text-secondary">
-            Nothing in this setup aligns with your strategy.
-          </p>
-        ) : (
-          <ul className="mt-2 space-y-1 pl-6">
-            {explanation.aligns.map((a, i) => (
-              <li
-                key={i}
-                className="list-disc text-[12.5px] leading-snug text-text-primary"
-              >
-                {a}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* Misaligns */}
-      <div className="rounded-2xl bg-card p-3.5 ring-1 ring-rose-500/25 shadow-soft">
-        <div className="flex items-center gap-2">
-          <XCircle className="h-4 w-4 text-rose-600" strokeWidth={2.4} />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-            What does NOT align
-          </span>
-        </div>
-        {explanation.misaligns.length === 0 ? (
-          <p className="mt-2 text-[12.5px] italic text-text-secondary">
-            No misalignments detected against your strategy.
-          </p>
-        ) : (
-          <ul className="mt-2 space-y-1 pl-6">
-            {explanation.misaligns.map((m, i) => (
-              <li
-                key={i}
-                className="list-disc text-[12.5px] leading-snug text-text-primary"
-              >
-                {m}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* Final Assessment */}
-      <div className="rounded-2xl bg-card p-3.5 ring-1 ring-border shadow-soft">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-            Final assessment
-          </span>
-        </div>
-        <p className="mt-2 text-[13px] font-medium leading-snug text-text-primary">
-          {explanation.final_assessment}
-        </p>
-        <p className="mt-2 text-[10.5px] italic text-text-secondary/80">
-          Explanation only. Does not override the rule breakdown above.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// Renders a chart preview with an optional highlighted citation rectangle.
-// `activeRegion` uses normalized 0..1 coordinates relative to the image.
-function CitedChart({
+function ChartPreview({
   src,
-  alt,
   label,
   heightClass,
-  activeRegion,
-  onClear,
 }: {
   src: string;
-  alt: string;
   label: string;
   heightClass: string;
-  activeRegion: ChartRegion | null;
-  onClear: () => void;
 }) {
   return (
     <div className="overflow-hidden rounded-2xl bg-card p-1 ring-1 ring-border shadow-soft">
       <div className="relative">
         <img
           src={src}
-          alt={alt}
+          alt={label}
           className={`${heightClass} w-full rounded-[14px] object-cover`}
         />
-        {activeRegion && (
-          <>
-            {/* Dim everything outside the citation box */}
-            <div
-              className="pointer-events-none absolute inset-0 rounded-[14px]"
-              style={{
-                background: "rgba(15, 23, 42, 0.35)",
-                clipPath: `polygon(
-                  0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
-                  ${activeRegion.x * 100}% ${activeRegion.y * 100}%,
-                  ${activeRegion.x * 100}% ${(activeRegion.y + activeRegion.h) * 100}%,
-                  ${(activeRegion.x + activeRegion.w) * 100}% ${(activeRegion.y + activeRegion.h) * 100}%,
-                  ${(activeRegion.x + activeRegion.w) * 100}% ${activeRegion.y * 100}%,
-                  ${activeRegion.x * 100}% ${activeRegion.y * 100}%
-                )`,
-              }}
-            />
-            {/* Highlight box */}
-            <div
-              className="pointer-events-none absolute rounded-md ring-2 ring-brand shadow-[0_0_0_2px_rgba(255,255,255,0.6)]"
-              style={{
-                left: `${activeRegion.x * 100}%`,
-                top: `${activeRegion.y * 100}%`,
-                width: `${activeRegion.w * 100}%`,
-                height: `${activeRegion.h * 100}%`,
-              }}
-            />
-            {/* Floating label + clear button */}
-            <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-card/95 px-2 py-1 text-[10.5px] font-semibold text-text-primary ring-1 ring-border shadow-soft">
-              <MapPin className="h-3 w-3 text-brand" strokeWidth={2.6} />
-              {activeRegion.label}
-              <button
-                type="button"
-                onClick={onClear}
-                className="ml-1 rounded-full px-1.5 text-text-secondary hover:text-text-primary"
-                aria-label="Clear citation"
-              >
-                ×
-              </button>
-            </div>
-          </>
-        )}
         <div className="absolute right-2 top-2 rounded-full bg-card/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary ring-1 ring-border">
           {label}
         </div>
       </div>
     </div>
+  );
+}
+
+const CONDITION_LABEL: Record<MarketInterpretation["market_condition"], string> = {
+  trending: "Trending",
+  consolidating: "Consolidating",
+  choppy: "Choppy",
+};
+const BIAS_LABEL: Record<MarketInterpretation["directional_bias"], string> = {
+  bullish: "Bullish",
+  bearish: "Bearish",
+  neutral: "Neutral",
+};
+const CLARITY_LABEL: Record<MarketInterpretation["clarity"], string> = {
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
+function MarketSummaryCard({
+  marketInterp,
+  pipelineConfidence,
+}: {
+  marketInterp: MarketInterpretation | null;
+  pipelineConfidence: number;
+}) {
+  if (!marketInterp) {
+    return (
+      <div className="rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+            Market summary
+          </span>
+        </div>
+        <p className="mt-2 text-[12.5px] text-text-secondary">
+          Market reading unavailable for this image. Strategy alignment below is
+          authoritative.
+        </p>
+      </div>
+    );
+  }
+
+  const condition = CONDITION_LABEL[marketInterp.market_condition];
+  const bias = BIAS_LABEL[marketInterp.directional_bias];
+  const clarity = CLARITY_LABEL[marketInterp.clarity];
+
+  return (
+    <div className="rounded-2xl bg-gradient-to-br from-card to-card/60 p-4 ring-1 ring-border shadow-card-premium">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+          Market summary
+        </span>
+        <span className="ml-auto text-[10.5px] text-text-secondary">
+          AI confidence {Math.round(pipelineConfidence * 100)}%
+        </span>
+      </div>
+
+      <p className="mt-3 text-[13.5px] leading-snug text-text-primary">
+        {marketInterp.summary}
+      </p>
+
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <Stat label="Condition" value={condition} />
+        <Stat label="Bias" value={bias} />
+        <Stat label="Clarity" value={clarity} />
+      </div>
+
+      {marketInterp.key_observations.length > 0 && (
+        <div className="mt-3 rounded-xl bg-card/60 p-3 ring-1 ring-border">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+            Key observations
+          </p>
+          <ul className="mt-2 space-y-1">
+            {marketInterp.key_observations.slice(0, 5).map((obs, i) => (
+              <li
+                key={i}
+                className="flex items-start gap-2 text-[12.5px] leading-snug text-text-primary"
+              >
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand" />
+                <span>{obs}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-card/80 px-2.5 py-2 ring-1 ring-border">
+      <p className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
+        {label}
+      </p>
+      <p className="mt-0.5 text-[13px] font-semibold text-text-primary">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+const GRADE_STYLES: Record<
+  StrategyAlignment["grade"],
+  { ring: string; bg: string; fg: string }
+> = {
+  "A+": {
+    ring: "ring-emerald-500/30",
+    bg: "bg-emerald-500/10",
+    fg: "text-emerald-700",
+  },
+  "B+": {
+    ring: "ring-amber-500/30",
+    bg: "bg-amber-500/10",
+    fg: "text-amber-700",
+  },
+  "C+": {
+    ring: "ring-rose-500/30",
+    bg: "bg-rose-500/10",
+    fg: "text-rose-700",
+  },
+};
+
+function TradeGradeCard({ alignment }: { alignment: StrategyAlignment }) {
+  const s = GRADE_STYLES[alignment.grade];
+  return (
+    <div className={`rounded-2xl p-4 ring-1 shadow-card-premium ${s.bg} ${s.ring}`}>
+      <div className="flex items-center gap-3">
+        <div
+          className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-card ring-1 ring-border ${s.fg}`}
+        >
+          <span className="text-[22px] font-bold tracking-tight">
+            {alignment.grade}
+          </span>
+        </div>
+        <div className="flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+            Trade grade
+          </p>
+          <p className={`text-[15px] font-semibold ${s.fg}`}>
+            {VERDICT_LABEL[alignment.verdict]}
+          </p>
+          <p className="mt-0.5 text-[11.5px] text-text-secondary">
+            {alignment.match_pct}% match · {alignment.weighted_score}/100 weighted
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StrategyAlignmentCard({
+  alignment,
+}: {
+  alignment: StrategyAlignment;
+}) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="rounded-2xl bg-card ring-1 ring-border shadow-soft">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 px-4 py-3.5"
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+          Strategy alignment
+        </span>
+        <span className="ml-auto text-[11.5px] text-text-secondary">
+          {alignment.passed.length} pass · {alignment.failed.length} fail ·{" "}
+          {alignment.not_applicable.length} N/A
+        </span>
+        {open ? (
+          <ChevronUp className="h-4 w-4 text-text-secondary" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-text-secondary" />
+        )}
+      </button>
+
+      {open && (
+        <div className="border-t border-border px-4 pb-4 pt-3 space-y-3">
+          <ProgressBar pct={alignment.match_pct} />
+          <AlignmentGroup
+            tone="emerald"
+            label="Passed"
+            rules={alignment.passed}
+          />
+          <AlignmentGroup tone="rose" label="Failed" rules={alignment.failed} />
+          <AlignmentGroup
+            tone="muted"
+            label="Not applicable"
+            rules={alignment.not_applicable}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProgressBar({ pct }: { pct: number }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-[10.5px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
+        <span>Match</span>
+        <span>{pct}%</span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-text-secondary/10">
+        <div
+          className="h-full rounded-full bg-gradient-mix transition-all"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function AlignmentGroup({
+  tone,
+  label,
+  rules,
+}: {
+  tone: "emerald" | "rose" | "muted";
+  label: string;
+  rules: RuleAlignment[];
+}) {
+  if (rules.length === 0) return null;
+  const ring =
+    tone === "emerald"
+      ? "ring-emerald-500/20"
+      : tone === "rose"
+        ? "ring-rose-500/20"
+        : "ring-border";
+  const bg =
+    tone === "emerald"
+      ? "bg-emerald-500/[0.05]"
+      : tone === "rose"
+        ? "bg-rose-500/[0.05]"
+        : "bg-card/40";
+  const Icon =
+    tone === "emerald"
+      ? CheckCircle2
+      : tone === "rose"
+        ? XCircle
+        : CircleDashed;
+  const iconColor =
+    tone === "emerald"
+      ? "text-emerald-600"
+      : tone === "rose"
+        ? "text-rose-600"
+        : "text-text-secondary";
+
+  return (
+    <div className={`rounded-xl p-3 ring-1 ${ring} ${bg}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+        {label} · {rules.length}
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {rules.map((r) => (
+          <li key={r.rule_id} className="flex items-start gap-2">
+            <Icon
+              className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${iconColor}`}
+              strokeWidth={2.6}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[12.5px] leading-snug text-text-primary">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                  {r.category}:
+                </span>{" "}
+                {r.condition}
+              </p>
+              <p className="mt-0.5 text-[11.5px] leading-snug text-text-secondary">
+                {r.reason}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function DetailedBreakdownCard({
+  alignment,
+}: {
+  alignment: StrategyAlignment;
+}) {
+  const [open, setOpen] = useState(false);
+  const grouped = useMemo(() => {
+    const map = new Map<RuleAlignment["category"], RuleAlignment[]>();
+    for (const r of alignment.rules) {
+      const arr = map.get(r.category) ?? [];
+      arr.push(r);
+      map.set(r.category, arr);
+    }
+    return Array.from(map.entries());
+  }, [alignment]);
+
+  return (
+    <div className="rounded-2xl bg-card ring-1 ring-border shadow-soft">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 px-4 py-3.5"
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+          Detailed breakdown
+        </span>
+        <span className="ml-auto text-[11.5px] text-text-secondary">
+          {alignment.rules.length} rule{alignment.rules.length === 1 ? "" : "s"}
+        </span>
+        {open ? (
+          <ChevronUp className="h-4 w-4 text-text-secondary" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-text-secondary" />
+        )}
+      </button>
+      {open && (
+        <div className="border-t border-border px-4 pb-4 pt-3 space-y-3">
+          {grouped.map(([cat, rules]) => (
+            <div key={cat} className="rounded-xl bg-card/60 p-3 ring-1 ring-border">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                {cat}
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {rules.map((r) => {
+                  const Icon =
+                    r.status === "passed"
+                      ? CheckCircle2
+                      : r.status === "failed"
+                        ? XCircle
+                        : CircleDashed;
+                  const color =
+                    r.status === "passed"
+                      ? "text-emerald-600"
+                      : r.status === "failed"
+                        ? "text-rose-600"
+                        : "text-text-secondary";
+                  return (
+                    <li key={r.rule_id} className="flex items-start gap-2">
+                      <Icon
+                        className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${color}`}
+                        strokeWidth={2.6}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12.5px] leading-snug text-text-primary">
+                          {r.condition}
+                        </p>
+                        <p className="mt-0.5 text-[11.5px] leading-snug text-text-secondary">
+                          {r.reason}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InsightCard({ alignment }: { alignment: StrategyAlignment }) {
+  return (
+    <div className="rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+          Insight
+        </span>
+      </div>
+      <p className="mt-2 text-[13px] leading-snug text-text-primary">
+        {alignment.insight}
+      </p>
+    </div>
+  );
+}
+
+function BehavioralNoteCard({ note }: { note: string }) {
+  return (
+    <div className="rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/25 shadow-soft">
+      <div className="flex items-start gap-2">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+        <p className="text-[12.5px] leading-snug text-text-primary">{note}</p>
+      </div>
+    </div>
+  );
+}
+
+function DisclaimerCard() {
+  return (
+    <p className="rounded-xl bg-card/60 px-3 py-2.5 text-center text-[10.5px] italic leading-snug text-text-secondary ring-1 ring-border">
+      {ANALYZER_DISCLAIMER}
+    </p>
   );
 }
