@@ -457,6 +457,45 @@ export default function AiMentorChat() {
         }
       : undefined;
 
+    // Behavior pattern analysis — multi-trade view (dominant weakness,
+    // last 5 vs previous, trend, repeated mistakes). Anchors mentor
+    // responses in REPEATING behavior, not one trade.
+    const behaviorPatternsPayload = behavioralEntries.length > 0
+      ? (() => {
+          const a = analyzeBehaviorPatterns(behavioralEntries);
+          return {
+            totalTrades: a.totalTrades,
+            cleanRate: a.cleanRate,
+            dominantWeakness: a.dominantWeakness
+              ? {
+                  id: a.dominantWeakness.id,
+                  label: a.dominantWeakness.label,
+                  count: a.dominantWeakness.count,
+                  pct: a.dominantWeakness.pct,
+                  severe: a.dominantWeakness.severe,
+                }
+              : null,
+            mistakeFrequency: a.mistakeFrequency.slice(0, 8).map((m) => ({
+              id: m.id,
+              label: m.label,
+              count: m.count,
+              pct: m.pct,
+              severe: m.severe,
+            })),
+            recentVsPrevious: a.recentVsPrevious,
+            trend: a.trend,
+            repeatedInRecent: a.repeatedInRecent.slice(0, 5).map((m) => ({
+              id: m.id,
+              label: m.label,
+              count: m.count,
+              pct: m.pct,
+              severe: m.severe,
+            })),
+            headlines: a.headlines,
+          };
+        })()
+      : undefined;
+
     // Per-turn hints so the model handles SYSTEM vs PERSONAL questions correctly.
     const intentHint: { intent: Intent; tradeCount: number; note?: string } = {
       intent,
