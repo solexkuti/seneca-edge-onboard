@@ -895,7 +895,7 @@ export default function AiMentorChat() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                  className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                  className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
                 >
                   <div
                     className={
@@ -908,6 +908,21 @@ export default function AiMentorChat() {
                   >
                     {m.content || (m.role === "assistant" && streaming ? "…" : "")}
                   </div>
+                  {!isUser && m.chips && m.chips.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5 max-w-[82%]">
+                      {m.chips.map((chip) => (
+                        <button
+                          key={chip.id}
+                          type="button"
+                          onClick={() => handleChip(chip)}
+                          disabled={streaming}
+                          className="rounded-full bg-primary/15 ring-1 ring-primary/35 px-3 py-1.5 text-[11.5px] font-semibold text-text-primary transition hover:bg-primary/20 active:scale-[0.97] disabled:opacity-40"
+                        >
+                          {chip.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
               );
             })}
