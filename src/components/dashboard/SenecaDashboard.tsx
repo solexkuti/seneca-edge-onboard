@@ -112,12 +112,8 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
     cleanStreak,
     breakStreak,
   });
-  const presence = presenceLine({
-    hasEntries: entries.length > 0,
-    classification: last?.classification,
-    breakStreak,
-    score,
-  });
+  // Presence line on the Control State card → dynamic behavior insight.
+  const presence = insight.insight;
 
   return (
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
