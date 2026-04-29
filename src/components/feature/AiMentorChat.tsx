@@ -608,25 +608,37 @@ export default function AiMentorChat() {
           </AnimatePresence>
         </div>
 
-        {/* Quick action prompts — always available above composer */}
+        {/* Quick action prompts — visible until first interaction, then collapse
+            into a small "Suggestions" toggle so they remain reachable. */}
         {!streaming ? (
           <div className="border-t border-border/60 px-4 py-2.5">
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-              {quickPrompts.map((q) => (
-                <button
-                  key={q.id}
-                  type="button"
-                  onClick={() => {
-                    setSuggestionsDismissed(true);
-                    send(q.prompt);
-                  }}
-                  disabled={streaming}
-                  className="shrink-0 rounded-full bg-card px-3 py-1.5 text-[11.5px] font-medium text-text-primary/85 ring-1 ring-border/70 transition-all hover:bg-text-primary/[0.04] hover:ring-primary/25 active:scale-[0.97] disabled:opacity-40"
-                >
-                  {q.label}
-                </button>
-              ))}
-            </div>
+            {showQuickPrompts ? (
+              <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                {quickPrompts.map((q) => (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => {
+                      setHasStartedConversation(true);
+                      setSuggestionsRevealed(false);
+                      send(q.prompt);
+                    }}
+                    disabled={streaming}
+                    className="shrink-0 rounded-full bg-card px-3 py-1.5 text-[11.5px] font-medium text-text-primary/85 ring-1 ring-border/70 transition-all hover:bg-text-primary/[0.04] hover:ring-primary/25 active:scale-[0.97] disabled:opacity-40"
+                  >
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSuggestionsRevealed(true)}
+                className="rounded-full bg-card px-3 py-1.5 text-[11px] font-medium text-text-secondary ring-1 ring-border/60 transition-all hover:text-text-primary hover:ring-border active:scale-[0.97]"
+              >
+                Suggestions
+              </button>
+            )}
           </div>
         ) : null}
 
@@ -634,7 +646,8 @@ export default function AiMentorChat() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            setSuggestionsDismissed(true);
+            setHasStartedConversation(true);
+            setSuggestionsRevealed(false);
             send(draft);
           }}
           className="flex items-center gap-2 border-t border-border/60 bg-card px-3 py-3"
@@ -643,7 +656,6 @@ export default function AiMentorChat() {
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);
-              if (e.target.value.length > 0) setSuggestionsDismissed(true);
             }}
             placeholder="Ask Seneca…"
             disabled={streaming}
