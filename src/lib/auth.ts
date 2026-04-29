@@ -166,7 +166,9 @@ export async function isOnboardingCompleted(userId: string): Promise<boolean> {
       .eq("id", userId)
       .maybeSingle();
     if (error) return false;
-    return !!data?.onboarding_completed;
+    const completed = !!data?.onboarding_completed;
+    if (completed) markOnboardingCompleted();
+    return completed;
   } catch {
     return false;
   }
