@@ -1,16 +1,50 @@
 // MistakeBreakdown — groups journal entries by mistake type and shows
 // count, win rate, and avg R for each. Read-only insight surface.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   MISTAKES,
   MISTAKE_LABEL,
   SEVERE_IDS,
   type MistakeId,
 } from "@/lib/behavioralJournal";
+
+type PresetId = "7d" | "30d" | "90d" | "all" | "custom";
+const PRESETS: { id: Exclude<PresetId, "custom">; label: string; days: number | null }[] = [
+  { id: "7d", label: "7 days", days: 7 },
+  { id: "30d", label: "30 days", days: 30 },
+  { id: "90d", label: "90 days", days: 90 },
+  { id: "all", label: "All time", days: null },
+];
+
+function startOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+function endOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+}
+function daysAgo(n: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return startOfDay(d);
+}
 
 type Row = {
   id: MistakeId | "__clean";
@@ -35,6 +69,40 @@ function fmtR(n: number): string {
 
 export default function MistakeBreakdown() {
   const { entries, loading } = useBehavioralJournal(500);
+  const [preset, setPreset] = useState<PresetId>("30d");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+
+  const { fromMs, toMs, rangeLabel } = useMemo(() => {
+    if (preset === "custom" && customRange?.from) {
+      const from = startOfDay(customRange.from);
+      const to = endOfDay(customRange.to ?? customRange.from);
+      const sameDay = from.toDateString() === to.toDateString();
+      return {
+        fromMs: from.getTime(),
+        toMs: to.getTime(),
+        rangeLabel: sameDay
+          ? format(from, "MMM d, yyyy")
+          : `${format(from, "MMM d")} – ${format(to, "MMM d, yyyy")}`,
+      };
+    }
+    if (preset === "all") {
+      return { fromMs: -Infinity, toMs: Infinity, rangeLabel: "All time" };
+    }
+    const def = PRESETS.find((p) => p.id === preset)!;
+    const days = def.days ?? 30;
+    return {
+      fromMs: daysAgo(days - 1).getTime(),
+      toMs: endOfDay(new Date()).getTime(),
+      rangeLabel: `Last ${days} days`,
+    };
+  }, [preset, customRange]);
+
+  const filteredEntries = useMemo(() => {
+    return entries.filter((e) => {
+      const t = new Date(e.created_at).getTime();
+      return t >= fromMs && t <= toMs;
+    });
+  }, [entries, fromMs, toMs]);
 
   const { rows, total, totalClean } = useMemo(() => {
     const seed = new Map<MistakeId | "__clean", Row>();
@@ -61,7 +129,7 @@ export default function MistakeBreakdown() {
       netR: 0,
     });
 
-    for (const e of entries) {
+    for (const e of filteredEntries) {
       const r = e.result_r;
       const w = r > 0 ? "win" : r < 0 ? "loss" : "be";
       const buckets: Array<MistakeId | "__clean"> =
@@ -84,8 +152,8 @@ export default function MistakeBreakdown() {
       return b.count - a.count;
     });
     const clean = seed.get("__clean")!;
-    return { rows: all, total: entries.length, totalClean: clean.count };
-  }, [entries]);
+    return { rows: all, total: filteredEntries.length, totalClean: clean.count };
+  }, [filteredEntries]);
 
   return (
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
@@ -110,9 +178,67 @@ export default function MistakeBreakdown() {
           {loading
             ? "Loading…"
             : total === 0
-              ? "No trades yet."
-              : `${total} trades · ${totalClean} clean`}
+              ? `No trades in ${rangeLabel.toLowerCase()}.`
+              : `${total} trades · ${totalClean} clean · ${rangeLabel}`}
         </p>
+
+        {/* Range filter */}
+        <div className="mt-5 flex flex-wrap items-center gap-1.5">
+          {PRESETS.map((p) => {
+            const active = preset === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  setPreset(p.id);
+                  setCustomRange(undefined);
+                }}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 transition ${
+                  active
+                    ? "bg-primary/20 ring-primary/40 text-text-primary"
+                    : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-auto rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 gap-1.5",
+                  preset === "custom"
+                    ? "bg-primary/20 ring-primary/40 text-text-primary border-transparent"
+                    : "bg-card ring-border text-text-secondary hover:text-text-primary border-transparent",
+                )}
+              >
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {preset === "custom" && customRange?.from
+                  ? rangeLabel
+                  : "Custom"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                numberOfMonths={2}
+                selected={customRange}
+                onSelect={(r) => {
+                  setCustomRange(r);
+                  if (r?.from) setPreset("custom");
+                }}
+                disabled={(date) => date > new Date()}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
 
         {!loading && total > 0 && (
           <div className="mt-6 space-y-2.5">
