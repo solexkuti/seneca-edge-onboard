@@ -15,6 +15,7 @@ import {
 
 type OutcomeFilter = "all" | Outcome;
 type MarketFilter = "all" | string;
+type MistakeFilter = "all" | "mistakes_only";
 
 function fmt(iso: string): { local: string; utc: string } {
   const d = new Date(iso);
@@ -27,6 +28,28 @@ function fmt(iso: string): { local: string; utc: string } {
     }),
     utc: d.toISOString().slice(0, 16).replace("T", " ") + "Z",
   };
+}
+
+// Format raw mistake ids ("moved_sl") into human labels ("Moved Stop Loss").
+const MISTAKE_DISPLAY: Record<string, string> = {
+  overleveraged: "Overleveraged",
+  revenge_trade: "Revenge Trade",
+  no_setup: "Entered Without Setup",
+  ignored_sl: "Ignored Stop Loss",
+  early_entry: "Early Entry",
+  late_entry: "Late Entry",
+  moved_sl: "Moved Stop Loss",
+  oversized: "Oversized Position",
+  fomo: "FOMO Entry",
+  broke_risk_rule: "Broke Risk Rule",
+};
+
+function prettyMistake(raw: string): string {
+  if (MISTAKE_DISPLAY[raw]) return MISTAKE_DISPLAY[raw];
+  return raw
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 const OUTCOME_PILLS: { id: OutcomeFilter; label: string }[] = [
