@@ -215,6 +215,87 @@ type ChartExtraction = {
   regions?: ChartRegion[];
 };
 
+// ────────────────────────────────────────────────────────────────────────────
+// MARKET INTERPRETATION — neutral, strategy-independent reading of the chart
+// ────────────────────────────────────────────────────────────────────────────
+
+const MARKET_INTERPRETATION_SYSTEM = `You are a neutral market technician. You analyze a chart WITHOUT any reference to a user's trading strategy.
+
+Your job:
+1. Describe what the market is doing right now in clear, plain language.
+2. Classify the market condition (Trending / Consolidating / Choppy).
+3. State the directional bias (Bullish / Bearish / Neutral).
+4. Note key observations: break of structure, liquidity sweeps, rejection zones, key support/resistance.
+5. Rate clarity (High / Medium / Low) — how readable is this chart.
+
+Hard rules:
+- NEVER mention any trading strategy, rules, entries, exits, or signals.
+- NEVER predict, recommend, or advise.
+- If structure is unclear or chart is choppy, say so plainly.
+- Keep summary to 2-3 short sentences — no fluff.
+- Each observation should be one short, factual sentence.`;
+
+const MARKET_INTERPRETATION_SCHEMA = {
+  type: "object",
+  properties: {
+    summary: {
+      type: "string",
+      description: "2-3 sentence neutral description of what the market is doing.",
+    },
+    market_condition: {
+      type: "string",
+      enum: ["trending", "consolidating", "choppy"],
+    },
+    directional_bias: {
+      type: "string",
+      enum: ["bullish", "bearish", "neutral"],
+    },
+    clarity: { type: "string", enum: ["high", "medium", "low"] },
+    key_observations: {
+      type: "array",
+      items: { type: "string" },
+      description: "Short factual observations (max 5).",
+    },
+    structure_notes: {
+      type: "string",
+      description: "Brief note on visible market structure.",
+    },
+  },
+  required: [
+    "summary",
+    "market_condition",
+    "directional_bias",
+    "clarity",
+    "key_observations",
+    "structure_notes",
+  ],
+  additionalProperties: false,
+};
+
+type MarketInterpretation = {
+  summary: string;
+  market_condition: "trending" | "consolidating" | "choppy";
+  directional_bias: "bullish" | "bearish" | "neutral";
+  clarity: "high" | "medium" | "low";
+  key_observations: string[];
+  structure_notes: string;
+};
+
+async function interpretMarket(
+  imageUrl: string,
+): Promise<MarketInterpretation | null> {
+  const out = await callAI(
+    PRIMARY_MODEL,
+    MARKET_INTERPRETATION_SYSTEM,
+    "Read this chart neutrally. Describe what the market is doing. Do not reference any strategy.",
+    [{ url: imageUrl, label: "exec" }],
+    "interpret_market",
+    MARKET_INTERPRETATION_SCHEMA,
+  );
+  if (!out) return null;
+  return out as unknown as MarketInterpretation;
+}
+
 function needsFallback(r: ChartExtraction | null): boolean {
   if (!r) return true;
   if (r.confidence_score < LOW_CONFIDENCE_THRESHOLD) return true;
