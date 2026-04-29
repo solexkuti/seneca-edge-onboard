@@ -26,6 +26,7 @@ import { useTraderState } from "@/hooks/useTraderState";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
 import { mistakeFrequency, MISTAKE_LABEL } from "@/lib/behavioralJournal";
 import { usePerformance } from "@/hooks/usePerformance";
+import { buildQuickPrompts } from "@/lib/mentorQuickPrompts";
 
 type Msg = {
   id: string;
@@ -39,19 +40,45 @@ const SESSION_ID =
     ? crypto.randomUUID()
     : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-const QUICK_PROMPTS: { label: string; prompt: string }[] = [
-  { label: "Review my trades", prompt: "Review my last trades. Walk me through it as observation → interpretation → guidance: what's working, what's breaking, and one specific thing to adjust on the next trade." },
-  { label: "Review my last trade", prompt: "Look at my last trade. What did I do well, what slipped, and one thing to focus on next time?" },
-  { label: "Spot my pattern", prompt: "Look across my recent trades. Is there a pattern that keeps repeating? Name it plainly." },
-  { label: "Help me fix my exits", prompt: "My exits feel off. Based on my recent trades, what would you adjust?" },
-];
-
 export default function AiMentorChat() {
   const { state: traderState } = useTraderState();
   const { rows, entries: journal } = useDbJournal();
   const { entries: behavioralEntries, score: behavioralScore } = useBehavioralJournal(20);
   const { mentorPayload: performancePayload } = usePerformance(20);
   const intelligence = useMemo(() => computeIntelligence(rows), [rows]);
+
+  // Dynamic, state-driven quick prompts. Rotation key updates whenever the
+  // user logs new activity or discipline shifts — so chips feel reactive.
+  const quickPrompts = useMemo(() => {
+    const tradeCount = Math.max(
+      performancePayload?.windowSize ?? 0,
+      behavioralEntries.length,
+      rows.length,
+    );
+    const rotation =
+      behavioralEntries.length +
+      Math.floor((traderState.discipline.score ?? 0) / 10);
+    return buildQuickPrompts(
+      {
+        tradeCount,
+        disciplineScore: traderState.loading
+          ? null
+          : traderState.discipline.score,
+        winRate: performancePayload?.winRate ?? null,
+        avgRR: performancePayload?.avgRR ?? null,
+      },
+      rotation,
+    );
+  }, [
+    performancePayload?.windowSize,
+    performancePayload?.winRate,
+    performancePayload?.avgRR,
+    behavioralEntries.length,
+    rows.length,
+    traderState.loading,
+    traderState.discipline.score,
+  ]);
+
   const [recentPatterns, setRecentPatterns] = useState<DbBehaviorPattern[]>([]);
   const [activeStrategy, setActiveStrategy] =
     useState<ActiveStrategyContext | null>(null);
@@ -572,9 +599,9 @@ export default function AiMentorChat() {
         {!streaming ? (
           <div className="border-t border-border/60 px-4 py-2.5">
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-              {QUICK_PROMPTS.map((q) => (
+              {quickPrompts.map((q) => (
                 <button
-                  key={q.label}
+                  key={q.id}
                   type="button"
                   onClick={() => {
                     setSuggestionsDismissed(true);
