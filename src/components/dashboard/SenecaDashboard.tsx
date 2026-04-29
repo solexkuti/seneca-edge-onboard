@@ -23,8 +23,8 @@ import PerformanceTrends from "@/components/dashboard/PerformanceTrends";
 import {
   disciplineState,
   lastMistakeOf,
-  nextActionFromBehavior,
 } from "@/lib/behavioralJournal";
+import { generateInsight } from "@/lib/behaviorInsight";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -73,17 +73,8 @@ function controlStateBlurb(args: {
   return "Control is stable";
 }
 
-function presenceLine(args: {
-  hasEntries: boolean;
-  classification?: string;
-  breakStreak: number;
-  score: number | null;
-}): string {
-  if (!args.hasEntries || args.score == null) return "Seneca is ready when you are";
-  if (args.classification === "severe" || args.breakStreak >= 2 || args.score < 60)
-    return "Seneca has a suggestion";
-  return "Seneca is tracking your behavior patterns";
-}
+// presenceLine() removed — the Control State presence chip now reflects
+// the dynamic behavior insight from src/lib/behaviorInsight.ts.
 
 export default function SenecaDashboard({ userName }: { userName?: string }) {
   const { entries, score, loading } = useBehavioralJournal(20);
@@ -95,31 +86,12 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
   const cleanStreak = last?.clean_streak_after ?? 0;
   const breakStreak = last?.break_streak_after ?? 0;
   const lastMistake = useMemo(() => lastMistakeOf(entries), [entries]);
-  const rawAction = useMemo(
-    () => nextActionFromBehavior({ entries, score }),
-    [entries, score],
-  );
 
-  // Dashboard-level copy overrides: sharpen the default "Stay in rhythm"
-  // case AND the soft "Tighten execution" warn case into more decision-
-  // discipline framing without touching the shared behavioral library.
-  const action = useMemo(() => {
-    if (rawAction.title === "Stay in rhythm") {
-      return {
-        ...rawAction,
-        title: "Maintain consistency",
-        sub: "Run every setup through the analyzer before execution.",
-      };
-    }
-    if (rawAction.title === "Tighten execution") {
-      return {
-        ...rawAction,
-        title: "Your discipline is drifting",
-        sub: "Vet your next setup with the analyzer before execution. Slow down. Confirm before you commit.",
-      };
-    }
-    return rawAction;
-  }, [rawAction]);
+  // Behavior intelligence — single primary insight + single next action,
+  // derived from the last 5 entries. Drives both the Control State presence
+  // line and the Next Action card. Pure read of journal data.
+  const insight = useMemo(() => generateInsight(entries, 5), [entries]);
+  const action = insight.action;
 
   const initial = userName ? userName.slice(0, 1).toUpperCase() : "S";
   const bp = state.strategy?.blueprint ?? null;
@@ -131,12 +103,8 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
     cleanStreak,
     breakStreak,
   });
-  const presence = presenceLine({
-    hasEntries: entries.length > 0,
-    classification: last?.classification,
-    breakStreak,
-    score,
-  });
+  // Presence line on the Control State card → dynamic behavior insight.
+  const presence = insight.insight;
 
   return (
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
@@ -288,9 +256,18 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
                 <span className="absolute inset-0 animate-ping rounded-full bg-primary/40" />
                 <span className="relative h-2 w-2 rounded-full bg-primary" />
               </span>
-              <span className="flex-1 text-[12px] font-medium text-text-primary/85">
-                {presence}
-              </span>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={presence}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.32, ease }}
+                  className="flex-1 text-[12px] font-medium text-text-primary/85"
+                >
+                  {presence}
+                </motion.span>
+              </AnimatePresence>
               <ArrowUpRight className="h-3 w-3 text-text-secondary/70 group-hover:text-text-primary" strokeWidth={2.4} />
             </Link>
           </div>
