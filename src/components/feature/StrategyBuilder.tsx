@@ -267,6 +267,11 @@ export default function StrategyBuilder({
     );
   }
 
+  // Soft re-validation: run deterministic interrogation whenever rules change.
+  // This drives the warning banner shown on every step, including for opened
+  // locked blueprints (non-blocking — purely informational).
+  const report = useMemo<IntelligenceReport>(() => interrogate(bp), [bp]);
+
   return (
     <Shell>
       <div className="mx-auto w-full max-w-[640px] px-5 pt-5 pb-24">
