@@ -45,6 +45,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
+type ScreenshotTag = "none" | "entry" | "exit" | "htf";
+const SCREENSHOT_TAGS: { id: ScreenshotTag; label: string }[] = [
+  { id: "none", label: "Untagged" },
+  { id: "entry", label: "Entry" },
+  { id: "exit", label: "Exit" },
+  { id: "htf", label: "HTF" },
+];
+const MAX_SCREENSHOTS = 5;
+
 const CLASS_TONE: Record<Classification, { label: string; tone: string; chip: string }> = {
   clean:  { label: "Clean trade",     tone: "text-emerald-300", chip: "bg-emerald-500/10 ring-emerald-500/20 text-emerald-300" },
   minor:  { label: "Minor mistake",   tone: "text-amber-300",   chip: "bg-amber-500/10 ring-amber-500/20 text-amber-300" },
