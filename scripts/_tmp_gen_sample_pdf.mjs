@@ -5,7 +5,11 @@
 import { writeFileSync } from "node:fs";
 
 // Stub the browser globals jsPDF expects on import.
-globalThis.window = globalThis.window ?? {};
+globalThis.atob = globalThis.atob ?? ((s) => Buffer.from(s, "base64").toString("binary"));
+globalThis.btoa = globalThis.btoa ?? ((s) => Buffer.from(s, "binary").toString("base64"));
+const winStub = { atob: globalThis.atob, btoa: globalThis.btoa };
+globalThis.window = globalThis.window ?? winStub;
+Object.assign(globalThis.window, winStub);
 globalThis.document = globalThis.document ?? {
   createElement: () => ({ getContext: () => null, style: {}, setAttribute() {}, appendChild() {} }),
   body: { appendChild() {} },
