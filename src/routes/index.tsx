@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
 import { supabase } from "@/integrations/supabase/client";
-import { getActiveBlueprint } from "@/lib/dbStrategyBlueprints";
+import { isOnboardingCompleted } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,13 +26,11 @@ export const Route = createFileRoute("/")({
 });
 
 // Entry router for the root URL.
-//   - No session            → render onboarding (which contains SlideAuth)
-//   - Session + no strategy → render onboarding (continues into SlideName/SlideAuth tail
-//     for already-authed users, which the existing flow handles by redirecting to /hub)
-//   - Session + strategy    → redirect to /hub immediately
+//   - No session                          → render onboarding (which contains SlideAuth)
+//   - Session + onboarding_completed=true → returning user, jump to /hub with welcome flag
+//   - Session + onboarding_completed=false → render onboarding to finish setup
 //
-// This is the missing "land in the right place on load" logic. We do NOT add a
-// /login route — auth lives inside the onboarding flow's SlideAuth step.
+// Auth lives inside the onboarding flow's SlideAuth step — there is no /login route.
 function Index() {
   const navigate = useNavigate();
   const [decision, setDecision] = useState<"loading" | "onboarding">("loading");
@@ -52,37 +50,32 @@ function Index() {
         const { data } = await supabase.auth.getSession();
         const userId = data.session?.user?.id;
 
-        if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
-          console.log("[entry] route=/ authed=", !!userId);
-        }
-
         if (!userId) {
           if (!cancelled) setDecision("onboarding");
           return;
         }
 
-        // Authed — check for an existing strategy with a 2s cap.
-        // We don't actually need the answer to route correctly (both branches
-        // go to /hub), so don't let a slow query hold the entry page.
-        let hasStrategy = false;
-        try {
-          const bp = await Promise.race([
-            getActiveBlueprint(),
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
-          ]);
-          hasStrategy = !!bp;
-        } catch (e) {
-          console.warn("[entry] strategy check failed", e);
-        }
-
-        if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
-          console.log("[entry] strategy_exists=", hasStrategy);
-        }
+        // Returning-user detection — explicit profile flag.
+        const completed = await Promise.race([
+          isOnboardingCompleted(userId),
+          new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2000)),
+        ]);
 
         if (cancelled) return;
-        navigate({ to: "/hub", replace: true });
+
+        if (completed) {
+          // Mark for a one-shot "Welcome back" toast in /hub.
+          try {
+            window.sessionStorage.setItem("seneca:welcomeBack", "1");
+          } catch {
+            /* ignore */
+          }
+          navigate({ to: "/hub", replace: true });
+          return;
+        }
+
+        // Authed but onboarding never finished — finish it.
+        setDecision("onboarding");
       } catch (err) {
         console.error("[entry] failed", err);
         if (!cancelled) setDecision("onboarding");
