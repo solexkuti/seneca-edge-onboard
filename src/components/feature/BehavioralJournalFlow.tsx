@@ -342,8 +342,10 @@ export default function BehavioralJournalFlow({
       });
 
       // 2) Trade Performance log — drives metrics
-      const outcome: Outcome =
-        resultR > 0 ? "win" : resultR < 0 ? "loss" : "breakeven";
+      // Use explicit user-selected outcome (falls back to R-derived if somehow null,
+      // but validation prevents that).
+      const finalOutcome: Outcome =
+        outcome ?? (resultR > 0 ? "win" : resultR < 0 ? "loss" : "breakeven");
       const now = new Date();
       const opened_at = now.toISOString();
       const closed_at = now.toISOString();
