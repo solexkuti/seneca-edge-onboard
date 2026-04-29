@@ -41,6 +41,17 @@ const EDUCATION: QuickPrompt = {
   priority: 10,
 };
 
+/**
+ * Trust-builder shown only on a fresh chat (zero trades + first turn).
+ * Disappears permanently once the user sends any message.
+ */
+export const WHAT_MAKES_DIFFERENT: QuickPrompt = {
+  id: "what-makes-different",
+  label: "What makes Seneca different?",
+  prompt: "What makes Seneca different from a normal trading journal?",
+  priority: 200,
+};
+
 const ZERO_FOCUS: QuickPrompt = {
   id: "zero-focus",
   label: "What should I focus on first?",
