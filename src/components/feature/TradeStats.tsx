@@ -104,6 +104,33 @@ export default function TradeStats() {
           })}
         </div>
 
+        <div className="mt-2.5 flex gap-1.5 overflow-x-auto no-scrollbar">
+          {SESSIONS.map((s) => {
+            const active = session === s.id;
+            const count =
+              s.id === "all"
+                ? trades.length
+                : trades.filter((t) => t.session_tag === s.id).length;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSession(s.id)}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 transition ${
+                  active
+                    ? "bg-primary/20 ring-primary/40 text-text-primary"
+                    : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {s.label}
+                <span className="ml-1.5 text-text-secondary/60 tabular-nums">
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         {empty ? (
           <div className="mt-12 rounded-2xl bg-card ring-1 ring-border p-6 text-center">
             <p className="text-[13.5px] text-text-primary">
