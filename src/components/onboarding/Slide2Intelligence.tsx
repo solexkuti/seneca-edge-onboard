@@ -34,9 +34,9 @@ export default function Slide2Intelligence(_: SlideProps) {
           How it feels
         </p>
         <h2 className="mt-2 text-[22px] font-bold leading-tight tracking-tight text-text-primary">
-          It watches your discipline
+          It tracks how you trade
           <br />
-          <span className="text-gradient-mix">while you trade.</span>
+          <span className="text-gradient-mix">so you see what drives results.</span>
         </h2>
       </motion.div>
 
