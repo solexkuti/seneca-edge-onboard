@@ -29,11 +29,35 @@ import { analyzeBehaviorPatterns } from "@/lib/behaviorPatternAnalysis";
 import { detectRelapseAndLoops } from "@/lib/relapseAndLoopDetection";
 import { usePerformance } from "@/hooks/usePerformance";
 import { buildQuickPrompts } from "@/lib/mentorQuickPrompts";
+import {
+  INITIAL_STATE,
+  type ConversationState,
+  detectPattern,
+  isGuidedQuestion,
+  isYes,
+  isNo,
+  getScript,
+  DEEP_DIVE_CLOSING,
+  type DeepDiveOption,
+} from "@/lib/mentorConversationState";
+
+type ChipAction =
+  | { kind: "yes_dig" }
+  | { kind: "not_now" }
+  | { kind: "deep_dive_option"; option: DeepDiveOption };
+
+type Chip = {
+  id: string;
+  label: string;
+  action: ChipAction;
+};
 
 type Msg = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  /** Optional UI chips rendered under the bubble. Tap-once and they disappear. */
+  chips?: Chip[];
 };
 
 const MENTOR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mentor-chat`;
@@ -92,21 +116,48 @@ export default function AiMentorChat() {
     return `Behavior is steady. Ask me anything about your last trades, or tap "Review my trades".`;
   }, [behavioralEntries]);
 
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      id: "intro",
-      role: "assistant",
-      content: introContent,
-    },
-  ]);
+  // Conversation state machine — see src/lib/mentorConversationState.ts.
+  // While `mode !== "idle"` the chat NEVER falls back to the AI; user
+  // input is interpreted in the active pattern context.
+  const [convoState, setConvoState] = useState<ConversationState>(INITIAL_STATE);
 
-  // Keep intro fresh until the user sends their first message.
+  /** Builds the intro message, attaching guided chips when applicable. */
+  const buildIntroMsg = (content: string): Msg => {
+    if (isGuidedQuestion(content)) {
+      return {
+        id: "intro",
+        role: "assistant",
+        content,
+        chips: [
+          { id: "yes_dig", label: "Yes, break it down", action: { kind: "yes_dig" } },
+          { id: "not_now", label: "Not now", action: { kind: "not_now" } },
+        ],
+      };
+    }
+    return { id: "intro", role: "assistant", content };
+  };
+
+  const [messages, setMessages] = useState<Msg[]>([buildIntroMsg(introContent)]);
+
+  // Keep intro fresh until the user sends their first message. Also
+  // re-syncs the conversation state machine to the intro's pattern.
   useEffect(() => {
     setMessages((prev) =>
       prev.length === 1 && prev[0].id === "intro"
-        ? [{ id: "intro", role: "assistant", content: introContent }]
+        ? [buildIntroMsg(introContent)]
         : prev,
     );
+    if (isGuidedQuestion(introContent)) {
+      setConvoState({
+        mode: "pattern_detected",
+        active_pattern: detectPattern(introContent),
+        last_question: introContent,
+        step: 0,
+      });
+    } else {
+      setConvoState(INITIAL_STATE);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [introContent]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -191,12 +242,104 @@ export default function AiMentorChat() {
 
   // Hard-gated, deterministic mentor reply (no AI call).
   // Tiny delay just to feel natural — short enough to stay snappy.
-  const respondLocally = (history: Msg[], content: string) => {
+  const respondLocally = (history: Msg[], content: string, chips?: Chip[]) => {
     const id = `a-${Date.now()}`;
     window.setTimeout(() => {
-      setMessages([...history, { id, role: "assistant", content }]);
+      setMessages([...history, { id, role: "assistant", content, chips }]);
       setStreaming(false);
     }, 120);
+  };
+
+  /** Strip chips from any prior assistant messages — they're single-use. */
+  const stripExistingChips = (msgs: Msg[]): Msg[] =>
+    msgs.map((m) => (m.chips ? { ...m, chips: undefined } : m));
+
+  /**
+   * Push a sequence of assistant messages with a small stagger so deep-dive
+   * Step 1 / Step 2 land as separate, readable bubbles.
+   */
+  const appendAssistantSequence = (
+    history: Msg[],
+    parts: Array<{ content: string; chips?: Chip[] }>,
+  ) => {
+    const base = stripExistingChips(history);
+    setMessages(base);
+    parts.forEach((p, i) => {
+      window.setTimeout(() => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `a-${Date.now()}-${i}`,
+            role: "assistant",
+            content: p.content,
+            chips: p.chips,
+          },
+        ]);
+        if (i === parts.length - 1) setStreaming(false);
+      }, 220 * (i + 1));
+    });
+  };
+
+  /**
+   * Enter the deep-dive flow for the active pattern. Surfaces Step 1
+   * (identify) and Step 2 (awareness + structured options) as two
+   * separate bubbles, then sets state to deep_dive.
+   */
+  const enterDeepDive = (history: Msg[]) => {
+    const script = getScript(convoState.active_pattern);
+    const optionChips: Chip[] = script.options.map((opt) => ({
+      id: opt.id,
+      label: opt.label,
+      action: { kind: "deep_dive_option", option: opt },
+    }));
+    setStreaming(true);
+    appendAssistantSequence(history, [
+      { content: script.identify },
+      { content: script.awareness, chips: optionChips },
+    ]);
+    setConvoState({
+      mode: "deep_dive",
+      active_pattern: convoState.active_pattern,
+      last_question: script.awareness,
+      step: 1,
+    });
+  };
+
+  /** Handle a chip tap. Echoes the label as a user bubble for clarity. */
+  const handleChip = (chip: Chip) => {
+    if (streaming) return;
+    const userMsg: Msg = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      content: chip.label,
+    };
+    const history = [...stripExistingChips(messages), userMsg];
+    setMessages(history);
+    setHasStartedConversation(true);
+    setSuggestionsRevealed(false);
+
+    if (chip.action.kind === "yes_dig") {
+      enterDeepDive(history);
+      return;
+    }
+    if (chip.action.kind === "not_now") {
+      setConvoState(INITIAL_STATE);
+      respondLocally(
+        history,
+        "Understood. I'm here when you're ready.",
+      );
+      return;
+    }
+    if (chip.action.kind === "deep_dive_option") {
+      const opt = chip.action.option;
+      setStreaming(true);
+      appendAssistantSequence(history, [
+        { content: opt.response },
+        { content: DEEP_DIVE_CLOSING },
+      ]);
+      // Drop back to idle so the user can ask anything next.
+      setConvoState(INITIAL_STATE);
+    }
   };
 
   // Lightweight intent classifier — keyword based, deterministic.
@@ -270,13 +413,61 @@ export default function AiMentorChat() {
       role: "user",
       content: trimmed,
     };
-    const history = [...messages, userMsg];
+    const history = [...stripExistingChips(messages), userMsg];
     // Echo the user message immediately and flip streaming on the same tick
     // so the input clears and the typing indicator shows without waiting for
     // context-building or the network round-trip.
     setMessages(history);
     setDraft("");
     setStreaming(true);
+
+    // ─── GUIDED-MODE INTERCEPT ────────────────────────────────────────
+    // While Seneca is in a guided flow, NEVER fall back to general chat.
+    // We answer the user deterministically based on the active pattern.
+    if (convoState.mode === "pattern_detected") {
+      if (isYes(trimmed)) {
+        enterDeepDive(history);
+        return;
+      }
+      if (isNo(trimmed)) {
+        setConvoState(INITIAL_STATE);
+        respondLocally(history, "Understood. I'm here when you're ready.");
+        return;
+      }
+      // Free-text reply that isn't yes/no — treat it as the user wanting to
+      // engage with the pattern. Drop straight into the deep-dive script.
+      enterDeepDive(history);
+      return;
+    }
+
+    if (convoState.mode === "deep_dive") {
+      // The user typed instead of tapping an option. Match against option
+      // labels by keyword; otherwise acknowledge and drop to idle.
+      const script = getScript(convoState.active_pattern);
+      const t = trimmed.toLowerCase();
+      const matched = script.options.find((opt) => {
+        const k = opt.label.toLowerCase();
+        return t.includes(k.split(" ").slice(0, 2).join(" ")) || t.includes(opt.id.replace("_", " "));
+      });
+      if (matched) {
+        setStreaming(true);
+        appendAssistantSequence(history, [
+          { content: matched.response },
+          { content: DEEP_DIVE_CLOSING },
+        ]);
+        setConvoState(INITIAL_STATE);
+        return;
+      }
+      // Otherwise treat the free-form text as the user's own answer to
+      // "what happened?" — acknowledge it and close the loop without
+      // pretending to interpret it.
+      respondLocally(
+        history,
+        "Heard. Naming it is the work.\n\nIf you want, pick one of the options above to go deeper — or ask me anything.",
+      );
+      setConvoState(INITIAL_STATE);
+      return;
+    }
 
     // ---- HARD GATE (runs before any AI call) ----
     const tradeCount = Math.max(
@@ -704,7 +895,7 @@ export default function AiMentorChat() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                  className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                  className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
                 >
                   <div
                     className={
@@ -717,6 +908,21 @@ export default function AiMentorChat() {
                   >
                     {m.content || (m.role === "assistant" && streaming ? "…" : "")}
                   </div>
+                  {!isUser && m.chips && m.chips.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5 max-w-[82%]">
+                      {m.chips.map((chip) => (
+                        <button
+                          key={chip.id}
+                          type="button"
+                          onClick={() => handleChip(chip)}
+                          disabled={streaming}
+                          className="rounded-full bg-primary/15 ring-1 ring-primary/35 px-3 py-1.5 text-[11.5px] font-semibold text-text-primary transition hover:bg-primary/20 active:scale-[0.97] disabled:opacity-40"
+                        >
+                          {chip.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
               );
             })}
