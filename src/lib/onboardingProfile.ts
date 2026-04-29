@@ -11,7 +11,8 @@ export type GoalChoice =
   | "build-system";
 
 export type OnboardingProfile = {
-  market?: MarketChoice;
+  /** Selected markets (multi-select). Empty/undefined when not yet chosen. */
+  markets?: MarketChoice[];
   experience?: ExperienceLevel;
   challenge?: ChallengeChoice;
   goal?: GoalChoice;
