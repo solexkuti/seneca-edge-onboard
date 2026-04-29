@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS trg_enforce_trade_lock ON public.trades;
