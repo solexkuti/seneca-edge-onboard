@@ -24,7 +24,15 @@ import {
   MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
-import FeatureShell from "./FeatureShell";
+import {
+  SenecaScreen,
+  SenecaHeader,
+  MentorLine,
+  PrimaryAction,
+  SecondaryAction,
+  FadeIn,
+} from "@/components/seneca";
+import { SenecaVoice, senecaVerdict } from "@/lib/senecaVoice";
 import { listBlueprints, type StrategyBlueprint } from "@/lib/dbStrategyBlueprints";
 import {
   uploadChartImage,
@@ -115,29 +123,16 @@ export default function ChartAnalyzer() {
   // Strategy gate
   if (strategies !== null && strategies.length === 0) {
     return (
-      <FeatureShell
-        eyebrow="Chart Analyzer"
-        title="Build a strategy first."
-        subtitle="Chart analysis runs against YOUR rules. Define them once."
-      >
-        <div className="rounded-2xl bg-card p-5 ring-1 ring-border shadow-soft">
-          <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20">
-              <AlertTriangle className="h-4 w-4" strokeWidth={2.4} />
-            </div>
-            <p className="text-[13px] leading-snug text-text-primary">
-              No strategy found. Create and lock one in the Strategy Builder before analyzing charts.
-            </p>
-          </div>
-          <button
-            onClick={() => navigate({ to: "/hub/strategy" })}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-mix px-4 py-3 text-[13.5px] font-semibold text-white shadow-soft transition hover:shadow-card-premium"
-          >
-            Open Strategy Builder
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-      </FeatureShell>
+      <SenecaScreen back={{ to: "/hub", label: "Today" }}>
+        <SenecaHeader
+          title="Analyzer"
+          subtitle="I check the chart against your rules. First, give me your rules."
+        />
+        <MentorLine tone="block">{SenecaVoice.blocks.noStrategy}</MentorLine>
+        <PrimaryAction onClick={() => navigate({ to: "/hub/strategy" })}>
+          Build your strategy
+        </PrimaryAction>
+      </SenecaScreen>
     );
   }
 
@@ -354,11 +349,11 @@ export default function ChartAnalyzer() {
   }
 
   return (
-    <FeatureShell
-      eyebrow="Chart Analyzer"
-      title="Analyze against YOUR strategy."
-      subtitle="Validates chart structure, rules, and timeframe alignment."
-    >
+    <SenecaScreen back={{ to: "/hub", label: "Today" }}>
+      <SenecaHeader
+        title="Analyzer"
+        subtitle="Show me the setup. I'll check it against your rules."
+      />
       <input
         ref={execInputRef}
         type="file"
@@ -436,14 +431,9 @@ export default function ChartAnalyzer() {
               }}
             />
 
-            <button
-              onClick={handleAnalyze}
-              disabled={!canAnalyze}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-mix px-4 py-3.5 text-[14px] font-semibold text-white shadow-soft transition hover:shadow-card-premium disabled:opacity-40"
-            >
-              <Sparkles className="h-4 w-4" />
-              Analyze chart
-            </button>
+            <PrimaryAction onClick={handleAnalyze} disabled={!canAnalyze}>
+              Run it through your rules
+            </PrimaryAction>
           </motion.div>
         )}
 
@@ -456,35 +446,32 @@ export default function ChartAnalyzer() {
             transition={{ duration: 0.35 }}
             className="space-y-3"
           >
-            <div className="rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft">
-              <div className="flex items-center gap-3">
-                <Loader2 className="h-5 w-5 animate-spin text-brand" />
-                <p className="text-[13.5px] font-semibold text-text-primary">
-                  Analyzing your chart…
-                </p>
-              </div>
-            </div>
+            <MentorLine>{SenecaVoice.reading}</MentorLine>
             {STEP_LABELS.map((label, i) => {
               const done = step > i;
               const active = step === i;
               return (
                 <div
                   key={label}
-                  className="flex items-center gap-3 rounded-xl bg-card px-3 py-2.5 ring-1 ring-border shadow-soft"
-                  style={{ opacity: done || active ? 1 : 0.45 }}
+                  className="flex items-center gap-3 rounded-xl bg-card/60 px-3 py-2.5 ring-1 ring-foreground/10 backdrop-blur"
+                  style={{ opacity: done || active ? 1 : 0.4 }}
                 >
                   <div
-                    className={`flex h-7 w-7 items-center justify-center rounded-full ${
-                      done ? "bg-emerald-500" : active ? "bg-gradient-mix animate-pulse" : "bg-text-secondary/15"
+                    className={`flex h-6 w-6 items-center justify-center rounded-full ${
+                      done
+                        ? "bg-foreground/80"
+                        : active
+                          ? "bg-foreground/30 animate-pulse"
+                          : "bg-foreground/10"
                     }`}
                   >
                     {done ? (
-                      <CheckCircle2 className="h-4 w-4 text-white" strokeWidth={3} />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-background" strokeWidth={3} />
                     ) : (
-                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-background/80" />
                     )}
                   </div>
-                  <span className="text-[13px] font-medium text-text-primary">{label}</span>
+                  <span className="text-sm text-foreground/80">{label}</span>
                 </div>
               );
             })}
@@ -499,40 +486,21 @@ export default function ChartAnalyzer() {
             exit={{ opacity: 0, y: -8 }}
             className="space-y-4"
           >
-            <div className="rounded-2xl bg-card p-5 ring-1 ring-rose-500/30 shadow-soft">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20">
-                  <XCircle className="h-4 w-4" strokeWidth={2.4} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-[14px] font-semibold text-text-primary">
-                    Upload a valid trading chart
-                  </p>
-                  <p className="mt-1 text-[12.5px] text-text-secondary">
-                    {invalidReason} Candles, price axis, and time axis are required.
-                  </p>
-                  {invalidDetails.length > 0 && (
-                    <ul className="mt-2 space-y-1 pl-4">
-                      {invalidDetails.map((d, i) => (
-                        <li
-                          key={i}
-                          className="list-disc text-[12px] leading-snug text-rose-700/90"
-                        >
-                          {d}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={reset}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-card px-4 py-3 text-[13.5px] font-semibold text-text-primary ring-1 ring-border shadow-soft hover:shadow-card-premium"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Upload a different image
-            </button>
+            <MentorLine tone="block">
+              That doesn't look like a tradable chart. {invalidReason} Show me one with candles, price, and time.
+            </MentorLine>
+            {invalidDetails.length > 0 && (
+              <FadeIn>
+                <ul className="space-y-1 rounded-2xl bg-card/60 p-4 text-xs leading-relaxed text-muted-foreground ring-1 ring-foreground/10">
+                  {invalidDetails.map((d, i) => (
+                    <li key={i} className="list-disc pl-4">
+                      {d}
+                    </li>
+                  ))}
+                </ul>
+              </FadeIn>
+            )}
+            <SecondaryAction onClick={reset}>Try another chart</SecondaryAction>
           </motion.div>
         )}
 
@@ -540,7 +508,7 @@ export default function ChartAnalyzer() {
           <ResultView result={result} onReset={reset} navigate={navigate} />
         )}
       </AnimatePresence>
-    </FeatureShell>
+    </SenecaScreen>
   );
 }
 
@@ -834,46 +802,44 @@ function ResultView({
         </div>
       )}
 
-      {/* Verdict */}
-      <div className={`rounded-2xl p-4 ring-1 shadow-soft ${v.bg} ${v.ring}`}>
-        <div className="flex items-center gap-3">
-          <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-card ring-1 ring-border ${v.fg}`}>
-            <v.Icon className="h-4 w-4" strokeWidth={2.4} />
-          </div>
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-              Verdict
+      {/* Verdict — Seneca's voice, not a status badge */}
+      <MentorLine
+        tone={
+          result.breakdown.overall === "valid"
+            ? "calm"
+            : result.breakdown.overall === "weak"
+              ? "ack"
+              : "block"
+        }
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-foreground/10">
+            <v.Icon className="h-3.5 w-3.5 text-foreground/80" strokeWidth={2.4} />
+          </span>
+          <div className="flex-1">
+            <p className="font-medium text-foreground">
+              {senecaVerdict(result.breakdown.overall)}
             </p>
-            <p className={`text-[14.5px] font-semibold ${v.fg}`}>{v.label}</p>
-          </div>
-          <div className="ml-auto text-right">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-              Score
+            <p className="mt-1 text-xs text-muted-foreground">
+              Score {result.breakdown.score}/100
             </p>
-            <p className="text-[18px] font-bold text-text-primary">{result.breakdown.score}/100</p>
           </div>
         </div>
-      </div>
+      </MentorLine>
 
-      {/* Low-confidence warning */}
+      {/* Low-confidence — calm, one line */}
       {result.breakdown.low_confidence && (
-        <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-[12.5px] leading-snug text-text-primary">
-            {result.breakdown.confidence_note ??
-              "Analysis confidence is low due to unclear chart structure."}
-          </p>
-        </div>
+        <MentorLine tone="ack">
+          {result.breakdown.confidence_note ??
+            "I couldn't read the structure clearly. Treat this lightly."}
+        </MentorLine>
       )}
 
-      {/* Strategy mismatch warning */}
+      {/* Strategy mismatch — calm, one line */}
       {result.breakdown.overall !== "valid" && !result.breakdown.low_confidence && (
-        <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-[12.5px] leading-snug text-text-primary">
-            This setup does not fully match your strategy. Do not force it.
-          </p>
-        </div>
+        <MentorLine tone="block">
+          This doesn't fully match your rules. Don't force it.
+        </MentorLine>
       )}
 
       {/* Trade Readiness — one-screen checklist with next actions */}
@@ -1102,37 +1068,30 @@ function ResultView({
         </div>
       )}
 
-      {/* Actions */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <button
+      {/* Actions — one primary, one quiet */}
+      <div className="space-y-2.5">
+        <PrimaryAction
           onClick={() => {
             if (result.breakdown.overall === "invalid") {
-              toast.error("Setup is invalid — does not match strategy. Do not trade this.");
+              toast.error("This isn't your setup. Skip it.");
               return;
             }
             if (result.breakdown.overall === "weak") {
-              toast.warning("Proceeding with a weak setup — review carefully.");
+              toast.warning("Borderline setup — review before you act.");
             }
             navigate({ to: "/hub/mind" });
           }}
           disabled={result.breakdown.overall === "invalid"}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-mix px-4 py-3 text-[13.5px] font-semibold text-white shadow-soft hover:shadow-card-premium disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {result.breakdown.overall === "invalid" ? "Blocked" : "Trade Gate"}
-          <ArrowRight className="h-4 w-4" />
-        </button>
-        <button
-          onClick={onReset}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-card px-4 py-3 text-[13.5px] font-semibold text-text-primary ring-1 ring-border shadow-soft hover:shadow-card-premium"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Re-analyze
-        </button>
+          {result.breakdown.overall === "invalid"
+            ? "Skip this setup"
+            : "Continue to trade gate"}
+        </PrimaryAction>
+        <SecondaryAction onClick={onReset}>Try another chart</SecondaryAction>
       </div>
-      <div className="flex items-center justify-center gap-2 rounded-xl bg-card/60 px-3 py-2 ring-1 ring-border">
-        <Save className="h-3.5 w-3.5 text-text-secondary" />
-        <p className="text-[11.5px] text-text-secondary">Saved · ID {result.row.id.slice(0, 8)}</p>
-      </div>
+      <p className="text-center text-xs text-muted-foreground">
+        Saved with you · {result.row.id.slice(0, 8)}
+      </p>
     </motion.div>
   );
 }
