@@ -381,12 +381,24 @@ type UserContext = {
    */
   behaviorPatterns?: {
     totalTrades: number;
+    totalAvailable?: number;
+    windowSize?: number;
     cleanRate: number;
+    avgScore?: number | null;
+    behaviorState?:
+      | "controlled"
+      | "undisciplined"
+      | "improving"
+      | "inconsistent"
+      | "insufficient_data";
+    insufficientData?: boolean;
+    mentorLine?: string;
     dominantWeakness: {
       id: string;
       label: string;
       count: number;
       pct: number;
+      weightedPct?: number;
       severe: boolean;
     } | null;
     mistakeFrequency: Array<{
@@ -394,6 +406,7 @@ type UserContext = {
       label: string;
       count: number;
       pct: number;
+      weightedPct?: number;
       severe: boolean;
     }>;
     recentVsPrevious: {
@@ -411,6 +424,7 @@ type UserContext = {
       label: string;
       count: number;
       pct: number;
+      weightedPct?: number;
       severe: boolean;
     }>;
     headlines: string[];
