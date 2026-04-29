@@ -79,6 +79,7 @@ type StepKey =
   | "raw"
   | "tiers"
   | "parse"
+  | "interrogate"
   | "refine"
   | "output"
   | "export"
@@ -90,6 +91,7 @@ const STEPS: { key: StepKey; label: string }[] = [
   { key: "raw", label: "Strategy" },
   { key: "tiers", label: "Tiers" },
   { key: "parse", label: "Parse" },
+  { key: "interrogate", label: "Interrogate" },
   { key: "refine", label: "Refine" },
   { key: "output", label: "Output" },
   { key: "export", label: "Export" },
