@@ -978,19 +978,22 @@ export default function BehavioralJournalFlow({
                         id: "win",
                         label: "Win",
                         activeCls: "bg-emerald-500/15 ring-emerald-500/40 text-emerald-200",
-                        glow: "0 0 22px rgba(198,161,91,0.45), 0 0 6px rgba(231,201,138,0.35) inset",
+                        glowStrong: "0 0 22px rgba(198,161,91,0.45), 0 0 6px rgba(231,201,138,0.35) inset",
+                        glowSoft: "0 0 12px rgba(198,161,91,0.22), 0 0 4px rgba(231,201,138,0.18) inset",
                       },
                       {
                         id: "loss",
                         label: "Loss",
                         activeCls: "bg-rose-500/15 ring-rose-500/40 text-rose-200",
-                        glow: "0 0 22px rgba(220,90,90,0.35), 0 0 6px rgba(220,90,90,0.25) inset",
+                        glowStrong: "0 0 22px rgba(220,90,90,0.35), 0 0 6px rgba(220,90,90,0.25) inset",
+                        glowSoft: "0 0 12px rgba(220,90,90,0.18), 0 0 4px rgba(220,90,90,0.12) inset",
                       },
                       {
                         id: "breakeven",
                         label: "Break-even",
                         activeCls: "bg-primary/15 ring-primary/45 text-text-primary",
-                        glow: "0 0 20px rgba(198,161,91,0.30), 0 0 6px rgba(198,161,91,0.20) inset",
+                        glowStrong: "0 0 20px rgba(198,161,91,0.30), 0 0 6px rgba(198,161,91,0.20) inset",
+                        glowSoft: "0 0 10px rgba(198,161,91,0.16), 0 0 4px rgba(198,161,91,0.10) inset",
                       },
                     ] as const).map((opt) => {
                       const active = outcome === opt.id;
@@ -1006,8 +1009,14 @@ export default function BehavioralJournalFlow({
                           animate={
                             active
                               ? {
+                                  // One-shot bounce on selection, then a soft
+                                  // continuous pulse via the boxShadow keyframes.
                                   scale: [1, 1.08, 0.97, 1.02, 1],
-                                  boxShadow: opt.glow,
+                                  boxShadow: [
+                                    opt.glowStrong,
+                                    opt.glowSoft,
+                                    opt.glowStrong,
+                                  ],
                                 }
                               : {
                                   scale: 1,
@@ -1016,7 +1025,18 @@ export default function BehavioralJournalFlow({
                           }
                           transition={
                             active
-                              ? { duration: 0.55, times: [0, 0.3, 0.55, 0.8, 1], ease: "easeOut" }
+                              ? {
+                                  scale: {
+                                    duration: 0.55,
+                                    times: [0, 0.3, 0.55, 0.8, 1],
+                                    ease: "easeOut",
+                                  },
+                                  boxShadow: {
+                                    duration: 2.4,
+                                    ease: "easeInOut",
+                                    repeat: Infinity,
+                                  },
+                                }
                               : { duration: 0.25, ease: "easeOut" }
                           }
                           whileHover={{ scale: active ? 1.02 : 1.03 }}
