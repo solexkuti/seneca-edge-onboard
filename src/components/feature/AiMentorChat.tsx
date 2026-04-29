@@ -221,14 +221,39 @@ export default function AiMentorChat() {
     );
     const lastTradeExists = tradeCount > 0;
     const asksAboutLastTrade = /\blast\s+trade\b/i.test(trimmed);
+    const intent = classifyIntent(trimmed);
 
-    // CASE A: zero trades — never call the AI.
+    // CASE A: zero trades — branch by intent. Only block data-dependent intents.
     if (tradeCount === 0) {
-      respondLocally(
-        history,
-        "There's nothing here yet — that's clean.\n\nLog your first trade and I'll start seeing how you actually move, not how you think you move.\n\nWhat was the last trade you took, even if you didn't log it?",
-      );
-      return;
+      if (intent === "TRADE_REVIEW") {
+        respondLocally(
+          history,
+          "You haven't logged a trade yet, so there's nothing to review.\n\nLog one trade and I'll break it down with you.",
+        );
+        return;
+      }
+      if (intent === "PATTERN_ANALYSIS") {
+        respondLocally(
+          history,
+          "No patterns yet — that only shows up after a few trades.\n\nGive me a handful and I'll start connecting things.",
+        );
+        return;
+      }
+      if (intent === "METRICS_EXPLANATION") {
+        respondLocally(
+          history,
+          "Your metrics aren't active yet because nothing has been logged.\n\nOnce you start trading, I'll calculate things like win rate, RR, and discipline automatically.",
+        );
+        return;
+      }
+      if (intent === "GUIDANCE") {
+        respondLocally(
+          history,
+          "Right now the focus is simple — log clean trades.\n\nThat's what gives me something real to work with.",
+        );
+        return;
+      }
+      // GENERAL_TRADING_QUESTION → fall through to AI (education is allowed).
     }
 
     // CASE B: user asks about "last trade" but none exists.
