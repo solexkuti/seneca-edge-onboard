@@ -140,10 +140,63 @@ export default function AiMentorChat() {
   }, [messages, streaming]);
 
   // Hard-gated, deterministic mentor reply (no AI call).
+  // Adds a small humanizing delay so the response doesn't feel like a fake instant echo.
   const respondLocally = (history: Msg[], content: string) => {
     const id = `a-${Date.now()}`;
-    setMessages([...history, { id, role: "assistant", content }]);
-    setStreaming(false);
+    const delay = 300 + Math.floor(Math.random() * 500); // 300–800ms
+    window.setTimeout(() => {
+      setMessages([...history, { id, role: "assistant", content }]);
+      setStreaming(false);
+    }, delay);
+  };
+
+  // Lightweight intent classifier — keyword based, deterministic.
+  type Intent =
+    | "TRADE_REVIEW"
+    | "PATTERN_ANALYSIS"
+    | "METRICS_EXPLANATION"
+    | "GENERAL_TRADING_QUESTION"
+    | "GUIDANCE";
+
+  const classifyIntent = (text: string): Intent => {
+    const t = text.toLowerCase();
+
+    // TRADE_REVIEW — asking about own trades / mistakes
+    if (
+      /\b(review|recap|breakdown|analy[sz]e)\b.*\b(trade|setup|entry|exit)\b/.test(t) ||
+      /\b(my|last|recent)\s+(trade|trades|setup|entry|exit)\b/.test(t) ||
+      /\bwhat\s+did\s+i\s+do\s+(wrong|right)\b/.test(t)
+    ) {
+      return "TRADE_REVIEW";
+    }
+
+    // PATTERN_ANALYSIS — recurring behavior
+    if (
+      /\b(pattern|patterns|repeat|repeating|keeps?\s+happening|tendency|tendencies|habit|habits)\b/.test(t) ||
+      /\bspot\b.*\bpattern\b/.test(t)
+    ) {
+      return "PATTERN_ANALYSIS";
+    }
+
+    // METRICS_EXPLANATION — own stats / how scores work
+    if (
+      /\b(my\s+)?(stats|metrics|score|discipline|win\s*rate|winrate|rr|r:r|r\/r|expectancy|drawdown)\b/.test(t) ||
+      /\bhow\s+is\s+.*\s+(calculated|computed|measured)\b/.test(t) ||
+      /\bexplain\s+(my\s+)?(stats|metrics|score|numbers)\b/.test(t)
+    ) {
+      return "METRICS_EXPLANATION";
+    }
+
+    // GUIDANCE — improvement / something feels off
+    if (
+      /\b(how\s+(can|do)\s+i\s+improve|get\s+better|fix|feel(s)?\s+off|struggling|stuck)\b/.test(t) ||
+      /\b(my\s+)?(exits?|entries|risk|sizing)\s+(feel|feels|are)\b/.test(t)
+    ) {
+      return "GUIDANCE";
+    }
+
+    // Default — generic trading concept question (educational)
+    return "GENERAL_TRADING_QUESTION";
   };
 
   const send = async (text: string) => {
@@ -168,14 +221,39 @@ export default function AiMentorChat() {
     );
     const lastTradeExists = tradeCount > 0;
     const asksAboutLastTrade = /\blast\s+trade\b/i.test(trimmed);
+    const intent = classifyIntent(trimmed);
 
-    // CASE A: zero trades — never call the AI.
+    // CASE A: zero trades — branch by intent. Only block data-dependent intents.
     if (tradeCount === 0) {
-      respondLocally(
-        history,
-        "There's nothing here yet — that's clean.\n\nLog your first trade and I'll start seeing how you actually move, not how you think you move.\n\nWhat was the last trade you took, even if you didn't log it?",
-      );
-      return;
+      if (intent === "TRADE_REVIEW") {
+        respondLocally(
+          history,
+          "You haven't logged a trade yet, so there's nothing to review.\n\nLog one trade and I'll break it down with you.",
+        );
+        return;
+      }
+      if (intent === "PATTERN_ANALYSIS") {
+        respondLocally(
+          history,
+          "No patterns yet — that only shows up after a few trades.\n\nGive me a handful and I'll start connecting things.",
+        );
+        return;
+      }
+      if (intent === "METRICS_EXPLANATION") {
+        respondLocally(
+          history,
+          "Your metrics aren't active yet because nothing has been logged.\n\nOnce you start trading, I'll calculate things like win rate, RR, and discipline automatically.",
+        );
+        return;
+      }
+      if (intent === "GUIDANCE") {
+        respondLocally(
+          history,
+          "Right now the focus is simple — log clean trades.\n\nThat's what gives me something real to work with.",
+        );
+        return;
+      }
+      // GENERAL_TRADING_QUESTION → fall through to AI (education is allowed).
     }
 
     // CASE B: user asks about "last trade" but none exists.
