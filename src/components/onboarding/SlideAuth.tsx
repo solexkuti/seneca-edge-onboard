@@ -30,51 +30,16 @@ export default function SlideAuth({ username, onAuthed }: Props) {
   const handleGoogle = async () => {
     setError(null);
     setBusy("google");
-
-    // Safety: if the OAuth redirect doesn't take over within ~6s,
-    // release the button so the user can try again instead of staring
-    // at "Connecting…" forever (happens when popups are blocked or
-    // a preview iframe swallows the navigation).
-    const stuckTimer = window.setTimeout(() => {
-      setBusy((b) => {
-        if (b === "google") {
-          setError("Google sign-in didn't open. Try again or use email.");
-          return null;
-        }
-        return b;
-      });
-    }, 6000);
-
-    // If we're inside an iframe (Lovable preview), pop the OAuth flow
-    // out to the top window so the redirect actually navigates back to
-    // a real origin Supabase can complete the session on.
-    if (typeof window !== "undefined" && window.top && window.top !== window.self) {
-      try {
-        window.top.location.href = window.location.origin;
-        return;
-      } catch {
-        // Cross-origin top — fall through to normal flow.
-      }
-    }
-
-    try {
-      const res = await signInWithGoogle();
-      if (!res.ok) {
-        window.clearTimeout(stuckTimer);
-        setError(res.error);
-        setBusy(null);
-        return;
-      }
-      // If browser was redirected, we never reach here.
-      if (res.userId) await syncProfileFromOnboarding(res.userId);
-      window.clearTimeout(stuckTimer);
+    const res = await signInWithGoogle();
+    if (!res.ok) {
+      setError(res.error);
       setBusy(null);
-      onAuthed();
-    } catch (e) {
-      window.clearTimeout(stuckTimer);
-      setError(e instanceof Error ? e.message : "Sign-in failed.");
-      setBusy(null);
+      return;
     }
+    // If browser was redirected, we never reach here.
+    if (res.userId) await syncProfileFromOnboarding(res.userId);
+    setBusy(null);
+    onAuthed();
   };
 
   const handleEmail = async () => {

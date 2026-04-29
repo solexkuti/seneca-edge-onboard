@@ -1,17 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import SenecaDashboard from "@/components/feature/SenecaDashboard";
+import ControlHub from "@/components/control-hub/ControlHub";
 import { getUserName } from "@/lib/userName";
 import RequireAuth from "@/components/auth/RequireAuth";
 
 export const Route = createFileRoute("/hub/")({
   head: () => ({
     meta: [
-      { title: "Today — SenecaEdge" },
+      { title: "Control Hub — SenecaEdge" },
       {
         name: "description",
         content:
-          "A live mirror of your discipline, decisions, and session state.",
+          "Your trading command center: discipline, behavior, and decision tools.",
       },
     ],
   }),
@@ -23,7 +23,7 @@ function HubPage() {
   useEffect(() => setName(getUserName()), []);
   return (
     <RequireAuth>
-      <SenecaDashboard userName={name} />
+      <ControlHub userName={name} />
     </RequireAuth>
   );
 }
