@@ -371,10 +371,55 @@ export default function StrategyBuilder({
             >
               Done
             </Link>
-          )}
+        )}
         </div>
       </div>
+      <StructuringOverlay show={structuring} />
     </Shell>
+  );
+}
+
+function StructuringOverlay({ show }: { show: boolean }) {
+  const phrases = ["Structuring your logic…", "Extracting rules…", "Building your system…"];
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (!show) {
+      setIdx(0);
+      return;
+    }
+    const t = window.setInterval(() => setIdx((i) => (i + 1) % phrases.length), 600);
+    return () => window.clearInterval(t);
+  }, [show]);
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md"
+        >
+          <div className="flex flex-col items-center gap-5">
+            <div className="relative">
+              <div className="h-12 w-12 rounded-full bg-primary/10 ring-1 ring-primary/30" />
+              <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-primary" />
+            </div>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={idx}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.25 }}
+                className="text-sm font-medium tracking-tight text-foreground"
+              >
+                {phrases[idx]}
+              </motion.p>
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
