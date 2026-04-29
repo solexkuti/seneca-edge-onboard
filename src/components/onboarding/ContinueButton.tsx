@@ -10,24 +10,30 @@ export default function ContinueButton({
   onClick,
   delay = 0.5,
   label = "Continue",
+  disabled = false,
 }: {
   onClick: () => void;
   delay?: number;
   label?: string;
+  disabled?: boolean;
 }) {
   return (
     <motion.button
       type="button"
+      disabled={disabled}
       onClick={() => {
+        if (disabled) return;
         playFeedback("press");
         onClick();
       }}
       initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{ opacity: disabled ? 0.45 : 1, y: 0 }}
       transition={{ duration: 0.55, delay, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -1 }}
-      whileTap={{ scale: 0.97 }}
-      className="btn-gold focus-glow group inline-flex items-center gap-2 px-7 py-3.5 text-[15px] font-semibold text-[#0B0B0D]"
+      whileHover={disabled ? undefined : { y: -1 }}
+      whileTap={disabled ? undefined : { scale: 0.97 }}
+      className={`btn-gold focus-glow group inline-flex items-center gap-2 px-7 py-3.5 text-[15px] font-semibold text-[#0B0B0D] ${
+        disabled ? "cursor-not-allowed" : ""
+      }`}
     >
       {label}
       <ArrowRight
