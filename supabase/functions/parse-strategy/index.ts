@@ -62,8 +62,9 @@ const TOOL = {
             risk: { type: "array", items: { type: "string" } },
             behavior: { type: "array", items: { type: "string" } },
             context: { type: "array", items: { type: "string" } },
+            invalidation: { type: "array", items: { type: "string" } },
           },
-          required: ["entry", "confirmation", "risk", "behavior", "context"],
+          required: ["entry", "confirmation", "risk", "behavior", "context", "invalidation"],
           additionalProperties: false,
         },
         ambiguity_flags: {
