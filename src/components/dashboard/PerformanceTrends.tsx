@@ -149,6 +149,14 @@ export default function PerformanceTrends({
   const absDisabled = !series.hasAbs;
   const activeMetric: Metric = absDisabled ? "r" : metric;
 
+  // Mixed: in $ mode, only some windowed trades carry pnl values.
+  const dollarTradeCount = useMemo(
+    () => windowed.filter((t) => typeof t.pnl === "number" && Number.isFinite(t.pnl)).length,
+    [windowed],
+  );
+  const mixedDollarData =
+    activeMetric === "abs" && dollarTradeCount > 0 && dollarTradeCount < windowed.length;
+
   const activeSeries = activeMetric === "r" ? series.pnlR : series.pnlAbs;
   const finalPnl =
     activeMetric === "r" ? series.finalPnlR : series.finalPnlAbs;
