@@ -279,7 +279,7 @@ export default function PerformanceTrends({
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease, delay: 0.05 }}
-            className="mt-1 text-[22px] font-semibold leading-none tabular-nums text-text-primary"
+            className="mt-1 text-[20px] font-semibold leading-none tabular-nums tracking-tight text-text-primary"
           >
             {showChart ? fmtPct(series.finalWinRate) : "—"}
           </motion.p>
