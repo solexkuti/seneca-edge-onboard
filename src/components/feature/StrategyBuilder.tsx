@@ -1151,14 +1151,17 @@ function StepOutput({
   patch,
   setBusy,
   busy,
+  atomicityIssues,
 }: {
   bp: StrategyBlueprint;
   patch: (p: Partial<StrategyBlueprint>) => Promise<void>;
   setBusy: (b: boolean) => void;
   busy: boolean;
+  atomicityIssues: RuleAtomicityIssue[];
 }) {
   const cl = (bp.checklist ?? {}) as Partial<ChecklistByTier>;
   const has = !!bp.trading_plan && (cl?.a_plus?.length ?? 0) > 0;
+  const blocked = atomicityIssues.length > 0;
 
   const generate = async () => {
     setBusy(true);
