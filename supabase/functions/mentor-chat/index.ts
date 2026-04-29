@@ -733,12 +733,17 @@ Deno.serve(async (req) => {
       context?.intelligence?.twoUndisciplinedInARow ||
       (context?.traderState?.discipline?.consecutive_breaks ?? 0) >= 2
     );
+    const tradeCount = context?.performance?.windowSize ?? null;
+    const zeroData = tradeCount === 0;
+    const lowData = tradeCount !== null && tradeCount > 0 && tradeCount < 20;
     const hasTraderState = !!context?.traderState;
     const systemContent =
       SYSTEM_PROMPT +
       contextBlock +
       (hasTraderState ? AWARENESS_LAYER_ADDENDUM : "") +
-      (patternActive ? PATTERN_AWARE_ADDENDUM : "");
+      (patternActive && !zeroData ? PATTERN_AWARE_ADDENDUM : "") +
+      (zeroData ? ZERO_DATA_ADDENDUM : "") +
+      (lowData ? LOW_DATA_ADDENDUM : "");
 
     const upstream = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
