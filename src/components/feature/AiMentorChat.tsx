@@ -443,8 +443,8 @@ export default function AiMentorChat() {
                 <div
                   className={
                     m.role === "user"
-                      ? "max-w-[82%] rounded-2xl rounded-br-md bg-gradient-primary px-3.5 py-2.5 text-[13.5px] leading-snug text-white shadow-glow-primary"
-                      : "max-w-[82%] whitespace-pre-wrap rounded-2xl rounded-bl-md bg-text-primary/[0.04] px-3.5 py-2.5 text-[13.5px] leading-snug text-text-primary ring-1 ring-border"
+                      ? "max-w-[82%] rounded-2xl rounded-br-md bg-gradient-primary px-3.5 py-2.5 text-[13.5px] leading-snug text-[#0B0B0D] font-medium shadow-glow-gold"
+                      : "max-w-[82%] whitespace-pre-wrap rounded-2xl rounded-bl-md bg-text-primary/[0.035] px-3.5 py-2.5 text-[13.5px] leading-snug text-text-primary ring-1 ring-gold-soft"
                   }
                 >
                   {m.content || (m.role === "assistant" && streaming ? "…" : "")}
