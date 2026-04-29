@@ -573,6 +573,7 @@ export default function AiMentorChat() {
       ...(traderStatePayload ? { traderState: traderStatePayload } : {}),
       ...(behavioralPayload ? { behavioralJournal: behavioralPayload } : {}),
       ...(behaviorPatternsPayload ? { behaviorPatterns: behaviorPatternsPayload } : {}),
+      ...(relapseLoopPayload ? { relapseLoops: relapseLoopPayload } : {}),
       ...(performancePayload ? { performance: performancePayload } : {}),
       turnHint: intentHint,
     };
