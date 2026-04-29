@@ -664,7 +664,7 @@ function ResultView({
             if (alignment.verdict === "not_aligned") {
               toast.message("Outside your defined system", {
                 description:
-                  "Logged. You can still record this trade — the analyzer never blocks you.",
+                  "Logged for your records. The analyzer evaluates — it never restricts your decision.",
               });
             }
           }}
@@ -851,6 +851,9 @@ function TradeGradeCard({ alignment }: { alignment: StrategyAlignment }) {
           </p>
           <p className="mt-0.5 text-[11.5px] text-text-secondary">
             {alignment.match_pct}% match · {alignment.weighted_score}/100 weighted
+          </p>
+          <p className="mt-1 text-[10.5px] italic text-text-secondary">
+            Evaluation against your system — not a recommendation.
           </p>
         </div>
       </div>
