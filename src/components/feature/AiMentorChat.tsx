@@ -139,6 +139,13 @@ export default function AiMentorChat() {
     });
   }, [messages, streaming]);
 
+  // Hard-gated, deterministic mentor reply (no AI call).
+  const respondLocally = (history: Msg[], content: string) => {
+    const id = `a-${Date.now()}`;
+    setMessages([...history, { id, role: "assistant", content }]);
+    setStreaming(false);
+  };
+
   const send = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || streaming) return;
@@ -152,6 +159,34 @@ export default function AiMentorChat() {
     setMessages(history);
     setDraft("");
     setStreaming(true);
+
+    // ---- HARD GATE (runs before any AI call) ----
+    const tradeCount = Math.max(
+      performancePayload?.windowSize ?? 0,
+      behavioralEntries.length,
+      rows.length,
+    );
+    const lastTradeExists = tradeCount > 0;
+    const asksAboutLastTrade = /\blast\s+trade\b/i.test(trimmed);
+
+    // CASE A: zero trades — never call the AI.
+    if (tradeCount === 0) {
+      respondLocally(
+        history,
+        "There's nothing here yet — that's clean.\n\nLog your first trade and I'll start seeing how you actually move, not how you think you move.\n\nWhat was the last trade you took, even if you didn't log it?",
+      );
+      return;
+    }
+
+    // CASE B: user asks about "last trade" but none exists.
+    if (!lastTradeExists && asksAboutLastTrade) {
+      respondLocally(
+        history,
+        "You haven't logged a trade yet, so there's nothing for me to review.\n\nLog one trade and I'll break it down with you.",
+      );
+      return;
+    }
+    // ---- END HARD GATE ----
 
     // Build user context from real signals: trading journal + onboarding profile + intelligence + patterns.
     const journalSummary = summarizeJournal(journal) ?? undefined;
