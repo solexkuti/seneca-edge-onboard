@@ -7,12 +7,26 @@
 //  - Win-rate line uses muted text so the eye lands on PnL first.
 //  - Both paths animate in via SVG stroke-dashoffset on mount + data change.
 
-import { useId, useMemo } from "react";
+import { useId, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, TrendingDown, TrendingUp } from "lucide-react";
 import type { TradeLog } from "@/lib/tradeLogs";
 import { fmtPct, fmtR } from "@/lib/tradeLogs";
+
+type Metric = "r" | "abs";
+
+function fmtAbs(v: number | null, digits = 2): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  const sign = v > 0 ? "+" : v < 0 ? "−" : "";
+  const abs = Math.abs(v);
+  // Compact for large balances
+  const formatted =
+    abs >= 1000
+      ? abs.toLocaleString(undefined, { maximumFractionDigits: 0 })
+      : abs.toFixed(digits);
+  return `${sign}$${formatted}`;
+}
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -31,25 +45,46 @@ function effectiveR(t: TradeLog): number {
 }
 
 type Series = {
-  pnl: number[];        // cumulative R after each trade
-  winRate: number[];    // rolling win rate after each trade (decided only)
-  finalPnl: number;
+  pnlR: number[];        // cumulative R after each trade
+  pnlAbs: number[];      // cumulative absolute PnL after each trade ($)
+  winRate: number[];     // rolling win rate after each trade (decided only)
+  finalPnlR: number;
+  finalPnlAbs: number;
   finalWinRate: number | null;
-  trend: "up" | "down" | "flat";
+  trendR: "up" | "down" | "flat";
+  trendAbs: "up" | "down" | "flat";
+  hasAbs: boolean;       // any trade carried an absolute pnl value
 };
+
+function trendOf(values: number[]): "up" | "down" | "flat" {
+  if (values.length < 2) return "flat";
+  const a = values[values.length - 2];
+  const b = values[values.length - 1];
+  return b > a ? "up" : b < a ? "down" : "flat";
+}
 
 function buildSeries(trades: TradeLog[]): Series {
   // Oldest → newest for cumulative math.
   const ordered = [...trades].reverse();
-  const pnl: number[] = [];
+  const pnlR: number[] = [];
+  const pnlAbs: number[] = [];
   const winRate: number[] = [];
-  let cum = 0;
+  let cumR = 0;
+  let cumAbs = 0;
   let wins = 0;
   let decided = 0;
+  let hasAbs = false;
 
   for (const t of ordered) {
-    cum += effectiveR(t);
-    pnl.push(cum);
+    cumR += effectiveR(t);
+    pnlR.push(cumR);
+
+    if (typeof t.pnl === "number" && Number.isFinite(t.pnl)) {
+      cumAbs += t.pnl;
+      hasAbs = true;
+    }
+    pnlAbs.push(cumAbs);
+
     if (t.outcome === "win") {
       wins += 1;
       decided += 1;
@@ -59,18 +94,17 @@ function buildSeries(trades: TradeLog[]): Series {
     winRate.push(decided > 0 ? wins / decided : 0);
   }
 
-  const finalPnl = pnl[pnl.length - 1] ?? 0;
-  const finalWinRate = decided > 0 ? wins / decided : null;
-  const trend: Series["trend"] =
-    pnl.length < 2
-      ? "flat"
-      : finalPnl > pnl[pnl.length - 2]
-        ? "up"
-        : finalPnl < pnl[pnl.length - 2]
-          ? "down"
-          : "flat";
-
-  return { pnl, winRate, finalPnl, finalWinRate, trend };
+  return {
+    pnlR,
+    pnlAbs,
+    winRate,
+    finalPnlR: pnlR[pnlR.length - 1] ?? 0,
+    finalPnlAbs: pnlAbs[pnlAbs.length - 1] ?? 0,
+    finalWinRate: decided > 0 ? wins / decided : null,
+    trendR: trendOf(pnlR),
+    trendAbs: trendOf(pnlAbs),
+    hasAbs,
+  };
 }
 
 function pathFrom(values: number[], min: number, max: number): string {
