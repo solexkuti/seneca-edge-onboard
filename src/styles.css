@@ -291,16 +291,15 @@
 }
 
 .dark {
-  /* App is dark-only; .dark class mirrors :root */
   /* App is dark-only; .dark mirrors :root */
-  --background: oklch(0.13 0.004 270);
+  --background: oklch(0.10 0.003 270);
   --foreground: oklch(0.94 0.003 270);
   --card: oklch(0.18 0.004 270);
   --card-foreground: oklch(0.94 0.003 270);
   --popover: oklch(0.18 0.004 270);
   --popover-foreground: oklch(0.94 0.003 270);
-  --primary: oklch(0.78 0.10 80);
-  --primary-foreground: oklch(0.13 0.004 270);
+  --primary: oklch(0.74 0.09 78);
+  --primary-foreground: oklch(0.10 0.003 270);
   --secondary: oklch(0.22 0.004 270);
   --secondary-foreground: oklch(0.94 0.003 270);
   --muted: oklch(0.21 0.004 270);
@@ -309,9 +308,9 @@
   --accent-foreground: oklch(0.94 0.003 270);
   --destructive: oklch(0.58 0.12 25);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(1 0 0 / 0.06);
+  --border: oklch(1 0 0 / 0.08);
   --input: oklch(1 0 0 / 0.08);
-  --ring: oklch(0.78 0.10 80);
+  --ring: oklch(0.74 0.09 78);
 }
 
 @layer base {
@@ -321,12 +320,15 @@
 
   html,
   body {
-    background-color: var(--color-background);
+    /* Transparent so the global AmbientBackground shows through every route.
+       Fallback color matches our deepest base in case the layer is unmounted. */
+    background-color: transparent;
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  html { background-color: #050505; }
 
   h1, h2, h3, h4, h5 {
     font-family: var(--font-display);
