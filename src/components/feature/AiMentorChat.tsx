@@ -387,7 +387,7 @@ export default function AiMentorChat() {
     <FeatureShell
       eyebrow="AI Mentor"
       title="Seneca."
-      subtitle="A calm, supportive trading partner. Here to think things through with you."
+      subtitle="Behavior-aware mentor."
     >
       <div className="flex h-[calc(100svh-220px)] min-h-[480px] flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-border shadow-soft">
         {/* Mentor identity */}
@@ -398,26 +398,8 @@ export default function AiMentorChat() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-text-primary">Seneca</p>
-            <p className="text-[11px] text-text-secondary">
-              {journal.length > 0
-                ? `Aware of your last ${Math.min(journal.length, 10)} trades`
-                : "No journal data — answers will be general"}
-            </p>
+            <p className="text-[11px] text-text-secondary">Behavior-aware mentor</p>
           </div>
-          {intelligence.strictModeActive ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              title="Two undisciplined trades in a row — Seneca is firmer until you log two clean trades."
-              className="flex shrink-0 items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 ring-1 ring-rose-500/25"
-            >
-              <AlertTriangle className="h-3 w-3 text-rose-700" strokeWidth={2.6} />
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-rose-800">
-                Strict mode
-              </span>
-            </motion.div>
-          ) : null}
         </div>
 
         {intelligence.strictModeActive ? (
