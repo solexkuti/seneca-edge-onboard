@@ -168,7 +168,7 @@ export function downloadPdf(
     }
     doc.setTextColor(0);
     doc.setDrawColor(180);
-    doc.setLineWidth(0.6 as unknown as number);
+    
     doc.line(M, y + 4, pageW - M, y + 4);
     y += 22;
 
