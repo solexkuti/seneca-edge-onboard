@@ -61,48 +61,31 @@ export default function AiMentorChat() {
       id: "intro",
       role: "assistant",
       content:
-        "Hi, I'm Seneca. I'm here to think through trades, mindset, and execution with you. Whatever's on your mind — wins, losses, doubts, or a setup you're unsure about — we can talk it out.",
+        "Hi. I'm Seneca — your trading mentor.\n\nI track how you think, not just what you do.\n\nIf something is off, I'll point it out. If you're aligned, I'll keep you there.\n\nAsk what matters.",
     },
   ]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [recentSuggestionIds, setRecentSuggestionIds] = useState<string[]>([]);
+  // Suggestions disappear permanently once the user types or picks one.
+  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Last user message drives the detected emotional state.
-  const lastUserMessage = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") return messages[i].content;
-    }
-    return "";
-  }, [messages]);
-
-  const detectedState = useMemo(
-    () => detectMentorState(lastUserMessage),
-    [lastUserMessage],
-  );
-
-  // Build suggestions: state-aware + journal-personalized + anti-repeat.
+  // Build intro suggestions once, lightly tailored to discipline state.
   const suggestions = useMemo(
     () =>
-      pickMentorSuggestions({
-        state: detectedState,
+      pickIntroSuggestions({
         journal,
-        recentlyShownIds: recentSuggestionIds,
+        disciplineState: traderState.discipline.state,
+        disciplineScore: traderState.discipline.score,
       }),
-    [detectedState, journal, recentSuggestionIds],
+    [journal, traderState.discipline.state, traderState.discipline.score],
   );
 
-  // Track suggestions we've shown so we don't repeat them every turn.
-  useEffect(() => {
-    if (!suggestions.length) return;
-    setRecentSuggestionIds((prev) => {
-      const ids = suggestions.map((s) => s.id);
-      const merged = [...ids, ...prev.filter((id) => !ids.includes(id))];
-      return merged.slice(0, 8); // remember last ~2 turns
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastUserMessage, detectedState]);
+  const showSuggestions =
+    !suggestionsDismissed &&
+    !streaming &&
+    messages.length === 1 &&
+    draft.trim().length === 0;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
