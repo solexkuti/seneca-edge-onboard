@@ -398,9 +398,9 @@ export default function AiMentorChat() {
       <div className="flex h-[calc(100svh-220px)] min-h-[480px] flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-border shadow-soft">
         {/* Mentor identity */}
         <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-mix shadow-glow-primary">
-            <Sparkles className="h-4 w-4 text-white" strokeWidth={2.2} />
-            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-mix shadow-glow-gold">
+            <Sparkles className="h-4 w-4 text-[#0B0B0D]" strokeWidth={2.4} />
+            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-gold ring-2 ring-card" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-text-primary">Seneca</p>
