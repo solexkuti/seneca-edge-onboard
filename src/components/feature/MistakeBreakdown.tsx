@@ -178,9 +178,67 @@ export default function MistakeBreakdown() {
           {loading
             ? "Loading…"
             : total === 0
-              ? "No trades yet."
-              : `${total} trades · ${totalClean} clean`}
+              ? `No trades in ${rangeLabel.toLowerCase()}.`
+              : `${total} trades · ${totalClean} clean · ${rangeLabel}`}
         </p>
+
+        {/* Range filter */}
+        <div className="mt-5 flex flex-wrap items-center gap-1.5">
+          {PRESETS.map((p) => {
+            const active = preset === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  setPreset(p.id);
+                  setCustomRange(undefined);
+                }}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 transition ${
+                  active
+                    ? "bg-primary/20 ring-primary/40 text-text-primary"
+                    : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-auto rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 gap-1.5",
+                  preset === "custom"
+                    ? "bg-primary/20 ring-primary/40 text-text-primary border-transparent"
+                    : "bg-card ring-border text-text-secondary hover:text-text-primary border-transparent",
+                )}
+              >
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {preset === "custom" && customRange?.from
+                  ? rangeLabel
+                  : "Custom"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                numberOfMonths={2}
+                selected={customRange}
+                onSelect={(r) => {
+                  setCustomRange(r);
+                  if (r?.from) setPreset("custom");
+                }}
+                disabled={(date) => date > new Date()}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
 
         {!loading && total > 0 && (
           <div className="mt-6 space-y-2.5">
