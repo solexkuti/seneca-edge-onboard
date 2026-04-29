@@ -123,29 +123,16 @@ export default function ChartAnalyzer() {
   // Strategy gate
   if (strategies !== null && strategies.length === 0) {
     return (
-      <FeatureShell
-        eyebrow="Chart Analyzer"
-        title="Build a strategy first."
-        subtitle="Chart analysis runs against YOUR rules. Define them once."
-      >
-        <div className="rounded-2xl bg-card p-5 ring-1 ring-border shadow-soft">
-          <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20">
-              <AlertTriangle className="h-4 w-4" strokeWidth={2.4} />
-            </div>
-            <p className="text-[13px] leading-snug text-text-primary">
-              No strategy found. Create and lock one in the Strategy Builder before analyzing charts.
-            </p>
-          </div>
-          <button
-            onClick={() => navigate({ to: "/hub/strategy" })}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-mix px-4 py-3 text-[13.5px] font-semibold text-white shadow-soft transition hover:shadow-card-premium"
-          >
-            Open Strategy Builder
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-      </FeatureShell>
+      <SenecaScreen back={{ to: "/hub", label: "Today" }}>
+        <SenecaHeader
+          title="Analyzer"
+          subtitle="I check the chart against your rules. First, give me your rules."
+        />
+        <MentorLine tone="block">{SenecaVoice.blocks.noStrategy}</MentorLine>
+        <PrimaryAction onClick={() => navigate({ to: "/hub/strategy" })}>
+          Build your strategy
+        </PrimaryAction>
+      </SenecaScreen>
     );
   }
 
