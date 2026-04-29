@@ -802,46 +802,44 @@ function ResultView({
         </div>
       )}
 
-      {/* Verdict */}
-      <div className={`rounded-2xl p-4 ring-1 shadow-soft ${v.bg} ${v.ring}`}>
-        <div className="flex items-center gap-3">
-          <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-card ring-1 ring-border ${v.fg}`}>
-            <v.Icon className="h-4 w-4" strokeWidth={2.4} />
-          </div>
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-              Verdict
+      {/* Verdict — Seneca's voice, not a status badge */}
+      <MentorLine
+        tone={
+          result.breakdown.overall === "valid"
+            ? "calm"
+            : result.breakdown.overall === "weak"
+              ? "ack"
+              : "block"
+        }
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-foreground/10">
+            <v.Icon className="h-3.5 w-3.5 text-foreground/80" strokeWidth={2.4} />
+          </span>
+          <div className="flex-1">
+            <p className="font-medium text-foreground">
+              {senecaVerdict(result.breakdown.overall)}
             </p>
-            <p className={`text-[14.5px] font-semibold ${v.fg}`}>{v.label}</p>
-          </div>
-          <div className="ml-auto text-right">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-              Score
+            <p className="mt-1 text-xs text-muted-foreground">
+              Score {result.breakdown.score}/100
             </p>
-            <p className="text-[18px] font-bold text-text-primary">{result.breakdown.score}/100</p>
           </div>
         </div>
-      </div>
+      </MentorLine>
 
-      {/* Low-confidence warning */}
+      {/* Low-confidence — calm, one line */}
       {result.breakdown.low_confidence && (
-        <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-[12.5px] leading-snug text-text-primary">
-            {result.breakdown.confidence_note ??
-              "Analysis confidence is low due to unclear chart structure."}
-          </p>
-        </div>
+        <MentorLine tone="ack">
+          {result.breakdown.confidence_note ??
+            "I couldn't read the structure clearly. Treat this lightly."}
+        </MentorLine>
       )}
 
-      {/* Strategy mismatch warning */}
+      {/* Strategy mismatch — calm, one line */}
       {result.breakdown.overall !== "valid" && !result.breakdown.low_confidence && (
-        <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 ring-1 ring-amber-500/30 shadow-soft">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-[12.5px] leading-snug text-text-primary">
-            This setup does not fully match your strategy. Do not force it.
-          </p>
-        </div>
+        <MentorLine tone="block">
+          This doesn't fully match your rules. Don't force it.
+        </MentorLine>
       )}
 
       {/* Trade Readiness — one-screen checklist with next actions */}
