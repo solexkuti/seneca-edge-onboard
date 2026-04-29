@@ -67,6 +67,7 @@ type Row = {
   losses: number;
   breakeven: number;
   netR: number;
+  entries: JournalEntry[];
 };
 
 function fmtPct(num: number, denom: number): string {
