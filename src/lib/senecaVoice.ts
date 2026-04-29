@@ -54,10 +54,17 @@ export const SenecaVoice = {
     logged: "Logged. I'll watch for the pattern.",
   },
 
-  // ---------- Mentor ----------
+  // ---------- Mentor (strict enforcer mode) ----------
   mentor: {
-    greeting: "I have your context. What's on your mind?",
-    empty: "Speak freely. I'm reading your full state.",
+    greeting: "I'm watching. Speak.",
+    empty: "I have your full state. What's the move?",
+    watching: "Watching.",
+    actions: {
+      continue: "Continue",
+      fix: "Fix it",
+      ack: "Acknowledged",
+      step_back: "Step back",
+    },
   },
 
   // ---------- Generic fallbacks ----------
