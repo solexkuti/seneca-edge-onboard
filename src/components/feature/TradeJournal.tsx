@@ -12,6 +12,40 @@ import {
   type Outcome,
   type TradeLog,
 } from "@/lib/tradeLogs";
+import {
+  MISTAKE_PENALTY,
+  PER_TRADE_BASE,
+  MAX_PENALTY,
+  MIN_TRADE_SCORE,
+} from "@/lib/behavioralJournal";
+
+type ScoreBreakdown = {
+  items: { id: string; label: string; penalty: number }[];
+  rawPenalty: number;
+  appliedPenalty: number;
+  cappedAt: number; // amount trimmed by the cap (rawPenalty - appliedPenalty)
+  score: number;
+  base: number;
+};
+
+function computeBreakdown(mistakes: string[]): ScoreBreakdown {
+  const items = mistakes.map((id) => ({
+    id,
+    label: prettyMistake(id),
+    penalty: MISTAKE_PENALTY[id as keyof typeof MISTAKE_PENALTY] ?? 0,
+  }));
+  const rawPenalty = items.reduce((s, b) => s + b.penalty, 0);
+  const appliedPenalty = Math.min(MAX_PENALTY, rawPenalty);
+  const score = Math.max(MIN_TRADE_SCORE, PER_TRADE_BASE - appliedPenalty);
+  return {
+    items,
+    rawPenalty,
+    appliedPenalty,
+    cappedAt: rawPenalty - appliedPenalty,
+    score,
+    base: PER_TRADE_BASE,
+  };
+}
 
 type OutcomeFilter = "all" | Outcome;
 type MarketFilter = "all" | string;
@@ -342,6 +376,65 @@ export default function TradeJournal() {
                     )}
                   </div>
                 )}
+
+                {(() => {
+                  const bd = computeBreakdown(t.mistakes ?? []);
+                  const scoreTone =
+                    bd.score >= 80
+                      ? "text-gold"
+                      : bd.score >= 50
+                        ? "text-amber-300"
+                        : "text-rose-300";
+                  return (
+                    <div className="mt-3 rounded-xl bg-background/40 ring-1 ring-border/70 p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary/70">
+                          Why this score
+                        </span>
+                        <span className={`text-[12px] font-semibold tabular-nums ${scoreTone}`}>
+                          {bd.score} / {bd.base}
+                        </span>
+                      </div>
+
+                      {bd.items.length === 0 ? (
+                        <p className="mt-1.5 text-[11px] leading-snug text-text-secondary/80">
+                          Clean execution — no penalties. Started at{" "}
+                          <span className="tabular-nums">{bd.base}</span>, no
+                          mistakes flagged.
+                        </p>
+                      ) : (
+                        <>
+                          <ul className="mt-1.5 space-y-1">
+                            {bd.items.map((b) => (
+                              <li
+                                key={b.id}
+                                className="flex items-center justify-between text-[11px] text-text-secondary/90"
+                              >
+                                <span className="truncate pr-2">{b.label}</span>
+                                <span className="tabular-nums text-rose-300/90">
+                                  −{b.penalty}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                          <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-1.5 text-[10.5px] text-text-secondary/70">
+                            <span>
+                              Base {bd.base}
+                              {bd.cappedAt > 0 ? (
+                                <span className="ml-1.5 text-text-secondary/55">
+                                  · cap −{MAX_PENALTY} (trimmed −{bd.cappedAt})
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="tabular-nums">
+                              −{bd.appliedPenalty} applied
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {t.note && (
                   <p className="mt-2.5 text-[12px] italic leading-snug text-text-secondary/85">
