@@ -1,53 +1,29 @@
-// Bridge: convert an existing StrategyBlueprint's free-text structured_rules
-// into the deterministic engine's StructuredRule[] shape.
+// Bridge: convert a StrategyBlueprint into engine-ready StructuredRule[].
 //
-// The blueprint stores rules as bullet lists per category. This bridge maps
-// those onto the engine's 4 fixed categories (entry / exit / risk / behavior).
-// It does NOT call the AI and does NOT compute results — every rule is
-// returned with `result: false` so the user must confirm each one explicitly.
+// PHASE 3: this is now a thin adapter over the canonical strategy schema.
+// All rule ordering, ids, and category mapping live in src/lib/strategySchema.ts
+// so UI / PDF / Analyzer outputs share one source of truth.
 
-import type { StrategyBlueprint, StructuredRules } from "./dbStrategyBlueprints";
-import type { StructuredRule, RuleType } from "./ruleEngine";
-
-const CATEGORY_MAP: Record<keyof StructuredRules, RuleType> = {
-  entry: "entry",
-  confirmation: "entry", // confirmations are entry pre-conditions
-  risk: "risk",
-  behavior: "behavior",
-  context: "behavior", // contextual rules count as behavioral discipline
-  invalidation: "exit", // invalidation = "stop trading this idea" → exit gate
-};
+import type { StrategyBlueprint } from "./dbStrategyBlueprints";
+import type { StructuredRule } from "./ruleEngine";
+import { buildCanonicalStrategy, canonicalToEngineRules } from "./strategySchema";
 
 /**
  * Build engine-ready rules from a blueprint. Optional `exitRules` lets callers
- * inject exit rules separately (the blueprint shape doesn't carry them yet).
+ * inject extra exit rules not stored on the blueprint yet.
  */
 export function blueprintToEngineRules(
   blueprint: StrategyBlueprint,
   exitRules: string[] = [],
 ): StructuredRule[] {
-  const out: StructuredRule[] = [];
-  const src = blueprint.structured_rules ?? {};
-  let n = 0;
+  const canonical = buildCanonicalStrategy(blueprint);
+  const out = canonicalToEngineRules(canonical);
 
-  for (const key of Object.keys(CATEGORY_MAP) as (keyof StructuredRules)[]) {
-    const list = (src[key] as string[] | undefined) ?? [];
-    for (const condition of list) {
-      if (!condition?.trim()) continue;
-      out.push({
-        id: `${key}-${n++}`,
-        type: CATEGORY_MAP[key],
-        condition: condition.trim(),
-        evaluation_type: "boolean",
-        result: false,
-      });
-    }
-  }
-
+  let n = out.length;
   for (const condition of exitRules) {
     if (!condition?.trim()) continue;
     out.push({
-      id: `exit-${n++}`,
+      id: `exit_extra_${String(++n).padStart(3, "0")}`,
       type: "exit",
       condition: condition.trim(),
       evaluation_type: "boolean",
