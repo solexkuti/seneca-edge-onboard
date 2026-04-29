@@ -10,7 +10,7 @@ export const DISCIPLINED_THRESHOLD = 75; // a trade is "disciplined" if score >=
 export type MistakeKey = "entry" | "exit" | "risk" | "behavior";
 
 export const MISTAKE_LABEL: Record<MistakeKey, string> = {
-  entry: "Entered without a valid setup",
+  entry: "Entered without confirmation",
   exit: "Exited off-plan",
   risk: "Broke risk rules",
   behavior: "Lost behavioral control (FOMO / revenge / impulse)",
@@ -31,7 +31,7 @@ export const MISTAKE_TAG_LABEL: Record<MistakeTag, string> = {
   overleveraged: "Overleveraged",
   early_exit: "Early exit",
   late_entry: "Late entry",
-  no_setup: "No clear setup",
+  no_setup: "Entered without confirmation",
   emotional: "Emotional decision",
 };
 

@@ -28,7 +28,10 @@ export default function PerformanceSnapshot({ loading, hasTrades, metrics }: Pro
   if (!hasTrades) {
     return (
       <div className="rounded-2xl bg-card p-5 ring-1 ring-border/60">
-        <p className="text-[13px] leading-snug text-text-secondary">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
+          Performance
+        </p>
+        <p className="mt-2 text-[13px] leading-snug text-text-secondary">
           Log your first trade to activate performance tracking.
         </p>
         <Link
@@ -53,9 +56,14 @@ export default function PerformanceSnapshot({ loading, hasTrades, metrics }: Pro
   return (
     <div className="rounded-2xl bg-card p-5 ring-1 ring-border/60">
       <div className="flex items-baseline justify-between">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
-          Last {metrics.totalTrades} trades
-        </p>
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
+            Performance
+          </p>
+          <p className="mt-1 text-[11px] text-text-secondary/70">
+            Last {metrics.totalTrades} trade{metrics.totalTrades === 1 ? "" : "s"}
+          </p>
+        </div>
         <Link
           to="/hub/stats"
           preload="intent"
@@ -65,17 +73,17 @@ export default function PerformanceSnapshot({ loading, hasTrades, metrics }: Pro
         </Link>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-3">
-        <Stat label="Win rate" value={fmtPct(wr, 0)} />
-        <Stat label="Net PnL" value={fmtR(metrics.netPnlR, 2)} valueClass={netTone} />
-        <Stat label="Avg RR" value={fmtR(metrics.avgRR, 2)} />
+      <div className="mt-5 grid grid-cols-3 gap-3">
+        <Stat label="Win rate" value={fmtPct(wr, 0)} glow />
+        <Stat label="Net PnL" value={fmtR(metrics.netPnlR, 2)} valueClass={netTone} glow={metrics.netPnlR > 0} />
+        <Stat label="Avg RR" value={fmtR(metrics.avgRR, 2)} glow />
       </div>
 
       <div className="mt-5 flex gap-2">
         <Link
           to="/hub/stats"
           preload="intent"
-          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-card p-2.5 text-[11.5px] font-semibold text-text-primary ring-1 ring-border/60 active:scale-[0.98] transition-transform"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-background/60 p-2.5 text-[11.5px] font-semibold text-text-primary ring-1 ring-border/60 hover:bg-text-primary/[0.04] active:scale-[0.98] transition-all"
         >
           <LineChart className="h-3.5 w-3.5" strokeWidth={2.2} />
           Trade stats
@@ -83,7 +91,7 @@ export default function PerformanceSnapshot({ loading, hasTrades, metrics }: Pro
         <Link
           to="/hub/trades"
           preload="intent"
-          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-card p-2.5 text-[11.5px] font-semibold text-text-primary ring-1 ring-border/60 active:scale-[0.98] transition-transform"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-background/60 p-2.5 text-[11.5px] font-semibold text-text-primary ring-1 ring-border/60 hover:bg-text-primary/[0.04] active:scale-[0.98] transition-all"
         >
           <BookOpenCheck className="h-3.5 w-3.5" strokeWidth={2.2} />
           Behavior
@@ -97,10 +105,12 @@ function Stat({
   label,
   value,
   valueClass,
+  glow,
 }: {
   label: string;
   value: string;
   valueClass?: string;
+  glow?: boolean;
 }) {
   return (
     <div className="min-w-0">
@@ -115,6 +125,7 @@ function Stat({
           exit={{ opacity: 0, y: -4, filter: "blur(3px)" }}
           transition={{ duration: 0.35, ease }}
           className={`mt-1.5 text-[20px] font-semibold leading-none tabular-nums tracking-tight ${valueClass ?? "text-text-primary"}`}
+          style={glow ? { textShadow: "0 0 14px rgba(198,161,91,0.22)" } : undefined}
         >
           {value}
         </motion.p>

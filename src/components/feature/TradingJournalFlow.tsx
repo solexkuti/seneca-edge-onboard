@@ -656,7 +656,7 @@ const MISTAKE_TAGS: Array<{ key: MistakeTagValue; label: string }> = [
   { key: "overleveraged", label: "Overleveraged" },
   { key: "early_exit", label: "Early exit" },
   { key: "late_entry", label: "Late entry" },
-  { key: "no_setup", label: "No clear setup" },
+  { key: "no_setup", label: "Entered without confirmation" },
   { key: "emotional", label: "Emotional decision" },
 ];
 

@@ -59,7 +59,7 @@ export const MISTAKES: MistakeDef[] = [
   // Severe (-25)
   { id: "overleveraged",   label: "Overleveraged",          severe: true,  penalty: 25 },
   { id: "revenge_trade",   label: "Revenge trade",          severe: true,  penalty: 25 },
-  { id: "no_setup",        label: "Entered without setup",  severe: true,  penalty: 25 },
+  { id: "no_setup",        label: "Entered without confirmation",  severe: true,  penalty: 25 },
   { id: "ignored_sl",      label: "Ignored stop loss",      severe: true,  penalty: 25 },
   // Moderate (-15)
   { id: "broke_risk_rule", label: "Broke risk rule",        severe: false, penalty: 15 },
