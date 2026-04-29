@@ -353,7 +353,7 @@ export default function ChartAnalyzer() {
       <SenecaHeader
         title="Analyzer"
         subtitle="Show me the setup. I'll check it against your rules."
-      >
+      />
       <input
         ref={execInputRef}
         type="file"
