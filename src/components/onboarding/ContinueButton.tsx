@@ -3,8 +3,8 @@ import { ArrowRight } from "lucide-react";
 import { playFeedback } from "@/lib/feedback";
 
 /**
- * Reusable calm "Continue" CTA used on narrative onboarding slides.
- * Matches the gradient pill used on Hero / Bridge / Reframe.
+ * Calm, premium "Continue" CTA used on every narrative onboarding slide.
+ * Gold gradient on dark — matches the global Dark + Gold identity.
  */
 export default function ContinueButton({
   onClick,
@@ -24,10 +24,10 @@ export default function ContinueButton({
       }}
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay }}
+      transition={{ duration: 0.55, delay, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -1 }}
       whileTap={{ scale: 0.97 }}
-      className="interactive-glow group inline-flex items-center gap-2 rounded-2xl bg-gradient-primary px-7 py-3.5 text-[15px] font-semibold text-white shadow-soft"
+      className="btn-gold focus-glow group inline-flex items-center gap-2 px-7 py-3.5 text-[15px] font-semibold text-[#0B0B0D]"
     >
       {label}
       <ArrowRight
