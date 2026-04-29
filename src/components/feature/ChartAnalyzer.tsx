@@ -664,7 +664,7 @@ function ResultView({
             if (alignment.verdict === "not_aligned") {
               toast.message("Outside your defined system", {
                 description:
-                  "Logged. You can still record this trade — the analyzer never blocks you.",
+                  "Logged for your records. The analyzer evaluates — it never restricts your decision.",
               });
             }
           }}
