@@ -236,6 +236,66 @@ export default function BehavioralJournalFlow({
   }, [pnlDollarStr]);
   const pnlDollarInvalid = pnlDollarStr.trim().length > 0 && pnlDollar === null;
 
+  // Account size — parsed and persisted per-user.
+  const accountSize = useMemo(() => {
+    const t = accountSizeStr.trim().replace(/[$,\s]/g, "");
+    if (!t) return null;
+    const n = Number(t);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [accountSizeStr]);
+  const accountSizeInvalid = accountSizeStr.trim().length > 0 && accountSize === null;
+
+  // Hydrate persisted account size on mount.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(userKey(ACCOUNT_SIZE_STORAGE_SUFFIX));
+      if (saved && saved.trim()) setAccountSizeStr(saved);
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  // Persist a valid account size whenever it changes.
+  useEffect(() => {
+    try {
+      if (accountSize != null) {
+        localStorage.setItem(userKey(ACCOUNT_SIZE_STORAGE_SUFFIX), String(accountSize));
+      } else if (accountSizeStr.trim() === "") {
+        localStorage.removeItem(userKey(ACCOUNT_SIZE_STORAGE_SUFFIX));
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [accountSize, accountSizeStr]);
+
+  // Auto-calc $ from R × risk% × account size.
+  // $ = result_R × (risk_percent / 100) × account_size
+  const autoPnlDollar = useMemo(() => {
+    if (
+      !Number.isFinite(resultR) ||
+      risk == null ||
+      !Number.isFinite(risk) ||
+      risk <= 0 ||
+      accountSize == null
+    ) {
+      return null;
+    }
+    return resultR * (risk / 100) * accountSize;
+  }, [resultR, risk, accountSize]);
+
+  // When the user hasn't typed in the $ field manually, auto-fill it from
+  // the calculated value. As soon as they type, we stop overriding.
+  useEffect(() => {
+    if (pnlDollarManuallySet) return;
+    if (autoPnlDollar == null) {
+      // Clear any previously auto-filled value so the field doesn't lie.
+      if (pnlDollarStr !== "") setPnlDollarStr("");
+      return;
+    }
+    const formatted = autoPnlDollar.toFixed(2);
+    if (pnlDollarStr !== formatted) setPnlDollarStr(formatted);
+  }, [autoPnlDollar, pnlDollarManuallySet, pnlDollarStr]);
+
   // Auto-suggest outcome from R (soft logic — does not lock).
   const suggestedOutcome: Outcome | null = useMemo(() => {
     if (!Number.isFinite(resultR)) return null;
