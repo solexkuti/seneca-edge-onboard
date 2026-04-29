@@ -129,6 +129,14 @@ export default function BehavioralJournalFlow({
   const [feedback, setFeedback] = useState<FeedbackPayload | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Pre-trade awareness — quiet, deterministic line surfaced before the
+  // user logs the next trade when a relapse or behavioral loop is active.
+  const { entries: priorEntries } = useBehavioralJournal(50);
+  const preTradeAwareness = useMemo(() => {
+    if (!priorEntries || priorEntries.length < 3) return null;
+    return detectRelapseAndLoops(priorEntries).preTradeAwareness;
+  }, [priorEntries]);
+
   // Derived numerics
   const entry = useMemo(() => parseNum(entryStr), [entryStr]);
   const exit = useMemo(() => parseNum(exitStr), [exitStr]);
