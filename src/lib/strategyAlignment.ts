@@ -265,18 +265,19 @@ function buildInsight(a: {
 }
 
 function buildBehavioralNote(failed: RuleAlignment[]): string | null {
+  // Observational, not prescriptive. The analyzer flags; the user decides.
   const cats = new Set(failed.map((r) => r.category));
   if (cats.has("confirmation")) {
-    return "This setup lacks confirmation conditions defined in your strategy.";
+    return "Confirmation conditions defined in your strategy are not present on this chart.";
   }
   if (cats.has("entry")) {
-    return "Core entry conditions from your strategy are not present.";
+    return "Core entry conditions from your strategy are not observable on this chart.";
   }
   if (cats.has("invalidation")) {
-    return "Invalidation level is not clearly defined for this setup.";
+    return "Invalidation level defined by your strategy is not clearly visible on this chart.";
   }
   if (cats.has("context")) {
-    return "Context conditions (e.g. higher-timeframe alignment) are not satisfied.";
+    return "Higher-timeframe or context conditions defined by your strategy are not satisfied.";
   }
   return null;
 }
