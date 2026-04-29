@@ -482,6 +482,11 @@ export default function AiMentorChat() {
       intentHint.note =
         "User has limited data (<20 trades). Avoid strong conclusions. Speak in probabilities, not certainty.";
     }
+    // Trust-builder positioning prompt — override with sharp AI instruction.
+    if (/what\s+makes\s+seneca\s+different/i.test(trimmed)) {
+      intentHint.note =
+        "Answer confidently. Be direct. Avoid generic motivational language. Clearly explain how Seneca is different from a normal trading journal. Focus on behavior tracking, pattern recognition, and decision enforcement. Keep it sharp and persuasive. Keep it under 6 short sentences.";
+    }
 
     const ctx = {
       ...(journalSummary ? { journalSummary } : {}),
