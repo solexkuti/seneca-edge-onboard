@@ -787,11 +787,12 @@ Deno.serve(async (req) => {
               : bp.trend === "stable"
                 ? "STABLE"
                 : "INSUFFICIENT DATA";
+        const stateLabel = (bp.behaviorState ?? "insufficient_data").toUpperCase();
         const dom = bp.dominantWeakness
-          ? `${bp.dominantWeakness.label}${bp.dominantWeakness.severe ? " (severe)" : ""} — ${bp.dominantWeakness.count}/${bp.totalTrades} trades (${bp.dominantWeakness.pct}%)`
-          : "none — no repeated mistake stands out";
+          ? `${bp.dominantWeakness.label}${bp.dominantWeakness.severe ? " (severe)" : ""} — ${bp.dominantWeakness.count}/${bp.totalTrades} trades (${bp.dominantWeakness.pct}% raw, ${bp.dominantWeakness.weightedPct ?? bp.dominantWeakness.pct}% weighted)`
+          : "none — no mistake crosses the 30% weighted threshold";
         const freqLines = bp.mistakeFrequency.slice(0, 5)
-          .map((m) => `  - ${m.label}: ${m.count}× (${m.pct}% of trades)${m.severe ? " · severe" : ""}`)
+          .map((m) => `  - ${m.label}: ${m.count}× (${m.pct}% raw, ${m.weightedPct ?? m.pct}% weighted)${m.severe ? " · severe" : ""}`)
           .join("\n") || "  (none)";
         const repeatLines = bp.repeatedInRecent.length > 0
           ? bp.repeatedInRecent.slice(0, 5)
@@ -805,7 +806,14 @@ Deno.serve(async (req) => {
           ? "n/a"
           : `${rvp.delta >= 0 ? "+" : ""}${rvp.delta}`;
         const headlines = bp.headlines.map((h) => `  • ${h}`).join("\n");
-        contextBlock += `\n\n[Behavior Patterns — multi-trade view, NOT single trade]\nUse this to anchor any answer about repeating behavior, weaknesses, or trend. Cite numbers verbatim. Never invent counts.\n- Total trades read: ${bp.totalTrades} · clean rate: ${bp.cleanRate}%\n- Dominant weakness: ${dom}\n- Trend (last ${rvp.recentCount} vs previous ${rvp.previousCount}): ${trendLabel} · avg score ${recentSc} vs ${prevSc} (Δ ${deltaStr}) · mistakes/trade ${rvp.recentMistakeRate} vs ${rvp.previousMistakeRate}\n- Mistake frequency (top 5):\n${freqLines}\n- Repeating in recent window (also seen earlier):\n${repeatLines}\n- Headlines you may quote verbatim:\n${headlines}`;
+        const mentorLine = bp.mentorLine
+          ? `\n- Deterministic mentor line (use verbatim when the user asks about patterns/discipline trends): "${bp.mentorLine}"`
+          : "";
+        const insufficientNote = bp.insufficientData
+          ? `\n- INSUFFICIENT DATA: fewer than 3 trades logged (${bp.totalAvailable ?? bp.totalTrades}). Do NOT generate pattern insights. If asked about patterns, reply: "Log a few trades so I can identify your patterns."`
+          : "";
+        const avgScoreStr = bp.avgScore == null ? "n/a" : `${bp.avgScore}`;
+        contextBlock += `\n\n[Behavior Patterns — Pattern Detection Engine, multi-trade view]\nDeterministic. Recency-weighted (newest=1.0, decays 0.025 per step, floor 0.5). Window: last ${bp.windowSize ?? 20} trades.\nUse this to anchor any answer about repeating behavior, weaknesses, or trend. Cite numbers verbatim. Never invent counts. Never use random phrasing.\n- Window used: ${bp.totalTrades} of ${bp.totalAvailable ?? bp.totalTrades} available · clean rate: ${bp.cleanRate}% · avg score: ${avgScoreStr}\n- Behavior state: ${stateLabel}\n- Dominant weakness (≥30% weighted required): ${dom}\n- Trend (last ${rvp.recentCount} vs previous ${rvp.previousCount}): ${trendLabel} · avg score ${recentSc} vs ${prevSc} (Δ ${deltaStr}) · mistakes/trade ${rvp.recentMistakeRate} vs ${rvp.previousMistakeRate}\n- Mistake frequency (top 5):\n${freqLines}\n- Repeating in recent window (also seen earlier):\n${repeatLines}\n- Headlines you may quote verbatim:\n${headlines}${mentorLine}${insufficientNote}`;
       }
     } else {
       contextBlock =
