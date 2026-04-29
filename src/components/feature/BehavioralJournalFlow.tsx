@@ -508,12 +508,12 @@ export default function BehavioralJournalFlow({
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
-                  <Field label="Exit">
+                  <Field label="Actual Exit">
                     <input
                       value={exitStr}
                       onChange={(e) => setExitStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="—"
+                      placeholder="Where you closed"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
@@ -522,7 +522,7 @@ export default function BehavioralJournalFlow({
                       value={slStr}
                       onChange={(e) => setSlStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="—"
+                      placeholder="Planned risk"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
@@ -531,7 +531,7 @@ export default function BehavioralJournalFlow({
                       value={tpStr}
                       onChange={(e) => setTpStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="—"
+                      placeholder="Planned target"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
