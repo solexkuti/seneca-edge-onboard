@@ -105,7 +105,7 @@ function Stat({
         {label}
       </p>
       <p
-        className={`mt-1.5 text-[18px] font-semibold leading-none tabular-nums tracking-tight ${valueClass ?? "text-text-primary"}`}
+        className={`mt-1.5 text-[20px] font-semibold leading-none tabular-nums tracking-tight ${valueClass ?? "text-text-primary"}`}
       >
         {value}
       </p>
