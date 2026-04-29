@@ -236,69 +236,77 @@ export default function TradingJournalFlow() {
     setSubmitting(false);
   };
 
+  // Seneca's opening line — calm, derived from current trader state.
+  const intro = (() => {
+    const ds = traderState?.discipline?.state;
+    if (ds === "locked") return "Let's log this carefully — it matters most when things slip.";
+    if (ds === "at_risk") return "Slow it down. Behavior first, outcome second.";
+    return SenecaVoice.journal.intro;
+  })();
+
   // ───────── confirmation screen ─────────
   if (doneScore !== null) {
+    const tone: "calm" | "ack" | "block" =
+      doneScore >= 75 ? "ack" : doneScore >= 50 ? "calm" : "block";
+    const summary =
+      doneScore >= 100
+        ? "Clean execution. All four rules followed."
+        : doneScore >= 75
+          ? "Mostly aligned. One small slip — note it for next time."
+          : doneScore >= 50
+            ? "Two rules broke. Worth a quiet review."
+            : "Several rules broke today. Step back before the next one.";
     return (
-      <FeatureShell
-        eyebrow="Trading Journal"
-        title="Logged."
-        subtitle="Every entry sharpens the system."
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease }}
-          className="rounded-2xl bg-card p-6 ring-1 ring-border shadow-soft"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-mix shadow-glow-primary">
-              <Sparkles className="h-5 w-5 text-white" strokeWidth={2.2} />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
-                Discipline score
-              </p>
-              <p className="text-[28px] font-bold leading-none text-text-primary">
-                {doneScore}
-                <span className="text-[16px] text-text-secondary">/100</span>
-              </p>
-            </div>
+      <SenecaScreen back={{ to: "/hub", label: "Today" }}>
+        <SenecaHeader
+          title="Logged."
+          subtitle="Every entry sharpens the system."
+        />
+        <MentorLine tone={tone}>{SenecaVoice.journal.logged}</MentorLine>
+
+        <FadeIn className="flex flex-col gap-4">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Discipline
+            </span>
+            <span className="text-3xl font-semibold tabular-nums text-foreground">
+              {doneScore}
+            </span>
+            <span className="text-sm text-muted-foreground">/ 100</span>
           </div>
-
-          {/* Post-action: Discipline Impact (deterministic, < 300ms) */}
-          <DisciplineImpactBanner
-            executionDelta={doneScore}
-            decisionDelta={lastDecisionDelta}
-          />
-
-          <p className="mt-5 text-[13.5px] leading-snug text-text-secondary">
-            Saved locally. Sync status updates above.
+          <p className="text-sm leading-relaxed text-foreground/85">{summary}</p>
+          {lastDecisionDelta != null && (
+            <p className="text-xs text-muted-foreground">
+              Last decision impact: {lastDecisionDelta >= 0 ? "+" : ""}
+              {lastDecisionDelta}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Saved locally. Sync continues quietly in the background.
           </p>
 
-          <div className="mt-6 flex gap-2.5">
-            <button
+          <div className="flex flex-col gap-2 pt-2">
+            <PrimaryAction
+              onClick={() => {
+                playFeedback("press");
+                navigate({ to: "/hub" });
+              }}
+            >
+              Back to today
+            </PrimaryAction>
+            <SecondaryAction
               onClick={() => {
                 playFeedback("tap");
                 setDraft(EMPTY_DRAFT);
                 setStep(0);
                 setDoneScore(null);
               }}
-              className="flex-1 rounded-xl bg-text-primary/[0.04] px-4 py-3 text-[13.5px] font-semibold text-text-primary ring-1 ring-border transition-all hover:bg-text-primary/[0.07] active:scale-[0.99]"
             >
-              Log another
-            </button>
-            <button
-              onClick={() => {
-                playFeedback("press");
-                navigate({ to: "/hub" });
-              }}
-              className="flex-1 rounded-xl bg-gradient-primary px-4 py-3 text-[13.5px] font-semibold text-white shadow-glow-primary transition-transform active:scale-[0.99]"
-            >
-              Back to hub
-            </button>
+              Log another trade
+            </SecondaryAction>
           </div>
-        </motion.div>
-      </FeatureShell>
+        </FadeIn>
+      </SenecaScreen>
     );
   }
 
@@ -311,90 +319,78 @@ export default function TradingJournalFlow() {
           onCancel={handleInterceptCancel}
         />
       )}
-    <FeatureShell
-      eyebrow="Trading Journal"
-      title="Log a trade."
-      subtitle="Behavior first. Outcome second."
-    >
-      {/* Progress */}
-      <div className="mb-5 flex items-center gap-2">
-        {STEP_LABELS.map((label, i) => (
-          <div key={label} className="flex flex-1 items-center gap-2">
+      <SenecaScreen back={{ to: "/hub", label: "Today" }}>
+        <SenecaHeader title="Log a trade" subtitle={`Step ${step + 1} of 4 · ${STEP_LABELS[step]}`} />
+        <MentorLine tone="calm">{intro}</MentorLine>
+
+        {/* Quiet progress dots */}
+        <div className="flex items-center gap-1.5">
+          {STEP_LABELS.map((label, i) => (
             <div
-              className={`h-1 flex-1 rounded-full transition-colors ${
-                i <= step ? "bg-gradient-primary" : "bg-border"
+              key={label}
+              className={`h-[3px] flex-1 rounded-full transition-colors ${
+                i <= step ? "bg-foreground/70" : "bg-border/60"
               }`}
             />
-          </div>
-        ))}
-      </div>
-      <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
-        Step {step + 1} of 4 · {STEP_LABELS[step]}
-      </p>
-      {syncError ? (
-        <div className="mb-4 rounded-xl bg-destructive/10 px-3.5 py-2.5 text-[12.5px] font-medium text-destructive ring-1 ring-destructive/20">
-          {syncError}
+          ))}
         </div>
-      ) : null}
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={step}
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.35, ease }}
-        >
-          {step === 0 ? (
-            <StepTrade draft={draft} setDraft={setDraft} />
-          ) : step === 1 ? (
-            <StepDiscipline draft={draft} setDraft={setDraft} />
-          ) : step === 2 ? (
-            <StepEmotion draft={draft} setDraft={setDraft} />
-          ) : (
-            <StepReflection draft={draft} setDraft={setDraft} />
-          )}
-        </motion.div>
-      </AnimatePresence>
+        {syncError && (
+          <div className="rounded-xl border border-border/60 bg-card/40 px-3.5 py-2.5 text-xs text-foreground/80">
+            {syncError}
+          </div>
+        )}
 
-      {/* Footer nav */}
-      <div className="mt-6 flex items-center gap-2.5">
-        {step > 0 ? (
-          <button
-            onClick={() => {
-              playFeedback("back");
-              setStep((s) => Math.max(0, s - 1) as 0 | 1 | 2 | 3);
-            }}
-            disabled={submitting}
-            className="flex h-12 items-center gap-2 rounded-xl bg-text-primary/[0.04] px-4 text-[13.5px] font-semibold text-text-primary ring-1 ring-border transition-all hover:bg-text-primary/[0.08] active:scale-[0.99] disabled:opacity-50"
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.26, ease }}
           >
-            <ArrowLeft className="h-4 w-4" strokeWidth={2.2} />
-            Back
-          </button>
-        ) : null}
+            {step === 0 ? (
+              <StepTrade draft={draft} setDraft={setDraft} />
+            ) : step === 1 ? (
+              <StepDiscipline draft={draft} setDraft={setDraft} />
+            ) : step === 2 ? (
+              <StepEmotion draft={draft} setDraft={setDraft} />
+            ) : (
+              <StepReflection draft={draft} setDraft={setDraft} />
+            )}
+          </motion.div>
+        </AnimatePresence>
 
-        <button
-          onClick={handleNext}
-          disabled={!canContinue || submitting}
-          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-primary px-4 text-[14px] font-semibold text-white shadow-glow-primary transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {submitting && step === 3 ? (
-            <>
-              <Check className="h-4 w-4" strokeWidth={2.4} /> Saved ✓
-            </>
-          ) : step === 3 ? (
-            <>
-              <Check className="h-4 w-4" strokeWidth={2.4} /> Save trade
-            </>
-          ) : (
-            <>
-              Continue
-              <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
-            </>
+        {/* Footer nav */}
+        <div className="flex flex-col gap-2 pt-2">
+          <PrimaryAction
+            onClick={handleNext}
+            disabled={!canContinue}
+            loading={submitting && step === 3}
+          >
+            {step === 3 ? (
+              submitting ? "Saving…" : "Save trade"
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                Continue <ArrowRight className="h-4 w-4" />
+              </span>
+            )}
+          </PrimaryAction>
+          {step > 0 && (
+            <SecondaryAction
+              onClick={() => {
+                playFeedback("back");
+                setStep((s) => Math.max(0, s - 1) as 0 | 1 | 2 | 3);
+              }}
+              disabled={submitting}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </span>
+            </SecondaryAction>
           )}
-        </button>
-      </div>
-    </FeatureShell>
+        </div>
+      </SenecaScreen>
     </>
   );
 }
