@@ -20,8 +20,17 @@ const RANGES: { id: TimeRange; label: string }[] = [
   { id: "all", label: "All time" },
 ];
 
+type SessionFilter = "all" | "London" | "NY" | "Asia";
+const SESSIONS: { id: SessionFilter; label: string }[] = [
+  { id: "all", label: "All sessions" },
+  { id: "London", label: "London" },
+  { id: "NY", label: "NY" },
+  { id: "Asia", label: "Asia" },
+];
+
 export default function TradeStats() {
   const [range, setRange] = useState<TimeRange>("week");
+  const [session, setSession] = useState<SessionFilter>("all");
   const [trades, setTrades] = useState<TradeLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,8 +54,12 @@ export default function TradeStats() {
     };
   }, [range]);
 
-  const m = useMemo(() => computeMetrics(trades), [trades]);
-  const empty = !loading && trades.length === 0;
+  const filtered = useMemo(
+    () => (session === "all" ? trades : trades.filter((t) => t.session_tag === session)),
+    [trades, session],
+  );
+  const m = useMemo(() => computeMetrics(filtered), [filtered]);
+  const empty = !loading && filtered.length === 0;
 
   return (
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
@@ -86,6 +99,33 @@ export default function TradeStats() {
                 }`}
               >
                 {r.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-2.5 flex gap-1.5 overflow-x-auto no-scrollbar">
+          {SESSIONS.map((s) => {
+            const active = session === s.id;
+            const count =
+              s.id === "all"
+                ? trades.length
+                : trades.filter((t) => t.session_tag === s.id).length;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSession(s.id)}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 transition ${
+                  active
+                    ? "bg-primary/20 ring-primary/40 text-text-primary"
+                    : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {s.label}
+                <span className="ml-1.5 text-text-secondary/60 tabular-nums">
+                  {count}
+                </span>
               </button>
             );
           })}
