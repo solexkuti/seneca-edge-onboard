@@ -1943,22 +1943,78 @@ function VagueRuleRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(v.rule);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<string[] | null>(null);
+
+  const askAI = async () => {
+    setAiBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("tighten-rule", {
+        body: { rule: v.rule, trigger: v.trigger },
+      });
+      if (error) throw error;
+      const list = (data?.rewrites as string[]) ?? [];
+      setAiSuggestions(list);
+      if (list.length === 0) toast.info("No tighter rewrite found.");
+    } catch (err) {
+      console.error("[tighten-rule]", err);
+      toast.error("Couldn't fetch rewrites.");
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
   return (
     <li className="rounded-lg bg-background/60 px-3 py-2.5 ring-1 ring-border/60">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
           {v.category} · "{v.trigger}"
         </span>
-        <button
-          type="button"
-          onClick={() => setEditing((e) => !e)}
-          className="text-[11px] text-primary hover:underline"
-        >
-          {editing ? "Cancel" : "Tighten"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void askAI()}
+            disabled={aiBusy}
+            className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline disabled:opacity-50"
+          >
+            {aiBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+            Ask AI
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing((e) => !e)}
+            className="text-[11px] text-primary hover:underline"
+          >
+            {editing ? "Cancel" : "Edit"}
+          </button>
+        </div>
       </div>
       <p className="mt-1 text-[13px] text-foreground">{v.rule}</p>
       <p className="mt-1 text-[11px] text-muted-foreground">{v.suggestion}</p>
+
+      {aiSuggestions && aiSuggestions.length > 0 && (
+        <ul className="mt-2 space-y-1.5">
+          {aiSuggestions.map((s, i) => (
+            <li
+              key={i}
+              className="flex items-center justify-between gap-2 rounded-md bg-card px-2.5 py-1.5 ring-1 ring-border"
+            >
+              <span className="text-[12.5px] text-foreground">{s}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  onReplace(s);
+                  setAiSuggestions(null);
+                }}
+                className="rounded-md bg-primary px-2 py-1 text-[10.5px] font-medium text-primary-foreground"
+              >
+                Use
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {editing && (
         <div className="mt-2 flex items-center gap-2">
           <input
