@@ -1827,7 +1827,10 @@ export default function BehavioralJournalFlow({
           {step < 3 ? (
             <button
               type="button"
-              onClick={() => setStep((s) => (Math.min(3, s + 1) as Step))}
+              onClick={() => {
+                if (step === 0) runCorrectionGuard("continue");
+                else setStep((s) => (Math.min(3, s + 1) as Step));
+              }}
               disabled={step === 0 && !canNextFromStep0}
               className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 ring-1 ring-primary/30 px-5 py-2.5 text-[12.5px] font-semibold text-text-primary disabled:opacity-30 active:scale-[0.98] transition"
             >
@@ -1836,7 +1839,7 @@ export default function BehavioralJournalFlow({
           ) : (
             <button
               type="button"
-              onClick={submit}
+              onClick={() => runCorrectionGuard("submit")}
               disabled={submitting || !canNextFromStep0}
               className="inline-flex items-center gap-2 rounded-full bg-primary/20 ring-1 ring-primary/40 px-5 py-2.5 text-[12.5px] font-semibold text-text-primary disabled:opacity-30 active:scale-[0.98] transition"
             >
@@ -1845,6 +1848,27 @@ export default function BehavioralJournalFlow({
             </button>
           )}
         </div>
+
+        {/* Low data-quality banner — visible after the user kept their
+            originally-flagged values. Honest, non-blocking. */}
+        {lowDataQuality && (
+          <p className="mt-3 text-[11px] text-amber-300/90">
+            This trade will be saved with{" "}
+            <span className="font-semibold">low data quality</span> — it may be
+            excluded from analytics.
+          </p>
+        )}
+
+        {/* Intelligent price-correction modal. */}
+        <PriceCorrectionModal
+          open={correctionOpen}
+          analysis={correctionAnalysis}
+          repeatHint={repeatHint}
+          onApplyCandidate={applyCandidate}
+          onKeepOriginal={keepOriginalCorrection}
+          onEditManually={editManuallyCorrection}
+          onClose={editManuallyCorrection}
+        />
       </div>
     </div>
   );
