@@ -758,9 +758,85 @@ export default function BehavioralJournalFlow({
               </div>
 
               {mistakes.length === 0 && (
-                <p className="mt-5 text-center text-[11.5px] text-text-secondary/70">
-                  No mistakes selected — clean execution.
-                </p>
+                <motion.div
+                  key="clean-execution"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, ease }}
+                  className="mt-6 rounded-2xl bg-gradient-to-b from-primary/[0.10] to-primary/[0.04] ring-1 ring-primary/30 px-5 py-5 text-center shadow-glow-gold"
+                >
+                  <div className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 ring-1 ring-primary/40">
+                    <Check className="h-4 w-4 text-primary" strokeWidth={2.6} />
+                  </div>
+                  <p className="mt-3 text-[10.5px] font-semibold uppercase tracking-[0.24em] text-primary">
+                    Clean execution
+                  </p>
+                  <p className="mt-2 text-[14px] font-semibold leading-snug text-text-primary">
+                    You followed your rules completely.
+                  </p>
+                  <p className="mt-1 text-[12px] leading-snug text-text-secondary/85">
+                    This is the behavior that builds consistency.
+                  </p>
+
+                  {/* Stoic, contextual reinforcement based on prior clean trades */}
+                  <p className="mt-4 text-[11.5px] italic text-text-secondary/75">
+                    {cleanContextLine}
+                  </p>
+
+                  {/* Optional identity affirmation */}
+                  <button
+                    type="button"
+                    onClick={() => setSelfConfirmedClean((v) => !v)}
+                    aria-pressed={selfConfirmedClean}
+                    className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-semibold transition active:scale-[0.97] ring-1 ${
+                      selfConfirmedClean
+                        ? "bg-primary/25 ring-primary/55 text-text-primary"
+                        : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    <span
+                      className={`inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm ring-1 ${
+                        selfConfirmedClean ? "bg-primary/40 ring-primary/65" : "ring-border"
+                      }`}
+                    >
+                      {selfConfirmedClean && <Check className="h-2.5 w-2.5" strokeWidth={3.5} />}
+                    </span>
+                    I followed my plan fully
+                  </button>
+
+                  {/* Optional micro-reflection — feeds the pattern engine */}
+                  <div className="mt-5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
+                      What made this trade clean?
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
+                      {([
+                        { id: "discipline", label: "Discipline" },
+                        { id: "patience", label: "Patience" },
+                        { id: "clear_setup", label: "Clear setup" },
+                        { id: "rules_followed", label: "Rules followed" },
+                        { id: "other", label: "Other" },
+                      ] as const).map((opt) => {
+                        const active = cleanReason === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setCleanReason(active ? null : opt.id)}
+                            aria-pressed={active}
+                            className={`rounded-full px-3 py-1.5 text-[11.5px] font-medium transition active:scale-[0.97] ring-1 ${
+                              active
+                                ? "bg-primary/20 ring-primary/45 text-text-primary"
+                                : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
               )}
             </motion.section>
           )}
