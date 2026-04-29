@@ -877,7 +877,7 @@ export default function BehavioralJournalFlow({
   // ── INPUT FLOW ───────────────────────────────────────────
   return (
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
-      <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-50" />
+      <div className="pointer-events-none fixed inset-0 bg-app-glow opacity-60" />
 
       <div className="relative z-10 mx-auto w-full max-w-[480px] px-5 pt-8 pb-28">
         <header className="flex items-center justify-between">
