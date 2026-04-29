@@ -364,14 +364,8 @@ export default function StrategyBuilder({
                 <>Next <ArrowRight className="h-4 w-4" /></>
               )}
             </button>
-          ) : (
-            <Link
-              to="/hub/strategy"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95"
-            >
-              Done
-            </Link>
-        )}
+          ) : null}
+
         </div>
       </div>
       <StructuringOverlay show={structuring} />
