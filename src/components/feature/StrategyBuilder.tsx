@@ -676,8 +676,36 @@ function StepTiers({
 }) {
   const t = bp.tier_strictness ?? { a_plus: 100, b_plus: 80, c: 60 };
   const r: TierRules = bp.tier_rules ?? { a_plus: "", b_plus: "", c: "" };
-  const updateRule = (k: keyof TierRules, v: string) =>
-    void patch({ tier_rules: { ...r, [k]: v }, tier_strictness: t });
+
+  // Single strictness dial (0-100). Maps to per-tier thresholds without
+  // blocking anything — purely an interpretive hint for downstream AI.
+  const [strictness, setStrictness] = useState<number>(() => {
+    // Derive from existing a_plus threshold; default mid-high.
+    const v = typeof t.a_plus === "number" ? t.a_plus : 90;
+    return Math.max(0, Math.min(100, v));
+  });
+  const [active, setActive] = useState<keyof TierRules>("a_plus");
+
+  const writeRule = (k: keyof TierRules, v: string) => {
+    const nextStrict = {
+      a_plus: strictness,
+      b_plus: Math.max(0, strictness - 20),
+      c: Math.max(0, strictness - 40),
+    };
+    void patch({ tier_rules: { ...r, [k]: v }, tier_strictness: nextStrict });
+  };
+
+  const writeStrictness = (n: number) => {
+    setStrictness(n);
+    void patch({
+      tier_strictness: {
+        a_plus: n,
+        b_plus: Math.max(0, n - 20),
+        c: Math.max(0, n - 40),
+      },
+      tier_rules: r,
+    });
+  };
 
   const tiers: Array<{
     k: keyof TierRules;
@@ -687,45 +715,117 @@ function StepTiers({
   }> = [
     {
       k: "a_plus",
-      title: "A+   Perfect",
-      sub: "Every condition met.",
-      placeholder: "All confirmations. Clean structure. R:R ≥ 2.5",
+      title: "Perfect setup",
+      sub: "When everything aligns",
+      placeholder:
+        "All confirmations present, clean structure, strong rejection, R:R 2.5+",
     },
     {
       k: "b_plus",
-      title: "B+   Acceptable",
-      sub: "One non-critical item missing.",
-      placeholder: "Solid setup, missing one confirmation",
+      title: "Good setup",
+      sub: "You'll still take it",
+      placeholder: "Missing one confirmation, but structure still clean",
     },
     {
       k: "c",
-      title: "C    Minimum",
-      sub: "Bare baseline. Below this you stand down.",
-      placeholder: "HTF bias + key level + R:R ≥ 1.5",
+      title: "Minimum setup",
+      sub: "Anything below this = no trade",
+      placeholder: "HTF bias + key level + R:R 1.5",
     },
   ];
 
+  const strictnessLabel =
+    strictness >= 80 ? "High" : strictness >= 50 ? "Balanced" : "Low";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <Question
-        title="Define your standards"
-        sub="Optional — leave blank to let AI infer them."
+        title="Define your edge"
+        sub="What qualifies a trade for you? Keep it simple."
       />
-      {tiers.map(({ k, title, sub, placeholder }) => (
-        <div key={k} className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft space-y-2">
-          <div>
-            <div className="text-sm font-semibold tracking-tight text-foreground">{title}</div>
-            <div className="text-xs text-muted-foreground">{sub}</div>
-          </div>
-          <textarea
-            value={r[k] ?? ""}
-            onChange={(e) => updateRule(k, e.target.value)}
-            rows={2}
-            placeholder={placeholder}
-            className="w-full rounded-lg bg-background px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
-          />
+
+      {/* Strictness slider */}
+      <div className="rounded-2xl bg-card/60 px-5 py-4 ring-1 ring-border/60 shadow-soft">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-muted-foreground tracking-wide">
+            How strict are you?
+          </span>
+          <span className="text-xs font-semibold text-foreground">
+            {strictnessLabel}
+          </span>
         </div>
-      ))}
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={strictness}
+          onChange={(e) => writeStrictness(Number(e.target.value))}
+          className="w-full accent-primary"
+          aria-label="Strictness"
+        />
+        <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground/70 mt-1">
+          <span>Low</span>
+          <span>High</span>
+        </div>
+      </div>
+
+      {/* Tier cards */}
+      <div className="space-y-4">
+        {tiers.map(({ k, title, sub, placeholder }) => {
+          const isActive = active === k;
+          const value = r[k] ?? "";
+          const hasContent = value.trim().length > 0;
+          return (
+            <motion.div
+              key={k}
+              onClick={() => setActive(k)}
+              animate={{
+                opacity: isActive ? 1 : 0.55,
+                scale: isActive ? 1 : 0.99,
+              }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className={`rounded-2xl bg-card px-5 py-4 cursor-text transition-shadow ${
+                isActive
+                  ? "shadow-[0_8px_30px_-12px_rgba(15,23,42,0.18)] ring-1 ring-primary/25"
+                  : "shadow-soft ring-1 ring-border/50"
+              }`}
+            >
+              <div className="mb-2">
+                <div className="text-sm font-semibold tracking-tight text-foreground">
+                  {title}
+                </div>
+                <div className="text-xs text-muted-foreground">{sub}</div>
+              </div>
+              <textarea
+                value={value}
+                onFocus={() => setActive(k)}
+                onChange={(e) => writeRule(k, e.target.value)}
+                rows={isActive ? 3 : 2}
+                placeholder={placeholder}
+                autoFocus={isActive && !hasContent}
+                className="w-full rounded-xl bg-background/70 px-4 py-3 text-sm placeholder:text-muted-foreground/60 border-0 ring-1 ring-border/40 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none transition-all"
+              />
+              <AnimatePresence>
+                {isActive && hasContent && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -2 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="text-[11px] text-muted-foreground mt-2 pl-1"
+                  >
+                    Good. This defines your standard.
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <p className="text-[11px] text-muted-foreground/70 text-center">
+        Fill any combination. We'll infer the rest.
+      </p>
     </div>
   );
 }
