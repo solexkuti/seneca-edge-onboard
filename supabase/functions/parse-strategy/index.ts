@@ -17,24 +17,30 @@ Be GENEROUS in interpretation. The user types casually — your job is to
 clean it up, infer obvious gaps from context, and standardize wording.
 NEVER reject input. NEVER demand precision. ALWAYS produce structured rules.
 
-Return rules in 5 categories:
+Return rules in 6 categories:
 - entry: what conditions must hold to take a trade
 - confirmation: secondary signals that confirm the entry
 - risk: position sizing, stops, daily loss limits, drawdown rules
 - behavior: psychological rules (no revenge, max trades/day, no trading after a loss)
 - context: market/session/instrument filters
+- invalidation: conditions that make the setup invalid (cancel/skip the trade).
+  If the user didn't mention any, INFER 1-2 obvious ones from their entry rules
+  (e.g. "Price closes back below entry trigger" — never invent unrelated rules).
 
 Each rule must be:
 - A short, binary statement testable as yes/no.
-- Plain language. Strip vague qualifiers ("good", "clean", "strong") and replace
-  with the closest concrete equivalent you can infer. If you cannot infer,
-  keep the user's word — do NOT drop the rule.
+- Plain language. Replace vague qualifiers ("good", "clean", "strong", "clear",
+  "nice", "obvious", "proper") with the closest concrete equivalent you can
+  infer. If you cannot infer, keep the user's word — do NOT drop the rule.
 - Maximum 12 words per rule. Prefer 6-8.
+
+VAGUENESS DETECTION: For each vague qualifier you couldn't fully resolve,
+add an ambiguity_flag noting which rule is fuzzy and what would tighten it.
 
 Refinement questions are OPTIONAL.
 - Return 0 questions when the input is clear enough to act on.
 - Return AT MOST 3 questions, only when a critical concept is genuinely missing
-  (no stop-loss mentioned, no entry trigger, no risk amount).
+  (no stop-loss mentioned, no entry trigger, no risk amount, no invalidation).
 - Never ask about style, taste, or things the user could plausibly have meant.
 
 Ambiguity flags are short notes (one line each) — never block the user, just
