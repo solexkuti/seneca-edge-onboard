@@ -140,7 +140,9 @@ export default function PerformanceTrends({
   trades: TradeLog[];
 }) {
   const gradId = useId();
-  const series = useMemo(() => buildSeries(trades), [trades]);
+  // Default window: last 5 trades. (Title/subtitle live OUTSIDE this card.)
+  const windowed = useMemo(() => trades.slice(0, 5), [trades]);
+  const series = useMemo(() => buildSeries(windowed), [windowed]);
   const [metric, setMetric] = useState<Metric>("r");
 
   // Auto-disable absolute toggle when no trade carries a $ value.
@@ -154,12 +156,12 @@ export default function PerformanceTrends({
   const fmtMetric = activeMetric === "r" ? fmtR : fmtAbs;
 
   const count = activeSeries.length;
+  // Need at least 2 trades to show a trend.
   const showChart = !loading && hasTrades && count >= 2;
 
   // PnL bounds (always include zero so the baseline is meaningful).
   const pnlMin = Math.min(0, ...activeSeries);
   const pnlMax = Math.max(0, ...activeSeries);
-  // Padding scales with the metric — R values are typically <10, $ may be 1000s.
   const pnlPad = Math.max(
     activeMetric === "r" ? 0.5 : 1,
     (pnlMax - pnlMin) * 0.15,
@@ -171,11 +173,9 @@ export default function PerformanceTrends({
   const pnlArea = areaFrom(activeSeries, pMin, pMax);
   const winPath = pathFrom(series.winRate, 0, 1);
 
-  // Zero baseline (in PnL coordinate space).
   const zeroY =
     PAD_TOP + (1 - (0 - pMin) / (pMax - pMin || 1)) * (H - PAD_TOP - PAD_BOTTOM);
 
-  // Latest point glow position.
   const stepX =
     count > 1 ? (W - PAD_X * 2) / (count - 1) : 0;
   const lastX = PAD_X + (count - 1) * stepX;
@@ -188,45 +188,27 @@ export default function PerformanceTrends({
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-card ring-1 ring-border/60">
-      <div className="flex items-start justify-between gap-3 px-5 pt-5">
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
-            Performance trend
-          </p>
-          <p className="mt-1 text-[11px] text-text-secondary/70">
-            Last {count > 0 ? count : 20} trade{count === 1 ? "" : "s"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Metric toggle */}
-          <div
-            role="tablist"
-            aria-label="Chart metric"
-            className="inline-flex items-center rounded-full bg-background/60 p-0.5 ring-1 ring-border"
-            title={absDisabled ? "$ view requires monetary values in trade log" : undefined}
-          >
-            <ToggleSeg
-              active={activeMetric === "r"}
-              onClick={() => setMetric("r")}
-              label="R"
-              ariaLabel="Show risk units"
-            />
-            <ToggleSeg
-              active={activeMetric === "abs"}
-              onClick={() => !absDisabled && setMetric("abs")}
-              label="$"
-              ariaLabel="Show absolute net PnL"
-              disabled={absDisabled}
-            />
-          </div>
-          <Link
-            to="/hub/stats"
-            preload="intent"
-            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-background/60 px-2.5 py-1 text-[10.5px] font-semibold text-text-primary/85 ring-1 ring-border hover:text-text-primary"
-          >
-            Stats
-            <ArrowUpRight className="h-3 w-3" strokeWidth={2.4} />
-          </Link>
+      {/* Toggle row — title is rendered outside the card */}
+      <div className="flex items-start justify-end gap-2 px-5 pt-4">
+        <div
+          role="tablist"
+          aria-label="Chart metric"
+          className="inline-flex items-center rounded-full bg-background/60 p-0.5 ring-1 ring-border"
+          title={absDisabled ? "Add position size to view results in $" : undefined}
+        >
+          <ToggleSeg
+            active={activeMetric === "r"}
+            onClick={() => setMetric("r")}
+            label="R"
+            ariaLabel="Show risk units"
+          />
+          <ToggleSeg
+            active={activeMetric === "abs"}
+            onClick={() => !absDisabled && setMetric("abs")}
+            label="$"
+            ariaLabel="Show absolute net PnL"
+            disabled={absDisabled}
+          />
         </div>
       </div>
 
@@ -300,10 +282,11 @@ export default function PerformanceTrends({
               preload="intent"
               className="group m-3 block rounded-xl bg-background/40 px-4 py-6 text-center ring-1 ring-border/50 transition-all hover:bg-background/60 hover:ring-primary/30 hover:shadow-glow-gold active:scale-[0.99]"
             >
-              <p className="text-[12.5px] text-text-primary group-hover:underline underline-offset-4 decoration-primary/50">
-                {!hasTrades
-                  ? "Log your first trade to activate performance tracking."
-                  : "Log one more trade to see the trend."}
+              <p className="text-[13px] font-semibold text-text-primary">
+                Not enough data yet
+              </p>
+              <p className="mt-1 text-[11.5px] text-text-secondary/80">
+                Log at least 2 trades to unlock your performance trend.
               </p>
               <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3.5 py-1.5 text-[11.5px] font-semibold text-text-primary ring-1 ring-primary/30 transition group-hover:bg-primary/25">
                 Log a trade <ArrowUpRight className="h-3 w-3" strokeWidth={2.4} />
@@ -316,7 +299,7 @@ export default function PerformanceTrends({
             className="h-[140px] w-full"
             preserveAspectRatio="none"
             role="img"
-            aria-label="Performance trend over the last 20 trades"
+            aria-label="Performance trend over the last trades"
           >
             <defs>
               <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
@@ -434,7 +417,7 @@ function ToggleSeg({
             ? "text-text-secondary/35 cursor-not-allowed"
             : "text-text-secondary/75 hover:text-text-primary"
       }`}
-      title={disabled ? "Log $ PnL to enable" : undefined}
+      title={disabled ? "Add position size to view results in $" : undefined}
     >
       {label}
     </button>
