@@ -299,9 +299,15 @@ export default function TradeJournal() {
                     href={t.screenshot_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-3 inline-block text-[11px] font-semibold text-text-primary/80 underline underline-offset-2 hover:text-text-primary"
+                    aria-label="Open trade screenshot"
+                    className="mt-3 block overflow-hidden rounded-lg ring-1 ring-border bg-card transition hover:ring-primary/40"
                   >
-                    View screenshot
+                    <img
+                      src={t.screenshot_url}
+                      alt={`${t.pair} trade screenshot`}
+                      loading="lazy"
+                      className="h-28 w-full object-cover"
+                    />
                   </a>
                 )}
               </div>
