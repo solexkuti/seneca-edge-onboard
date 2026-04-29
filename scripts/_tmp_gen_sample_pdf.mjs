@@ -16,14 +16,16 @@ globalThis.document = globalThis.document ?? {
 };
 globalThis.navigator = globalThis.navigator ?? { userAgent: "node" };
 
-const { jsPDF } = await import("jspdf");
-// Override save() to write to disk instead of triggering a browser download.
+const jspdfMod = await import("jspdf");
+const jsPDF = jspdfMod.jsPDF ?? jspdfMod.default;
+console.log("jsPDF keys:", Object.keys(jspdfMod));
 const origSave = jsPDF.prototype.save;
 jsPDF.prototype.save = function (filename) {
   const ab = this.output("arraybuffer");
   const out = `/tmp/${filename}`;
   writeFileSync(out, Buffer.from(ab));
   console.log("WROTE", out, "bytes=", Buffer.from(ab).length);
+  return this;
 };
 
 const { downloadPdf } = await import("../src/lib/strategyExport.ts");
