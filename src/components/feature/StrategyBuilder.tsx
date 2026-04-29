@@ -344,11 +344,25 @@ export default function StrategyBuilder({
           {stepIdx < STEPS.length - 1 ? (
             <button
               type="button"
-              onClick={() => void goToStep(stepIdx + 1)}
-              disabled={!canAdvance || busy}
+              onClick={() => {
+                if (step.key === "raw") {
+                  setStructuring(true);
+                  window.setTimeout(() => {
+                    setStructuring(false);
+                    void goToStep(stepIdx + 1);
+                  }, 1700);
+                } else {
+                  void goToStep(stepIdx + 1);
+                }
+              }}
+              disabled={!canAdvance || busy || structuring}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-soft transition hover:opacity-95 disabled:opacity-40"
             >
-              Next <ArrowRight className="h-4 w-4" />
+              {step.key === "raw" ? (
+                <>Structure my strategy <ArrowRight className="h-4 w-4" /></>
+              ) : (
+                <>Next <ArrowRight className="h-4 w-4" /></>
+              )}
             </button>
           ) : (
             <Link
