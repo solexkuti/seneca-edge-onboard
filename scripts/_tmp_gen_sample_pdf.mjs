@@ -11,23 +11,31 @@ globalThis.navigator = { userAgent: "node" };
 globalThis.URL = class { static createObjectURL() { return "blob:x"; } static revokeObjectURL() {} };
 globalThis.Blob = class { constructor(p){ this.p=p; } };
 
-// Patch jsPDF prototype: override save() AND output("save", ...) to write to disk.
-const jspdfMod = await import("jspdf");
-const RealJsPDF = jspdfMod.jsPDF;
-const realOutput = RealJsPDF.prototype.output;
-RealJsPDF.prototype.output = function (type, options) {
-  if (type === "save") {
-    const filename = (typeof options === "string" ? options : options?.filename) || "out.pdf";
-    const ab = realOutput.call(this, "arraybuffer");
-    writeFileSync(`/tmp/${filename}`, Buffer.from(ab));
-    console.log("WROTE /tmp/" + filename, "bytes=", Buffer.from(ab).length);
-    return this;
-  }
-  return realOutput.call(this, type, options);
-};
-RealJsPDF.prototype.save = function (filename) {
-  return this.output("save", filename);
-};
+// Patch jsPDF prototype across all known builds.
+async function patch(modPath) {
+  try {
+    const mod = await import(modPath);
+    const J = mod.jsPDF ?? mod.default;
+    if (!J?.prototype) { console.log("no proto", modPath); return; }
+    const realOutput = J.prototype.output;
+    J.prototype.output = function (type, options) {
+      if (type === "save") {
+        const filename = (typeof options === "string" ? options : options?.filename) || "out.pdf";
+        const ab = realOutput.call(this, "arraybuffer");
+        writeFileSync(`/tmp/${filename}`, Buffer.from(ab));
+        console.log("WROTE /tmp/" + filename, "bytes=", Buffer.from(ab).length);
+        return this;
+      }
+      return realOutput.call(this, type, options);
+    };
+    J.prototype.save = function (filename) { return this.output("save", filename); };
+    console.log("patched", modPath);
+  } catch (e) { console.log("skip", modPath, e.message); }
+}
+await patch("jspdf");
+await patch("/dev-server/node_modules/jspdf/dist/jspdf.es.min.js");
+await patch("/dev-server/node_modules/jspdf/dist/jspdf.umd.min.js");
+await patch("/dev-server/node_modules/jspdf/dist/jspdf.node.min.js");
 
 const { downloadPdf } = await import("../src/lib/strategyExport.ts");
 
