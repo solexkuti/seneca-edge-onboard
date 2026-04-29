@@ -374,6 +374,73 @@ export default function BehavioralJournalFlow({
     setPreviewConfirmed(false);
   }, [direction, entryStr, exitStr, slStr, resultStr]);
 
+  // ── Intelligent Price Correction wiring ──────────────────────────────
+  // The modal opens when analyzeForCorrection() flags suspicious inputs
+  // AND the user has not already acknowledged the current values. We track
+  // a fingerprint of the four price-relevant inputs so we don't re-pop the
+  // modal after the user explicitly chose "Keep original".
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [correctionAnalysis, setCorrectionAnalysis] =
+    useState<CorrectionAnalysis | null>(null);
+  /** What action to perform after the user resolves the modal. */
+  const [pendingAction, setPendingAction] = useState<"continue" | "submit" | null>(null);
+  /** Inputs fingerprint the user already acknowledged via "Keep original". */
+  const [acknowledgedFingerprint, setAcknowledgedFingerprint] = useState<string | null>(null);
+  /** Marks the trade as low data-quality on submission. */
+  const [lowDataQuality, setLowDataQuality] = useState(false);
+
+  const inputsFingerprint = `${direction}|${entryStr}|${exitStr}|${slStr}`;
+
+  // When the user changes inputs, drop the acknowledgement so the engine
+  // can re-evaluate cleanly. Also clear low-quality flag.
+  useEffect(() => {
+    setAcknowledgedFingerprint(null);
+    setLowDataQuality(false);
+  }, [inputsFingerprint]);
+
+  // Per-user, per-field repeat counters → power the subtle "you often…" hint.
+  const [repeatCounts, setRepeatCounts] = useState<Record<FieldId, number>>({
+    entry: 0,
+    exit: 0,
+    stop: 0,
+  });
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(userKey(CORRECTION_REPEAT_STORAGE_SUFFIX));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          setRepeatCounts({
+            entry: Number(parsed.entry) || 0,
+            exit: Number(parsed.exit) || 0,
+            stop: Number(parsed.stop) || 0,
+          });
+        }
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+  function bumpRepeatCount(field: FieldId) {
+    setRepeatCounts((prev) => {
+      const next = { ...prev, [field]: (prev[field] ?? 0) + 1 };
+      try {
+        localStorage.setItem(userKey(CORRECTION_REPEAT_STORAGE_SUFFIX), JSON.stringify(next));
+      } catch {
+        // ignore storage errors
+      }
+      return next;
+    });
+  }
+  /** Hint string when one field has been corrected ≥ threshold times. */
+  const repeatHint = useMemo(() => {
+    const offender = (Object.entries(repeatCounts) as [FieldId, number][])
+      .filter(([, count]) => count >= REPEAT_HINT_THRESHOLD)
+      .sort((a, b) => b[1] - a[1])[0];
+    if (!offender) return null;
+    return `You often enter extra digits in ${fieldLabel(offender[0]).toLowerCase()}. Be careful with scaling.`;
+  }, [repeatCounts]);
+
   // Outcome is REQUIRED. R is required (existing rule). Hard validation
   // blocks must be cleared. Warnings require explicit preview confirmation.
   const canNextFromStep0 =
@@ -383,6 +450,68 @@ export default function BehavioralJournalFlow({
     !pnlDollarInvalid &&
     !validation.hasBlock &&
     (!validation.hasWarn || previewConfirmed);
+
+  /**
+   * Run the correction engine before performing `action`. If suspicious
+   * inputs are detected and not yet acknowledged, open the modal and stash
+   * the action for later. Otherwise run the action immediately.
+   */
+  function runCorrectionGuard(action: "continue" | "submit") {
+    const a = analyzeForCorrection({ direction, entry, exit, stop: sl });
+    if (a.triggered && acknowledgedFingerprint !== inputsFingerprint) {
+      setCorrectionAnalysis(a);
+      setPendingAction(action);
+      setCorrectionOpen(true);
+      return;
+    }
+    performAction(action);
+  }
+
+  function performAction(action: "continue" | "submit") {
+    if (action === "continue") {
+      setStep((s) => (Math.min(3, s + 1) as Step));
+    } else {
+      void submit();
+    }
+  }
+
+  function applyCandidate(field: FieldId, candidate: PriceCandidate) {
+    const v = candidate.suggested;
+    const formatted = String(v);
+    if (field === "entry") setEntryStr(formatted);
+    else if (field === "exit") setExitStr(formatted);
+    else if (field === "stop") setSlStr(formatted);
+    bumpRepeatCount(field);
+    setLowDataQuality(false);
+    // Close the modal but DO NOT auto-advance — let the user re-validate
+    // the new values. They click Continue/Save again, which will re-run
+    // the guard against the corrected inputs.
+    setCorrectionOpen(false);
+    setCorrectionAnalysis(null);
+    setPendingAction(null);
+    toast.success(`${fieldLabel(field)} updated to ${formatted}`);
+  }
+
+  function keepOriginalCorrection() {
+    setLowDataQuality(true);
+    setAcknowledgedFingerprint(inputsFingerprint);
+    setCorrectionOpen(false);
+    const action = pendingAction;
+    setCorrectionAnalysis(null);
+    setPendingAction(null);
+    if (action) performAction(action);
+  }
+
+  function editManuallyCorrection() {
+    setCorrectionOpen(false);
+    setCorrectionAnalysis(null);
+    setPendingAction(null);
+    // Focus the first price field so the user can immediately edit.
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLInputElement>('input[inputmode="decimal"]');
+      el?.focus();
+    });
+  }
 
   function addFiles(list: FileList | null) {
     if (!list || list.length === 0) return;
