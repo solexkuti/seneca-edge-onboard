@@ -875,16 +875,58 @@ export default function BehavioralJournalFlow({
                   </Field>
                 </div>
 
-                {/* Profit / Loss ($) — optional but encouraged */}
-                <Field label="Profit / Loss ($) — optional">
+                {/* Account size ($) — optional, persisted across trades.
+                    When set together with Risk %, the $ field auto-fills. */}
+                <Field label="Account size ($) — optional">
                   <input
-                    value={pnlDollarStr}
-                    onChange={(e) => setPnlDollarStr(e.target.value)}
-                    placeholder="e.g. +150  or  -75"
+                    value={accountSizeStr}
+                    onChange={(e) => setAccountSizeStr(e.target.value)}
+                    placeholder="e.g. 10000"
                     inputMode="decimal"
                     className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                   />
                 </Field>
+                {accountSizeInvalid && (
+                  <p className="text-[11px] text-rose-300">
+                    Enter a positive number (e.g. 10000) or leave it blank.
+                  </p>
+                )}
+
+                {/* Profit / Loss ($) — optional. Auto-fills from R × Risk % × Account size
+                    when those are set, but the user can always override manually. */}
+                <Field label="Profit / Loss ($) — optional">
+                  <input
+                    value={pnlDollarStr}
+                    onChange={(e) => {
+                      setPnlDollarStr(e.target.value);
+                      setPnlDollarManuallySet(true);
+                    }}
+                    placeholder={
+                      autoPnlDollar != null && !pnlDollarManuallySet
+                        ? `auto ${autoPnlDollar > 0 ? "+" : ""}${autoPnlDollar.toFixed(2)}`
+                        : "e.g. +150  or  -75"
+                    }
+                    inputMode="decimal"
+                    className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
+                  />
+                </Field>
+                {autoPnlDollar != null && pnlDollarManuallySet && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPnlDollarManuallySet(false);
+                      setPnlDollarStr(autoPnlDollar.toFixed(2));
+                    }}
+                    className="text-[11px] text-primary/85 hover:text-primary underline-offset-2 hover:underline"
+                  >
+                    Use auto-calculated {autoPnlDollar > 0 ? "+" : ""}${autoPnlDollar.toFixed(2)}
+                  </button>
+                )}
+                {autoPnlDollar != null && !pnlDollarManuallySet && (
+                  <p className="text-[11px] text-text-secondary/70">
+                    Auto-calculated from R × Risk % × Account size. Type to override.
+                  </p>
+                )}
                 {pnlDollarInvalid && (
                   <p className="text-[11px] text-rose-300">
                     Enter a valid number (e.g. 150, -75) or leave it blank.
