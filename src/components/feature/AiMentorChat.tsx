@@ -208,6 +208,9 @@ export default function AiMentorChat() {
       content: trimmed,
     };
     const history = [...messages, userMsg];
+    // Echo the user message immediately and flip streaming on the same tick
+    // so the input clears and the typing indicator shows without waiting for
+    // context-building or the network round-trip.
     setMessages(history);
     setDraft("");
     setStreaming(true);
