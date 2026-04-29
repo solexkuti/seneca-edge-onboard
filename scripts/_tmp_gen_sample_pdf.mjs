@@ -33,9 +33,12 @@ async function patch(modPath) {
   } catch (e) { console.log("skip", modPath, e.message); }
 }
 await patch("jspdf");
-await patch("/dev-server/node_modules/jspdf/dist/jspdf.es.min.js");
-await patch("/dev-server/node_modules/jspdf/dist/jspdf.umd.min.js");
-await patch("/dev-server/node_modules/jspdf/dist/jspdf.node.min.js");
+await patch("/dev-server/node_modules/.bun/jspdf@4.2.1/node_modules/jspdf/dist/jspdf.es.js");
+await patch("/dev-server/node_modules/.bun/jspdf@4.2.1/node_modules/jspdf/dist/jspdf.es.min.js");
+await patch("/dev-server/node_modules/.bun/jspdf@4.2.1/node_modules/jspdf/dist/jspdf.node.js");
+await patch("/dev-server/node_modules/.bun/jspdf@4.2.1/node_modules/jspdf/dist/jspdf.node.min.js");
+await patch("/dev-server/node_modules/.bun/jspdf@4.2.1/node_modules/jspdf/dist/jspdf.umd.js");
+await patch("/dev-server/node_modules/.bun/jspdf@4.2.1/node_modules/jspdf/dist/jspdf.umd.min.js");
 
 const { downloadPdf } = await import("../src/lib/strategyExport.ts");
 
