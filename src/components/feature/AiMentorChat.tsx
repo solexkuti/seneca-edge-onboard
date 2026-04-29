@@ -41,6 +41,7 @@ const SESSION_ID =
 export default function AiMentorChat() {
   const { state: traderState } = useTraderState();
   const { rows, entries: journal } = useDbJournal();
+  const { entries: behavioralEntries, score: behavioralScore } = useBehavioralJournal(20);
   const intelligence = useMemo(() => computeIntelligence(rows), [rows]);
   const [recentPatterns, setRecentPatterns] = useState<DbBehaviorPattern[]>([]);
   const [activeStrategy, setActiveStrategy] =
