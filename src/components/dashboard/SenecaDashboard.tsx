@@ -19,6 +19,7 @@ import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
 import { usePerformance } from "@/hooks/usePerformance";
 import { useTraderState } from "@/hooks/useTraderState";
 import PerformanceSnapshot from "@/components/dashboard/PerformanceSnapshot";
+import PerformanceTrends from "@/components/dashboard/PerformanceTrends";
 import {
   disciplineState,
   lastMistakeOf,
@@ -329,6 +330,13 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
             hasTrades={performance.hasTrades}
             metrics={performance.metrics}
           />
+          <div className="mt-3">
+            <PerformanceTrends
+              loading={performance.loading}
+              hasTrades={performance.hasTrades}
+              trades={performance.trades}
+            />
+          </div>
         </Section>
 
         {/* 6 · Your System */}
