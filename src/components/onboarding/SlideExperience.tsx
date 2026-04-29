@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Sprout, TrendingUp, Crown } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import type { SlideProps } from "./OnboardingFlow";
-import { patchProfile, type ExperienceLevel } from "@/lib/onboardingProfile";
+import { patchProfile, readProfile, type ExperienceLevel } from "@/lib/onboardingProfile";
 
 const levels: { id: ExperienceLevel; label: string; icon: React.ReactNode }[] = [
   { id: "beginner", label: "Beginner", icon: <Sprout className="h-5 w-5" /> },
@@ -12,7 +12,9 @@ const levels: { id: ExperienceLevel; label: string; icon: React.ReactNode }[] = 
 ];
 
 export default function SlideExperience({ onNext }: SlideProps) {
-  const [selected, setSelected] = useState<ExperienceLevel | null>(null);
+  const [selected, setSelected] = useState<ExperienceLevel | null>(
+    () => readProfile().experience ?? null,
+  );
 
   return (
     <div className="flex flex-col gap-6">

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
+import { ChevronLeft } from "lucide-react";
 import SlideFeeling from "@/components/onboarding/SlideFeeling";
 import SlideSystem from "@/components/onboarding/SlideSystem";
 import SlideEdge from "@/components/onboarding/SlideEdge";
@@ -9,6 +10,7 @@ import Slide4Market from "@/components/onboarding/Slide4Market";
 import SlideExperience from "@/components/onboarding/SlideExperience";
 import SlideStruggle from "@/components/onboarding/SlideStruggle";
 import SlideGoal from "@/components/onboarding/SlideGoal";
+import SlideCalibration from "@/components/onboarding/SlideCalibration";
 import SlideName from "@/components/onboarding/SlideName";
 import SlideAuth from "@/components/onboarding/SlideAuth";
 import PhoneFrame from "@/components/onboarding/PhoneFrame";
@@ -39,6 +41,8 @@ const slideOrder = [
   { key: "q-experience", Component: SlideExperience },
   { key: "q-challenge", Component: SlideStruggle },
   { key: "q-goal", Component: SlideGoal },
+  // Calibration — auto-advance after ~2.6s
+  { key: "calibration", Component: SlideCalibration },
   // Identity → signup → control state
   { key: "name", Component: SlideName },
   { key: "auth", Component: SlideAuth },
@@ -122,13 +126,31 @@ export default function OnboardingFlow() {
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[440px] flex-col px-5 pb-10 pt-[40px]">
         {/* Progress bar — manual flow, no dwell timer */}
-        <header className="px-1">
+        <header className="relative px-1">
           <SegmentedProgress
             count={slideOrder.length}
             active={index}
             duration={0}
             onSelect={goTo}
           />
+          {/* Subtle back button — appears once the user has progressed past the first slide.
+              Hidden on calibration (auto) and auth (terminal). */}
+          {index > 0 &&
+            slide.key !== "calibration" &&
+            slide.key !== "auth" && (
+              <motion.button
+                type="button"
+                onClick={goPrev}
+                initial={{ opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                aria-label="Back"
+                className="absolute -top-2 left-0 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:text-gold-soft"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2.4} />
+                Back
+              </motion.button>
+            )}
         </header>
 
         {/* Slide stage */}

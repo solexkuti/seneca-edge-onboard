@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { LogIn, LogOut, Shield, Brain } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import type { SlideProps } from "./OnboardingFlow";
-import { patchProfile, type ChallengeChoice } from "@/lib/onboardingProfile";
+import { patchProfile, readProfile, type ChallengeChoice } from "@/lib/onboardingProfile";
 
 const struggles: { id: ChallengeChoice; label: string; icon: React.ReactNode }[] = [
   { id: "entries", label: "Entries", icon: <LogIn className="h-5 w-5" /> },
@@ -13,7 +13,9 @@ const struggles: { id: ChallengeChoice; label: string; icon: React.ReactNode }[]
 ];
 
 export default function SlideStruggle({ onNext }: SlideProps) {
-  const [selected, setSelected] = useState<ChallengeChoice | null>(null);
+  const [selected, setSelected] = useState<ChallengeChoice | null>(
+    () => readProfile().challenge ?? null,
+  );
 
   return (
     <div className="flex flex-col gap-6">
