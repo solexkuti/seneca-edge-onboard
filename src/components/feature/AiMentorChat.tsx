@@ -465,13 +465,20 @@ export default function AiMentorChat() {
           const a = analyzeBehaviorPatterns(behavioralEntries);
           return {
             totalTrades: a.totalTrades,
+            totalAvailable: a.totalAvailable,
+            windowSize: a.windowSize,
             cleanRate: a.cleanRate,
+            avgScore: a.avgScore,
+            behaviorState: a.behaviorState,
+            insufficientData: a.insufficientData,
+            mentorLine: a.mentorLine,
             dominantWeakness: a.dominantWeakness
               ? {
                   id: a.dominantWeakness.id,
                   label: a.dominantWeakness.label,
                   count: a.dominantWeakness.count,
                   pct: a.dominantWeakness.pct,
+                  weightedPct: a.dominantWeakness.weightedPct,
                   severe: a.dominantWeakness.severe,
                 }
               : null,
@@ -480,6 +487,7 @@ export default function AiMentorChat() {
               label: m.label,
               count: m.count,
               pct: m.pct,
+              weightedPct: m.weightedPct,
               severe: m.severe,
             })),
             recentVsPrevious: a.recentVsPrevious,
@@ -489,6 +497,7 @@ export default function AiMentorChat() {
               label: m.label,
               count: m.count,
               pct: m.pct,
+              weightedPct: m.weightedPct,
               severe: m.severe,
             })),
             headlines: a.headlines,
