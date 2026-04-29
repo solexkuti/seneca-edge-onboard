@@ -11,23 +11,23 @@ globalThis.navigator = { userAgent: "node" };
 globalThis.URL = class { static createObjectURL() { return "blob:x"; } static revokeObjectURL() {} };
 globalThis.Blob = class { constructor(p){ this.p=p; } };
 
-// Patch jsPDF constructor to wrap every instance's save() before strategyExport imports it.
+// Patch jsPDF prototype: override save() AND output("save", ...) to write to disk.
 const jspdfMod = await import("jspdf");
 const RealJsPDF = jspdfMod.jsPDF;
-function PatchedJsPDF(...args) {
-  const inst = new RealJsPDF(...args);
-  inst.save = function (filename) {
-    const ab = this.output("arraybuffer");
+const realOutput = RealJsPDF.prototype.output;
+RealJsPDF.prototype.output = function (type, options) {
+  if (type === "save") {
+    const filename = (typeof options === "string" ? options : options?.filename) || "out.pdf";
+    const ab = realOutput.call(this, "arraybuffer");
     writeFileSync(`/tmp/${filename}`, Buffer.from(ab));
     console.log("WROTE /tmp/" + filename, "bytes=", Buffer.from(ab).length);
     return this;
-  };
-  return inst;
-}
-PatchedJsPDF.prototype = RealJsPDF.prototype;
-Object.assign(PatchedJsPDF, RealJsPDF);
-jspdfMod.jsPDF = PatchedJsPDF;
-jspdfMod.default = PatchedJsPDF;
+  }
+  return realOutput.call(this, type, options);
+};
+RealJsPDF.prototype.save = function (filename) {
+  return this.output("save", filename);
+};
 
 const { downloadPdf } = await import("../src/lib/strategyExport.ts");
 
