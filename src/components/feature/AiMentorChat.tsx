@@ -49,36 +49,6 @@ export default function AiMentorChat() {
 
   // Dynamic, state-driven quick prompts. Rotation key updates whenever the
   // user logs new activity or discipline shifts — so chips feel reactive.
-  const quickPrompts = useMemo(() => {
-    const tradeCount = Math.max(
-      performancePayload?.windowSize ?? 0,
-      behavioralEntries.length,
-      rows.length,
-    );
-    const rotation =
-      behavioralEntries.length +
-      Math.floor((traderState.discipline.score ?? 0) / 10);
-    return buildQuickPrompts(
-      {
-        tradeCount,
-        disciplineScore: traderState.loading
-          ? null
-          : traderState.discipline.score,
-        winRate: performancePayload?.winRate ?? null,
-        avgRR: performancePayload?.avgRR ?? null,
-      },
-      rotation,
-    );
-  }, [
-    performancePayload?.windowSize,
-    performancePayload?.winRate,
-    performancePayload?.avgRR,
-    behavioralEntries.length,
-    rows.length,
-    traderState.loading,
-    traderState.discipline.score,
-  ]);
-
   const [recentPatterns, setRecentPatterns] = useState<DbBehaviorPattern[]>([]);
   const [activeStrategy, setActiveStrategy] =
     useState<ActiveStrategyContext | null>(null);
@@ -147,6 +117,44 @@ export default function AiMentorChat() {
   // resetting the whole conversation.
   const [suggestionsRevealed, setSuggestionsRevealed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const userMsgCount = useMemo(
+    () => messages.filter((m) => m.role === "user").length,
+    [messages],
+  );
+
+  const quickPrompts = useMemo(() => {
+    const tradeCount = Math.max(
+      performancePayload?.windowSize ?? 0,
+      behavioralEntries.length,
+      rows.length,
+    );
+    const rotation =
+      behavioralEntries.length +
+      Math.floor((traderState.discipline.score ?? 0) / 10);
+    return buildQuickPrompts(
+      {
+        tradeCount,
+        disciplineScore: traderState.loading
+          ? null
+          : traderState.discipline.score,
+        winRate: performancePayload?.winRate ?? null,
+        avgRR: performancePayload?.avgRR ?? null,
+        conversationCount: userMsgCount,
+      },
+      rotation,
+    );
+  }, [
+    performancePayload?.windowSize,
+    performancePayload?.winRate,
+    performancePayload?.avgRR,
+    behavioralEntries.length,
+    rows.length,
+    traderState.loading,
+    traderState.discipline.score,
+    userMsgCount,
+  ]);
+
 
   // Edge case: if chat history is wiped back to just the intro, treat the
   // session as fresh again so prompts reappear.
@@ -473,6 +481,11 @@ export default function AiMentorChat() {
     } else if (tradeCount > 0 && tradeCount < 20) {
       intentHint.note =
         "User has limited data (<20 trades). Avoid strong conclusions. Speak in probabilities, not certainty.";
+    }
+    // Trust-builder positioning prompt — override with sharp AI instruction.
+    if (/what\s+makes\s+seneca\s+different/i.test(trimmed)) {
+      intentHint.note =
+        "Answer confidently. Be direct. Avoid generic motivational language. Clearly explain how Seneca is different from a normal trading journal. Focus on behavior tracking, pattern recognition, and decision enforcement. Keep it sharp and persuasive. Keep it under 6 short sentences.";
     }
 
     const ctx = {

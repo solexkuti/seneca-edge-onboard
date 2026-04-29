@@ -31,6 +31,8 @@ export type QuickPromptInputs = {
   disciplineScore: number | null;
   winRate: number | null;   // 0..1
   avgRR: number | null;
+  /** How many user messages have been sent in this session. */
+  conversationCount?: number;
 };
 
 const EDUCATION: QuickPrompt = {
@@ -39,6 +41,17 @@ const EDUCATION: QuickPrompt = {
   prompt:
     "How is my discipline score calculated? Walk me through what moves it up and what moves it down.",
   priority: 10,
+};
+
+/**
+ * Trust-builder shown only on a fresh chat (zero trades + first turn).
+ * Disappears permanently once the user sends any message.
+ */
+export const WHAT_MAKES_DIFFERENT: QuickPrompt = {
+  id: "what-makes-different",
+  label: "What makes Seneca different?",
+  prompt: "What makes Seneca different from a normal trading journal?",
+  priority: 200,
 };
 
 const ZERO_FOCUS: QuickPrompt = {
@@ -133,10 +146,15 @@ export function buildQuickPrompts(
   inputs: QuickPromptInputs,
   rotation = 0,
 ): QuickPrompt[] {
-  const { tradeCount, disciplineScore, winRate, avgRR } = inputs;
+  const { tradeCount, disciplineScore, winRate, avgRR, conversationCount = 0 } = inputs;
 
   // -------- Zero data: education-only set --------
   if (tradeCount === 0) {
+    // Trust-builder appears only on the very first turn (no user msgs yet,
+    // or a single one — covers the intro-only state).
+    if (conversationCount <= 1) {
+      return [WHAT_MAKES_DIFFERENT, ZERO_FOCUS, EDUCATION];
+    }
     return [ZERO_FOCUS, EDUCATION];
   }
 
