@@ -141,19 +141,34 @@ export default function PerformanceTrends({
 }) {
   const gradId = useId();
   const series = useMemo(() => buildSeries(trades), [trades]);
+  const [metric, setMetric] = useState<Metric>("r");
 
-  const count = series.pnl.length;
+  // Auto-disable absolute toggle when no trade carries a $ value.
+  const absDisabled = !series.hasAbs;
+  const activeMetric: Metric = absDisabled ? "r" : metric;
+
+  const activeSeries = activeMetric === "r" ? series.pnlR : series.pnlAbs;
+  const finalPnl =
+    activeMetric === "r" ? series.finalPnlR : series.finalPnlAbs;
+  const trend = activeMetric === "r" ? series.trendR : series.trendAbs;
+  const fmtMetric = activeMetric === "r" ? fmtR : fmtAbs;
+
+  const count = activeSeries.length;
   const showChart = !loading && hasTrades && count >= 2;
 
   // PnL bounds (always include zero so the baseline is meaningful).
-  const pnlMin = Math.min(0, ...series.pnl);
-  const pnlMax = Math.max(0, ...series.pnl);
-  const pnlPad = Math.max(0.5, (pnlMax - pnlMin) * 0.15);
+  const pnlMin = Math.min(0, ...activeSeries);
+  const pnlMax = Math.max(0, ...activeSeries);
+  // Padding scales with the metric — R values are typically <10, $ may be 1000s.
+  const pnlPad = Math.max(
+    activeMetric === "r" ? 0.5 : 1,
+    (pnlMax - pnlMin) * 0.15,
+  );
   const pMin = pnlMin - pnlPad;
   const pMax = pnlMax + pnlPad;
 
-  const pnlPath = pathFrom(series.pnl, pMin, pMax);
-  const pnlArea = areaFrom(series.pnl, pMin, pMax);
+  const pnlPath = pathFrom(activeSeries, pMin, pMax);
+  const pnlArea = areaFrom(activeSeries, pMin, pMax);
   const winPath = pathFrom(series.winRate, 0, 1);
 
   // Zero baseline (in PnL coordinate space).
@@ -166,11 +181,10 @@ export default function PerformanceTrends({
   const lastX = PAD_X + (count - 1) * stepX;
   const lastY =
     PAD_TOP +
-    (1 - (series.finalPnl - pMin) / (pMax - pMin || 1)) *
+    (1 - (finalPnl - pMin) / (pMax - pMin || 1)) *
       (H - PAD_TOP - PAD_BOTTOM);
 
-  const TrendIcon =
-    series.trend === "down" ? TrendingDown : TrendingUp;
+  const TrendIcon = trend === "down" ? TrendingDown : TrendingUp;
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-card ring-1 ring-border/60">
@@ -183,49 +197,71 @@ export default function PerformanceTrends({
             Performance trend
           </p>
         </div>
-        <Link
-          to="/hub/stats"
-          preload="intent"
-          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-background/60 px-2.5 py-1 text-[10.5px] font-semibold text-text-primary/85 ring-1 ring-border hover:text-text-primary"
-        >
-          Stats
-          <ArrowUpRight className="h-3 w-3" strokeWidth={2.4} />
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* Metric toggle */}
+          <div
+            role="tablist"
+            aria-label="Chart metric"
+            className="inline-flex items-center rounded-full bg-background/60 p-0.5 ring-1 ring-border"
+          >
+            <ToggleSeg
+              active={activeMetric === "r"}
+              onClick={() => setMetric("r")}
+              label="R"
+              ariaLabel="Show risk units"
+            />
+            <ToggleSeg
+              active={activeMetric === "abs"}
+              onClick={() => !absDisabled && setMetric("abs")}
+              label="$"
+              ariaLabel="Show absolute net PnL"
+              disabled={absDisabled}
+            />
+          </div>
+          <Link
+            to="/hub/stats"
+            preload="intent"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-background/60 px-2.5 py-1 text-[10.5px] font-semibold text-text-primary/85 ring-1 ring-border hover:text-text-primary"
+          >
+            Stats
+            <ArrowUpRight className="h-3 w-3" strokeWidth={2.4} />
+          </Link>
+        </div>
       </div>
 
       {/* KPI strip */}
       <div className="mt-4 flex items-end gap-5 px-5">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
-            Net PnL
+            Net PnL {activeMetric === "r" ? "(R)" : "($)"}
           </p>
           <div className="mt-1 flex items-baseline gap-1.5">
             <motion.span
-              key={`pnl-${series.finalPnl}`}
+              key={`pnl-${activeMetric}-${finalPnl}`}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease }}
               className={`text-[22px] font-semibold leading-none tabular-nums ${
-                series.finalPnl > 0
+                finalPnl > 0
                   ? "text-gold"
-                  : series.finalPnl < 0
+                  : finalPnl < 0
                     ? "text-rose-300"
                     : "text-text-primary"
               }`}
               style={
-                series.finalPnl > 0
+                finalPnl > 0
                   ? { textShadow: "0 0 18px rgba(198,161,91,0.35)" }
                   : undefined
               }
             >
-              {showChart ? fmtR(series.finalPnl) : "—"}
+              {showChart ? fmtMetric(finalPnl) : "—"}
             </motion.span>
             {showChart && (
               <TrendIcon
                 className={`h-3.5 w-3.5 ${
-                  series.trend === "down"
+                  trend === "down"
                     ? "text-rose-300"
-                    : series.trend === "up"
+                    : trend === "up"
                       ? "text-gold"
                       : "text-text-secondary/60"
                 }`}
