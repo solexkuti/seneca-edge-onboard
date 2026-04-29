@@ -13,7 +13,6 @@ import {
   MessageCircle,
   Pencil,
   Plus,
-  Sparkles,
 } from "lucide-react";
 import { useMemo } from "react";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
