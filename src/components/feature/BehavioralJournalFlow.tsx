@@ -241,9 +241,12 @@ export default function BehavioralJournalFlow({
     return Number.isFinite(n) ? n : null;
   }, [resultStr]);
 
+  // Always prioritize calculated result (from Entry/SL/Exit) over manual input.
+  // Manual R is only used when Exit is empty (optional mode).
   const resultR = useMemo(() => {
+    if (autoRealizedR != null) return autoRealizedR;
     if (manualR != null) return manualR;
-    return autoRealizedR ?? NaN;
+    return NaN;
   }, [manualR, autoRealizedR]);
 
   // Parsed dollar PnL (optional). Empty → null. Non-numeric → null but flagged.
