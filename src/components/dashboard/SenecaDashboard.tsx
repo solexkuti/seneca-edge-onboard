@@ -179,7 +179,25 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
                 </div>
               </div>
 
-              <div className="mt-5 flex items-end gap-3">
+              <div className="relative mt-5 flex items-end gap-3">
+                {/* Soft radial gold halo behind the score — center focus */}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -left-6 -top-8 h-40 w-40 rounded-full"
+                  style={{
+                    background:
+                      ds.tone === "ok"
+                        ? "radial-gradient(closest-side, rgba(198,161,91,0.22), transparent 70%)"
+                        : ds.tone === "drift"
+                          ? "radial-gradient(closest-side, rgba(221,184,119,0.16), transparent 70%)"
+                          : ds.tone === "warn"
+                            ? "radial-gradient(closest-side, rgba(231,201,138,0.14), transparent 70%)"
+                            : ds.tone === "risk"
+                              ? "radial-gradient(closest-side, rgba(194,138,138,0.14), transparent 70%)"
+                              : "transparent",
+                    filter: "blur(14px)",
+                  }}
+                />
                 <AnimatePresence mode="popLayout" initial={false}>
                   <motion.span
                     key={loading || score == null ? "—" : String(score)}
@@ -187,24 +205,54 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
                     animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                     exit={{ opacity: 0, y: -6, filter: "blur(4px)" }}
                     transition={{ duration: 0.4, ease }}
-                    className={`text-[56px] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[ds.tone]}`}
-                    style={ds.tone === "ok" ? { textShadow: "0 0 25px rgba(198,161,91,0.35)" } : undefined}
+                    className={`relative text-[56px] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[ds.tone]}`}
+                    style={
+                      ds.tone === "ok"
+                        ? { textShadow: "0 0 28px rgba(198,161,91,0.45), 0 0 12px rgba(198,161,91,0.35)" }
+                        : ds.tone === "drift"
+                          ? { textShadow: "0 0 22px rgba(221,184,119,0.30)" }
+                          : ds.tone === "warn"
+                            ? { textShadow: "0 0 22px rgba(231,201,138,0.28)" }
+                            : ds.tone === "risk"
+                              ? { textShadow: "0 0 22px rgba(194,138,138,0.28)" }
+                              : undefined
+                    }
                   >
                     {loading || score == null ? "—" : score}
                   </motion.span>
                 </AnimatePresence>
-                <span className="mb-2 text-[14px] font-medium text-text-secondary/70 tabular-nums">/100</span>
-                <span className="mb-2 ml-auto text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
+                <span className="relative mb-2 text-[14px] font-medium text-text-secondary/70 tabular-nums">/100</span>
+                <span className="relative mb-2 ml-auto text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
                   {score == null ? "Inactive" : "Discipline"}
                 </span>
               </div>
 
-              <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-text-primary/[0.05]">
+              {/* Progress bar with soft gradient backdrop */}
+              <div className="relative mt-4 h-1.5 w-full overflow-hidden rounded-full bg-text-primary/[0.05]">
+                <div
+                  aria-hidden
+                  className="absolute inset-0 rounded-full opacity-40"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, rgba(198,161,91,0.10), rgba(198,161,91,0.02))",
+                  }}
+                />
                 <motion.div
                   initial={false}
                   animate={{ width: `${score ?? 0}%` }}
                   transition={{ duration: 0.7, ease }}
-                  className={`h-full rounded-full ${TONE_BAR[ds.tone]} ${ds.tone === "ok" ? "shadow-glow-gold" : ""}`}
+                  className={`relative h-full rounded-full ${TONE_BAR[ds.tone]} ${ds.tone === "ok" || ds.tone === "drift" ? "shadow-glow-gold" : ""}`}
+                  style={
+                    ds.tone === "ok"
+                      ? { boxShadow: "0 0 14px rgba(198,161,91,0.55)" }
+                      : ds.tone === "drift"
+                        ? { boxShadow: "0 0 12px rgba(221,184,119,0.45)" }
+                        : ds.tone === "warn"
+                          ? { boxShadow: "0 0 10px rgba(231,201,138,0.35)" }
+                          : ds.tone === "risk"
+                            ? { boxShadow: "0 0 10px rgba(194,138,138,0.30)" }
+                            : undefined
+                  }
                 />
               </div>
 
