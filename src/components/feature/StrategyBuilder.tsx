@@ -107,6 +107,7 @@ export default function StrategyBuilder({
   const [stepIdx, setStepIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
+  const [structuring, setStructuring] = useState(false);
   const step = STEPS[stepIdx];
 
   // Bootstrap: load existing or create draft. Hard 3s ceiling.
@@ -203,7 +204,7 @@ export default function StrategyBuilder({
           (bp.max_drawdown_pct ?? 0) > 0
         );
       case "raw":
-        return (bp.raw_input?.trim().length ?? 0) >= 20;
+        return true;
       case "parse":
         return Object.values(bp.structured_rules ?? {}).some(
           (a) => Array.isArray(a) && a.length > 0,
@@ -343,11 +344,25 @@ export default function StrategyBuilder({
           {stepIdx < STEPS.length - 1 ? (
             <button
               type="button"
-              onClick={() => void goToStep(stepIdx + 1)}
-              disabled={!canAdvance || busy}
+              onClick={() => {
+                if (step.key === "raw") {
+                  setStructuring(true);
+                  window.setTimeout(() => {
+                    setStructuring(false);
+                    void goToStep(stepIdx + 1);
+                  }, 1700);
+                } else {
+                  void goToStep(stepIdx + 1);
+                }
+              }}
+              disabled={!canAdvance || busy || structuring}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-soft transition hover:opacity-95 disabled:opacity-40"
             >
-              Next <ArrowRight className="h-4 w-4" />
+              {step.key === "raw" ? (
+                <>Structure my strategy <ArrowRight className="h-4 w-4" /></>
+              ) : (
+                <>Next <ArrowRight className="h-4 w-4" /></>
+              )}
             </button>
           ) : (
             <Link
@@ -356,10 +371,55 @@ export default function StrategyBuilder({
             >
               Done
             </Link>
-          )}
+        )}
         </div>
       </div>
+      <StructuringOverlay show={structuring} />
     </Shell>
+  );
+}
+
+function StructuringOverlay({ show }: { show: boolean }) {
+  const phrases = ["Structuring your logic…", "Extracting rules…", "Building your system…"];
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (!show) {
+      setIdx(0);
+      return;
+    }
+    const t = window.setInterval(() => setIdx((i) => (i + 1) % phrases.length), 600);
+    return () => window.clearInterval(t);
+  }, [show]);
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md"
+        >
+          <div className="flex flex-col items-center gap-5">
+            <div className="relative">
+              <div className="h-12 w-12 rounded-full bg-primary/10 ring-1 ring-primary/30" />
+              <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-primary" />
+            </div>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={idx}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.25 }}
+                className="text-sm font-medium tracking-tight text-foreground"
+              >
+                {phrases[idx]}
+              </motion.p>
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -493,6 +553,44 @@ function StepRisk({
 }
 
 /* -------------------------- Step 3: Raw input ------------------------ */
+const STRATEGY_EXAMPLES = [
+  "I wait for liquidity sweep then enter on rejection",
+  "Only trade London/NY, max 3 trades, 0.5% risk",
+  "Fibonacci 50–61.8%, confirmation candle required",
+];
+
+type DetectedTag = { label: string; key: string };
+
+function detectSignals(text: string): DetectedTag[] {
+  const t = text.toLowerCase();
+  const tags: DetectedTag[] = [];
+  // Pair detection (common FX, indices, crypto, metals)
+  if (/\b(eur|gbp|usd|jpy|aud|nzd|cad|chf|xau|xag|btc|eth|nas|spx|us30|us100|gold|silver)[a-z]{0,3}\b/.test(t)) {
+    tags.push({ key: "pair", label: "Pair" });
+  }
+  // Risk
+  if (/\b\d+(\.\d+)?\s?%/.test(t) || /\brisk\b/.test(t)) {
+    tags.push({ key: "risk", label: "Risk" });
+  }
+  // Entry model
+  if (/\b(fib|fibonacci|liquidity|sweep|breakout|retest|order block|ob|fvg|smc|ict|supply|demand|reversal|trend|ema|rsi|macd|pattern|engulf|pin|rejection)\b/.test(t)) {
+    tags.push({ key: "entry", label: "Entry model" });
+  }
+  // Trade limit
+  if (/\bmax\s?\d+\b|\b\d+\s?(trades?|setups?)\b/.test(t)) {
+    tags.push({ key: "limit", label: "Trade limit" });
+  }
+  // Sessions
+  if (/\b(london|new ?york|ny|asia|tokyo|sydney|session)\b/.test(t)) {
+    tags.push({ key: "session", label: "Session" });
+  }
+  // Stop loss / RR
+  if (/\b(stop|sl|tp|take profit|r:?r|risk[- ]?reward)\b/.test(t)) {
+    tags.push({ key: "exit", label: "Exit logic" });
+  }
+  return tags;
+}
+
 function StepRaw({
   bp,
   onChange,
@@ -500,22 +598,73 @@ function StepRaw({
   bp: StrategyBlueprint;
   onChange: (s: string) => void;
 }) {
+  const value = bp.raw_input ?? "";
+  const detected = useMemo(() => detectSignals(value), [value]);
   return (
     <div className="space-y-6">
       <Question
-        title="Describe your strategy"
-        sub="Type it how you think. We'll refine it."
+        title="Define your strategy. I'll structure it."
+        sub="Don't overthink it. Write it exactly how you trade."
       />
-      <textarea
-        value={bp.raw_input ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        rows={10}
-        placeholder="I trade NY breakouts on EURUSD. Wait for a clean break of London high or low, then a retest. Risk 0.5%, max 3 trades a day, no trading after 2 losses..."
-        className="w-full rounded-xl bg-card px-4 py-3 text-sm leading-relaxed ring-1 ring-border shadow-soft focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
-      />
+
+      {/* Smart prompt block */}
+      <div className="rounded-xl bg-card/60 p-4 ring-1 ring-border/70">
+        <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <Sparkles className="h-3 w-3 text-primary" />
+          Inspiration
+        </div>
+        <ul className="mt-2 space-y-1.5">
+          {STRATEGY_EXAMPLES.map((ex) => (
+            <li key={ex} className="text-sm leading-relaxed text-foreground/70">
+              <span className="text-muted-foreground">•</span> {ex}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Input */}
+      <div className="group relative">
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={9}
+          placeholder="Type freely. The way you'd explain it to a friend who trades."
+          className="w-full resize-none rounded-2xl bg-card px-5 py-4 text-[15px] leading-relaxed ring-1 ring-border/70 shadow-soft transition-all duration-200 placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:shadow-card-premium"
+        />
+      </div>
+
+      {/* Live detection */}
+      <div className="min-h-[28px]">
+        <AnimatePresence mode="popLayout">
+          {detected.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-wrap items-center gap-2"
+            >
+              <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                Detected
+              </span>
+              {detected.map((d) => (
+                <motion.span
+                  key={d.key}
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary ring-1 ring-primary/20"
+                >
+                  <CheckCircle2 className="h-3 w-3" /> {d.label}
+                </motion.span>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
+
 
 /* -------------------------- Step 4: Tiers ---------------------------- */
 function StepTiers({
