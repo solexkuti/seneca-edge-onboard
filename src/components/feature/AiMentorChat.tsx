@@ -26,6 +26,7 @@ import { useTraderState } from "@/hooks/useTraderState";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
 import { mistakeFrequency, MISTAKE_LABEL } from "@/lib/behavioralJournal";
 import { usePerformance } from "@/hooks/usePerformance";
+import { buildQuickPrompts } from "@/lib/mentorQuickPrompts";
 
 type Msg = {
   id: string;
@@ -38,13 +39,6 @@ const SESSION_ID =
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-
-const QUICK_PROMPTS: { label: string; prompt: string }[] = [
-  { label: "Review my trades", prompt: "Review my last trades. Walk me through it as observation → interpretation → guidance: what's working, what's breaking, and one specific thing to adjust on the next trade." },
-  { label: "Review my last trade", prompt: "Look at my last trade. What did I do well, what slipped, and one thing to focus on next time?" },
-  { label: "Spot my pattern", prompt: "Look across my recent trades. Is there a pattern that keeps repeating? Name it plainly." },
-  { label: "Help me fix my exits", prompt: "My exits feel off. Based on my recent trades, what would you adjust?" },
-];
 
 export default function AiMentorChat() {
   const { state: traderState } = useTraderState();
