@@ -47,6 +47,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
 import { detectRelapseAndLoops } from "@/lib/relapseAndLoopDetection";
+import { userKey } from "@/lib/userScopedStorage";
+
+const ACCOUNT_SIZE_STORAGE_SUFFIX = "journal:account_size";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -162,6 +165,10 @@ export default function BehavioralJournalFlow({
   const [riskStr, setRiskStr] = useState("");
   const [resultStr, setResultStr] = useState("");
   const [pnlDollarStr, setPnlDollarStr] = useState("");
+  // True once the user has manually edited the $ field — auto-suggest stops filling it.
+  const [pnlDollarManuallySet, setPnlDollarManuallySet] = useState(false);
+  // Account size ($), persisted per-user. Optional; enables $ auto-calc.
+  const [accountSizeStr, setAccountSizeStr] = useState("");
   // Explicit user-selected outcome. Auto-suggested from R but user-overridable.
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   // True once the user has manually picked — auto-suggest stops overriding.
@@ -228,6 +235,66 @@ export default function BehavioralJournalFlow({
     return Number.isFinite(n) ? n : null;
   }, [pnlDollarStr]);
   const pnlDollarInvalid = pnlDollarStr.trim().length > 0 && pnlDollar === null;
+
+  // Account size — parsed and persisted per-user.
+  const accountSize = useMemo(() => {
+    const t = accountSizeStr.trim().replace(/[$,\s]/g, "");
+    if (!t) return null;
+    const n = Number(t);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [accountSizeStr]);
+  const accountSizeInvalid = accountSizeStr.trim().length > 0 && accountSize === null;
+
+  // Hydrate persisted account size on mount.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(userKey(ACCOUNT_SIZE_STORAGE_SUFFIX));
+      if (saved && saved.trim()) setAccountSizeStr(saved);
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  // Persist a valid account size whenever it changes.
+  useEffect(() => {
+    try {
+      if (accountSize != null) {
+        localStorage.setItem(userKey(ACCOUNT_SIZE_STORAGE_SUFFIX), String(accountSize));
+      } else if (accountSizeStr.trim() === "") {
+        localStorage.removeItem(userKey(ACCOUNT_SIZE_STORAGE_SUFFIX));
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [accountSize, accountSizeStr]);
+
+  // Auto-calc $ from R × risk% × account size.
+  // $ = result_R × (risk_percent / 100) × account_size
+  const autoPnlDollar = useMemo(() => {
+    if (
+      !Number.isFinite(resultR) ||
+      risk == null ||
+      !Number.isFinite(risk) ||
+      risk <= 0 ||
+      accountSize == null
+    ) {
+      return null;
+    }
+    return resultR * (risk / 100) * accountSize;
+  }, [resultR, risk, accountSize]);
+
+  // When the user hasn't typed in the $ field manually, auto-fill it from
+  // the calculated value. As soon as they type, we stop overriding.
+  useEffect(() => {
+    if (pnlDollarManuallySet) return;
+    if (autoPnlDollar == null) {
+      // Clear any previously auto-filled value so the field doesn't lie.
+      if (pnlDollarStr !== "") setPnlDollarStr("");
+      return;
+    }
+    const formatted = autoPnlDollar.toFixed(2);
+    if (pnlDollarStr !== formatted) setPnlDollarStr(formatted);
+  }, [autoPnlDollar, pnlDollarManuallySet, pnlDollarStr]);
 
   // Auto-suggest outcome from R (soft logic — does not lock).
   const suggestedOutcome: Outcome | null = useMemo(() => {
@@ -475,6 +542,8 @@ export default function BehavioralJournalFlow({
     setRiskStr("");
     setResultStr("");
     setPnlDollarStr("");
+    setPnlDollarManuallySet(false);
+    // Note: accountSizeStr is intentionally NOT reset — it persists per user.
     setOutcome(null);
     setOutcomeManuallySet(false);
     setMistakes([]);
@@ -808,16 +877,58 @@ export default function BehavioralJournalFlow({
                   </Field>
                 </div>
 
-                {/* Profit / Loss ($) — optional but encouraged */}
-                <Field label="Profit / Loss ($) — optional">
+                {/* Account size ($) — optional, persisted across trades.
+                    When set together with Risk %, the $ field auto-fills. */}
+                <Field label="Account size ($) — optional">
                   <input
-                    value={pnlDollarStr}
-                    onChange={(e) => setPnlDollarStr(e.target.value)}
-                    placeholder="e.g. +150  or  -75"
+                    value={accountSizeStr}
+                    onChange={(e) => setAccountSizeStr(e.target.value)}
+                    placeholder="e.g. 10000"
                     inputMode="decimal"
                     className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                   />
                 </Field>
+                {accountSizeInvalid && (
+                  <p className="text-[11px] text-rose-300">
+                    Enter a positive number (e.g. 10000) or leave it blank.
+                  </p>
+                )}
+
+                {/* Profit / Loss ($) — optional. Auto-fills from R × Risk % × Account size
+                    when those are set, but the user can always override manually. */}
+                <Field label="Profit / Loss ($) — optional">
+                  <input
+                    value={pnlDollarStr}
+                    onChange={(e) => {
+                      setPnlDollarStr(e.target.value);
+                      setPnlDollarManuallySet(true);
+                    }}
+                    placeholder={
+                      autoPnlDollar != null && !pnlDollarManuallySet
+                        ? `auto ${autoPnlDollar > 0 ? "+" : ""}${autoPnlDollar.toFixed(2)}`
+                        : "e.g. +150  or  -75"
+                    }
+                    inputMode="decimal"
+                    className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
+                  />
+                </Field>
+                {autoPnlDollar != null && pnlDollarManuallySet && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPnlDollarManuallySet(false);
+                      setPnlDollarStr(autoPnlDollar.toFixed(2));
+                    }}
+                    className="text-[11px] text-primary/85 hover:text-primary underline-offset-2 hover:underline"
+                  >
+                    Use auto-calculated {autoPnlDollar > 0 ? "+" : ""}${autoPnlDollar.toFixed(2)}
+                  </button>
+                )}
+                {autoPnlDollar != null && !pnlDollarManuallySet && (
+                  <p className="text-[11px] text-text-secondary/70">
+                    Auto-calculated from R × Risk % × Account size. Type to override.
+                  </p>
+                )}
                 {pnlDollarInvalid && (
                   <p className="text-[11px] text-rose-300">
                     Enter a valid number (e.g. 150, -75) or leave it blank.
