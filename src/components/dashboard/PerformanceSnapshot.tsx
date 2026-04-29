@@ -3,9 +3,12 @@
 // When no trades exist, renders the calibrated empty-state copy.
 
 import { Link } from "@tanstack/react-router";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, BookOpenCheck, LineChart } from "lucide-react";
 import { fmtPct, fmtR } from "@/lib/tradeLogs";
 import type { Metrics } from "@/lib/tradeLogs";
+
+const ease = [0.22, 1, 0.36, 1] as const;
 
 type Props = {
   loading: boolean;
