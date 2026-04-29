@@ -23,6 +23,8 @@ import { getDailyChecklist } from "@/lib/dailyChecklistCache";
 import { toast } from "sonner";
 import MentorRecoveryChecklist from "./MentorRecoveryChecklist";
 import { useTraderState } from "@/hooks/useTraderState";
+import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
+import { mistakeFrequency, MISTAKE_LABEL } from "@/lib/behavioralJournal";
 
 type Msg = {
   id: string;
@@ -39,6 +41,7 @@ const SESSION_ID =
 export default function AiMentorChat() {
   const { state: traderState } = useTraderState();
   const { rows, entries: journal } = useDbJournal();
+  const { entries: behavioralEntries, score: behavioralScore } = useBehavioralJournal(20);
   const intelligence = useMemo(() => computeIntelligence(rows), [rows]);
   const [recentPatterns, setRecentPatterns] = useState<DbBehaviorPattern[]>([]);
   const [activeStrategy, setActiveStrategy] =
@@ -227,8 +230,28 @@ export default function AiMentorChat() {
           },
         };
 
+    // Behavioral journal payload — new fixed-delta system.
+    const behavioralPayload = behavioralEntries.length > 0
+      ? {
+          disciplineScore: behavioralScore,
+          recentTrades: behavioralEntries.slice(0, 20).map((e) => ({
+            when: new Date(e.created_at).toLocaleString(undefined, {
+              month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+            }),
+            asset: e.asset,
+            resultR: e.result_r,
+            classification: e.classification,
+            scoreDelta: e.score_delta,
+            mistakes: e.mistakes.map((m) => MISTAKE_LABEL[m]),
+          })),
+          mistakeFrequency: mistakeFrequency(behavioralEntries).slice(0, 5),
+          cleanStreak: behavioralEntries[0]?.clean_streak_after ?? 0,
+          breakStreak: behavioralEntries[0]?.break_streak_after ?? 0,
+        }
+      : undefined;
+
     const ctx =
-      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload || dailyChecklistPayload || traderStatePayload
+      journalSummary || profileSummary || intelligencePayload || recentPatternsPayload || lastTwoPayload || strategyPayload || dailyChecklistPayload || traderStatePayload || behavioralPayload
         ? {
             ...(journalSummary ? { journalSummary } : {}),
             ...(profileSummary ? { profileSummary } : {}),
@@ -238,6 +261,7 @@ export default function AiMentorChat() {
             ...(strategyPayload ? { activeStrategy: strategyPayload } : {}),
             ...(dailyChecklistPayload ? { dailyChecklist: dailyChecklistPayload } : {}),
             ...(traderStatePayload ? { traderState: traderStatePayload } : {}),
+            ...(behavioralPayload ? { behavioralJournal: behavioralPayload } : {}),
           }
         : undefined;
 
