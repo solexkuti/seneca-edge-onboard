@@ -1181,11 +1181,6 @@ export default function BehavioralJournalFlow({
                       );
                     })}
                   </div>
-                  {outcome === null && Number.isFinite(resultR) && (
-                    <p className="mt-2 text-[11px] text-text-secondary/70">
-                      Select an outcome to continue.
-                    </p>
-                  )}
                   {outcomeMismatch && (
                     <p className="mt-2 text-[11px] text-amber-300">
                       Your result suggests a different outcome. Confirm if intentional.
