@@ -310,6 +310,15 @@ export default function StrategyBuilder({
           )}
         </div>
 
+        {/* Soft re-validation banner — non-blocking. Hidden on the dedicated
+           interrogate step (the step itself is the deep-dive). */}
+        {step.key !== "interrogate" && !report.clean && (bp.structured_rules?.entry?.length ?? 0) > 0 && (
+          <ReValidateBanner
+            report={report}
+            onJump={() => void goToStep(STEPS.findIndex((s) => s.key === "interrogate"))}
+          />
+        )}
+
         {/* Step body */}
         <div className="mt-3 min-h-[420px]">
           <AnimatePresence mode="wait">
@@ -334,6 +343,9 @@ export default function StrategyBuilder({
               {step.key === "tiers" && <StepTiers bp={bp} patch={patch} />}
               {step.key === "parse" && (
                 <StepParse bp={bp} patch={patch} setBusy={setBusy} busy={busy} />
+              )}
+              {step.key === "interrogate" && (
+                <StepInterrogate bp={bp} patch={patch} report={report} />
               )}
               {step.key === "refine" && (
                 <StepRefine bp={bp} patch={patch} setBusy={setBusy} busy={busy} />
