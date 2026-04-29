@@ -474,6 +474,9 @@ export default function BehavioralJournalFlow({
     setTpStr("");
     setRiskStr("");
     setResultStr("");
+    setPnlDollarStr("");
+    setOutcome(null);
+    setOutcomeManuallySet(false);
     setMistakes([]);
     setSelfConfirmedClean(false);
     setCleanReason(null);
