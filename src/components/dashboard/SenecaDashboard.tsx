@@ -376,19 +376,32 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
           </div>
         </Section>
 
-        {/* 4 · Performance — unified Snapshot + Trend cards */}
+        {/* 4 · Performance — Recent trade + Performance trend */}
         <Section delay={0.16} label="Performance" className="mt-10">
-          <div className="space-y-3">
-            <PerformanceSnapshot
-              loading={performance.loading}
-              hasTrades={performance.hasTrades}
-              metrics={performance.metrics}
-            />
-            <PerformanceTrends
-              loading={performance.loading}
-              hasTrades={performance.hasTrades}
-              trades={performance.trades}
-            />
+          <div className="space-y-5">
+            <div>
+              <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
+                Recent trade
+              </p>
+              <PerformanceSnapshot
+                loading={performance.loading}
+                hasTrades={performance.hasTrades}
+                trades={performance.trades}
+              />
+            </div>
+            <div>
+              <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
+                Performance trend
+              </p>
+              <p className="mb-2 text-[11px] text-text-secondary/65">
+                Last {Math.min(performance.trades.length, 5) || 5} trade{Math.min(performance.trades.length, 5) === 1 ? "" : "s"}
+              </p>
+              <PerformanceTrends
+                loading={performance.loading}
+                hasTrades={performance.hasTrades}
+                trades={performance.trades}
+              />
+            </div>
           </div>
         </Section>
 
