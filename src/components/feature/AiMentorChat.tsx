@@ -118,6 +118,44 @@ export default function AiMentorChat() {
   const [suggestionsRevealed, setSuggestionsRevealed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const userMsgCount = useMemo(
+    () => messages.filter((m) => m.role === "user").length,
+    [messages],
+  );
+
+  const quickPrompts = useMemo(() => {
+    const tradeCount = Math.max(
+      performancePayload?.windowSize ?? 0,
+      behavioralEntries.length,
+      rows.length,
+    );
+    const rotation =
+      behavioralEntries.length +
+      Math.floor((traderState.discipline.score ?? 0) / 10);
+    return buildQuickPrompts(
+      {
+        tradeCount,
+        disciplineScore: traderState.loading
+          ? null
+          : traderState.discipline.score,
+        winRate: performancePayload?.winRate ?? null,
+        avgRR: performancePayload?.avgRR ?? null,
+        conversationCount: userMsgCount,
+      },
+      rotation,
+    );
+  }, [
+    performancePayload?.windowSize,
+    performancePayload?.winRate,
+    performancePayload?.avgRR,
+    behavioralEntries.length,
+    rows.length,
+    traderState.loading,
+    traderState.discipline.score,
+    userMsgCount,
+  ]);
+
+
   // Edge case: if chat history is wiped back to just the intro, treat the
   // session as fresh again so prompts reappear.
   useEffect(() => {
