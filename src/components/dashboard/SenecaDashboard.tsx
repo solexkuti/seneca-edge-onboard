@@ -309,9 +309,9 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
               </span>
             </div>
             <p className="mt-2 text-[12.5px] text-text-secondary/85 tabular-nums">
-              <span className="text-emerald-300">{cleanStreak} clean</span>
+              <span className="text-gold">{cleanStreak} clean</span>
               <span className="mx-1.5 text-text-secondary/40">•</span>
-              <span className="text-rose-300">{breakStreak} break</span>
+              <span className="text-text-secondary">{breakStreak} break</span>
             </p>
             <p className="mt-1 text-[12px] text-text-secondary/75 truncate">
               Last: {lastMistake?.label ?? (entries.length === 0 ? "—" : "Clean")}
