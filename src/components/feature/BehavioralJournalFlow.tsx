@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -25,6 +26,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import { validateTradePrices } from "@/lib/priceValidation";
 import { toast } from "sonner";
 import {
   MISTAKES,
