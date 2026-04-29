@@ -203,7 +203,7 @@ export default function StrategyBuilder({
           (bp.max_drawdown_pct ?? 0) > 0
         );
       case "raw":
-        return (bp.raw_input?.trim().length ?? 0) >= 20;
+        return true;
       case "parse":
         return Object.values(bp.structured_rules ?? {}).some(
           (a) => Array.isArray(a) && a.length > 0,
