@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
 import { supabase } from "@/integrations/supabase/client";
 import { isOnboardingCompleted } from "@/lib/auth";
+import { hasCompletedOnboardingLocal } from "@/lib/userState";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -50,32 +51,37 @@ function Index() {
         const { data } = await supabase.auth.getSession();
         const userId = data.session?.user?.id;
 
-        if (!userId) {
-          if (!cancelled) setDecision("onboarding");
-          return;
-        }
+        // Authenticated → straight to /hub.
+        if (userId) {
+          // Returning-user detection — explicit profile flag.
+          const completed = await Promise.race([
+            isOnboardingCompleted(userId),
+            new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2000)),
+          ]);
+          if (cancelled) return;
 
-        // Returning-user detection — explicit profile flag.
-        const completed = await Promise.race([
-          isOnboardingCompleted(userId),
-          new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2000)),
-        ]);
-
-        if (cancelled) return;
-
-        if (completed) {
-          // Mark for a one-shot "Welcome back" toast in /hub.
-          try {
-            window.sessionStorage.setItem("seneca:welcomeBack", "1");
-          } catch {
-            /* ignore */
+          if (completed) {
+            try {
+              window.sessionStorage.setItem("seneca:welcomeBack", "1");
+            } catch {
+              /* ignore */
+            }
+            navigate({ to: "/hub", replace: true });
+            return;
           }
-          navigate({ to: "/hub", replace: true });
+          // Authed but onboarding never finished — finish it.
+          setDecision("onboarding");
           return;
         }
 
-        // Authed but onboarding never finished — finish it.
-        setDecision("onboarding");
+        // Unauthenticated. If this device has completed onboarding before,
+        // route to the standalone sign-in page instead of repeating the flow.
+        if (hasCompletedOnboardingLocal()) {
+          navigate({ to: "/auth/sign-in", replace: true });
+          return;
+        }
+
+        if (!cancelled) setDecision("onboarding");
       } catch (err) {
         console.error("[entry] failed", err);
         if (!cancelled) setDecision("onboarding");

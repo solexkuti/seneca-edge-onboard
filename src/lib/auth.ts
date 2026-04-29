@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { readProfile } from "@/lib/onboardingProfile";
 import { getUserName } from "@/lib/userName";
+import { markOnboardingCompleted } from "@/lib/userState";
 
 const FRIENDLY_ERROR = "Something went wrong. Try again.";
 
@@ -145,6 +146,7 @@ export async function syncProfileFromOnboarding(
       }
       return { ok: false };
     }
+    markOnboardingCompleted();
     return { ok: true };
   } catch {
     return { ok: false };
@@ -164,7 +166,9 @@ export async function isOnboardingCompleted(userId: string): Promise<boolean> {
       .eq("id", userId)
       .maybeSingle();
     if (error) return false;
-    return !!data?.onboarding_completed;
+    const completed = !!data?.onboarding_completed;
+    if (completed) markOnboardingCompleted();
+    return completed;
   } catch {
     return false;
   }
@@ -188,10 +192,15 @@ export async function signOut() {
     try {
       // Wipe every seneca_* / seneca: / u:* key. The auth listener targets
       // only the previous user id; this is a belt-and-braces sweep.
+      // EXCEPTION: preserve `seneca:hasCompletedOnboarding` — this flag
+      // marks the *device* as having seen onboarding so returning users
+      // land on /auth/sign-in instead of repeating the flow.
+      const PRESERVE = new Set(["seneca:hasCompletedOnboarding"]);
       const toRemove: string[] = [];
       for (let i = 0; i < window.localStorage.length; i++) {
         const k = window.localStorage.key(i);
         if (!k) continue;
+        if (PRESERVE.has(k)) continue;
         if (
           k.startsWith("seneca_") ||
           k.startsWith("seneca:") ||

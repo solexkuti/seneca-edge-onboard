@@ -58,7 +58,7 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
             access your journal, mentor, and strategy tools.
           </p>
           <Link
-            to="/"
+            to="/auth/sign-in"
             className="btn-gold focus-glow mt-5 inline-flex w-full items-center justify-center px-4 py-2.5 text-[14px] font-semibold text-[#0B0B0D]"
           >
             Sign in

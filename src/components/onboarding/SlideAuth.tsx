@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Mail, Lock, ArrowLeft, Loader2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import type { SlideProps } from "./OnboardingFlow";
 import {
   signInWithGoogle,
@@ -220,6 +221,21 @@ export default function SlideAuth({ username, onAuthed }: Props) {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Recovery exit — for users who reinstalled or already have an account */}
+      <div className="flex items-center gap-3">
+        <span className="h-px flex-1 bg-[rgba(255,255,255,0.06)]" />
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-text-secondary/70">
+          Already have an account?
+        </span>
+        <span className="h-px flex-1 bg-[rgba(255,255,255,0.06)]" />
+      </div>
+      <Link
+        to="/auth/sign-in"
+        className="focus-glow flex w-full items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-6 py-3.5 text-[14px] font-semibold text-text-primary transition-colors hover:border-[rgba(198,161,91,0.35)]"
+      >
+        Sign in instead
+      </Link>
 
       <p className="text-center text-[10.5px] leading-[1.5] text-text-secondary/80">
         By continuing you agree to SenecaEdge's Terms & Privacy.
