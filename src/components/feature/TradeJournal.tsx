@@ -12,6 +12,7 @@ import {
   type Outcome,
   type TradeLog,
 } from "@/lib/tradeLogs";
+import DisciplineTrendsPanel from "./DisciplineTrendsPanel";
 import {
   MISTAKE_PENALTY,
   PER_TRADE_BASE,
@@ -199,6 +200,11 @@ export default function TradeJournal() {
             Log trade
           </Link>
         </div>
+
+        {/* Trends — discipline over time + repeated mistakes */}
+        {!empty && !loading && trades.length > 0 && (
+          <DisciplineTrendsPanel trades={trades} />
+        )}
 
         {/* Filters */}
         {!empty && (
