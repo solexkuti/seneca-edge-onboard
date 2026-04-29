@@ -681,7 +681,8 @@ Deno.serve(async (req) => {
         context.dailyChecklist ||
         context.traderState ||
         context.performance ||
-        context.behaviorPatterns)
+        context.behaviorPatterns ||
+        context.relapseLoops)
     );
     let contextBlock = "";
     if (hasContext) {
