@@ -128,8 +128,9 @@ const VALIDATE_SCHEMA = {
 // ────────────────────────────────────────────────────────────────────────────
 
 const EXTRACT_SYSTEM_PRIMARY = `You analyze a trading chart and extract observable structure ONLY.
-- Do NOT predict or recommend.
-- If anything is unclear, lower confidence_score.
+- Tone: neutral analytical system. Never an advisor, coach, or signal provider.
+- Do NOT predict, recommend, advise, or use words like "should", "buy", "sell", "enter", "exit".
+- Report only what is visibly present. If anything is unclear, lower confidence_score.
 - If no structure is visible, set structure_detected=false and trend="range".
 - confidence_score reflects how clearly the chart supports your answer (0–1).
 
