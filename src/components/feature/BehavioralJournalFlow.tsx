@@ -584,10 +584,10 @@ export default function BehavioralJournalFlow({
               className="mt-8"
             >
               <h1 className="text-[20px] font-semibold tracking-tight text-text-primary">
-                Any rules broken?
+                What slipped in this trade?
               </h1>
               <p className="mt-1.5 text-[12.5px] text-text-secondary">
-                Tap every mistake. None = clean trade. Only the worst severity counts.
+                Select any mistakes that occurred during this trade.
               </p>
 
               <div className="mt-6 grid grid-cols-2 gap-2">
@@ -600,18 +600,14 @@ export default function BehavioralJournalFlow({
                       onClick={() => toggleMistake(m.id)}
                       className={`flex items-start gap-2 rounded-xl px-3.5 py-3 text-left transition active:scale-[0.98] ring-1 ${
                         active
-                          ? m.severe
-                            ? "bg-rose-500/10 ring-rose-500/30 text-rose-200"
-                            : "bg-amber-500/10 ring-amber-500/30 text-amber-200"
+                          ? "bg-primary/15 ring-primary/35 text-text-primary"
                           : "bg-card ring-border text-text-primary hover:bg-text-primary/[0.03]"
                       }`}
                     >
                       <span
                         className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-md ring-1 ${
                           active
-                            ? m.severe
-                              ? "bg-rose-400/30 ring-rose-400/60"
-                              : "bg-amber-400/30 ring-amber-400/60"
+                            ? "bg-primary/30 ring-primary/55"
                             : "ring-border"
                         }`}
                       >
@@ -621,35 +617,17 @@ export default function BehavioralJournalFlow({
                         <p className="text-[12.5px] font-semibold leading-tight">
                           {m.label}
                         </p>
-                        {m.severe && (
-                          <p className="mt-0.5 text-[10px] uppercase tracking-wider text-rose-300/75">
-                            Severe
-                          </p>
-                        )}
                       </div>
                     </button>
                   );
                 })}
               </div>
 
-              <div className="mt-5 rounded-xl bg-card/60 ring-1 ring-border px-4 py-3 flex items-center justify-between">
-                <span className="text-[11px] uppercase tracking-[0.18em] text-text-secondary/70">
-                  Preview
-                </span>
-                <span className="flex items-center gap-3">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1 ${CLASS_TONE[previewClass.classification].chip}`}
-                  >
-                    {CLASS_TONE[previewClass.classification].label}
-                  </span>
-                  <span
-                    className={`text-[16px] font-semibold tabular-nums ${CLASS_TONE[previewClass.classification].tone}`}
-                  >
-                    {previewClass.delta > 0 ? "+" : ""}
-                    {previewClass.delta}
-                  </span>
-                </span>
-              </div>
+              {mistakes.length === 0 && (
+                <p className="mt-5 text-center text-[11.5px] text-text-secondary/70">
+                  No mistakes selected — clean execution.
+                </p>
+              )}
             </motion.section>
           )}
 
