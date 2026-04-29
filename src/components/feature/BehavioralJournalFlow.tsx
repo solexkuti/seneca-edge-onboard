@@ -707,40 +707,77 @@ export default function BehavioralJournalFlow({
 
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
-                    Screenshot
+                    Screenshots (optional)
                   </p>
-                  {filePreview ? (
-                    <div className="mt-2 relative rounded-xl overflow-hidden ring-1 ring-border">
-                      <img
-                        src={filePreview}
-                        alt="Trade screenshot"
-                        className="block w-full h-44 object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => pickFile(null)}
-                        className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-background/80 ring-1 ring-border text-text-primary"
-                        aria-label="Remove screenshot"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                  <p className="mt-1 text-[10.5px] text-text-secondary/55">
+                    Up to {MAX_SCREENSHOTS} images. Tap to tag.
+                  </p>
+
+                  {files.length > 0 && (
+                    <div className="mt-3 -mx-1 flex gap-2 overflow-x-auto pb-1 px-1 no-scrollbar">
+                      {files.map((f, i) => (
+                        <div
+                          key={i}
+                          className="relative shrink-0 w-32 rounded-xl overflow-hidden ring-1 ring-border bg-card"
+                        >
+                          <img
+                            src={f.preview}
+                            alt={`Screenshot ${i + 1}`}
+                            className="block h-24 w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFileAt(i)}
+                            className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-background/85 ring-1 ring-border text-text-primary"
+                            aria-label={`Remove screenshot ${i + 1}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                          <div className="flex flex-wrap gap-1 p-1.5">
+                            {SCREENSHOT_TAGS.map((t) => {
+                              const active = f.tag === t.id;
+                              return (
+                                <button
+                                  key={t.id}
+                                  type="button"
+                                  onClick={() => setFileTag(i, t.id)}
+                                  className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 transition ${
+                                    active
+                                      ? "bg-primary/20 ring-primary/40 text-text-primary"
+                                      : "bg-background/40 ring-border text-text-secondary"
+                                  }`}
+                                >
+                                  {t.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ) : (
+                  )}
+
+                  {files.length < MAX_SCREENSHOTS && (
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="mt-2 w-full rounded-xl bg-card ring-1 ring-border px-4 py-5 flex items-center justify-center gap-2 text-text-secondary text-[12.5px] font-medium hover:bg-text-primary/[0.03] transition"
+                      className="mt-3 w-full rounded-xl bg-card ring-1 ring-border px-4 py-4 flex items-center justify-center gap-2 text-text-secondary text-[12.5px] font-medium hover:bg-text-primary/[0.03] transition"
                     >
                       <ImagePlus className="h-4 w-4" />
-                      Add screenshot
+                      {files.length === 0 ? "Add screenshots" : `Add more (${files.length}/${MAX_SCREENSHOTS})`}
                     </button>
                   )}
+
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     className="hidden"
-                    onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+                    onChange={(e) => {
+                      addFiles(e.target.files);
+                      if (e.target) e.target.value = "";
+                    }}
                   />
                 </div>
               </div>
