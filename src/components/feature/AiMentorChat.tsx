@@ -242,12 +242,104 @@ export default function AiMentorChat() {
 
   // Hard-gated, deterministic mentor reply (no AI call).
   // Tiny delay just to feel natural — short enough to stay snappy.
-  const respondLocally = (history: Msg[], content: string) => {
+  const respondLocally = (history: Msg[], content: string, chips?: Chip[]) => {
     const id = `a-${Date.now()}`;
     window.setTimeout(() => {
-      setMessages([...history, { id, role: "assistant", content }]);
+      setMessages([...history, { id, role: "assistant", content, chips }]);
       setStreaming(false);
     }, 120);
+  };
+
+  /** Strip chips from any prior assistant messages — they're single-use. */
+  const stripExistingChips = (msgs: Msg[]): Msg[] =>
+    msgs.map((m) => (m.chips ? { ...m, chips: undefined } : m));
+
+  /**
+   * Push a sequence of assistant messages with a small stagger so deep-dive
+   * Step 1 / Step 2 land as separate, readable bubbles.
+   */
+  const appendAssistantSequence = (
+    history: Msg[],
+    parts: Array<{ content: string; chips?: Chip[] }>,
+  ) => {
+    const base = stripExistingChips(history);
+    setMessages(base);
+    parts.forEach((p, i) => {
+      window.setTimeout(() => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `a-${Date.now()}-${i}`,
+            role: "assistant",
+            content: p.content,
+            chips: p.chips,
+          },
+        ]);
+        if (i === parts.length - 1) setStreaming(false);
+      }, 220 * (i + 1));
+    });
+  };
+
+  /**
+   * Enter the deep-dive flow for the active pattern. Surfaces Step 1
+   * (identify) and Step 2 (awareness + structured options) as two
+   * separate bubbles, then sets state to deep_dive.
+   */
+  const enterDeepDive = (history: Msg[]) => {
+    const script = getScript(convoState.active_pattern);
+    const optionChips: Chip[] = script.options.map((opt) => ({
+      id: opt.id,
+      label: opt.label,
+      action: { kind: "deep_dive_option", option: opt },
+    }));
+    setStreaming(true);
+    appendAssistantSequence(history, [
+      { content: script.identify },
+      { content: script.awareness, chips: optionChips },
+    ]);
+    setConvoState({
+      mode: "deep_dive",
+      active_pattern: convoState.active_pattern,
+      last_question: script.awareness,
+      step: 1,
+    });
+  };
+
+  /** Handle a chip tap. Echoes the label as a user bubble for clarity. */
+  const handleChip = (chip: Chip) => {
+    if (streaming) return;
+    const userMsg: Msg = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      content: chip.label,
+    };
+    const history = [...stripExistingChips(messages), userMsg];
+    setMessages(history);
+    setHasStartedConversation(true);
+    setSuggestionsRevealed(false);
+
+    if (chip.action.kind === "yes_dig") {
+      enterDeepDive(history);
+      return;
+    }
+    if (chip.action.kind === "not_now") {
+      setConvoState(INITIAL_STATE);
+      respondLocally(
+        history,
+        "Understood. I'm here when you're ready.",
+      );
+      return;
+    }
+    if (chip.action.kind === "deep_dive_option") {
+      const opt = chip.action.option;
+      setStreaming(true);
+      appendAssistantSequence(history, [
+        { content: opt.response },
+        { content: DEEP_DIVE_CLOSING },
+      ]);
+      // Drop back to idle so the user can ask anything next.
+      setConvoState(INITIAL_STATE);
+    }
   };
 
   // Lightweight intent classifier — keyword based, deterministic.
