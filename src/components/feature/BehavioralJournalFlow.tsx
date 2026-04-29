@@ -922,12 +922,9 @@ export default function BehavioralJournalFlow({
               <h1 className="text-[20px] font-semibold tracking-tight text-text-primary">
                 What did you trade?
               </h1>
-              <p className="mt-1.5 text-[12.5px] text-text-secondary">
-                Asset, market, direction. Prices auto-calculate RR.
-              </p>
 
-              <div className="mt-6 space-y-4">
-                <Field label="Asset / Pair">
+              <div className="mt-7 space-y-5">
+                <Field label="Asset">
                   <input
                     autoFocus
                     value={asset}
