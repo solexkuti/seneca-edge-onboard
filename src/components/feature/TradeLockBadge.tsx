@@ -1,49 +1,34 @@
-// TradeLockBadge — small status indicator for the global header.
-// Reads from the unified TRADER_STATE so it stays in sync with every other
-// surface (Analyzer verdicts, Daily checklist, Discipline lock).
+// TradeLockBadge — non-blocking discipline indicator.
+// Displays the current discipline score & state; never blocks the user.
 
-import { Link } from "@tanstack/react-router";
-import { ShieldCheck, Lock, ShieldAlert } from "lucide-react";
 import { useTraderState } from "@/hooks/useTraderState";
+import { Activity } from "lucide-react";
+
+function tone(state: string) {
+  if (state === "in_control")
+    return "bg-emerald-500/10 text-emerald-300 ring-emerald-500/20";
+  if (state === "slipping")
+    return "bg-amber-500/10 text-amber-300 ring-amber-500/20";
+  return "bg-rose-500/10 text-rose-300 ring-rose-500/20";
+}
+
+function label(state: string) {
+  if (state === "in_control") return "Controlled";
+  if (state === "slipping") return "Slight drift";
+  return "Undisciplined";
+}
 
 export default function TradeLockBadge() {
   const { state } = useTraderState();
   if (state.loading) return null;
 
-  // Hard block: discipline lock takes priority over checklist not-confirmed.
-  if (state.blocks.discipline_locked) {
-    return (
-      <Link
-        to="/hub/daily"
-        title={`Discipline locked — score ${state.discipline.score}/100`}
-        className="inline-flex items-center gap-1.5 rounded-full bg-red-600/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-red-700 ring-1 ring-red-600/20 transition hover:bg-red-600/15"
-      >
-        <ShieldAlert className="h-3.5 w-3.5" aria-hidden />
-        Discipline locked · {state.discipline.score}
-      </Link>
-    );
-  }
-
-  if (state.blocks.not_confirmed) {
-    return (
-      <Link
-        to="/hub/daily"
-        title="Trading is locked — confirm today's checklist"
-        className="inline-flex items-center gap-1.5 rounded-full bg-red-600/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-red-700 ring-1 ring-red-600/20 transition hover:bg-red-600/15"
-      >
-        <Lock className="h-3.5 w-3.5" aria-hidden />
-        Checklist not confirmed
-      </Link>
-    );
-  }
-
   return (
     <span
-      title={`Discipline ${state.discipline.score}/100 · ${state.discipline.state.replace("_", " ")}`}
-      className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 ring-1 ring-emerald-600/20"
+      title={`Discipline ${state.discipline.score}/100`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ring-1 ${tone(state.discipline.state)}`}
     >
-      <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-      Trading allowed · {state.discipline.score}
+      <Activity className="h-3.5 w-3.5" aria-hidden />
+      {label(state.discipline.state)} · {state.discipline.score}
     </span>
   );
 }
