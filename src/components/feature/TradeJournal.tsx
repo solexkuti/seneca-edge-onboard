@@ -319,7 +319,7 @@ export default function TradeJournal() {
 
                 <div className="mt-3 grid grid-cols-4 gap-2 text-[11px] text-text-secondary tabular-nums">
                   <Cell k="Entry" v={t.entry_price} />
-                  <Cell k="Exit" v={t.exit_price} />
+                  <Cell k="Actual Exit" v={t.exit_price} />
                   <Cell k="SL" v={t.stop_loss} />
                   <Cell k="TP" v={t.take_profit} />
                 </div>
@@ -332,7 +332,7 @@ export default function TradeJournal() {
                           key={m}
                           className="rounded-full bg-amber-400/10 ring-1 ring-amber-400/30 px-2 py-0.5 text-[10.5px] font-medium text-amber-300"
                         >
-                          {m}
+                          {prettyMistake(m)}
                         </span>
                       ))
                     ) : (
@@ -370,6 +370,23 @@ export default function TradeJournal() {
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+function FilterGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
+        {label}
+      </p>
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar">{children}</div>
     </div>
   );
 }
