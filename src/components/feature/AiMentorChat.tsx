@@ -40,10 +40,10 @@ const SESSION_ID =
     : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const QUICK_PROMPTS: { label: string; prompt: string }[] = [
-  { label: "Review my trades", prompt: "Review my last 20 trades. What's the pattern in my performance — win rate, RR, and biggest leak?" },
-  { label: "Review my last trade", prompt: "Review my last trade. What did I do wrong, and what was right?" },
-  { label: "Why am I losing control?", prompt: "Look at my recent behavior. Why am I losing control, and what's the pattern?" },
-  { label: "Help me fix my exits", prompt: "My exits are an issue. Based on my last trades, how do I fix them?" },
+  { label: "Review my trades", prompt: "Review my last trades. Walk me through it as observation → interpretation → guidance: what's working, what's breaking, and one specific thing to adjust on the next trade." },
+  { label: "Review my last trade", prompt: "Look at my last trade. What did I do well, what slipped, and one thing to focus on next time?" },
+  { label: "Spot my pattern", prompt: "Look across my recent trades. Is there a pattern that keeps repeating? Name it plainly." },
+  { label: "Help me fix my exits", prompt: "My exits feel off. Based on my recent trades, what would you adjust?" },
 ];
 
 export default function AiMentorChat() {
@@ -398,7 +398,7 @@ export default function AiMentorChat() {
     <FeatureShell
       eyebrow="AI Mentor"
       title="Seneca."
-      subtitle="Behavior-aware mentor."
+      subtitle="Pattern-aware trading partner."
     >
       <div className="flex h-[calc(100svh-220px)] min-h-[480px] flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-border shadow-soft">
         {/* Mentor identity */}
@@ -409,27 +409,11 @@ export default function AiMentorChat() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-text-primary">Seneca</p>
-            <p className="text-[11px] text-text-secondary">Behavior-aware mentor</p>
-          </div>
-        </div>
-
-        {intelligence.strictModeActive ? (
-          <div className="border-b border-rose-500/15 bg-rose-500/[0.04] px-4 py-2">
-            <p className="text-[11.5px] leading-snug text-rose-900/85">
-              Two undisciplined trades in a row. Seneca's tone is firmer this turn — log two clean trades to lift it.
+            <p className="text-[11px] text-text-secondary">
+              I track how you trade — so you can see what actually drives your results.
             </p>
           </div>
-        ) : null}
-
-        {/* Mini interactive recovery checklist — only shown while the
-           Analyzer is gated (locked discipline OR checklist not confirmed).
-           Each completed step inserts a synthetic positive analyzer_event
-           and broadcasts, which progressively lifts the lock in real time. */}
-        {(traderState.discipline.state === "locked" ||
-          traderState.discipline.state === "at_risk" ||
-          !traderState.session.checklist_confirmed) && (
-          <MentorRecoveryChecklist />
-        )}
+        </div>
 
         {/* Messages */}
         <div
