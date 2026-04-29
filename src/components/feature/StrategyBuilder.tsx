@@ -1364,13 +1364,14 @@ function StepExport({ bp }: { bp: StrategyBlueprint }) {
   const [pending, setPending] = useState<string | null>(null);
   const ready = !!bp.trading_plan && (bp.checklist?.a_plus?.length ?? 0) > 0;
 
-  const doPdf = async (kind: "checklist" | "plan") => {
+  type ExportKind = "checklist" | "plan" | "full";
+
+  const doPdf = async (kind: ExportKind) => {
     setPending(`pdf-${kind}`);
-    // Yield a frame so the "Preparing…" label paints before jsPDF blocks.
     await new Promise((r) => setTimeout(r, 50));
     const ok = downloadPdf(bp, kind);
-    if (!ok) {
-      // Silent fallback — user never sees a failure.
+    if (!ok && kind !== "full") {
+      // Silent fallback — text version of the same canonical content.
       downloadTxt(bp, kind);
     }
     setPending(null);
@@ -1384,6 +1385,14 @@ function StepExport({ bp }: { bp: StrategyBlueprint }) {
     }, 30);
   };
 
+  const doJson = () => {
+    setPending("json");
+    setTimeout(() => {
+      downloadJson(bp);
+      setPending(null);
+    }, 30);
+  };
+
   if (!ready) {
     return (
       <div className="space-y-6">
@@ -1392,14 +1401,14 @@ function StepExport({ bp }: { bp: StrategyBlueprint }) {
     );
   }
 
-  const Row = ({ kind, label }: { kind: "checklist" | "plan"; label: string }) => {
+  const Row = ({ kind, label, hint }: { kind: "checklist" | "plan"; label: string; hint: string }) => {
     const isPreparing = pending === `pdf-${kind}`;
     return (
       <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-sm font-medium text-foreground">{label}</div>
-            <div className="text-xs text-muted-foreground">PDF or plain text</div>
+            <div className="text-xs text-muted-foreground">{hint}</div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -1411,7 +1420,7 @@ function StepExport({ bp }: { bp: StrategyBlueprint }) {
               {isPreparing ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Preparing your file…
+                  Preparing…
                 </>
               ) : (
                 <>
@@ -1435,12 +1444,58 @@ function StepExport({ bp }: { bp: StrategyBlueprint }) {
     );
   };
 
+  const isFullPreparing = pending === "pdf-full";
+  const isJsonPending = pending === "json";
+
   return (
     <div className="space-y-6">
-      <Question title="Export" sub="Take it offline. Pin it next to your screen." />
+      <Question title="Export" sub="Same content. Same order. UI, PDF, and Analyzer all share one source of truth." />
       <div className="space-y-3">
-        <Row kind="checklist" label="Checklist" />
-        <Row kind="plan" label="Trading plan" />
+        <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium text-foreground">Full strategy PDF</div>
+              <div className="text-xs text-muted-foreground">Summary + checklist + trading plan, in one document.</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void doPdf("full")}
+              disabled={pending !== null}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-70"
+            >
+              {isFullPreparing ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Preparing…
+                </>
+              ) : (
+                <>
+                  <FileDown className="h-3.5 w-3.5" />
+                  PDF
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+        <Row kind="checklist" label="Checklist only" hint="Tick-box format for your desk." />
+        <Row kind="plan" label="Trading plan only" hint="Categorised, ordered rules." />
+        <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium text-foreground">Analyzer JSON</div>
+              <div className="text-xs text-muted-foreground">Machine-readable structured rules — Chart Analyzer ready.</div>
+            </div>
+            <button
+              type="button"
+              onClick={doJson}
+              disabled={pending !== null}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-background px-3 py-2 text-xs font-medium text-foreground ring-1 ring-border hover:bg-card disabled:opacity-50"
+            >
+              {isJsonPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+              JSON
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
