@@ -348,17 +348,114 @@ function CheckBeforeTradeButton() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Your System — empty-state card with Define System action.
-// UI only, no flow.
+// Your System — populated from the user's active strategy blueprint.
+// Shows the empty state only when no blueprint exists at all.
 // ─────────────────────────────────────────────────────────────
-const SYSTEM_FIELDS: { label: string; value: string }[] = [
-  { label: "Entry", value: "—" },
-  { label: "Confirmation", value: "—" },
-  { label: "Risk", value: "—" },
-  { label: "Grade Logic", value: "—" },
-];
+
+// Compress a long sentence into a short, premium-feeling summary.
+function shortSummary(input: string | null | undefined, max = 56): string | null {
+  if (!input) return null;
+  // Strip bullets, collapse whitespace, drop trailing punctuation noise.
+  let s = input
+    .replace(/[\r\n]+/g, " ")
+    .replace(/^[\s•\-\d.\)]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!s) return null;
+  // Take first clause (split on , ; . — and pick the longest meaningful start).
+  const firstClause = s.split(/(?<=[.;:])\s|\s—\s/)[0] ?? s;
+  s = firstClause.trim();
+  if (s.length > max) {
+    s = s.slice(0, max - 1).replace(/[\s,;:.\-]+$/, "") + "…";
+  }
+  // Lowercase first char to feel like a tag, unless it's an acronym.
+  return s;
+}
+
+function buildSystemFields(
+  bp: StrategyBlueprint,
+): { label: string; value: string }[] {
+  const rules = bp.structured_rules ?? {};
+  const entry =
+    shortSummary(rules.entry?.[0]) ??
+    shortSummary(rules.context?.[0]) ??
+    shortSummary(bp.raw_input);
+  const confirmation =
+    shortSummary(rules.confirmation?.[0]) ??
+    shortSummary(rules.entry?.[1]);
+
+  // Risk — prefer numeric rules, fall back to the first risk sentence.
+  const riskBits: string[] = [];
+  if (typeof bp.risk_per_trade_pct === "number")
+    riskBits.push(`${bp.risk_per_trade_pct}% per trade`);
+  if (typeof bp.daily_loss_limit_pct === "number")
+    riskBits.push(`${bp.daily_loss_limit_pct}% daily cap`);
+  const risk =
+    riskBits.length > 0
+      ? riskBits.join(" · ")
+      : shortSummary(rules.risk?.[0]);
+
+  const grade =
+    shortSummary(bp.tier_rules?.a_plus) ??
+    shortSummary(bp.tier_rules?.b_plus) ??
+    shortSummary(bp.tier_rules?.c);
+
+  const fields: { label: string; value: string }[] = [];
+  if (entry) fields.push({ label: "Entry", value: entry });
+  if (confirmation) fields.push({ label: "Confirmation", value: confirmation });
+  if (risk) fields.push({ label: "Risk", value: risk });
+  if (grade) fields.push({ label: "Grade logic", value: grade });
+  return fields;
+}
 
 function YourSystemCard() {
+  const { state } = useTraderState();
+  const bp = state.strategy?.blueprint ?? null;
+
+  if (state.loading) {
+    return (
+      <div className="rounded-2xl bg-card px-5 py-5 ring-1 ring-border shadow-soft">
+        <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="min-w-0 space-y-2">
+              <div className="h-2 w-16 rounded-full bg-text-secondary/15" />
+              <div className="h-3 w-28 rounded-full bg-text-secondary/10" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state — only when there really is no strategy.
+  if (!bp) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        className="rounded-2xl bg-card px-5 py-5 ring-1 ring-border shadow-soft"
+      >
+        <p className="text-[13px] leading-snug text-text-secondary">
+          You haven’t defined your system yet. Build it once — every other tool
+          will run against it.
+        </p>
+        <div className="mt-4">
+          <Link
+            to="/hub/strategy"
+            preload="intent"
+            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-mix px-3.5 py-2 text-[12px] font-semibold text-white shadow-glow-primary transition-transform active:scale-[0.98]"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+            Define System
+          </Link>
+        </div>
+      </motion.div>
+    );
+  }
+
+  const fields = buildSystemFields(bp);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -366,35 +463,51 @@ function YourSystemCard() {
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       className="rounded-2xl bg-card px-5 py-5 ring-1 ring-border shadow-soft"
     >
-      <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-        {SYSTEM_FIELDS.map((f) => (
-          <div key={f.label} className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/70">
-              {f.label}
-            </p>
-            <p className="mt-1.5 text-[14px] font-medium text-text-primary/70">
-              {f.value}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-6 flex items-center justify-between gap-4 border-t border-border/60 pt-5">
-        <p className="text-[12.5px] leading-snug text-text-secondary">
-          You haven’t defined your system yet.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-text-secondary/70">
+            {bp.locked ? "Locked system" : "Active system"}
+          </p>
+          <p className="mt-1 truncate text-[14.5px] font-semibold tracking-tight text-text-primary">
+            {bp.name || "Untitled strategy"}
+          </p>
+        </div>
         <Link
           to="/hub/strategy"
           preload="intent"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-mix px-3.5 py-2 text-[12px] font-semibold text-white shadow-glow-primary transition-transform active:scale-[0.98]"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[11.5px] font-semibold text-text-primary ring-1 ring-border transition-colors hover:bg-text-primary/[0.04]"
         >
-          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
-          Define System
+          <Pencil className="h-3 w-3" strokeWidth={2.4} />
+          Edit System
         </Link>
       </div>
+
+      {fields.length > 0 ? (
+        <div className="mt-5 grid grid-cols-2 gap-x-5 gap-y-4">
+          {fields.map((f) => (
+            <div key={f.label} className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/70">
+                {f.label}
+              </p>
+              <p
+                className="mt-1.5 truncate text-[13.5px] font-medium leading-snug text-text-primary"
+                title={f.value}
+              >
+                {f.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-5 text-[12.5px] leading-snug text-text-secondary">
+          Your system exists but doesn’t have rules yet. Open it to fill in the
+          essentials.
+        </p>
+      )}
     </motion.div>
   );
 }
+
 
 // ─────────────────────────────────────────────────────────────
 // Section label.
