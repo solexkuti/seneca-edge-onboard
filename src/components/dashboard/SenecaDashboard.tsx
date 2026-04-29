@@ -140,8 +140,16 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
 
   return (
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
-      <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-50" />
-
+      <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-90" />
+      {/* Soft top-center radial gold halo to anchor the score card */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[420px]"
+        style={{
+          background:
+            "radial-gradient(60% 50% at 50% 0%, rgba(198,161,91,0.10), transparent 70%)",
+        }}
+      />
       <div className="relative z-10 mx-auto w-full max-w-[480px] px-5 pt-8 pb-28">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
