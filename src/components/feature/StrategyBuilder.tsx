@@ -1242,52 +1242,114 @@ function StepOutput({
         </button>
       )}
 
-      {has && (
-        <div className="space-y-3">
-          {(
-            [
-              ["a_plus", "A+   Perfect"],
-              ["b_plus", "B+   Acceptable"],
-              ["c", "C    Minimum"],
-            ] as const
-          ).map(([k, label]) => {
-            const items = cl?.[k] ?? [];
-            if (!items.length) return null;
-            return (
-              <div key={k} className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {label}
-                </div>
-                <ul className="mt-2 space-y-1.5">
-                  {items.map((it, i) => (
+      {has && (() => {
+        const canonical = buildCanonicalStrategy(bp);
+        const ck = canonical.checklist;
+        const summary = canonical.summary;
+        // Detect drift: rules edited after generation → checklist may not match canonical.
+        const persisted = bp.checklist ?? {};
+        const drift =
+          (persisted.a_plus ?? []).join("|") !== ck.a_plus.join("|") ||
+          (persisted.b_plus ?? []).join("|") !== ck.b_plus.join("|") ||
+          (persisted.c ?? []).join("|") !== ck.c.join("|");
+        return (
+          <div className="space-y-3">
+            {drift && (
+              <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-[12.5px] text-amber-700 dark:text-amber-400">
+                Rules changed since last generation. Outputs are now derived from your latest rules — regenerate to persist.
+              </div>
+            )}
+
+            {/* Strategy summary — single source of truth */}
+            <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Strategy summary
+              </div>
+              <div className="mt-2 text-[15px] font-semibold text-foreground">{summary.name}</div>
+              <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                {summary.account_types.map((a) => (
+                  <span key={a} className="rounded-md bg-background px-2 py-0.5 ring-1 ring-border">{a}</span>
+                ))}
+                {summary.sessions.map((s) => (
+                  <span key={s} className="rounded-md bg-background px-2 py-0.5 ring-1 ring-border">session: {s}</span>
+                ))}
+                {summary.risk_profile.risk_per_trade_pct != null && (
+                  <span className="rounded-md bg-background px-2 py-0.5 ring-1 ring-border">
+                    risk {summary.risk_profile.risk_per_trade_pct}%/trade
+                  </span>
+                )}
+                {summary.risk_profile.daily_loss_limit_pct != null && (
+                  <span className="rounded-md bg-background px-2 py-0.5 ring-1 ring-border">
+                    daily {summary.risk_profile.daily_loss_limit_pct}%
+                  </span>
+                )}
+                {summary.risk_profile.max_drawdown_pct != null && (
+                  <span className="rounded-md bg-background px-2 py-0.5 ring-1 ring-border">
+                    DD {summary.risk_profile.max_drawdown_pct}%
+                  </span>
+                )}
+              </div>
+              {summary.key_rules.length > 0 && (
+                <ul className="mt-3 space-y-1.5">
+                  {summary.key_rules.map((r, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-foreground">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/70" />
-                      <span>{it}</span>
+                      <span>{r}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
-            );
-          })}
-          <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Trading plan
+              )}
             </div>
-            <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
-              {bp.trading_plan}
-            </pre>
+
+            {/* Checklist — rendered from canonical, identical to PDF export */}
+            {(
+              [
+                ["a_plus", "A+   Perfect"],
+                ["b_plus", "B+   Acceptable"],
+                ["c", "C    Minimum"],
+              ] as const
+            ).map(([k, label]) => {
+              const items = ck[k];
+              if (!items.length) return null;
+              return (
+                <div key={k} className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    {label}
+                  </div>
+                  <ul className="mt-2 space-y-1.5">
+                    {items.map((it, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/70" />
+                        <span>{it}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+
+            {/* Trading plan rendered from canonical plan_lines for consistency */}
+            <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Trading plan
+              </div>
+              <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
+                {canonical.plan_lines.join("\n")}
+              </pre>
+            </div>
+
+            <button
+              type="button"
+              onClick={generate}
+              disabled={busy}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-card px-4 py-2 text-xs font-medium text-foreground/80 ring-1 ring-border hover:bg-background disabled:opacity-50"
+            >
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              {drift ? "Regenerate to persist updated rules" : "Regenerate"}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={generate}
-            disabled={busy}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-card px-4 py-2 text-xs font-medium text-foreground/80 ring-1 ring-border hover:bg-background disabled:opacity-50"
-          >
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-            Regenerate
-          </button>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
