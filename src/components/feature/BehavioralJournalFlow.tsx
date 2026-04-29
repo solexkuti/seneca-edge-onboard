@@ -75,11 +75,16 @@ type Step = 0 | 1 | 2 | 3;
 type FeedbackPayload = {
   classification: Classification;
   reasonLabel: string;
-  delta: number;
-  scoreBefore: number;
+  /** Per-trade score (0..100) for this trade. */
+  perTradeScore: number;
+  /** Overall AVERAGE score before this trade — null when this was the first trade. */
+  scoreBefore: number | null;
+  /** Overall AVERAGE score after this trade. */
   scoreAfter: number;
   cleanStreakAfter: number;
   breakStreakAfter: number;
+  /** Per-mistake breakdown shown in the feedback card. */
+  breakdown: { id: string; label: string; penalty: number }[];
 };
 
 function parseNum(v: string): number | null {
