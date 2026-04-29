@@ -23,8 +23,8 @@ import PerformanceTrends from "@/components/dashboard/PerformanceTrends";
 import {
   disciplineState,
   lastMistakeOf,
-  nextActionFromBehavior,
 } from "@/lib/behavioralJournal";
+import { generateInsight } from "@/lib/behaviorInsight";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
