@@ -1052,6 +1052,139 @@ export default function BehavioralJournalFlow({
                     </span>
                   </p>
                 )}
+
+                {/* ── Price / RR validation surface ──────────────────────
+                    Hard blocks (red) — Continue is gated until cleared.
+                    Warnings (amber) — non-blocking, but require Trade
+                    Preview confirmation before proceeding. */}
+                {validation.issues.length > 0 && (
+                  <div className="space-y-2">
+                    {validation.issues
+                      .filter((i) => i.code !== "manual_mismatch")
+                      .map((issue) => (
+                        <div
+                          key={issue.code}
+                          className={`flex items-start gap-2 rounded-lg px-3 py-2.5 ring-1 text-[12px] leading-relaxed ${
+                            issue.level === "block"
+                              ? "bg-rose-500/10 ring-rose-500/30 text-rose-200"
+                              : "bg-amber-500/10 ring-amber-500/25 text-amber-200"
+                          }`}
+                        >
+                          <AlertTriangle className="h-3.5 w-3.5 mt-[2px] shrink-0" />
+                          <span>{issue.message}</span>
+                        </div>
+                      ))}
+                  </div>
+                )}
+
+                {/* Manual vs calculated R mismatch — explicit choice. */}
+                {validation.issues.some((i) => i.code === "manual_mismatch") &&
+                  validation.calculatedR != null && manualR != null && (
+                    <div className="rounded-lg bg-amber-500/10 ring-1 ring-amber-500/25 px-3 py-3 text-[12px] text-amber-100">
+                      <p className="leading-relaxed">
+                        Your manual result ({manualR > 0 ? "+" : ""}
+                        {manualR.toFixed(2)}R) differs from the calculated value
+                        ({validation.calculatedR > 0 ? "+" : ""}
+                        {validation.calculatedR.toFixed(2)}R). Use calculated or
+                        keep yours?
+                      </p>
+                      <div className="mt-2.5 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const v = validation.calculatedR!;
+                            setResultStr(v.toFixed(2));
+                          }}
+                          className="rounded-full bg-primary/20 ring-1 ring-primary/40 px-3 py-1.5 text-[11.5px] font-semibold text-text-primary hover:bg-primary/25 transition"
+                        >
+                          Use calculated
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewConfirmed(true)}
+                          className="rounded-full ring-1 ring-amber-500/40 px-3 py-1.5 text-[11.5px] font-semibold text-amber-100 hover:bg-amber-500/10 transition"
+                        >
+                          Keep mine
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                {/* ── Trade Preview card ─────────────────────────────────
+                    Surfaces the engine-derived view of the trade right
+                    before the user advances. When warnings exist, an
+                    explicit Confirm step is required. */}
+                {validation.structurallyValid &&
+                  validation.calculatedR != null &&
+                  outcome !== null && (
+                    <div className="rounded-xl bg-card ring-1 ring-border px-4 py-3.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
+                        Trade Preview
+                      </p>
+                      <div className="mt-2 space-y-1 text-[12.5px] text-text-secondary">
+                        <div className="flex items-center justify-between">
+                          <span>Direction</span>
+                          <span className="text-text-primary font-semibold">
+                            {direction.toUpperCase()}
+                          </span>
+                        </div>
+                        {risk != null && (
+                          <div className="flex items-center justify-between">
+                            <span>Risk</span>
+                            <span className="text-text-primary font-semibold tabular-nums">
+                              {risk}% · 1R
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span>Calculated result</span>
+                          <span
+                            className={`font-semibold tabular-nums ${
+                              validation.calculatedR >= 0
+                                ? "text-emerald-300"
+                                : "text-rose-300"
+                            }`}
+                          >
+                            {validation.calculatedR > 0 ? "+" : ""}
+                            {validation.calculatedR.toFixed(2)}R
+                          </span>
+                        </div>
+                      </div>
+
+                      {validation.hasWarn && (
+                        <>
+                          <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/10 ring-1 ring-amber-500/25 px-3 py-2 text-[11.5px] text-amber-200">
+                            <AlertTriangle className="h-3.5 w-3.5 mt-[2px] shrink-0" />
+                            <span>Check your inputs. This result looks unusual.</span>
+                          </div>
+                          <div className="mt-2.5 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewConfirmed(true)}
+                              disabled={previewConfirmed}
+                              className="rounded-full bg-primary/20 ring-1 ring-primary/40 px-3.5 py-1.5 text-[11.5px] font-semibold text-text-primary disabled:opacity-50 hover:bg-primary/25 transition"
+                            >
+                              {previewConfirmed ? "Confirmed" : "Confirm & continue"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPreviewConfirmed(false);
+                                // Soft scroll cue — focus first price field.
+                                const el = document.querySelector<HTMLInputElement>(
+                                  'input[inputmode="decimal"]',
+                                );
+                                el?.focus();
+                              }}
+                              className="rounded-full ring-1 ring-border px-3.5 py-1.5 text-[11.5px] font-semibold text-text-secondary hover:text-text-primary transition"
+                            >
+                              Edit values
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
               </div>
             </motion.section>
           )}
