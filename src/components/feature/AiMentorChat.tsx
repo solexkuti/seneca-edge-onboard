@@ -448,48 +448,24 @@ export default function AiMentorChat() {
           </AnimatePresence>
         </div>
 
-        {/* Intro suggestions — only when chat is empty; vanish on first interaction */}
-        {showSuggestions && suggestions.length > 0 ? (
-          <div className="border-t border-border/60 px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/80">
-              Try asking
-            </p>
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              <AnimatePresence mode="popLayout" initial={false}>
-                {suggestions.map((q, i) => {
-                  const Icon = q.icon;
-                  return (
-                    <motion.button
-                      key={q.id}
-                      type="button"
-                      onClick={() => {
-                        setSuggestionsDismissed(true);
-                        send(q.prompt);
-                      }}
-                      disabled={streaming}
-                      title={q.prompt}
-                      layout
-                      initial={{ opacity: 0, y: 6, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -4, scale: 0.96 }}
-                      transition={{
-                        duration: 0.22,
-                        delay: 0.04 * i,
-                        ease: [0.22, 1, 0.36, 1],
-                      }}
-                      whileHover={{ y: -1.5 }}
-                      whileTap={{ scale: 0.96 }}
-                      className="group inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[12px] font-medium text-text-primary/85 ring-1 ring-border/70 transition-colors hover:bg-text-primary/[0.03] hover:ring-brand/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <Icon
-                        className={`h-3.5 w-3.5 ${INTENT_STYLES[q.intent]} transition-transform group-hover:scale-110`}
-                        strokeWidth={2.2}
-                      />
-                      <span>{q.label}</span>
-                    </motion.button>
-                  );
-                })}
-              </AnimatePresence>
+        {/* Quick action prompts — always available above composer */}
+        {!streaming ? (
+          <div className="border-t border-border/60 px-4 py-2.5">
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+              {QUICK_PROMPTS.map((q) => (
+                <button
+                  key={q.label}
+                  type="button"
+                  onClick={() => {
+                    setSuggestionsDismissed(true);
+                    send(q.prompt);
+                  }}
+                  disabled={streaming}
+                  className="shrink-0 rounded-full bg-card px-3 py-1.5 text-[11.5px] font-medium text-text-primary/85 ring-1 ring-border/70 transition-all hover:bg-text-primary/[0.04] hover:ring-primary/25 active:scale-[0.97] disabled:opacity-40"
+                >
+                  {q.label}
+                </button>
+              ))}
             </div>
           </div>
         ) : null}
