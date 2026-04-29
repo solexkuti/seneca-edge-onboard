@@ -138,9 +138,24 @@ export default function AiMentorChat() {
   }, [introContent]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
-  // Suggestions disappear permanently once the user types or picks one.
-  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
+  // Lifecycle flag: flips true on first user send OR first quick-prompt tap.
+  // While true, the suggestion strip stays hidden for a clean focused chat.
+  // It resets automatically when chat history clears (logout / new session /
+  // dev reset all cause the component to remount with only the intro msg).
+  const [hasStartedConversation, setHasStartedConversation] = useState(false);
+  // Lets advanced users reveal the chip strip again on demand without
+  // resetting the whole conversation.
+  const [suggestionsRevealed, setSuggestionsRevealed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Edge case: if chat history is wiped back to just the intro, treat the
+  // session as fresh again so prompts reappear.
+  useEffect(() => {
+    if (messages.length <= 1) {
+      setHasStartedConversation(false);
+      setSuggestionsRevealed(false);
+    }
+  }, [messages.length]);
 
   // Build intro suggestions once, lightly tailored to discipline state.
   const suggestions = useMemo(
@@ -153,11 +168,9 @@ export default function AiMentorChat() {
     [journal, traderState.discipline.state, traderState.discipline.score],
   );
 
-  const showSuggestions =
-    !suggestionsDismissed &&
-    !streaming &&
-    messages.length === 1 &&
-    draft.trim().length === 0;
+  const showQuickPrompts =
+    !streaming && (!hasStartedConversation || suggestionsRevealed);
+
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
