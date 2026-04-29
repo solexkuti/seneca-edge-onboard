@@ -1201,15 +1201,38 @@ function StepOutput({
         sub={has ? "Short. Binary. Built from your rules." : "We'll turn your rules into a checklist + plan."}
       />
 
+      {/* Atomicity / machine-readability gate for Chart Analyzer */}
+      {blocked && (
+        <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-400">
+            <ShieldAlert className="h-3.5 w-3.5" /> Rules not machine-readable
+          </div>
+          <p className="mt-1.5 text-[13px] text-foreground">
+            {atomicityIssues.length} rule{atomicityIssues.length === 1 ? "" : "s"} aren't atomic / binary. Fix them before generating — the Chart Analyzer can't enforce ambiguous logic.
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {atomicityIssues.slice(0, 4).map((i, idx) => (
+              <li key={idx} className="rounded-lg bg-card/60 px-3 py-2 text-[12.5px] ring-1 ring-border/60">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {i.category} · {i.problem.replace("_", " ")}
+                </div>
+                <div className="mt-0.5 text-foreground">{i.rule}</div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">{i.hint}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!has && (
         <button
           type="button"
           onClick={generate}
-          disabled={busy}
+          disabled={busy || blocked}
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-50"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          Generate
+          {blocked ? "Resolve issues to generate" : "Generate"}
         </button>
       )}
 
