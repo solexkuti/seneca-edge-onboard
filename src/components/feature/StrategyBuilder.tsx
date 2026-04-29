@@ -59,7 +59,8 @@ import {
   unlockBlueprint,
 } from "@/lib/dbStrategyBlueprints";
 import { supabase } from "@/integrations/supabase/client";
-import { downloadPdf, downloadTxt } from "@/lib/strategyExport";
+import { downloadPdf, downloadTxt, downloadJson } from "@/lib/strategyExport";
+import { buildCanonicalStrategy, CATEGORY_LABELS } from "@/lib/strategySchema";
 import {
   interrogate,
   readRules,
