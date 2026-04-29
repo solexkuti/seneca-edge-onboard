@@ -555,13 +555,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── STAGE 2: PRIMARY extraction ──────────────────────────────────────
-    const primaryExec = await extract(
-      PRIMARY_MODEL,
-      EXTRACT_SYSTEM_PRIMARY,
-      exec_image_url,
-      "exec",
-    );
+    // ── STAGE 2: PRIMARY extraction + market interpretation (parallel) ──
+    const [primaryExec, marketInterp] = await Promise.all([
+      extract(PRIMARY_MODEL, EXTRACT_SYSTEM_PRIMARY, exec_image_url, "exec"),
+      interpretMarket(exec_image_url),
+    ]);
 
     // ── STAGE 3: confidence eval ─────────────────────────────────────────
     const fallbackNeeded = needsFallback(primaryExec);
@@ -676,6 +674,8 @@ Deno.serve(async (req) => {
         status: "valid",
         model_used: modelUsed,
         confidence: finalExec.confidence_score,
+        // Strategy-independent market interpretation (Section 2 of analyzer redesign).
+        market_interpretation: marketInterp,
         chart_analysis: {
           trend: finalExec.trend,
           structure_detected: finalExec.structure_detected,
