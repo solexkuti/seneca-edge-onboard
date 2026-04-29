@@ -191,7 +191,10 @@ export default function PerformanceTrends({
       <div className="flex items-start justify-between gap-3 px-5 pt-5">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
-            Trend · last {count > 0 ? count : 20} trades
+            Performance trend
+          </p>
+          <p className="mt-1 text-[11px] text-text-secondary/70">
+            Last {count > 0 ? count : 20} trade{count === 1 ? "" : "s"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -200,6 +203,7 @@ export default function PerformanceTrends({
             role="tablist"
             aria-label="Chart metric"
             className="inline-flex items-center rounded-full bg-background/60 p-0.5 ring-1 ring-border"
+            title={absDisabled ? "$ view requires monetary values in trade log" : undefined}
           >
             <ToggleSeg
               active={activeMetric === "r"}
