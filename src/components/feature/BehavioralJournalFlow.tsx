@@ -441,12 +441,18 @@ export default function BehavioralJournalFlow({
     return `You often enter extra digits in ${fieldLabel(offender[0]).toLowerCase()}. Be careful with scaling.`;
   }, [repeatCounts]);
 
-  // Outcome is REQUIRED. R is required (existing rule). Hard validation
-  // blocks must be cleared. Warnings require explicit preview confirmation.
+  // Required: asset, direction (always set), entry, stop loss,
+  // (exit OR manual R), and outcome. Hard validation blocks must be
+  // cleared. Warnings require explicit preview confirmation.
+  const hasExitOrR = exit !== null || Number.isFinite(manualR as number);
   const canNextFromStep0 =
     asset.trim().length > 0 &&
+    entry !== null &&
+    sl !== null &&
+    hasExitOrR &&
     Number.isFinite(resultR) &&
     outcome !== null &&
+    !accountSizeInvalid &&
     !pnlDollarInvalid &&
     !validation.hasBlock &&
     (!validation.hasWarn || previewConfirmed);
@@ -916,12 +922,9 @@ export default function BehavioralJournalFlow({
               <h1 className="text-[20px] font-semibold tracking-tight text-text-primary">
                 What did you trade?
               </h1>
-              <p className="mt-1.5 text-[12.5px] text-text-secondary">
-                Asset, market, direction. Prices auto-calculate RR.
-              </p>
 
-              <div className="mt-6 space-y-4">
-                <Field label="Asset / Pair">
+              <div className="mt-7 space-y-5">
+                <Field label="Asset">
                   <input
                     autoFocus
                     value={asset}
@@ -992,16 +995,16 @@ export default function BehavioralJournalFlow({
                       value={entryStr}
                       onChange={(e) => setEntryStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="—"
+                      placeholder="0.00"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
-                  <Field label="Actual Exit">
+                  <Field label="Exit">
                     <input
                       value={exitStr}
                       onChange={(e) => setExitStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="Where you closed"
+                      placeholder="0.00"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
@@ -1010,7 +1013,7 @@ export default function BehavioralJournalFlow({
                       value={slStr}
                       onChange={(e) => setSlStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="Planned risk"
+                      placeholder="0.00"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
@@ -1019,7 +1022,7 @@ export default function BehavioralJournalFlow({
                       value={tpStr}
                       onChange={(e) => setTpStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="Planned target"
+                      placeholder="0.00"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
@@ -1031,7 +1034,7 @@ export default function BehavioralJournalFlow({
                       value={riskStr}
                       onChange={(e) => setRiskStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="e.g. 1"
+                      placeholder="—"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
@@ -1042,7 +1045,7 @@ export default function BehavioralJournalFlow({
                       placeholder={
                         autoRealizedR != null
                           ? `auto ${autoRealizedR > 0 ? "+" : ""}${autoRealizedR.toFixed(2)}`
-                          : "e.g. 1.5  or  -1"
+                          : "+1.5 / -1"
                       }
                       inputMode="decimal"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
@@ -1050,68 +1053,53 @@ export default function BehavioralJournalFlow({
                   </Field>
                 </div>
 
-                {/* Account size ($) — optional, persisted across trades.
-                    When set together with Risk %, the $ field auto-fills. */}
-                <Field label="Account size ($) — optional">
-                  <input
-                    value={accountSizeStr}
-                    onChange={(e) => setAccountSizeStr(e.target.value)}
-                    placeholder="e.g. 10000"
-                    inputMode="decimal"
-                    className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
-                  />
-                </Field>
-                {accountSizeInvalid && (
-                  <p className="text-[11px] text-rose-300">
-                    Enter a positive number (e.g. 10000) or leave it blank.
-                  </p>
-                )}
+                <div className="space-y-3 opacity-75">
+                  {/* Account size ($) — optional, persisted across trades. */}
+                  <Field subtle label="Account size ($)">
+                    <input
+                      value={accountSizeStr}
+                      onChange={(e) => setAccountSizeStr(e.target.value)}
+                      placeholder="—"
+                      inputMode="decimal"
+                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/30"
+                    />
+                  </Field>
 
-                {/* Profit / Loss ($) — optional. Auto-fills from R × Risk % × Account size
-                    when those are set, but the user can always override manually. */}
-                <Field label="Profit / Loss ($) — optional">
-                  <input
-                    value={pnlDollarStr}
-                    onChange={(e) => {
-                      setPnlDollarStr(e.target.value);
-                      setPnlDollarManuallySet(true);
-                    }}
-                    placeholder={
-                      autoPnlDollar != null && !pnlDollarManuallySet
-                        ? `auto ${autoPnlDollar > 0 ? "+" : ""}${autoPnlDollar.toFixed(2)}`
-                        : "e.g. +150  or  -75"
-                    }
-                    inputMode="decimal"
-                    className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
-                  />
-                </Field>
-                {autoPnlDollar != null && pnlDollarManuallySet && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPnlDollarManuallySet(false);
-                      setPnlDollarStr(autoPnlDollar.toFixed(2));
-                    }}
-                    className="text-[11px] text-primary/85 hover:text-primary underline-offset-2 hover:underline"
-                  >
-                    Use auto-calculated {autoPnlDollar > 0 ? "+" : ""}${autoPnlDollar.toFixed(2)}
-                  </button>
-                )}
-                {autoPnlDollar != null && !pnlDollarManuallySet && (
-                  <p className="text-[11px] text-text-secondary/70">
-                    Auto-calculated from R × Risk % × Account size. Type to override.
-                  </p>
-                )}
-                {pnlDollarInvalid && (
-                  <p className="text-[11px] text-rose-300">
-                    Enter a valid number (e.g. 150, -75) or leave it blank.
-                  </p>
-                )}
+                  {/* Profit / Loss ($) — optional, auto-fills from R × Risk % × Account size. */}
+                  <Field subtle label="Profit / Loss ($)">
+                    <input
+                      value={pnlDollarStr}
+                      onChange={(e) => {
+                        setPnlDollarStr(e.target.value);
+                        setPnlDollarManuallySet(true);
+                      }}
+                      placeholder={
+                        autoPnlDollar != null && !pnlDollarManuallySet
+                          ? `auto ${autoPnlDollar > 0 ? "+" : ""}${autoPnlDollar.toFixed(2)}`
+                          : "—"
+                      }
+                      inputMode="decimal"
+                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/30"
+                    />
+                  </Field>
+                  {autoPnlDollar != null && pnlDollarManuallySet && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPnlDollarManuallySet(false);
+                        setPnlDollarStr(autoPnlDollar.toFixed(2));
+                      }}
+                      className="text-[11px] text-primary/85 hover:text-primary underline-offset-2 hover:underline"
+                    >
+                      Use auto-calculated {autoPnlDollar > 0 ? "+" : ""}${autoPnlDollar.toFixed(2)}
+                    </button>
+                  )}
+                </div>
 
                 {/* Trade Outcome — explicit selection, required */}
                 <div>
                   <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
-                    Trade Outcome
+                    Outcome
                   </p>
                   <div className="grid grid-cols-3 gap-2">
                     {([
@@ -1193,11 +1181,6 @@ export default function BehavioralJournalFlow({
                       );
                     })}
                   </div>
-                  {outcome === null && Number.isFinite(resultR) && (
-                    <p className="mt-2 text-[11px] text-text-secondary/70">
-                      Select an outcome to continue.
-                    </p>
-                  )}
                   {outcomeMismatch && (
                     <p className="mt-2 text-[11px] text-amber-300">
                       Your result suggests a different outcome. Confirm if intentional.
@@ -1825,23 +1808,36 @@ export default function BehavioralJournalFlow({
           </button>
 
           {step < 3 ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (step === 0) runCorrectionGuard("continue");
-                else setStep((s) => (Math.min(3, s + 1) as Step));
-              }}
-              disabled={step === 0 && !canNextFromStep0}
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 ring-1 ring-primary/30 px-5 py-2.5 text-[12.5px] font-semibold text-text-primary disabled:opacity-30 active:scale-[0.98] transition"
-            >
-              Continue <ArrowRight className="h-3.5 w-3.5" />
-            </button>
+            (() => {
+              const ready = step !== 0 || canNextFromStep0;
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (step === 0) runCorrectionGuard("continue");
+                    else setStep((s) => (Math.min(3, s + 1) as Step));
+                  }}
+                  disabled={step === 0 && !canNextFromStep0}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-[12.5px] font-semibold text-text-primary ring-1 transition active:scale-[0.98] ${
+                    ready
+                      ? "bg-primary/25 ring-primary/55 shadow-glow-gold hover:bg-primary/30"
+                      : "bg-primary/8 ring-primary/15 opacity-40"
+                  }`}
+                >
+                  Continue <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              );
+            })()
           ) : (
             <button
               type="button"
               onClick={() => runCorrectionGuard("submit")}
               disabled={submitting || !canNextFromStep0}
-              className="inline-flex items-center gap-2 rounded-full bg-primary/20 ring-1 ring-primary/40 px-5 py-2.5 text-[12.5px] font-semibold text-text-primary disabled:opacity-30 active:scale-[0.98] transition"
+              className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[12.5px] font-semibold text-text-primary ring-1 transition active:scale-[0.98] ${
+                canNextFromStep0 && !submitting
+                  ? "bg-primary/25 ring-primary/55 shadow-glow-gold hover:bg-primary/30"
+                  : "bg-primary/8 ring-primary/15 opacity-40"
+              }`}
             >
               {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {submitting ? "Saving…" : "Save trade"}
@@ -1874,10 +1870,26 @@ export default function BehavioralJournalFlow({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  subtle = false,
+}: {
+  label: string;
+  children: React.ReactNode;
+  subtle?: boolean;
+}) {
   return (
-    <label className="block rounded-xl bg-card ring-1 ring-border px-4 py-3.5">
-      <span className="block text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
+    <label
+      className={`block rounded-xl px-4 py-3.5 ring-1 ${
+        subtle ? "bg-card/60 ring-border/60" : "bg-card ring-border"
+      }`}
+    >
+      <span
+        className={`block text-[10px] font-semibold uppercase tracking-[0.22em] ${
+          subtle ? "text-text-secondary/45" : "text-text-secondary/60"
+        }`}
+      >
         {label}
       </span>
       <div className="mt-1.5">{children}</div>
