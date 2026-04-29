@@ -453,6 +453,48 @@
     filter: brightness(1.03);
   }
   .btn-gold:active { transform: scale(0.99); }
+
+  /* ── Mentor message bubbles ─────────────────────────────── */
+  /* User bubble — warm gold gradient, soft outer halo */
+  .bubble-user {
+    background-image: linear-gradient(180deg, var(--gold-soft), var(--gold));
+    color: #0B0B0D;
+    border-radius: 16px 16px 6px 16px;
+    box-shadow:
+      0 0 22px rgba(198, 161, 91, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.30),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+  }
+
+  /* Assistant bubble — glass surface, gold-tinted hairline */
+  .bubble-assistant {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)),
+      radial-gradient(120% 80% at 0% 0%, rgba(198,161,91,0.10), transparent 60%);
+    border: 1px solid rgba(198, 161, 91, 0.18);
+    border-radius: 16px 16px 16px 6px;
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 24px -10px rgba(198, 161, 91, 0.22),
+      0 12px 28px -22px rgba(0, 0, 0, 0.7);
+    color: var(--text-primary, #EDEDED);
+  }
+
+  /* Gentle pulse on the latest assistant response */
+  .bubble-pulse {
+    animation: bubble-pulse 2.4s ease-in-out 1;
+  }
+}
+
+@keyframes bubble-pulse {
+  0%   { box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 0 0 0 rgba(198,161,91,0.0); }
+  35%  { box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 0 28px 2px rgba(198,161,91,0.30); }
+  100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px -10px rgba(198,161,91,0.22); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble-pulse { animation: none; }
 }
 
 /* ── Ambient background drift — slow "breathing light" ───────── */
