@@ -116,21 +116,48 @@ export default function AiMentorChat() {
     return `Behavior is steady. Ask me anything about your last trades, or tap "Review my trades".`;
   }, [behavioralEntries]);
 
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      id: "intro",
-      role: "assistant",
-      content: introContent,
-    },
-  ]);
+  // Conversation state machine — see src/lib/mentorConversationState.ts.
+  // While `mode !== "idle"` the chat NEVER falls back to the AI; user
+  // input is interpreted in the active pattern context.
+  const [convoState, setConvoState] = useState<ConversationState>(INITIAL_STATE);
 
-  // Keep intro fresh until the user sends their first message.
+  /** Builds the intro message, attaching guided chips when applicable. */
+  const buildIntroMsg = (content: string): Msg => {
+    if (isGuidedQuestion(content)) {
+      return {
+        id: "intro",
+        role: "assistant",
+        content,
+        chips: [
+          { id: "yes_dig", label: "Yes, break it down", action: { kind: "yes_dig" } },
+          { id: "not_now", label: "Not now", action: { kind: "not_now" } },
+        ],
+      };
+    }
+    return { id: "intro", role: "assistant", content };
+  };
+
+  const [messages, setMessages] = useState<Msg[]>([buildIntroMsg(introContent)]);
+
+  // Keep intro fresh until the user sends their first message. Also
+  // re-syncs the conversation state machine to the intro's pattern.
   useEffect(() => {
     setMessages((prev) =>
       prev.length === 1 && prev[0].id === "intro"
-        ? [{ id: "intro", role: "assistant", content: introContent }]
+        ? [buildIntroMsg(introContent)]
         : prev,
     );
+    if (isGuidedQuestion(introContent)) {
+      setConvoState({
+        mode: "pattern_detected",
+        active_pattern: detectPattern(introContent),
+        last_question: introContent,
+        step: 0,
+      });
+    } else {
+      setConvoState(INITIAL_STATE);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [introContent]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
