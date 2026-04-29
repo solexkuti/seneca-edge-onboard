@@ -200,7 +200,7 @@ export default function BehavioralJournalFlow({
         result_r: resultR,
         mistakes,
         note,
-        screenshotFile: file,
+        screenshotFile: files[0]?.file ?? null,
       });
 
       // 2) Trade Performance log — drives metrics
@@ -291,8 +291,10 @@ export default function BehavioralJournalFlow({
     setMistakes([]);
     setConfidence(null);
     setNote("");
-    setFile(null);
-    setFilePreview(null);
+    setFiles((prev) => {
+      prev.forEach((f) => URL.revokeObjectURL(f.preview));
+      return [];
+    });
     setFeedback(null);
   }
 
