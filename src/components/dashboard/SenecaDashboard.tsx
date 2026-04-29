@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
+import { usePerformance } from "@/hooks/usePerformance";
 import { useTraderState } from "@/hooks/useTraderState";
+import PerformanceSnapshot from "@/components/dashboard/PerformanceSnapshot";
 import {
   disciplineState,
   lastMistakeOf,
@@ -126,6 +128,7 @@ function senecaInsight(args: {
 export default function SenecaDashboard({ userName }: { userName?: string }) {
   const { entries, score, loading } = useBehavioralJournal(20);
   const { state } = useTraderState();
+  const performance = usePerformance(20);
 
   const ds = disciplineState(score);
   const last = entries[0];
