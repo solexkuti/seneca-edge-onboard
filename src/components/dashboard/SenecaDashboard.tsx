@@ -151,11 +151,11 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
           <SystemPanel
             name={bp?.name ?? null}
             locked={!!bp?.locked}
-            entry={shortLine(bp?.rules?.entry?.[0] ?? bp?.raw_input ?? null)}
+            entry={shortLine(bp?.structured_rules?.entry?.[0] ?? bp?.raw_input ?? null)}
             confirmation={shortLine(
-              bp?.rules?.confirmation?.[0] ?? bp?.rules?.entry?.[1] ?? null,
+              bp?.structured_rules?.confirmation?.[0] ?? bp?.structured_rules?.entry?.[1] ?? null,
             )}
-            risk={shortLine(bp?.rules?.risk?.[0] ?? null)}
+            risk={shortLine(bp?.structured_rules?.risk?.[0] ?? null)}
             grade={shortLine(
               bp?.tier_rules?.a_plus ?? bp?.tier_rules?.b_plus ?? null,
             )}
