@@ -506,6 +506,44 @@ export default function AiMentorChat() {
         })()
       : undefined;
 
+    // Relapse + behavioral loop detection (Pattern Detection Engine v2).
+    // Builds on the pattern analyzer; surfaces deterministic mentor lines
+    // for relapse, repeating loops, and pre-trade awareness.
+    const relapseLoopPayload = behavioralEntries.length > 0
+      ? (() => {
+          const r = detectRelapseAndLoops(behavioralEntries);
+          if (
+            !r.improving &&
+            r.relapses.length === 0 &&
+            r.loops.length === 0 &&
+            !r.preTradeAwareness
+          ) {
+            return undefined;
+          }
+          return {
+            improving: r.improving,
+            relapses: r.relapses.map((x) => ({
+              mistakeId: x.mistakeId,
+              mistakeLabel: x.mistakeLabel,
+              recentOccurrences: x.recentOccurrences,
+              previousOccurrences: x.previousOccurrences,
+              severity: x.severity,
+              message: x.message,
+            })),
+            loops: r.loops.map((x) => ({
+              context: x.context,
+              mistakeId: x.mistakeId,
+              mistakeLabel: x.mistakeLabel,
+              occurrences: x.occurrences,
+              loopLabel: x.loopLabel ?? null,
+              message: x.message,
+            })),
+            preTradeAwareness: r.preTradeAwareness,
+            headlines: r.headlines,
+          };
+        })()
+      : undefined;
+
     // Per-turn hints so the model handles SYSTEM vs PERSONAL questions correctly.
     const intentHint: { intent: Intent; tradeCount: number; note?: string } = {
       intent,
