@@ -880,7 +880,9 @@ Deno.serve(async (req) => {
       (context?.traderState?.discipline?.consecutive_breaks ?? 0) >= 2 ||
       context?.behaviorPatterns?.trend === "declining" ||
       (context?.behaviorPatterns?.repeatedInRecent?.length ?? 0) > 0 ||
-      (context?.behaviorPatterns?.dominantWeakness?.severe ?? false)
+      (context?.behaviorPatterns?.dominantWeakness?.severe ?? false) ||
+      (context?.relapseLoops?.relapses?.length ?? 0) > 0 ||
+      (context?.relapseLoops?.loops?.length ?? 0) > 0
     );
     const tradeCount = context?.performance?.windowSize ?? null;
     const zeroData = tradeCount === 0;
