@@ -286,40 +286,26 @@ export default function AiMentorChat() {
     const asksAboutLastTrade = /\blast\s+trade\b/i.test(trimmed);
     const intent = classifyIntent(trimmed);
 
-    // CASE A: zero trades — branch by intent. Only block data-dependent intents.
-    // METRICS_SYSTEM and GENERAL_TRADING_QUESTION are educational — always
-    // allowed to hit the AI even with no data.
-    if (tradeCount === 0) {
-      if (intent === "TRADE_REVIEW") {
-        respondLocally(
-          history,
-          "You haven't logged a trade yet, so there's nothing to review.\n\nLog one trade and I'll break it down with you.",
-        );
-        return;
-      }
-      if (intent === "PATTERN_ANALYSIS") {
-        respondLocally(
-          history,
-          "No patterns yet — that only shows up after a few trades.\n\nGive me a handful and I'll start connecting things.",
-        );
-        return;
-      }
-      if (intent === "METRICS_PERSONAL") {
-        respondLocally(
-          history,
-          "You don't have any data yet — log your first trade and I'll break it down for you.",
-        );
-        return;
-      }
-      if (intent === "GUIDANCE") {
-        respondLocally(
-          history,
-          "Right now the focus is simple — log clean trades.\n\nThat's what gives me something real to work with.",
-        );
-        return;
-      }
-      // METRICS_SYSTEM and GENERAL_TRADING_QUESTION → fall through to AI.
+    // Three response buckets:
+    //   DATA_REQUIRED       → TRADE_REVIEW, PATTERN_ANALYSIS, METRICS_PERSONAL
+    //   SYSTEM_EXPLANATION  → METRICS_SYSTEM (always answered, never blocked)
+    //   GENERAL_KNOWLEDGE   → GENERAL_TRADING_QUESTION, GUIDANCE (answered normally)
+    //
+    // Only DATA_REQUIRED intents are gated when the user has zero trades.
+    const DATA_REQUIRED_INTENTS: Intent[] = [
+      "TRADE_REVIEW",
+      "PATTERN_ANALYSIS",
+      "METRICS_PERSONAL",
+    ];
+    if (tradeCount === 0 && DATA_REQUIRED_INTENTS.includes(intent)) {
+      respondLocally(
+        history,
+        "You haven't logged a trade yet. Log one and I'll break it down with you.",
+      );
+      return;
     }
+    // SYSTEM_EXPLANATION and GENERAL_KNOWLEDGE always fall through to the AI,
+    // regardless of trade count — never mention missing data for these.
 
     // CASE B: user asks about "last trade" but none exists.
     if (!lastTradeExists && asksAboutLastTrade) {
