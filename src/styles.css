@@ -40,6 +40,8 @@
   --color-highlight-pink: var(--highlight-pink);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
+  --color-profit: var(--profit);
+  --color-loss: var(--loss);
 
   --font-display:
     "Space Grotesk", "Inter", ui-sans-serif, system-ui, -apple-system,
