@@ -29,6 +29,8 @@ import {
   MISTAKES,
   MISTAKE_LABEL,
   SEVERE_IDS,
+  getScreenshotUrl,
+  type JournalEntry,
   type MistakeId,
 } from "@/lib/behavioralJournal";
 
