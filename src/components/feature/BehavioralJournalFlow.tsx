@@ -245,9 +245,16 @@ export default function BehavioralJournalFlow({
   }
 
   function toggleMistake(id: MistakeId) {
-    setMistakes((prev) =>
-      prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id],
-    );
+    setMistakes((prev) => {
+      const next = prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id];
+      // Clean-execution reinforcement only applies when zero mistakes are
+      // selected — clear it the moment the user marks a mistake.
+      if (next.length > 0) {
+        setSelfConfirmedClean(false);
+        setCleanReason(null);
+      }
+      return next;
+    });
   }
 
   async function submit() {
