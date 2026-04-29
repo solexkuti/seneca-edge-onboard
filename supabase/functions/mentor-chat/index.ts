@@ -671,9 +671,9 @@ Deno.serve(async (req) => {
       contextBlock +
       (hasTraderState ? AWARENESS_LAYER_ADDENDUM : "") +
       (strictMode ? STRICT_MODE_ADDENDUM : "") +
-      // Enforcer mode is the new default whenever the client passes
-      // TRADER_STATE — i.e. anywhere in the app. Short, sharp, directive.
-      (hasTraderState ? ENFORCER_MODE_ADDENDUM : "");
+      // Companion mode is the default whenever the client passes
+      // TRADER_STATE — calm, supportive, gently firm. Never harsh.
+      (hasTraderState ? COMPANION_MODE_ADDENDUM : "");
 
     const upstream = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
