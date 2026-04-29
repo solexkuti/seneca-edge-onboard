@@ -54,6 +54,26 @@ export const SenecaVoice = {
     logged: "Logged. I'll watch for the pattern.",
   },
 
+  // ---------- Onboarding (training sequence — short, sharp) ----------
+  onboarding: {
+    open: "Let's set the rules. Quick.",
+    market: "Good. I know your battlefield.",
+    experience: {
+      beginner: "Then we build you carefully.",
+      intermediate: "Then we sharpen what you have.",
+      advanced: "Then we hold you to your standard.",
+    },
+    challenge: {
+      entries: "Patience over prediction.",
+      exits: "Plan the exit before the entry.",
+      risk: "Risk first. Always.",
+      discipline: "Then we fix the operator, not the system.",
+    },
+    goal: "Understood. We aim there.",
+    name: "Ready when you are.",
+    done: "Training begins.",
+  },
+
   // ---------- Mentor (calm companion mode) ----------
   mentor: {
     greeting: "I'm here. What's on your mind?",
