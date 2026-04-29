@@ -69,6 +69,40 @@ function fmtR(n: number): string {
 
 export default function MistakeBreakdown() {
   const { entries, loading } = useBehavioralJournal(500);
+  const [preset, setPreset] = useState<PresetId>("30d");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+
+  const { fromMs, toMs, rangeLabel } = useMemo(() => {
+    if (preset === "custom" && customRange?.from) {
+      const from = startOfDay(customRange.from);
+      const to = endOfDay(customRange.to ?? customRange.from);
+      const sameDay = from.toDateString() === to.toDateString();
+      return {
+        fromMs: from.getTime(),
+        toMs: to.getTime(),
+        rangeLabel: sameDay
+          ? format(from, "MMM d, yyyy")
+          : `${format(from, "MMM d")} – ${format(to, "MMM d, yyyy")}`,
+      };
+    }
+    if (preset === "all") {
+      return { fromMs: -Infinity, toMs: Infinity, rangeLabel: "All time" };
+    }
+    const def = PRESETS.find((p) => p.id === preset)!;
+    const days = def.days ?? 30;
+    return {
+      fromMs: daysAgo(days - 1).getTime(),
+      toMs: endOfDay(new Date()).getTime(),
+      rangeLabel: `Last ${days} days`,
+    };
+  }, [preset, customRange]);
+
+  const filteredEntries = useMemo(() => {
+    return entries.filter((e) => {
+      const t = new Date(e.created_at).getTime();
+      return t >= fromMs && t <= toMs;
+    });
+  }, [entries, fromMs, toMs]);
 
   const { rows, total, totalClean } = useMemo(() => {
     const seed = new Map<MistakeId | "__clean", Row>();
