@@ -129,6 +129,7 @@ export default function MistakeBreakdown() {
         losses: 0,
         breakeven: 0,
         netR: 0,
+        entries: [],
       });
     }
     seed.set("__clean", {
@@ -140,6 +141,7 @@ export default function MistakeBreakdown() {
       losses: 0,
       breakeven: 0,
       netR: 0,
+      entries: [],
     });
 
     for (const e of filteredEntries) {
@@ -152,6 +154,7 @@ export default function MistakeBreakdown() {
         if (!row) continue;
         row.count += 1;
         row.netR += r;
+        row.entries.push(e);
         if (w === "win") row.wins += 1;
         else if (w === "loss") row.losses += 1;
         else row.breakeven += 1;
