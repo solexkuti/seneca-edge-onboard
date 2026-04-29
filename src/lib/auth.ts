@@ -101,51 +101,94 @@ export async function signInWithGoogle(): Promise<AuthResult> {
 
 /**
  * Persist the onboarding answers + chosen username to the user's profile row.
- * Safe to call multiple times — uses upsert.
+ * Safe to call multiple times.
+ *
+ * CRITICAL: This MUST NOT overwrite existing profile data on login.
+ * Returning users on a new device have an empty local `readProfile()` /
+ * `getUserName()`, so a naive upsert would null-out their saved
+ * market / experience / challenge / goal / username.
+ *
+ * Strategy:
+ *   1. Fetch the existing profile row first.
+ *   2. Only write a field if we have a fresh local value AND
+ *      (the DB field is empty OR this is the first-ever sync).
+ *   3. Set `onboarded_at` only if not already set.
  */
 export async function syncProfileFromOnboarding(
   userId: string,
 ): Promise<{ ok: boolean }> {
   try {
     const profile = readProfile();
-    const username = getUserName();
+    const localName = getUserName();
+    const localMarket =
+      profile.markets && profile.markets.length > 0
+        ? profile.markets.join(",")
+        : null;
+
+    // 1) Read what's already there so we never clobber existing data.
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select(
+        "username, market, experience, challenge, goal, onboarded_at, onboarding_completed",
+      )
+      .eq("id", userId)
+      .maybeSingle();
+
+    // If the user is already fully onboarded and we have nothing fresh to add,
+    // there is nothing to do — preserve their data exactly as-is.
+    const hasFreshData =
+      !!localName ||
+      !!localMarket ||
+      !!profile.experience ||
+      !!profile.challenge ||
+      !!profile.goal;
+
+    if (existing?.onboarding_completed && !hasFreshData) {
+      // Mirror the DB name back into the per-user local cache so the UI
+      // (e.g. "Welcome back, Samuel") works immediately on this device.
+      if (existing.username && !localName) {
+        try {
+          const { saveUserName } = await import("@/lib/userName");
+          saveUserName(existing.username);
+        } catch {
+          /* ignore */
+        }
+      }
+      markOnboardingCompleted();
+      return { ok: true };
+    }
+
+    // 2) Build a patch that ONLY contains fields we should write.
+    //    Never null-out a column that already has a value.
+    const patch: Record<string, unknown> = { id: userId };
+
+    if (localName && !existing?.username) patch.username = localName;
+    if (localMarket && !existing?.market) patch.market = localMarket;
+    if (profile.experience && !existing?.experience)
+      patch.experience = profile.experience;
+    if (profile.challenge && !existing?.challenge)
+      patch.challenge = profile.challenge;
+    if (profile.goal && !existing?.goal) patch.goal = profile.goal;
+
+    if (!existing?.onboarded_at) {
+      patch.onboarded_at = new Date().toISOString();
+    }
+    patch.onboarding_completed = true;
 
     const { error } = await supabase
       .from("profiles")
-      .upsert(
-        {
-          id: userId,
-          username: username ?? null,
-          market: profile.markets && profile.markets.length > 0 ? profile.markets.join(",") : null,
-          experience: profile.experience ?? null,
-          challenge: profile.challenge ?? null,
-          goal: profile.goal ?? null,
-          onboarded_at: new Date().toISOString(),
-          onboarding_completed: true,
-        },
-        { onConflict: "id" },
-      );
+      .upsert(patch, { onConflict: "id" });
 
     if (error) {
-      // Username collision is the only "expected" failure — retry without it.
-      if (error.message.toLowerCase().includes("unique")) {
-        await supabase
-          .from("profiles")
-          .upsert(
-            {
-              id: userId,
-              market: profile.markets && profile.markets.length > 0 ? profile.markets.join(",") : null,
-              experience: profile.experience ?? null,
-              challenge: profile.challenge ?? null,
-              goal: profile.goal ?? null,
-              onboarded_at: new Date().toISOString(),
-              onboarding_completed: true,
-            },
-            { onConflict: "id" },
-          );
+      // Username collision (rare) — retry without the username.
+      if (error.message.toLowerCase().includes("unique") && "username" in patch) {
+        delete patch.username;
+        await supabase.from("profiles").upsert(patch, { onConflict: "id" });
+      } else {
+        return { ok: false };
       }
-      return { ok: false };
     }
+
     markOnboardingCompleted();
     return { ok: true };
   } catch {
