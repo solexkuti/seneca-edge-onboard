@@ -113,7 +113,7 @@ import {
 
 export default function TradingJournalFlow() {
   const navigate = useNavigate();
-  const { state: traderState } = useTraderState();
+  const { trader: traderState } = useSenecaContext();
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [submitting, setSubmitting] = useState(false);
