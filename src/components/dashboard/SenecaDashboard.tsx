@@ -73,17 +73,8 @@ function controlStateBlurb(args: {
   return "Control is stable";
 }
 
-function presenceLine(args: {
-  hasEntries: boolean;
-  classification?: string;
-  breakStreak: number;
-  score: number | null;
-}): string {
-  if (!args.hasEntries || args.score == null) return "Seneca is ready when you are";
-  if (args.classification === "severe" || args.breakStreak >= 2 || args.score < 60)
-    return "Seneca has a suggestion";
-  return "Seneca is tracking your behavior patterns";
-}
+// presenceLine() removed — the Control State presence chip now reflects
+// the dynamic behavior insight from src/lib/behaviorInsight.ts.
 
 export default function SenecaDashboard({ userName }: { userName?: string }) {
   const { entries, score, loading } = useBehavioralJournal(20);
@@ -265,9 +256,18 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
                 <span className="absolute inset-0 animate-ping rounded-full bg-primary/40" />
                 <span className="relative h-2 w-2 rounded-full bg-primary" />
               </span>
-              <span className="flex-1 text-[12px] font-medium text-text-primary/85">
-                {presence}
-              </span>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={presence}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.32, ease }}
+                  className="flex-1 text-[12px] font-medium text-text-primary/85"
+                >
+                  {presence}
+                </motion.span>
+              </AnimatePresence>
               <ArrowUpRight className="h-3 w-3 text-text-secondary/70 group-hover:text-text-primary" strokeWidth={2.4} />
             </Link>
           </div>
