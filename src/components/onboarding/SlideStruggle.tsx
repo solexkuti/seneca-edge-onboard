@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { LogIn, LogOut, Shield, Brain } from "lucide-react";
 import SelectionCard from "./SelectionCard";
+import ContinueButton from "./ContinueButton";
 import type { SlideProps } from "./OnboardingFlow";
 import { patchProfile, readProfile, type ChallengeChoice } from "@/lib/onboardingProfile";
 
@@ -52,11 +53,14 @@ export default function SlideStruggle({ onNext }: SlideProps) {
               onClick={() => {
                 setSelected(m.id);
                 patchProfile({ challenge: m.id });
-                window.setTimeout(onNext, 200);
               }}
             />
           </motion.div>
         ))}
+      </div>
+
+      <div className="flex justify-center pt-2">
+        <ContinueButton onClick={onNext} delay={0.2} disabled={!selected} />
       </div>
     </div>
   );

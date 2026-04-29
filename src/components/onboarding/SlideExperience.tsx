@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Sprout, TrendingUp, Crown } from "lucide-react";
 import SelectionCard from "./SelectionCard";
+import ContinueButton from "./ContinueButton";
 import type { SlideProps } from "./OnboardingFlow";
 import { patchProfile, readProfile, type ExperienceLevel } from "@/lib/onboardingProfile";
 
@@ -51,11 +52,14 @@ export default function SlideExperience({ onNext }: SlideProps) {
               onClick={() => {
                 setSelected(m.id);
                 patchProfile({ experience: m.id });
-                window.setTimeout(onNext, 200);
               }}
             />
           </motion.div>
         ))}
+      </div>
+
+      <div className="flex justify-center pt-2">
+        <ContinueButton onClick={onNext} delay={0.2} disabled={!selected} />
       </div>
     </div>
   );
