@@ -125,6 +125,13 @@ export default function BehavioralJournalFlow({
   // Index of the screenshot currently shown full-size in the lightbox, or null.
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
+  // Identity reinforcement (clean execution only). These do NOT touch the
+  // scoring engine — they are persisted as structured tags appended to the
+  // note so the pattern engine can read them later.
+  const [selfConfirmedClean, setSelfConfirmedClean] = useState(false);
+  type CleanReason = "discipline" | "patience" | "clear_setup" | "rules_followed" | "other";
+  const [cleanReason, setCleanReason] = useState<CleanReason | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackPayload | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
