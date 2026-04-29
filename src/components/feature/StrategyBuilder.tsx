@@ -1476,6 +1476,149 @@ function StepLock({
   );
 }
 
+/* --------------- Active Interrogation Panel (parse step) ----------- */
+function ActiveInterrogationPanel({
+  bp,
+  patch,
+}: {
+  bp: StrategyBlueprint;
+  patch: (p: Partial<StrategyBlueprint>) => Promise<void>;
+}) {
+  const history = bp.refinement_history ?? [];
+  const [drafts, setDrafts] = useState<string[]>(() =>
+    history.map((h) => h.answer ?? ""),
+  );
+  const [validating, setValidating] = useState<number | null>(null);
+  const [errors, setErrors] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    setDrafts(history.map((h) => h.answer ?? ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history.length]);
+
+  if (history.length === 0) return null;
+
+  const acceptAnswer = async (i: number, answer: string) => {
+    const next = history.map((h, idx) =>
+      idx === i ? { ...h, answer, accepted: true } : h,
+    );
+    await patch({ refinement_history: next });
+    setErrors((e) => {
+      const copy = { ...e };
+      delete copy[i];
+      return copy;
+    });
+  };
+
+  const skipQuestion = async (i: number) => {
+    const next = history.map((h, idx) =>
+      idx === i ? { ...h, answer: h.answer ?? "", accepted: true } : h,
+    );
+    await patch({ refinement_history: next });
+  };
+
+  const validate = async (i: number) => {
+    const answer = drafts[i]?.trim() ?? "";
+    if (!answer) {
+      setErrors((e) => ({ ...e, [i]: "Type an answer or tap Skip." }));
+      return;
+    }
+    setValidating(i);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "validate-refinement-answer",
+        { body: { question: history[i].question, answer } },
+      );
+      if (error) throw error;
+      if (data.accept) {
+        await acceptAnswer(i, answer);
+      } else {
+        setErrors((e) => ({
+          ...e,
+          [i]: data.followup || data.reason || "Be more specific.",
+        }));
+      }
+    } catch (err) {
+      console.error("[validate]", err);
+      await acceptAnswer(i, answer);
+    } finally {
+      setValidating(null);
+    }
+  };
+
+  const allResolved = history.every(
+    (h) => h.accepted || (h.answer?.trim()?.length ?? 0) > 0,
+  );
+
+  return (
+    <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+      <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+        <HelpCircle className="h-3.5 w-3.5" /> A few questions
+      </div>
+      <p className="mt-1 text-[12.5px] text-muted-foreground">
+        Answer each — or skip if not relevant. Required to continue.
+      </p>
+      <div className="mt-3 space-y-3">
+        {history.map((qa, i) => {
+          const resolved = qa.accepted || (qa.answer?.trim().length ?? 0) > 0;
+          return (
+            <div
+              key={i}
+              className={`rounded-lg p-3 ring-1 ${resolved ? "bg-card ring-primary/30" : "bg-card ring-border"}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="text-sm font-medium text-foreground">{qa.question}</div>
+                {resolved && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}
+              </div>
+              <input
+                value={drafts[i] ?? ""}
+                onChange={(e) => {
+                  const n = drafts.slice();
+                  n[i] = e.target.value;
+                  setDrafts(n);
+                }}
+                placeholder="Type a precise, measurable answer…"
+                className="mt-2 w-full rounded-lg bg-background px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              {errors[i] && (
+                <p className="mt-1.5 text-[11.5px] text-amber-600 dark:text-amber-400">
+                  {errors[i]}
+                </p>
+              )}
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void validate(i)}
+                  disabled={validating === i}
+                  className="rounded-md bg-primary px-2.5 py-1.5 text-[11px] font-medium text-primary-foreground disabled:opacity-50"
+                >
+                  {validating === i ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    "Submit"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void skipQuestion(i)}
+                  className="rounded-md bg-background px-2.5 py-1.5 text-[11px] text-muted-foreground ring-1 ring-border hover:text-foreground"
+                >
+                  Skip
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {!allResolved && (
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Answer or skip every question to advance.
+        </p>
+      )}
+    </div>
+  );
+}
+
 /* -------------------------- Shared ----------------------------------- */
 function Question({ title, sub }: { title: string; sub?: string }) {
   return (
