@@ -63,8 +63,12 @@ import { downloadPdf, downloadTxt } from "@/lib/strategyExport";
 import {
   interrogate,
   readRules,
+  evaluateStrictness,
+  validateStructuredOutput,
   type IntelligenceReport,
   type RuleCategoryV2,
+  type StrictnessVerdict,
+  type RuleAtomicityIssue,
 } from "@/lib/strategyIntelligence";
 
 const ACCOUNT_OPTIONS: { value: AccountType; label: string; hint: string }[] = [
