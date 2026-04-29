@@ -1,8 +1,20 @@
-// Trade Journal — list of trade_logs with full structured data.
-import { useEffect, useState } from "react";
+// Trade Journal — list of trade_logs with filters and full structured data.
+// Persistence: trades come from public.trade_logs (written by the journal
+// flow). This screen reads, filters, and displays them. No placeholders —
+// when there's nothing to show, render the empty-state copy.
+
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
-import { fetchTradeLogs, fmtR, type TradeLog } from "@/lib/tradeLogs";
+import { ArrowLeft, Search, X } from "lucide-react";
+import {
+  fetchTradeLogs,
+  fmtR,
+  type Outcome,
+  type TradeLog,
+} from "@/lib/tradeLogs";
+
+type OutcomeFilter = "all" | Outcome;
+type MarketFilter = "all" | string;
 
 function fmt(iso: string): { local: string; utc: string } {
   const d = new Date(iso);
@@ -17,9 +29,22 @@ function fmt(iso: string): { local: string; utc: string } {
   };
 }
 
+const OUTCOME_PILLS: { id: OutcomeFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "win", label: "Wins" },
+  { id: "loss", label: "Losses" },
+  { id: "breakeven", label: "BE" },
+];
+
 export default function TradeJournal() {
   const [trades, setTrades] = useState<TradeLog[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Filters
+  const [outcome, setOutcome] = useState<OutcomeFilter>("all");
+  const [market, setMarket] = useState<MarketFilter>("all");
+  const [mistakesOnly, setMistakesOnly] = useState(false);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let c = false;
@@ -35,7 +60,35 @@ export default function TradeJournal() {
     };
   }, []);
 
+  const markets = useMemo(() => {
+    const s = new Set<string>();
+    for (const t of trades) if (t.market) s.add(t.market);
+    return Array.from(s).sort();
+  }, [trades]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return trades.filter((t) => {
+      if (outcome !== "all" && t.outcome !== outcome) return false;
+      if (market !== "all" && t.market !== market) return false;
+      if (mistakesOnly && t.mistakes.length === 0 && t.rules_followed) return false;
+      if (q) {
+        const hay = [
+          t.pair,
+          t.market,
+          t.note ?? "",
+          ...(t.mistakes ?? []),
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [trades, outcome, market, mistakesOnly, query]);
+
   const empty = !loading && trades.length === 0;
+  const noMatch = !loading && trades.length > 0 && filtered.length === 0;
 
   return (
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
@@ -59,7 +112,9 @@ export default function TradeJournal() {
               All trades
             </h1>
             <p className="mt-1 text-[12.5px] text-text-secondary">
-              {loading ? "Loading…" : `${trades.length} entries`}
+              {loading
+                ? "Loading…"
+                : `${filtered.length} of ${trades.length} entries`}
             </p>
           </div>
           <Link
@@ -70,21 +125,109 @@ export default function TradeJournal() {
           </Link>
         </div>
 
+        {/* Filters */}
+        {!empty && (
+          <div className="mt-5 space-y-2.5">
+            {/* Search */}
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-secondary/55" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search pair, mistake, note…"
+                className="w-full rounded-full bg-card ring-1 ring-border px-9 py-2 text-[12.5px] text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-primary/40"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-text-secondary/70 hover:text-text-primary"
+                  aria-label="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Outcome pills */}
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+              {OUTCOME_PILLS.map((p) => (
+                <Pill
+                  key={p.id}
+                  active={outcome === p.id}
+                  onClick={() => setOutcome(p.id)}
+                >
+                  {p.label}
+                </Pill>
+              ))}
+              <span className="mx-1 self-center text-text-secondary/30">|</span>
+              <Pill
+                active={market === "all"}
+                onClick={() => setMarket("all")}
+              >
+                All markets
+              </Pill>
+              {markets.map((m) => (
+                <Pill
+                  key={m}
+                  active={market === m}
+                  onClick={() => setMarket(m)}
+                >
+                  {m}
+                </Pill>
+              ))}
+              <span className="mx-1 self-center text-text-secondary/30">|</span>
+              <Pill
+                active={mistakesOnly}
+                onClick={() => setMistakesOnly((v) => !v)}
+              >
+                Mistakes only
+              </Pill>
+            </div>
+          </div>
+        )}
+
         {empty && (
           <div className="mt-12 rounded-2xl bg-card ring-1 ring-border p-6 text-center">
             <p className="text-[13.5px] text-text-primary">
               Log your first trade to activate performance tracking.
             </p>
+            <Link
+              to="/hub/journal"
+              className="mt-4 inline-flex items-center rounded-full bg-primary/15 ring-1 ring-primary/30 px-4 py-2 text-[12px] font-semibold text-text-primary"
+            >
+              Log a trade
+            </Link>
+          </div>
+        )}
+
+        {noMatch && (
+          <div className="mt-10 rounded-2xl bg-card/60 ring-1 ring-border/60 p-5 text-center">
+            <p className="text-[12.5px] text-text-secondary">
+              No trades match these filters.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setOutcome("all");
+                setMarket("all");
+                setMistakesOnly(false);
+                setQuery("");
+              }}
+              className="mt-3 text-[11.5px] font-semibold text-text-primary underline underline-offset-2"
+            >
+              Reset filters
+            </button>
           </div>
         )}
 
         <div className="mt-6 space-y-3">
-          {trades.map((t) => {
+          {filtered.map((t) => {
             const time = fmt(t.opened_at);
-            const r = t.rr;
             const tone =
               t.outcome === "win"
-                ? "text-emerald-300"
+                ? "text-gold"
                 : t.outcome === "loss"
                   ? "text-rose-300"
                   : "text-amber-300";
@@ -115,7 +258,7 @@ export default function TradeJournal() {
                     </p>
                   </div>
                   <p className={`text-[14px] font-semibold tabular-nums ${tone}`}>
-                    {fmtR(r)}
+                    {fmtR(t.rr)}
                   </p>
                 </div>
 
@@ -127,15 +270,26 @@ export default function TradeJournal() {
                 </div>
 
                 {(t.mistakes.length > 0 || !t.rules_followed) && (
-                  <p className="mt-2 text-[11.5px] text-amber-300/85">
-                    {t.mistakes.length > 0
-                      ? t.mistakes.join(" · ")
-                      : "Rules broken"}
-                  </p>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {t.mistakes.length > 0 ? (
+                      t.mistakes.map((m) => (
+                        <span
+                          key={m}
+                          className="rounded-full bg-amber-400/10 ring-1 ring-amber-400/30 px-2 py-0.5 text-[10.5px] font-medium text-amber-300"
+                        >
+                          {m}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="rounded-full bg-amber-400/10 ring-1 ring-amber-400/30 px-2 py-0.5 text-[10.5px] font-medium text-amber-300">
+                        Rules broken
+                      </span>
+                    )}
+                  </div>
                 )}
 
                 {t.note && (
-                  <p className="mt-2 text-[12px] italic text-text-secondary/85">
+                  <p className="mt-2.5 text-[12px] italic leading-snug text-text-secondary/85">
                     "{t.note}"
                   </p>
                 )}
@@ -145,7 +299,7 @@ export default function TradeJournal() {
                     href={t.screenshot_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-3 inline-block text-[11px] text-text-secondary/70 underline"
+                    className="mt-3 inline-block text-[11px] font-semibold text-text-primary/80 underline underline-offset-2 hover:text-text-primary"
                   >
                     View screenshot
                   </a>
@@ -156,6 +310,30 @@ export default function TradeJournal() {
         </div>
       </div>
     </div>
+  );
+}
+
+function Pill({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 transition ${
+        active
+          ? "bg-primary/20 ring-primary/40 text-text-primary"
+          : "bg-card ring-border text-text-secondary hover:text-text-primary"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
