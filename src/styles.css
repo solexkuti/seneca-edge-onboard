@@ -486,6 +486,55 @@
   .bubble-pulse {
     animation: bubble-pulse 2.4s ease-in-out 1;
   }
+
+  /* ── Ambient focus glow ─────────────────────────────────────
+     Soft, slow gold halo for active UI states. No layout shift,
+     no text, no heavy motion — just a breathing outline. Opt in
+     with .focus-glow, or rely on the auto-selectors below.      */
+  .focus-glow {
+    position: relative;
+    transition: box-shadow 320ms ease, border-color 320ms ease;
+  }
+  .focus-glow::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(198, 161, 91, 0.0),
+                0 0 0 0 rgba(198, 161, 91, 0.0);
+    transition: box-shadow 320ms ease, opacity 320ms ease;
+    opacity: 0;
+  }
+  .focus-glow:is(:hover, :focus-visible)::after,
+  .focus-glow[data-active="true"]::after,
+  .focus-glow[aria-pressed="true"]::after,
+  .focus-glow[aria-selected="true"]::after,
+  .focus-glow[data-state="active"]::after,
+  .focus-glow[data-state="checked"]::after,
+  .focus-glow[data-state="on"]::after,
+  .focus-glow[data-state="open"]::after {
+    opacity: 1;
+    box-shadow:
+      0 0 0 1px rgba(198, 161, 91, 0.35),
+      0 0 18px 0 rgba(198, 161, 91, 0.22);
+    animation: focus-glow-breathe 3.6s ease-in-out infinite;
+  }
+
+  /* Auto-glow for native focus + common active states across the app */
+  :where(button, a, [role="button"], [role="tab"], [role="option"], [role="menuitem"], input, textarea, select):focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 1px rgba(198, 161, 91, 0.45),
+      0 0 16px 0 rgba(198, 161, 91, 0.22);
+    transition: box-shadow 280ms ease;
+  }
+  :where([aria-pressed="true"], [aria-selected="true"], [data-state="active"], [data-state="checked"], [data-state="on"]):not(.no-focus-glow) {
+    box-shadow:
+      0 0 0 1px rgba(198, 161, 91, 0.32),
+      0 0 18px 0 rgba(198, 161, 91, 0.20);
+    transition: box-shadow 320ms ease;
+  }
 }
 
 @keyframes bubble-pulse {
@@ -493,8 +542,23 @@
   35%  { box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 0 28px 2px rgba(198,161,91,0.30); }
   100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px -10px rgba(198,161,91,0.22); }
 }
+
+@keyframes focus-glow-breathe {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(198, 161, 91, 0.28),
+      0 0 14px 0 rgba(198, 161, 91, 0.16);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(198, 161, 91, 0.40),
+      0 0 22px 0 rgba(198, 161, 91, 0.28);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .bubble-pulse { animation: none; }
+  .bubble-pulse,
+  .focus-glow::after { animation: none; }
 }
 
 /* ── Ambient background drift — slow "breathing light" ───────── */
