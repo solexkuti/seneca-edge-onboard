@@ -138,9 +138,24 @@ export default function AiMentorChat() {
   }, [introContent]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
-  // Suggestions disappear permanently once the user types or picks one.
-  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
+  // Lifecycle flag: flips true on first user send OR first quick-prompt tap.
+  // While true, the suggestion strip stays hidden for a clean focused chat.
+  // It resets automatically when chat history clears (logout / new session /
+  // dev reset all cause the component to remount with only the intro msg).
+  const [hasStartedConversation, setHasStartedConversation] = useState(false);
+  // Lets advanced users reveal the chip strip again on demand without
+  // resetting the whole conversation.
+  const [suggestionsRevealed, setSuggestionsRevealed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Edge case: if chat history is wiped back to just the intro, treat the
+  // session as fresh again so prompts reappear.
+  useEffect(() => {
+    if (messages.length <= 1) {
+      setHasStartedConversation(false);
+      setSuggestionsRevealed(false);
+    }
+  }, [messages.length]);
 
   // Build intro suggestions once, lightly tailored to discipline state.
   const suggestions = useMemo(
@@ -153,11 +168,9 @@ export default function AiMentorChat() {
     [journal, traderState.discipline.state, traderState.discipline.score],
   );
 
-  const showSuggestions =
-    !suggestionsDismissed &&
-    !streaming &&
-    messages.length === 1 &&
-    draft.trim().length === 0;
+  const showQuickPrompts =
+    !streaming && (!hasStartedConversation || suggestionsRevealed);
+
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -595,25 +608,37 @@ export default function AiMentorChat() {
           </AnimatePresence>
         </div>
 
-        {/* Quick action prompts — always available above composer */}
+        {/* Quick action prompts — visible until first interaction, then collapse
+            into a small "Suggestions" toggle so they remain reachable. */}
         {!streaming ? (
           <div className="border-t border-border/60 px-4 py-2.5">
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-              {quickPrompts.map((q) => (
-                <button
-                  key={q.id}
-                  type="button"
-                  onClick={() => {
-                    setSuggestionsDismissed(true);
-                    send(q.prompt);
-                  }}
-                  disabled={streaming}
-                  className="shrink-0 rounded-full bg-card px-3 py-1.5 text-[11.5px] font-medium text-text-primary/85 ring-1 ring-border/70 transition-all hover:bg-text-primary/[0.04] hover:ring-primary/25 active:scale-[0.97] disabled:opacity-40"
-                >
-                  {q.label}
-                </button>
-              ))}
-            </div>
+            {showQuickPrompts ? (
+              <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                {quickPrompts.map((q) => (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => {
+                      setHasStartedConversation(true);
+                      setSuggestionsRevealed(false);
+                      send(q.prompt);
+                    }}
+                    disabled={streaming}
+                    className="shrink-0 rounded-full bg-card px-3 py-1.5 text-[11.5px] font-medium text-text-primary/85 ring-1 ring-border/70 transition-all hover:bg-text-primary/[0.04] hover:ring-primary/25 active:scale-[0.97] disabled:opacity-40"
+                  >
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSuggestionsRevealed(true)}
+                className="rounded-full bg-card px-3 py-1.5 text-[11px] font-medium text-text-secondary ring-1 ring-border/60 transition-all hover:text-text-primary hover:ring-border active:scale-[0.97]"
+              >
+                Suggestions
+              </button>
+            )}
           </div>
         ) : null}
 
@@ -621,7 +646,8 @@ export default function AiMentorChat() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            setSuggestionsDismissed(true);
+            setHasStartedConversation(true);
+            setSuggestionsRevealed(false);
             send(draft);
           }}
           className="flex items-center gap-2 border-t border-border/60 bg-card px-3 py-3"
@@ -630,7 +656,6 @@ export default function AiMentorChat() {
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);
-              if (e.target.value.length > 0) setSuggestionsDismissed(true);
             }}
             placeholder="Ask Seneca…"
             disabled={streaming}
