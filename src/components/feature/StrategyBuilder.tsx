@@ -845,7 +845,7 @@ function StepTiers({
       </div>
 
       <p className="text-[11px] text-muted-foreground/70 text-center">
-        Fill any combination. We'll infer the rest.
+        Leave it blank — Seneca will refine the rest.
       </p>
     </div>
   );
