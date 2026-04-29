@@ -1237,11 +1237,8 @@ export default function BehavioralJournalFlow({
                   validation.calculatedR != null && manualR != null && (
                     <div className="rounded-lg bg-amber-500/10 ring-1 ring-amber-500/25 px-3 py-3 text-[12px] text-amber-100">
                       <p className="leading-relaxed">
-                        Your manual result ({manualR > 0 ? "+" : ""}
-                        {manualR.toFixed(2)}R) differs from the calculated value
-                        ({validation.calculatedR > 0 ? "+" : ""}
-                        {validation.calculatedR.toFixed(2)}R). Use calculated or
-                        keep yours?
+                        Your entered result does not match your trade prices.
+                        Please review.
                       </p>
                       <div className="mt-2.5 flex flex-wrap gap-2">
                         <button
