@@ -59,14 +59,46 @@ export default function AiMentorChat() {
     };
   }, [rows.length]);
 
+  // Dynamic intro grounded in the user's real behavioral data.
+  const introContent = useMemo(() => {
+    const last = behavioralEntries[0];
+    const breakStreak = last?.break_streak_after ?? 0;
+    const cleanStreak = last?.clean_streak_after ?? 0;
+    const topMistake = mistakeFrequency(behavioralEntries)[0];
+    if (behavioralEntries.length === 0) {
+      return "I'm Seneca. Behavior-aware mentor.\n\nLog one trade and I'll tell you what's actually breaking your edge.";
+    }
+    if (last?.classification === "severe") {
+      return `Last trade was a severe break — ${last.mistakes.map((m) => MISTAKE_LABEL[m]).join(", ") || "rule violation"}.\n\nDiscipline is at ${behavioralScore}. Don't re-enter on tilt. Let's reset.`;
+    }
+    if (breakStreak >= 2) {
+      return `You've broken rules in your last ${breakStreak} trades.\n\n${topMistake ? `Your issue is ${topMistake.label.toLowerCase()}, not entries.` : "The pattern is in your execution, not your setups."}\n\nWhere do you want to start?`;
+    }
+    if (cleanStreak >= 3) {
+      return `${cleanStreak} clean trades in a row. Score ${behavioralScore}.\n\nThis is the version of you that wins. What do you want to lock in?`;
+    }
+    if (topMistake && topMistake.count >= 2) {
+      return `Score ${behavioralScore}. Your most repeated mistake: ${topMistake.label.toLowerCase()} (${topMistake.count}x).\n\nWant to work on that?`;
+    }
+    return `Score ${behavioralScore}. Behavior is in range.\n\nAsk me anything about your last trades.`;
+  }, [behavioralEntries, behavioralScore]);
+
   const [messages, setMessages] = useState<Msg[]>([
     {
       id: "intro",
       role: "assistant",
-      content:
-        "Hi. I'm Seneca — your trading mentor.\n\nI track how you think, not just what you do.\n\nIf something is off, I'll point it out. If you're aligned, I'll keep you there.\n\nAsk what matters.",
+      content: introContent,
     },
   ]);
+
+  // Keep intro fresh until the user sends their first message.
+  useEffect(() => {
+    setMessages((prev) =>
+      prev.length === 1 && prev[0].id === "intro"
+        ? [{ id: "intro", role: "assistant", content: introContent }]
+        : prev,
+    );
+  }, [introContent]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
   // Suggestions disappear permanently once the user types or picks one.
