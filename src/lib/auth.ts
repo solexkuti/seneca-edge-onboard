@@ -146,6 +146,7 @@ export async function syncProfileFromOnboarding(
       }
       return { ok: false };
     }
+    markOnboardingCompleted();
     return { ok: true };
   } catch {
     return { ok: false };
