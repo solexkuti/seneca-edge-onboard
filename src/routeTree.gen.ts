@@ -24,6 +24,7 @@ import { Route as HubClassicRouteImport } from './routes/hub.classic'
 import { Route as HubChartRouteImport } from './routes/hub.chart'
 import { Route as DevResetRouteImport } from './routes/dev.reset'
 import { Route as HubStrategyIndexRouteImport } from './routes/hub.strategy.index'
+import { Route as HubJournalIndexRouteImport } from './routes/hub.journal.index'
 import { Route as HubStrategyNewRouteImport } from './routes/hub.strategy.new'
 import { Route as HubStrategyIdRouteImport } from './routes/hub.strategy.$id'
 import { Route as HubJournalHistoryRouteImport } from './routes/hub.journal.history'
@@ -104,6 +105,11 @@ const HubStrategyIndexRoute = HubStrategyIndexRouteImport.update({
   path: '/',
   getParentRoute: () => HubStrategyRoute,
 } as any)
+const HubJournalIndexRoute = HubJournalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => HubJournalRoute,
+} as any)
 const HubStrategyNewRoute = HubStrategyNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/hub/journal/history': typeof HubJournalHistoryRoute
   '/hub/strategy/$id': typeof HubStrategyIdRoute
   '/hub/strategy/new': typeof HubStrategyNewRoute
+  '/hub/journal/': typeof HubJournalIndexRoute
   '/hub/strategy/': typeof HubStrategyIndexRoute
 }
 export interface FileRoutesByTo {
@@ -152,7 +159,6 @@ export interface FileRoutesByTo {
   '/hub/chart': typeof HubChartRoute
   '/hub/classic': typeof HubClassicRoute
   '/hub/daily': typeof HubDailyRoute
-  '/hub/journal': typeof HubJournalRouteWithChildren
   '/hub/mentor': typeof HubMentorRoute
   '/hub/mind': typeof HubMindRoute
   '/hub/recovery': typeof HubRecoveryRoute
@@ -164,6 +170,7 @@ export interface FileRoutesByTo {
   '/hub/journal/history': typeof HubJournalHistoryRoute
   '/hub/strategy/$id': typeof HubStrategyIdRoute
   '/hub/strategy/new': typeof HubStrategyNewRoute
+  '/hub/journal': typeof HubJournalIndexRoute
   '/hub/strategy': typeof HubStrategyIndexRoute
 }
 export interface FileRoutesById {
@@ -186,6 +193,7 @@ export interface FileRoutesById {
   '/hub/journal/history': typeof HubJournalHistoryRoute
   '/hub/strategy/$id': typeof HubStrategyIdRoute
   '/hub/strategy/new': typeof HubStrategyNewRoute
+  '/hub/journal/': typeof HubJournalIndexRoute
   '/hub/strategy/': typeof HubStrategyIndexRoute
 }
 export interface FileRouteTypes {
@@ -209,6 +217,7 @@ export interface FileRouteTypes {
     | '/hub/journal/history'
     | '/hub/strategy/$id'
     | '/hub/strategy/new'
+    | '/hub/journal/'
     | '/hub/strategy/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -217,7 +226,6 @@ export interface FileRouteTypes {
     | '/hub/chart'
     | '/hub/classic'
     | '/hub/daily'
-    | '/hub/journal'
     | '/hub/mentor'
     | '/hub/mind'
     | '/hub/recovery'
@@ -229,6 +237,7 @@ export interface FileRouteTypes {
     | '/hub/journal/history'
     | '/hub/strategy/$id'
     | '/hub/strategy/new'
+    | '/hub/journal'
     | '/hub/strategy'
   id:
     | '__root__'
@@ -250,6 +259,7 @@ export interface FileRouteTypes {
     | '/hub/journal/history'
     | '/hub/strategy/$id'
     | '/hub/strategy/new'
+    | '/hub/journal/'
     | '/hub/strategy/'
   fileRoutesById: FileRoutesById
 }
@@ -377,6 +387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HubStrategyIndexRouteImport
       parentRoute: typeof HubStrategyRoute
     }
+    '/hub/journal/': {
+      id: '/hub/journal/'
+      path: '/'
+      fullPath: '/hub/journal/'
+      preLoaderRoute: typeof HubJournalIndexRouteImport
+      parentRoute: typeof HubJournalRoute
+    }
     '/hub/strategy/new': {
       id: '/hub/strategy/new'
       path: '/new'
@@ -411,11 +428,13 @@ declare module '@tanstack/react-router' {
 interface HubJournalRouteChildren {
   HubJournalBreakdownRoute: typeof HubJournalBreakdownRoute
   HubJournalHistoryRoute: typeof HubJournalHistoryRoute
+  HubJournalIndexRoute: typeof HubJournalIndexRoute
 }
 
 const HubJournalRouteChildren: HubJournalRouteChildren = {
   HubJournalBreakdownRoute: HubJournalBreakdownRoute,
   HubJournalHistoryRoute: HubJournalHistoryRoute,
+  HubJournalIndexRoute: HubJournalIndexRoute,
 }
 
 const HubJournalRouteWithChildren = HubJournalRoute._addFileChildren(
