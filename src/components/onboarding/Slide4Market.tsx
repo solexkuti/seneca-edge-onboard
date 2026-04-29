@@ -60,11 +60,18 @@ export default function Slide4Market({ onNext }: SlideProps) {
               onClick={() => {
                 setSelected(m.id);
                 patchProfile({ market: m.id });
-                window.setTimeout(onNext, 200);
               }}
             />
           </motion.div>
         ))}
+      </div>
+
+      <div className="flex justify-center pt-2">
+        <ContinueButton
+          onClick={onNext}
+          delay={0.2}
+          disabled={!selected}
+        />
       </div>
     </div>
   );
