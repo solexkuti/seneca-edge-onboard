@@ -26,22 +26,22 @@ import {
 const ease = [0.22, 1, 0.36, 1] as const;
 
 const TONE_TEXT: Record<string, string> = {
-  ok: "text-emerald-300",
+  ok: "text-gold",
   drift: "text-amber-300",
   warn: "text-orange-300",
   risk: "text-rose-300",
 };
 const TONE_DOT: Record<string, string> = {
-  ok: "bg-emerald-400",
+  ok: "bg-gold",
   drift: "bg-amber-400",
   warn: "bg-orange-400",
   risk: "bg-rose-400",
 };
 const TONE_BAR: Record<string, string> = {
-  ok: "bg-emerald-400/70",
-  drift: "bg-amber-400/70",
-  warn: "bg-orange-400/70",
-  risk: "bg-rose-400/70",
+  ok: "bg-gold",
+  drift: "bg-amber-400/80",
+  warn: "bg-orange-400/80",
+  risk: "bg-rose-400/80",
 };
 
 function shortLine(input: string | null | undefined, max = 56): string | null {
