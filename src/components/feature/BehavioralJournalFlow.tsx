@@ -120,6 +120,8 @@ export default function BehavioralJournalFlow({
   const [confidence, setConfidence] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const [files, setFiles] = useState<{ file: File; preview: string; tag: ScreenshotTag }[]>([]);
+  // Index of the screenshot currently shown full-size in the lightbox, or null.
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackPayload | null>(null);
