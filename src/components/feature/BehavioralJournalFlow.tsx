@@ -222,12 +222,18 @@ export default function BehavioralJournalFlow({
     [direction, entry, exit, sl],
   );
 
-  const resultR = useMemo(() => {
+  // Manually-typed R (if any). null when user hasn't entered an explicit value.
+  const manualR = useMemo(() => {
     const cleaned = resultStr.replace(/[+rR\s]/g, "");
+    if (!cleaned) return null;
     const n = parseFloat(cleaned);
-    if (Number.isFinite(n)) return n;
+    return Number.isFinite(n) ? n : null;
+  }, [resultStr]);
+
+  const resultR = useMemo(() => {
+    if (manualR != null) return manualR;
     return autoRealizedR ?? NaN;
-  }, [resultStr, autoRealizedR]);
+  }, [manualR, autoRealizedR]);
 
   // Parsed dollar PnL (optional). Empty → null. Non-numeric → null but flagged.
   const pnlDollar = useMemo(() => {
