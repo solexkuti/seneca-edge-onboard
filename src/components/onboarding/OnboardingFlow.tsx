@@ -31,7 +31,7 @@ import {
   Shield,
   Brain,
   TrendingUp,
-  Compass,
+  
   Wrench,
 } from "lucide-react";
 import SlideAuth from "@/components/onboarding/SlideAuth";
