@@ -37,6 +37,9 @@ import {
   ShieldAlert,
   FileText,
   FileDown,
+  GitMerge,
+  HelpCircle,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,6 +60,12 @@ import {
 } from "@/lib/dbStrategyBlueprints";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadPdf, downloadTxt } from "@/lib/strategyExport";
+import {
+  interrogate,
+  readRules,
+  type IntelligenceReport,
+  type RuleCategoryV2,
+} from "@/lib/strategyIntelligence";
 
 const ACCOUNT_OPTIONS: { value: AccountType; label: string; hint: string }[] = [
   { value: "prop", label: "Prop firm", hint: "Strict drawdown rules" },
