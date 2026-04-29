@@ -789,6 +789,65 @@ export default function BehavioralJournalFlow({
                   </Field>
                 </div>
 
+                {/* Profit / Loss ($) — optional but encouraged */}
+                <Field label="Profit / Loss ($) — optional">
+                  <input
+                    value={pnlDollarStr}
+                    onChange={(e) => setPnlDollarStr(e.target.value)}
+                    placeholder="e.g. +150  or  -75"
+                    inputMode="decimal"
+                    className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
+                  />
+                </Field>
+                {pnlDollarInvalid && (
+                  <p className="text-[11px] text-rose-300">
+                    Enter a valid number (e.g. 150, -75) or leave it blank.
+                  </p>
+                )}
+
+                {/* Trade Outcome — explicit selection, required */}
+                <div>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
+                    Trade Outcome
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { id: "win", label: "Win", activeCls: "bg-emerald-500/15 ring-emerald-500/35 text-emerald-200" },
+                      { id: "loss", label: "Loss", activeCls: "bg-rose-500/15 ring-rose-500/35 text-rose-200" },
+                      { id: "breakeven", label: "Break-even", activeCls: "bg-primary/15 ring-primary/40 text-text-primary" },
+                    ] as const).map((opt) => {
+                      const active = outcome === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            setOutcome(opt.id);
+                            setOutcomeManuallySet(true);
+                          }}
+                          className={`rounded-xl px-2.5 py-2.5 text-[12.5px] font-semibold ring-1 transition active:scale-[0.98] ${
+                            active
+                              ? opt.activeCls
+                              : "bg-card ring-border text-text-secondary hover:text-text-primary"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {outcome === null && Number.isFinite(resultR) && (
+                    <p className="mt-2 text-[11px] text-text-secondary/70">
+                      Select an outcome to continue.
+                    </p>
+                  )}
+                  {outcomeMismatch && (
+                    <p className="mt-2 text-[11px] text-amber-300">
+                      Your result suggests a different outcome. Confirm if intentional.
+                    </p>
+                  )}
+                </div>
+
                 {plannedRR != null && (
                   <p className="text-[11px] text-text-secondary/70">
                     Planned RR auto-calculated:{" "}
