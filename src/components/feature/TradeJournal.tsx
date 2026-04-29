@@ -15,6 +15,7 @@ import {
 
 type OutcomeFilter = "all" | Outcome;
 type MarketFilter = "all" | string;
+type MistakeFilter = "all" | "mistakes_only";
 
 function fmt(iso: string): { local: string; utc: string } {
   const d = new Date(iso);
@@ -27,6 +28,28 @@ function fmt(iso: string): { local: string; utc: string } {
     }),
     utc: d.toISOString().slice(0, 16).replace("T", " ") + "Z",
   };
+}
+
+// Format raw mistake ids ("moved_sl") into human labels ("Moved Stop Loss").
+const MISTAKE_DISPLAY: Record<string, string> = {
+  overleveraged: "Overleveraged",
+  revenge_trade: "Revenge Trade",
+  no_setup: "Entered Without Setup",
+  ignored_sl: "Ignored Stop Loss",
+  early_entry: "Early Entry",
+  late_entry: "Late Entry",
+  moved_sl: "Moved Stop Loss",
+  oversized: "Oversized Position",
+  fomo: "FOMO Entry",
+  broke_risk_rule: "Broke Risk Rule",
+};
+
+function prettyMistake(raw: string): string {
+  if (MISTAKE_DISPLAY[raw]) return MISTAKE_DISPLAY[raw];
+  return raw
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 const OUTCOME_PILLS: { id: OutcomeFilter; label: string }[] = [
@@ -43,8 +66,21 @@ export default function TradeJournal() {
   // Filters
   const [outcome, setOutcome] = useState<OutcomeFilter>("all");
   const [market, setMarket] = useState<MarketFilter>("all");
-  const [mistakesOnly, setMistakesOnly] = useState(false);
+  const [mistakeFilter, setMistakeFilter] = useState<MistakeFilter>("all");
   const [query, setQuery] = useState("");
+
+  const filtersActive =
+    outcome !== "all" ||
+    market !== "all" ||
+    mistakeFilter !== "all" ||
+    query.trim().length > 0;
+
+  function clearFilters() {
+    setOutcome("all");
+    setMarket("all");
+    setMistakeFilter("all");
+    setQuery("");
+  }
 
   useEffect(() => {
     let c = false;
@@ -69,15 +105,20 @@ export default function TradeJournal() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return trades.filter((t) => {
+      // Group A: Result
       if (outcome !== "all" && t.outcome !== outcome) return false;
+      // Group B: Market
       if (market !== "all" && t.market !== market) return false;
-      if (mistakesOnly && t.mistakes.length === 0 && t.rules_followed) return false;
+      // Group C: Mistakes
+      if (mistakeFilter === "mistakes_only" && t.mistakes.length === 0 && t.rules_followed) {
+        return false;
+      }
       if (q) {
         const hay = [
           t.pair,
           t.market,
           t.note ?? "",
-          ...(t.mistakes ?? []),
+          ...(t.mistakes ?? []).map(prettyMistake),
         ]
           .join(" ")
           .toLowerCase();
@@ -85,7 +126,7 @@ export default function TradeJournal() {
       }
       return true;
     });
-  }, [trades, outcome, market, mistakesOnly, query]);
+  }, [trades, outcome, market, mistakeFilter, query]);
 
   const empty = !loading && trades.length === 0;
   const noMatch = !loading && trades.length > 0 && filtered.length === 0;
@@ -150,8 +191,8 @@ export default function TradeJournal() {
               )}
             </div>
 
-            {/* Outcome pills */}
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+            {/* Group A — Result */}
+            <FilterGroup label="Result">
               {OUTCOME_PILLS.map((p) => (
                 <Pill
                   key={p.id}
@@ -161,11 +202,11 @@ export default function TradeJournal() {
                   {p.label}
                 </Pill>
               ))}
-              <span className="mx-1 self-center text-text-secondary/30">|</span>
-              <Pill
-                active={market === "all"}
-                onClick={() => setMarket("all")}
-              >
+            </FilterGroup>
+
+            {/* Group B — Market */}
+            <FilterGroup label="Market">
+              <Pill active={market === "all"} onClick={() => setMarket("all")}>
                 All markets
               </Pill>
               {markets.map((m) => (
@@ -174,17 +215,36 @@ export default function TradeJournal() {
                   active={market === m}
                   onClick={() => setMarket(m)}
                 >
-                  {m}
+                  {m.charAt(0).toUpperCase() + m.slice(1)}
                 </Pill>
               ))}
-              <span className="mx-1 self-center text-text-secondary/30">|</span>
+            </FilterGroup>
+
+            {/* Group C — Mistakes */}
+            <FilterGroup label="Mistakes">
               <Pill
-                active={mistakesOnly}
-                onClick={() => setMistakesOnly((v) => !v)}
+                active={mistakeFilter === "all"}
+                onClick={() => setMistakeFilter("all")}
+              >
+                All
+              </Pill>
+              <Pill
+                active={mistakeFilter === "mistakes_only"}
+                onClick={() => setMistakeFilter("mistakes_only")}
               >
                 Mistakes only
               </Pill>
-            </div>
+            </FilterGroup>
+
+            {filtersActive && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-[11px] font-semibold text-text-secondary hover:text-text-primary underline underline-offset-2"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         )}
 
@@ -209,12 +269,7 @@ export default function TradeJournal() {
             </p>
             <button
               type="button"
-              onClick={() => {
-                setOutcome("all");
-                setMarket("all");
-                setMistakesOnly(false);
-                setQuery("");
-              }}
+              onClick={clearFilters}
               className="mt-3 text-[11.5px] font-semibold text-text-primary underline underline-offset-2"
             >
               Reset filters
@@ -264,7 +319,7 @@ export default function TradeJournal() {
 
                 <div className="mt-3 grid grid-cols-4 gap-2 text-[11px] text-text-secondary tabular-nums">
                   <Cell k="Entry" v={t.entry_price} />
-                  <Cell k="Exit" v={t.exit_price} />
+                  <Cell k="Actual Exit" v={t.exit_price} />
                   <Cell k="SL" v={t.stop_loss} />
                   <Cell k="TP" v={t.take_profit} />
                 </div>
@@ -277,7 +332,7 @@ export default function TradeJournal() {
                           key={m}
                           className="rounded-full bg-amber-400/10 ring-1 ring-amber-400/30 px-2 py-0.5 text-[10.5px] font-medium text-amber-300"
                         >
-                          {m}
+                          {prettyMistake(m)}
                         </span>
                       ))
                     ) : (
@@ -315,6 +370,23 @@ export default function TradeJournal() {
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+function FilterGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
+        {label}
+      </p>
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar">{children}</div>
     </div>
   );
 }

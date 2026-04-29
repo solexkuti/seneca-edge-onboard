@@ -45,11 +45,20 @@ import { supabase } from "@/integrations/supabase/client";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
+type ScreenshotTag = "none" | "entry" | "exit" | "htf";
+const SCREENSHOT_TAGS: { id: ScreenshotTag; label: string }[] = [
+  { id: "none", label: "Untagged" },
+  { id: "entry", label: "Entry" },
+  { id: "exit", label: "Exit" },
+  { id: "htf", label: "HTF" },
+];
+const MAX_SCREENSHOTS = 5;
+
 const CLASS_TONE: Record<Classification, { label: string; tone: string; chip: string }> = {
-  clean:  { label: "Clean trade",     tone: "text-emerald-300", chip: "bg-emerald-500/10 ring-emerald-500/20 text-emerald-300" },
-  minor:  { label: "Minor mistake",   tone: "text-amber-300",   chip: "bg-amber-500/10 ring-amber-500/20 text-amber-300" },
-  bad:    { label: "Bad trade",       tone: "text-orange-300",  chip: "bg-orange-500/10 ring-orange-500/20 text-orange-300" },
-  severe: { label: "Severe violation",tone: "text-rose-300",    chip: "bg-rose-500/10 ring-rose-500/20 text-rose-300" },
+  clean:  { label: "Clean execution", tone: "text-emerald-300", chip: "bg-emerald-500/10 ring-emerald-500/20 text-emerald-300" },
+  minor:  { label: "Minor slip",      tone: "text-amber-300",   chip: "bg-amber-500/10 ring-amber-500/20 text-amber-300" },
+  bad:    { label: "Mistake",         tone: "text-orange-300",  chip: "bg-orange-500/10 ring-orange-500/20 text-orange-300" },
+  severe: { label: "Major slip",      tone: "text-rose-300",    chip: "bg-rose-500/10 ring-rose-500/20 text-rose-300" },
 };
 
 const MARKET_OPTIONS: { id: Market; label: string }[] = [
@@ -102,8 +111,7 @@ export default function BehavioralJournalFlow({
   const [mistakes, setMistakes] = useState<MistakeId[]>([]);
   const [confidence, setConfidence] = useState<number | null>(null);
   const [note, setNote] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [files, setFiles] = useState<{ file: File; preview: string; tag: ScreenshotTag }[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackPayload | null>(null);
@@ -140,24 +148,40 @@ export default function BehavioralJournalFlow({
   const canNextFromStep0 =
     asset.trim().length > 0 && Number.isFinite(resultR);
 
-  function pickFile(f: File | null) {
-    if (!f) {
-      setFile(null);
-      setFilePreview(null);
+  function addFiles(list: FileList | null) {
+    if (!list || list.length === 0) return;
+    const incoming = Array.from(list);
+    const room = MAX_SCREENSHOTS - files.length;
+    if (room <= 0) {
+      toast.error(`Maximum ${MAX_SCREENSHOTS} screenshots.`);
       return;
     }
-    if (!f.type.startsWith("image/")) {
-      toast.error("Screenshot must be an image.");
-      return;
+    const next: { file: File; preview: string; tag: ScreenshotTag }[] = [];
+    for (const f of incoming.slice(0, room)) {
+      if (!f.type.startsWith("image/")) {
+        toast.error("Each screenshot must be an image.");
+        continue;
+      }
+      if (f.size > 8 * 1024 * 1024) {
+        toast.error("Each screenshot must be under 8MB.");
+        continue;
+      }
+      const preview = URL.createObjectURL(f);
+      next.push({ file: f, preview, tag: "none" });
     }
-    if (f.size > 8 * 1024 * 1024) {
-      toast.error("Screenshot must be under 8MB.");
-      return;
-    }
-    setFile(f);
-    const reader = new FileReader();
-    reader.onload = (e) => setFilePreview((e.target?.result as string) ?? null);
-    reader.readAsDataURL(f);
+    if (next.length > 0) setFiles((prev) => [...prev, ...next]);
+  }
+
+  function removeFileAt(idx: number) {
+    setFiles((prev) => {
+      const target = prev[idx];
+      if (target) URL.revokeObjectURL(target.preview);
+      return prev.filter((_, i) => i !== idx);
+    });
+  }
+
+  function setFileTag(idx: number, tag: ScreenshotTag) {
+    setFiles((prev) => prev.map((f, i) => (i === idx ? { ...f, tag } : f)));
   }
 
   function toggleMistake(id: MistakeId) {
@@ -176,7 +200,7 @@ export default function BehavioralJournalFlow({
         result_r: resultR,
         mistakes,
         note,
-        screenshotFile: file,
+        screenshotFile: files[0]?.file ?? null,
       });
 
       // 2) Trade Performance log — drives metrics
@@ -267,8 +291,10 @@ export default function BehavioralJournalFlow({
     setMistakes([]);
     setConfidence(null);
     setNote("");
-    setFile(null);
-    setFilePreview(null);
+    setFiles((prev) => {
+      prev.forEach((f) => URL.revokeObjectURL(f.preview));
+      return [];
+    });
     setFeedback(null);
   }
 
@@ -482,12 +508,12 @@ export default function BehavioralJournalFlow({
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
-                  <Field label="Exit">
+                  <Field label="Actual Exit">
                     <input
                       value={exitStr}
                       onChange={(e) => setExitStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="—"
+                      placeholder="Where you closed"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
@@ -496,7 +522,7 @@ export default function BehavioralJournalFlow({
                       value={slStr}
                       onChange={(e) => setSlStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="—"
+                      placeholder="Planned risk"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
@@ -505,7 +531,7 @@ export default function BehavioralJournalFlow({
                       value={tpStr}
                       onChange={(e) => setTpStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="—"
+                      placeholder="Planned target"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
@@ -558,10 +584,10 @@ export default function BehavioralJournalFlow({
               className="mt-8"
             >
               <h1 className="text-[20px] font-semibold tracking-tight text-text-primary">
-                Any rules broken?
+                What slipped in this trade?
               </h1>
               <p className="mt-1.5 text-[12.5px] text-text-secondary">
-                Tap every mistake. None = clean trade. Only the worst severity counts.
+                Select any mistakes that occurred during this trade.
               </p>
 
               <div className="mt-6 grid grid-cols-2 gap-2">
@@ -574,18 +600,14 @@ export default function BehavioralJournalFlow({
                       onClick={() => toggleMistake(m.id)}
                       className={`flex items-start gap-2 rounded-xl px-3.5 py-3 text-left transition active:scale-[0.98] ring-1 ${
                         active
-                          ? m.severe
-                            ? "bg-rose-500/10 ring-rose-500/30 text-rose-200"
-                            : "bg-amber-500/10 ring-amber-500/30 text-amber-200"
+                          ? "bg-primary/15 ring-primary/35 text-text-primary"
                           : "bg-card ring-border text-text-primary hover:bg-text-primary/[0.03]"
                       }`}
                     >
                       <span
                         className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-md ring-1 ${
                           active
-                            ? m.severe
-                              ? "bg-rose-400/30 ring-rose-400/60"
-                              : "bg-amber-400/30 ring-amber-400/60"
+                            ? "bg-primary/30 ring-primary/55"
                             : "ring-border"
                         }`}
                       >
@@ -595,35 +617,17 @@ export default function BehavioralJournalFlow({
                         <p className="text-[12.5px] font-semibold leading-tight">
                           {m.label}
                         </p>
-                        {m.severe && (
-                          <p className="mt-0.5 text-[10px] uppercase tracking-wider text-rose-300/75">
-                            Severe
-                          </p>
-                        )}
                       </div>
                     </button>
                   );
                 })}
               </div>
 
-              <div className="mt-5 rounded-xl bg-card/60 ring-1 ring-border px-4 py-3 flex items-center justify-between">
-                <span className="text-[11px] uppercase tracking-[0.18em] text-text-secondary/70">
-                  Preview
-                </span>
-                <span className="flex items-center gap-3">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1 ${CLASS_TONE[previewClass.classification].chip}`}
-                  >
-                    {CLASS_TONE[previewClass.classification].label}
-                  </span>
-                  <span
-                    className={`text-[16px] font-semibold tabular-nums ${CLASS_TONE[previewClass.classification].tone}`}
-                  >
-                    {previewClass.delta > 0 ? "+" : ""}
-                    {previewClass.delta}
-                  </span>
-                </span>
-              </div>
+              {mistakes.length === 0 && (
+                <p className="mt-5 text-center text-[11.5px] text-text-secondary/70">
+                  No mistakes selected — clean execution.
+                </p>
+              )}
             </motion.section>
           )}
 
@@ -681,40 +685,77 @@ export default function BehavioralJournalFlow({
 
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
-                    Screenshot
+                    Screenshots (optional)
                   </p>
-                  {filePreview ? (
-                    <div className="mt-2 relative rounded-xl overflow-hidden ring-1 ring-border">
-                      <img
-                        src={filePreview}
-                        alt="Trade screenshot"
-                        className="block w-full h-44 object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => pickFile(null)}
-                        className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-background/80 ring-1 ring-border text-text-primary"
-                        aria-label="Remove screenshot"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                  <p className="mt-1 text-[10.5px] text-text-secondary/55">
+                    Up to {MAX_SCREENSHOTS} images. Tap to tag.
+                  </p>
+
+                  {files.length > 0 && (
+                    <div className="mt-3 -mx-1 flex gap-2 overflow-x-auto pb-1 px-1 no-scrollbar">
+                      {files.map((f, i) => (
+                        <div
+                          key={i}
+                          className="relative shrink-0 w-32 rounded-xl overflow-hidden ring-1 ring-border bg-card"
+                        >
+                          <img
+                            src={f.preview}
+                            alt={`Screenshot ${i + 1}`}
+                            className="block h-24 w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFileAt(i)}
+                            className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-background/85 ring-1 ring-border text-text-primary"
+                            aria-label={`Remove screenshot ${i + 1}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                          <div className="flex flex-wrap gap-1 p-1.5">
+                            {SCREENSHOT_TAGS.map((t) => {
+                              const active = f.tag === t.id;
+                              return (
+                                <button
+                                  key={t.id}
+                                  type="button"
+                                  onClick={() => setFileTag(i, t.id)}
+                                  className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 transition ${
+                                    active
+                                      ? "bg-primary/20 ring-primary/40 text-text-primary"
+                                      : "bg-background/40 ring-border text-text-secondary"
+                                  }`}
+                                >
+                                  {t.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ) : (
+                  )}
+
+                  {files.length < MAX_SCREENSHOTS && (
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="mt-2 w-full rounded-xl bg-card ring-1 ring-border px-4 py-5 flex items-center justify-center gap-2 text-text-secondary text-[12.5px] font-medium hover:bg-text-primary/[0.03] transition"
+                      className="mt-3 w-full rounded-xl bg-card ring-1 ring-border px-4 py-4 flex items-center justify-center gap-2 text-text-secondary text-[12.5px] font-medium hover:bg-text-primary/[0.03] transition"
                     >
                       <ImagePlus className="h-4 w-4" />
-                      Add screenshot
+                      {files.length === 0 ? "Add screenshots" : `Add more (${files.length}/${MAX_SCREENSHOTS})`}
                     </button>
                   )}
+
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     className="hidden"
-                    onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+                    onChange={(e) => {
+                      addFiles(e.target.files);
+                      if (e.target) e.target.value = "";
+                    }}
                   />
                 </div>
               </div>
@@ -755,18 +796,20 @@ export default function BehavioralJournalFlow({
                 )}
                 <Row
                   k="Mistakes"
-                  v={mistakes.length === 0 ? "None" : `${mistakes.length}`}
+                  v={
+                    mistakes.length === 0
+                      ? "None"
+                      : mistakes
+                          .map((m) => MISTAKES.find((x) => x.id === m)?.label ?? m)
+                          .join(", ")
+                  }
                 />
-                <Row
-                  k="Classification"
-                  v={CLASS_TONE[previewClass.classification].label}
-                />
-                <Row
-                  k="Score change"
-                  v={`${previewClass.delta > 0 ? "+" : ""}${previewClass.delta}`}
-                  tone={previewClass.delta >= 0 ? "ok" : "risk"}
-                />
-                {file && <Row k="Screenshot" v="Attached" />}
+                {files.length > 0 && (
+                  <Row
+                    k="Screenshots"
+                    v={`${files.length} attached`}
+                  />
+                )}
               </div>
             </motion.section>
           )}
