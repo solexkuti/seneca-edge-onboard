@@ -172,6 +172,19 @@ export default function BehavioralJournalFlow({
 
   const previewClass = useMemo(() => classify(mistakes), [mistakes]);
 
+  // Contextual reinforcement line for clean executions. Looks at prior
+  // clean trades to deliver a calm, stoic acknowledgement — never hype.
+  // Read-only: derived from existing journal data, no scoring impact.
+  const cleanContextLine = useMemo(() => {
+    const priorCleanCount = (priorEntries ?? []).filter(
+      (e) => e.classification === "clean",
+    ).length;
+    const projectedStreak = priorCleanCount + 1; // including this trade
+    if (priorCleanCount === 0) return "Good. This is your baseline.";
+    if (projectedStreak <= 3) return "You're starting to build control.";
+    return "This is consistency forming.";
+  }, [priorEntries]);
+
   const canNextFromStep0 =
     asset.trim().length > 0 && Number.isFinite(resultR);
 
