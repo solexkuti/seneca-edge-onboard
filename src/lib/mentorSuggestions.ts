@@ -206,3 +206,105 @@ export const INTENT_STYLES: Record<MentorIntent, string> = {
   learn: "text-accent-blue",
   help: "text-text-secondary",
 };
+
+// ── High-value intro suggestions (shown only when chat is empty) ──
+// These are entry points into real reflection, not navigation shortcuts.
+const INTRO_BASE: MentorSuggestion[] = [
+  {
+    id: "i-discipline-calc",
+    label: "How is my discipline score calculated?",
+    prompt: "How is my discipline score and streak calculated? Walk me through what moves it.",
+    icon: Scale,
+    intent: "learn",
+  },
+  {
+    id: "i-patterns-hurt",
+    label: "What patterns are hurting my performance?",
+    prompt: "What patterns in my recent trading are hurting my performance the most?",
+    icon: AlertTriangle,
+    intent: "analyze",
+  },
+  {
+    id: "i-use-better",
+    label: "How can I use you more effectively?",
+    prompt: "How can I use you more effectively as my mentor? What should I bring to you, and when?",
+    icon: Sparkles,
+    intent: "help",
+  },
+  {
+    id: "i-breaking-rules",
+    label: "Where am I breaking my rules?",
+    prompt: "Where am I breaking my trading rules most often, and what's the underlying reason?",
+    icon: Shield,
+    intent: "analyze",
+  },
+  {
+    id: "i-focus-now",
+    label: "What should I focus on improving?",
+    prompt: "Looking at everything you know about me, what's the one thing I should focus on improving right now?",
+    icon: Target,
+    intent: "help",
+  },
+  {
+    id: "i-honest-review",
+    label: "Review my recent behavior honestly",
+    prompt: "Review my recent trading behavior honestly. Don't soften it.",
+    icon: LineChart,
+    intent: "analyze",
+  },
+  {
+    id: "i-following-system",
+    label: "Am I actually following my system?",
+    prompt: "Am I actually following my system, or am I drifting from it?",
+    icon: Compass,
+    intent: "analyze",
+  },
+];
+
+export function pickIntroSuggestions(args: {
+  journal: JournalEntry[];
+  disciplineState?: "in_control" | "slipping" | "at_risk" | "locked";
+  disciplineScore?: number | null;
+}): MentorSuggestion[] {
+  const { journal, disciplineState, disciplineScore } = args;
+  const out: MentorSuggestion[] = [];
+
+  // Context-aware lead suggestion
+  if (
+    disciplineState === "at_risk" ||
+    disciplineState === "locked" ||
+    (typeof disciplineScore === "number" && disciplineScore < 60)
+  ) {
+    out.push({
+      id: "i-ctx-discipline-drop",
+      label: "Why is my discipline dropping?",
+      prompt: "My discipline is dropping. What's actually driving it and how do I stop the slide?",
+      icon: AlertTriangle,
+      intent: "urgent",
+    });
+  } else if (disciplineState === "slipping") {
+    out.push({
+      id: "i-ctx-slipping",
+      label: "I'm starting to slip — why?",
+      prompt: "I'm starting to slip. What early signals do you see and what should I correct now?",
+      icon: AlertTriangle,
+      intent: "mindset",
+    });
+  } else if (journal.length >= 3) {
+    out.push({
+      id: "i-ctx-recent",
+      label: "What stands out in my last few trades?",
+      prompt: "What stands out — good or bad — in my last few trades?",
+      icon: LineChart,
+      intent: "analyze",
+    });
+  }
+
+  for (const s of INTRO_BASE) {
+    if (out.length >= 5) break;
+    if (out.find((x) => x.id === s.id)) continue;
+    out.push(s);
+  }
+  return out.slice(0, 5);
+}
+

@@ -10,8 +10,7 @@ import {
   type DbBehaviorPattern,
 } from "@/lib/dbBehaviorPatterns";
 import {
-  detectMentorState,
-  pickMentorSuggestions,
+  pickIntroSuggestions,
   INTENT_STYLES,
 } from "@/lib/mentorSuggestions";
 import { readProfile, summarizeProfile } from "@/lib/onboardingProfile";
@@ -62,48 +61,31 @@ export default function AiMentorChat() {
       id: "intro",
       role: "assistant",
       content:
-        "Hi, I'm Seneca. I'm here to think through trades, mindset, and execution with you. Whatever's on your mind — wins, losses, doubts, or a setup you're unsure about — we can talk it out.",
+        "Hi. I'm Seneca — your trading mentor.\n\nI track how you think, not just what you do.\n\nIf something is off, I'll point it out. If you're aligned, I'll keep you there.\n\nAsk what matters.",
     },
   ]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [recentSuggestionIds, setRecentSuggestionIds] = useState<string[]>([]);
+  // Suggestions disappear permanently once the user types or picks one.
+  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Last user message drives the detected emotional state.
-  const lastUserMessage = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") return messages[i].content;
-    }
-    return "";
-  }, [messages]);
-
-  const detectedState = useMemo(
-    () => detectMentorState(lastUserMessage),
-    [lastUserMessage],
-  );
-
-  // Build suggestions: state-aware + journal-personalized + anti-repeat.
+  // Build intro suggestions once, lightly tailored to discipline state.
   const suggestions = useMemo(
     () =>
-      pickMentorSuggestions({
-        state: detectedState,
+      pickIntroSuggestions({
         journal,
-        recentlyShownIds: recentSuggestionIds,
+        disciplineState: traderState.discipline.state,
+        disciplineScore: traderState.discipline.score,
       }),
-    [detectedState, journal, recentSuggestionIds],
+    [journal, traderState.discipline.state, traderState.discipline.score],
   );
 
-  // Track suggestions we've shown so we don't repeat them every turn.
-  useEffect(() => {
-    if (!suggestions.length) return;
-    setRecentSuggestionIds((prev) => {
-      const ids = suggestions.map((s) => s.id);
-      const merged = [...ids, ...prev.filter((id) => !ids.includes(id))];
-      return merged.slice(0, 8); // remember last ~2 turns
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastUserMessage, detectedState]);
+  const showSuggestions =
+    !suggestionsDismissed &&
+    !streaming &&
+    messages.length === 1 &&
+    draft.trim().length === 0;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -428,11 +410,11 @@ export default function AiMentorChat() {
           </AnimatePresence>
         </div>
 
-        {/* Dynamic state-aware suggestion pills — refreshed after every message */}
-        {!streaming && suggestions.length > 0 ? (
+        {/* Intro suggestions — only when chat is empty; vanish on first interaction */}
+        {showSuggestions && suggestions.length > 0 ? (
           <div className="border-t border-border/60 px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-              {messages.length === 1 ? "Try asking" : "What's next"}
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/80">
+              Try asking
             </p>
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               <AnimatePresence mode="popLayout" initial={false}>
@@ -440,9 +422,12 @@ export default function AiMentorChat() {
                   const Icon = q.icon;
                   return (
                     <motion.button
-                      key={`${detectedState}-${q.id}`}
+                      key={q.id}
                       type="button"
-                      onClick={() => send(q.prompt)}
+                      onClick={() => {
+                        setSuggestionsDismissed(true);
+                        send(q.prompt);
+                      }}
                       disabled={streaming}
                       title={q.prompt}
                       layout
@@ -456,7 +441,7 @@ export default function AiMentorChat() {
                       }}
                       whileHover={{ y: -1.5 }}
                       whileTap={{ scale: 0.96 }}
-                      className="group inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[12px] font-medium text-text-primary ring-1 ring-border shadow-soft transition-colors hover:bg-text-primary/[0.04] hover:ring-brand/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="group inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[12px] font-medium text-text-primary/85 ring-1 ring-border/70 transition-colors hover:bg-text-primary/[0.03] hover:ring-brand/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Icon
                         className={`h-3.5 w-3.5 ${INTENT_STYLES[q.intent]} transition-transform group-hover:scale-110`}
@@ -475,17 +460,22 @@ export default function AiMentorChat() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            setSuggestionsDismissed(true);
             send(draft);
           }}
           className="flex items-center gap-2 border-t border-border/60 bg-card px-3 py-3"
         >
           <input
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (e.target.value.length > 0) setSuggestionsDismissed(true);
+            }}
             placeholder="Ask Seneca…"
             disabled={streaming}
             className="h-10 flex-1 rounded-xl bg-text-primary/[0.04] px-3.5 text-[14px] text-text-primary placeholder:text-text-secondary/70 ring-1 ring-border focus:outline-none focus:ring-brand/40 disabled:opacity-60"
           />
+
           <button
             type="submit"
             disabled={!draft.trim() || streaming}
