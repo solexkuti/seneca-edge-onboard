@@ -9,9 +9,6 @@ verify_jwt = false
 [functions.generate-strategy-output]
 verify_jwt = false
 
-[functions.export-strategy-pdf]
-verify_jwt = false
-
 [functions.validate-refinement-answer]
 verify_jwt = false
 
