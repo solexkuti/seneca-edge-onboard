@@ -187,7 +187,7 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
             <div
               aria-hidden
               className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent ${
-                ds.tone === "ok" ? "via-emerald-400/50" : ds.tone === "drift" ? "via-amber-400/50" : ds.tone === "warn" ? "via-orange-400/50" : "via-rose-400/50"
+                ds.tone === "ok" ? "via-gold/60" : ds.tone === "drift" ? "via-amber-400/50" : ds.tone === "warn" ? "via-orange-400/50" : "via-rose-400/50"
               } to-transparent`}
             />
             <div className="px-6 pt-6 pb-5">
