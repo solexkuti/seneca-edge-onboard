@@ -599,9 +599,9 @@ export default function AiMentorChat() {
         {!streaming ? (
           <div className="border-t border-border/60 px-4 py-2.5">
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-              {QUICK_PROMPTS.map((q) => (
+              {quickPrompts.map((q) => (
                 <button
-                  key={q.label}
+                  key={q.id}
                   type="button"
                   onClick={() => {
                     setSuggestionsDismissed(true);
