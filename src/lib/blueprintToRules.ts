@@ -15,6 +15,7 @@ const CATEGORY_MAP: Record<keyof StructuredRules, RuleType> = {
   risk: "risk",
   behavior: "behavior",
   context: "behavior", // contextual rules count as behavioral discipline
+  invalidation: "exit", // invalidation = "stop trading this idea" → exit gate
 };
 
 /**

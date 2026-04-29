@@ -11,6 +11,8 @@ export type StructuredRules = {
   risk: string[];
   behavior: string[];
   context: string[];
+  /** What conditions make this setup invalid — required for a complete strategy. */
+  invalidation?: string[];
 };
 
 export type AmbiguityFlag = {
@@ -74,6 +76,7 @@ export type BuilderStep =
   | "raw"
   | "tiers"
   | "parse"
+  | "interrogate"
   | "refine"
   | "output"
   | "export"
@@ -85,6 +88,7 @@ export const EMPTY_RULES: StructuredRules = {
   risk: [],
   behavior: [],
   context: [],
+  invalidation: [],
 };
 
 export async function listBlueprints(): Promise<StrategyBlueprint[]> {

@@ -37,6 +37,9 @@ import {
   ShieldAlert,
   FileText,
   FileDown,
+  GitMerge,
+  HelpCircle,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,6 +60,12 @@ import {
 } from "@/lib/dbStrategyBlueprints";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadPdf, downloadTxt } from "@/lib/strategyExport";
+import {
+  interrogate,
+  readRules,
+  type IntelligenceReport,
+  type RuleCategoryV2,
+} from "@/lib/strategyIntelligence";
 
 const ACCOUNT_OPTIONS: { value: AccountType; label: string; hint: string }[] = [
   { value: "prop", label: "Prop firm", hint: "Strict drawdown rules" },
@@ -70,6 +79,7 @@ type StepKey =
   | "raw"
   | "tiers"
   | "parse"
+  | "interrogate"
   | "refine"
   | "output"
   | "export"
@@ -81,6 +91,7 @@ const STEPS: { key: StepKey; label: string }[] = [
   { key: "raw", label: "Strategy" },
   { key: "tiers", label: "Tiers" },
   { key: "parse", label: "Parse" },
+  { key: "interrogate", label: "Interrogate" },
   { key: "refine", label: "Refine" },
   { key: "output", label: "Output" },
   { key: "export", label: "Export" },
@@ -256,6 +267,11 @@ export default function StrategyBuilder({
     );
   }
 
+  // Soft re-validation: run deterministic interrogation whenever rules change.
+  // This drives the warning banner shown on every step, including for opened
+  // locked blueprints (non-blocking — purely informational).
+  const report = useMemo<IntelligenceReport>(() => interrogate(bp), [bp]);
+
   return (
     <Shell>
       <div className="mx-auto w-full max-w-[640px] px-5 pt-5 pb-24">
@@ -294,6 +310,15 @@ export default function StrategyBuilder({
           )}
         </div>
 
+        {/* Soft re-validation banner — non-blocking. Hidden on the dedicated
+           interrogate step (the step itself is the deep-dive). */}
+        {step.key !== "interrogate" && !report.clean && (bp.structured_rules?.entry?.length ?? 0) > 0 && (
+          <ReValidateBanner
+            report={report}
+            onJump={() => void goToStep(STEPS.findIndex((s) => s.key === "interrogate"))}
+          />
+        )}
+
         {/* Step body */}
         <div className="mt-3 min-h-[420px]">
           <AnimatePresence mode="wait">
@@ -318,6 +343,9 @@ export default function StrategyBuilder({
               {step.key === "tiers" && <StepTiers bp={bp} patch={patch} />}
               {step.key === "parse" && (
                 <StepParse bp={bp} patch={patch} setBusy={setBusy} busy={busy} />
+              )}
+              {step.key === "interrogate" && (
+                <StepInterrogate bp={bp} patch={patch} report={report} />
               )}
               {step.key === "refine" && (
                 <StepRefine bp={bp} patch={patch} setBusy={setBusy} busy={busy} />
@@ -1396,6 +1424,337 @@ function Question({ title, sub }: { title: string; sub?: string }) {
       <h2 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h2>
       {sub && <p className="mt-2 text-sm text-muted-foreground">{sub}</p>}
     </div>
+  );
+}
+
+/* -------------------- Soft re-validation banner --------------------- */
+function ReValidateBanner({
+  report,
+  onJump,
+}: {
+  report: IntelligenceReport;
+  onJump: () => void;
+}) {
+  const issueCount =
+    report.contradictions.length +
+    report.vague.length +
+    report.missing.length +
+    report.overlaps.length;
+  if (issueCount === 0) return null;
+  const tone =
+    report.contradictions.length > 0
+      ? "border-amber-500/40 bg-amber-500/5"
+      : "border-primary/30 bg-primary/5";
+  return (
+    <button
+      type="button"
+      onClick={onJump}
+      className={`mt-4 flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left text-sm transition hover:bg-card ${tone}`}
+    >
+      <div className="flex items-center gap-2.5">
+        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+        <div>
+          <div className="font-medium text-foreground">
+            {issueCount} thing{issueCount === 1 ? "" : "s"} to tighten
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            Score {report.score.total} · Tier {report.score.tier} · Tap to review
+          </div>
+        </div>
+      </div>
+      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+    </button>
+  );
+}
+
+/* ----------------------- Step: Interrogate -------------------------- */
+function StepInterrogate({
+  bp,
+  patch,
+  report,
+}: {
+  bp: StrategyBlueprint;
+  patch: (p: Partial<StrategyBlueprint>) => Promise<void>;
+  report: IntelligenceReport;
+}) {
+  const rules = readRules(bp);
+
+  const removeRule = async (cat: RuleCategoryV2, rule: string) => {
+    const list = (rules[cat] ?? []).filter((r) => r !== rule);
+    await patch({
+      structured_rules: { ...rules, [cat]: list } as StructuredRules,
+    });
+  };
+
+  const addRule = async (cat: RuleCategoryV2, rule: string) => {
+    const list = [...(rules[cat] ?? []), rule];
+    await patch({
+      structured_rules: { ...rules, [cat]: list } as StructuredRules,
+    });
+  };
+
+  const replaceRules = async (cat: RuleCategoryV2, oldRules: string[], merged: string) => {
+    const remaining = (rules[cat] ?? []).filter((r) => !oldRules.includes(r));
+    await patch({
+      structured_rules: { ...rules, [cat]: [...remaining, merged] } as StructuredRules,
+    });
+  };
+
+  if (report.clean) {
+    return (
+      <div className="space-y-6">
+        <Question
+          title="Your strategy holds up"
+          sub="No contradictions. No vague rules. Nothing missing. Move on."
+        />
+        <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+          <div className="flex items-center gap-2 text-sm text-foreground">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            Clean. Tier <span className="font-semibold">{report.score.tier}</span> · Score {report.score.total}.
+          </div>
+          <ScoreBars report={report} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Question
+        title="Pressure-test your strategy"
+        sub="I scanned your rules. Here's what doesn't hold up."
+      />
+
+      {/* Live score */}
+      <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+        <div className="flex items-baseline justify-between">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Completeness
+          </div>
+          <div className="text-sm font-semibold text-foreground">
+            {report.score.total} · {report.score.tier}
+          </div>
+        </div>
+        <ScoreBars report={report} />
+      </div>
+
+      {/* Contradictions */}
+      {report.contradictions.map((c) => (
+        <div
+          key={c.id}
+          className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4"
+        >
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="h-3.5 w-3.5" /> Contradiction · {c.category}
+          </div>
+          <p className="mt-1.5 text-sm text-foreground">{c.message}</p>
+          <ul className="mt-2 space-y-1.5">
+            {c.conflicting.map((r, i) => (
+              <li
+                key={i}
+                className="flex items-start justify-between gap-2 rounded-lg bg-card/60 px-3 py-2 text-[13px] text-foreground/90 ring-1 ring-border/60"
+              >
+                <span className="flex-1">{r}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    for (const cat of ["entry", "context", "behavior", "confirmation", "risk"] as const) {
+                      if ((rules[cat] ?? []).includes(r)) {
+                        void removeRule(cat, r);
+                        return;
+                      }
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3 w-3" /> Drop
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+
+      {/* Missing */}
+      {report.missing.map((m) => (
+        <MissingPrompt
+          key={m.category}
+          area={m}
+          onSubmit={(text) => addRule(m.category, text)}
+        />
+      ))}
+
+      {/* Vague rules */}
+      {report.vague.length > 0 && (
+        <div className="rounded-xl bg-card p-4 ring-1 ring-border shadow-soft">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <HelpCircle className="h-3.5 w-3.5" /> Vague rules
+          </div>
+          <ul className="mt-2 space-y-2.5">
+            {report.vague.map((v, i) => (
+              <VagueRuleRow
+                key={i}
+                v={v}
+                onReplace={(newText) => {
+                  const list = (rules[v.category] ?? []).map((r) => (r === v.rule ? newText : r));
+                  void patch({
+                    structured_rules: { ...rules, [v.category]: list } as StructuredRules,
+                  });
+                }}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Overlaps */}
+      {report.overlaps.map((o, i) => (
+        <div
+          key={i}
+          className="rounded-xl border border-primary/30 bg-primary/5 p-4"
+        >
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+            <GitMerge className="h-3.5 w-3.5" /> Overlap · {o.category}
+          </div>
+          <p className="mt-1.5 text-sm text-foreground">
+            These look like the same idea. Merge them?
+          </p>
+          <ul className="mt-2 space-y-1">
+            {o.rules.map((r, j) => (
+              <li key={j} className="text-[12.5px] text-foreground/80">
+                · {r}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg bg-card px-3 py-2 ring-1 ring-border">
+            <span className="text-[13px] text-foreground">→ {o.merged}</span>
+            <button
+              type="button"
+              onClick={() => void replaceRules(o.category, o.rules, o.merged)}
+              className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground"
+            >
+              Merge
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ScoreBars({ report }: { report: IntelligenceReport }) {
+  const cats: RuleCategoryV2[] = ["entry", "confirmation", "context", "risk", "behavior"];
+  return (
+    <div className="mt-3 space-y-1.5">
+      {cats.map((c) => {
+        const p = report.score.perCategory[c];
+        const pct = Math.round(p.pct * 100);
+        return (
+          <div key={c} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="w-20 capitalize">{c}</span>
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border/60">
+              <div
+                className="h-full bg-primary"
+                style={{ width: p.total > 0 ? `${pct}%` : "0%" }}
+              />
+            </div>
+            <span className="w-10 text-right tabular-nums">{p.total > 0 ? `${pct}%` : "—"}</span>
+          </div>
+        );
+      })}
+      {!report.score.hasInvalidation && (
+        <div className="mt-2 text-[11px] text-amber-600 dark:text-amber-400">
+          No invalidation rules — capping tier at B+.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MissingPrompt({
+  area,
+  onSubmit,
+}: {
+  area: { category: RuleCategoryV2; prompt: string };
+  onSubmit: (text: string) => void | Promise<void>;
+}) {
+  const [draft, setDraft] = useState("");
+  return (
+    <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
+      <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-400">
+        <AlertTriangle className="h-3.5 w-3.5" /> Missing · {area.category}
+      </div>
+      <p className="mt-1.5 text-sm text-foreground">{area.prompt}</p>
+      <div className="mt-2.5 flex items-center gap-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Type the rule…"
+          className="flex-1 rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+        <button
+          type="button"
+          disabled={!draft.trim()}
+          onClick={() => {
+            void onSubmit(draft.trim());
+            setDraft("");
+          }}
+          className="rounded-md bg-primary px-3 py-2 text-[12px] font-medium text-primary-foreground disabled:opacity-40"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function VagueRuleRow({
+  v,
+  onReplace,
+}: {
+  v: { category: RuleCategoryV2; rule: string; trigger: string; suggestion: string };
+  onReplace: (next: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(v.rule);
+  return (
+    <li className="rounded-lg bg-background/60 px-3 py-2.5 ring-1 ring-border/60">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          {v.category} · "{v.trigger}"
+        </span>
+        <button
+          type="button"
+          onClick={() => setEditing((e) => !e)}
+          className="text-[11px] text-primary hover:underline"
+        >
+          {editing ? "Cancel" : "Tighten"}
+        </button>
+      </div>
+      <p className="mt-1 text-[13px] text-foreground">{v.rule}</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">{v.suggestion}</p>
+      {editing && (
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            className="flex-1 rounded-lg bg-card px-3 py-1.5 text-sm ring-1 ring-border focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (draft.trim() && draft !== v.rule) {
+                onReplace(draft.trim());
+              }
+              setEditing(false);
+            }}
+            className="rounded-md bg-primary px-2.5 py-1.5 text-[11px] font-medium text-primary-foreground"
+          >
+            Save
+          </button>
+        </div>
+      )}
+    </li>
   );
 }
 
