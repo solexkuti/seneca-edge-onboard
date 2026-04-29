@@ -1,16 +1,50 @@
 // MistakeBreakdown — groups journal entries by mistake type and shows
 // count, win rate, and avg R for each. Read-only insight surface.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   MISTAKES,
   MISTAKE_LABEL,
   SEVERE_IDS,
   type MistakeId,
 } from "@/lib/behavioralJournal";
+
+type PresetId = "7d" | "30d" | "90d" | "all" | "custom";
+const PRESETS: { id: Exclude<PresetId, "custom">; label: string; days: number | null }[] = [
+  { id: "7d", label: "7 days", days: 7 },
+  { id: "30d", label: "30 days", days: 30 },
+  { id: "90d", label: "90 days", days: 90 },
+  { id: "all", label: "All time", days: null },
+];
+
+function startOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+function endOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+}
+function daysAgo(n: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return startOfDay(d);
+}
 
 type Row = {
   id: MistakeId | "__clean";
