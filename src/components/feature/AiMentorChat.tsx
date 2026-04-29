@@ -68,29 +68,30 @@ export default function AiMentorChat() {
     };
   }, [rows.length]);
 
-  // Dynamic intro grounded in the user's real behavioral data.
+  // Calm, present intro grounded in the user's real behavioral data.
+  // No enforcement, no warnings — just observation when something stands out.
   const introContent = useMemo(() => {
     const last = behavioralEntries[0];
     const breakStreak = last?.break_streak_after ?? 0;
     const cleanStreak = last?.clean_streak_after ?? 0;
     const topMistake = mistakeFrequency(behavioralEntries)[0];
     if (behavioralEntries.length === 0) {
-      return "I'm Seneca. Behavior-aware mentor.\n\nLog one trade and I'll tell you what's actually breaking your edge.";
+      return "I'm here when you start.\n\nLog your first trade, and I'll help you understand how you actually trade — not how you think you trade.";
     }
-    if (last?.classification === "severe") {
-      return `Last trade was a severe break — ${last.mistakes.map((m) => MISTAKE_LABEL[m]).join(", ") || "rule violation"}.\n\nDiscipline is at ${behavioralScore}. Don't re-enter on tilt. Let's reset.`;
+    if (breakStreak >= 3 && topMistake) {
+      return `I'm noticing a pattern in your last ${breakStreak} trades — ${topMistake.label.toLowerCase()} keeps showing up.\n\nWant to look at it together?`;
     }
     if (breakStreak >= 2) {
-      return `You've broken rules in your last ${breakStreak} trades.\n\n${topMistake ? `Your issue is ${topMistake.label.toLowerCase()}, not entries.` : "The pattern is in your execution, not your setups."}\n\nWhere do you want to start?`;
+      return `Two recent trades broke the same kind of rule.\n\nNot a problem yet — but worth a closer look. Want me to break it down?`;
     }
     if (cleanStreak >= 3) {
-      return `${cleanStreak} clean trades in a row. Score ${behavioralScore}.\n\nThis is the version of you that wins. What do you want to lock in?`;
+      return `${cleanStreak} clean trades in a row.\n\nThis is what your edge looks like when you let it work. Anything you want to lock in?`;
     }
-    if (topMistake && topMistake.count >= 2) {
-      return `Score ${behavioralScore}. Your most repeated mistake: ${topMistake.label.toLowerCase()} (${topMistake.count}x).\n\nWant to work on that?`;
+    if (topMistake && topMistake.count >= 3) {
+      return `One thing keeps repeating across your last trades: ${topMistake.label.toLowerCase()} (${topMistake.count}x).\n\nWant to dig into it?`;
     }
-    return `Score ${behavioralScore}. Behavior is in range.\n\nAsk me anything about your last trades.`;
-  }, [behavioralEntries, behavioralScore]);
+    return `Behavior is steady. Ask me anything about your last trades, or tap "Review my trades".`;
+  }, [behavioralEntries]);
 
   const [messages, setMessages] = useState<Msg[]>([
     {
