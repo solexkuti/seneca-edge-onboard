@@ -48,6 +48,11 @@ export type TradeLog = {
   note: string | null;
   screenshot_url: string | null;
 
+  // Data quality — "low" is set by the price-correction engine when the user
+  // submitted a trade after rejecting a flagged-input suggestion. Default
+  // "normal" for all clean submissions.
+  data_quality: "normal" | "low";
+
   // System
   created_at: string;
   updated_at: string;
