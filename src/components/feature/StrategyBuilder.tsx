@@ -992,6 +992,11 @@ function StepParse({
             {hasRules ? "Refine again" : "Refine with Seneca"}
           </button>
 
+          {/* ACTIVE INTERROGATION — surface AI follow-up questions inline.
+             Each question must be answered or explicitly skipped before
+             advancing. This is the "Parse → Interrogate" handshake. */}
+          <ActiveInterrogationPanel bp={bp} patch={patch} />
+
           {hasRules && (
             <div className="space-y-3">
               {(Object.keys(EMPTY_RULES) as Array<keyof StructuredRules>).map((k) => {
