@@ -402,3 +402,38 @@ export default function PerformanceTrends({
     </div>
   );
 }
+
+function ToggleSeg({
+  active,
+  onClick,
+  label,
+  ariaLabel,
+  disabled,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  ariaLabel: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      aria-label={ariaLabel}
+      onClick={onClick}
+      disabled={disabled}
+      className={`relative h-6 min-w-7 rounded-full px-2 text-[10.5px] font-semibold tabular-nums transition ${
+        active
+          ? "bg-primary/20 text-text-primary ring-1 ring-primary/35"
+          : disabled
+            ? "text-text-secondary/35 cursor-not-allowed"
+            : "text-text-secondary/75 hover:text-text-primary"
+      }`}
+      title={disabled ? "Log $ PnL to enable" : undefined}
+    >
+      {label}
+    </button>
+  );
+}
