@@ -523,6 +523,16 @@ export default function BehavioralJournalFlow({
               </span>
             </div>
 
+            {/* Outcome × Discipline qualitative feedback */}
+            <div className={`mt-5 rounded-xl bg-gradient-to-b ${ofbCls} ring-1 px-4 py-3.5`}>
+              <p className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${ofb.tone === "gold" ? "text-primary" : ofb.tone === "calm" ? "text-emerald-300" : ofb.tone === "warn" ? "text-amber-300" : "text-rose-300"}`}>
+                {ofb.title}
+              </p>
+              <p className="mt-1 text-[13.5px] leading-snug text-text-primary">
+                {ofb.body}
+              </p>
+            </div>
+
             <p className="mt-6 text-[12px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
               Reason
             </p>
