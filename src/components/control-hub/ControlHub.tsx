@@ -12,6 +12,7 @@ import {
   Gamepad2,
   Plus,
   BookOpen,
+  Pencil,
 } from "lucide-react";
 import { useJournal } from "@/hooks/useJournal";
 import { computeDiscipline, type JournalEntry } from "@/lib/tradingJournal";
@@ -21,6 +22,8 @@ import {
 } from "@/lib/behaviorPattern";
 import IntelligencePanel from "./IntelligencePanel";
 import TradeLockBadge from "@/components/feature/TradeLockBadge";
+import { useTraderState } from "@/hooks/useTraderState";
+import type { StrategyBlueprint } from "@/lib/dbStrategyBlueprints";
 
 // Eyebrow label by pattern kind. Reflects the actual signal, not generic copy.
 const PATTERN_LABEL: Record<
