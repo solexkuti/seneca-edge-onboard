@@ -524,6 +524,7 @@ export default function AiMentorChat() {
       ...(dailyChecklistPayload ? { dailyChecklist: dailyChecklistPayload } : {}),
       ...(traderStatePayload ? { traderState: traderStatePayload } : {}),
       ...(behavioralPayload ? { behavioralJournal: behavioralPayload } : {}),
+      ...(behaviorPatternsPayload ? { behaviorPatterns: behaviorPatternsPayload } : {}),
       ...(performancePayload ? { performance: performancePayload } : {}),
       turnHint: intentHint,
     };
