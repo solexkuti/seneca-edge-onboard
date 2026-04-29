@@ -75,11 +75,16 @@ type Step = 0 | 1 | 2 | 3;
 type FeedbackPayload = {
   classification: Classification;
   reasonLabel: string;
-  delta: number;
-  scoreBefore: number;
+  /** Per-trade score (0..100) for this trade. */
+  perTradeScore: number;
+  /** Overall AVERAGE score before this trade — null when this was the first trade. */
+  scoreBefore: number | null;
+  /** Overall AVERAGE score after this trade. */
   scoreAfter: number;
   cleanStreakAfter: number;
   breakStreakAfter: number;
+  /** Per-mistake breakdown shown in the feedback card. */
+  breakdown: { id: string; label: string; penalty: number }[];
 };
 
 function parseNum(v: string): number | null {
@@ -194,13 +199,17 @@ export default function BehavioralJournalFlow({
     if (!canNextFromStep0 || submitting) return;
     setSubmitting(true);
     try {
-      // 1) Behavioral journal — drives discipline_score
+      const allFiles = files.map((f) => f.file);
+      const [primary, ...extras] = allFiles;
+
+      // 1) Behavioral journal — drives discipline_score (now an average).
       const r = await logTrade({
         asset,
         result_r: resultR,
         mistakes,
         note,
-        screenshotFile: files[0]?.file ?? null,
+        screenshotFile: primary ?? null,
+        extraScreenshotFiles: extras,
       });
 
       // 2) Trade Performance log — drives metrics
@@ -212,15 +221,14 @@ export default function BehavioralJournalFlow({
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
       const session_tag = sessionTagFor(now);
 
-      // Use realized R from exit when entry/exit/SL are present, otherwise the
-      // value the user typed. RR sign matches outcome.
       const finalR = Number.isFinite(autoRealizedR ?? NaN)
         ? (autoRealizedR as number)
         : resultR;
 
       const pnl_percent = derivePnlPercent(finalR, risk);
 
-      // Reuse the screenshot path saved by behavioralJournal as the public URL.
+      // Reuse the primary screenshot path saved by behavioralJournal as the
+      // public URL for trade_logs.
       let screenshot_url: string | null = null;
       if (r.entry.screenshot_path) {
         const { data } = await supabase.storage
@@ -255,18 +263,18 @@ export default function BehavioralJournalFlow({
           screenshot_url,
         });
       } catch (perfErr) {
-        // Performance row is best-effort; never break the behavioral flow.
         console.warn("[trade_logs] insert failed:", perfErr);
       }
 
       setFeedback({
         classification: r.classification,
         reasonLabel: r.reasonLabel,
-        delta: r.delta,
+        perTradeScore: r.perTradeScore,
         scoreBefore: r.scoreBefore,
         scoreAfter: r.scoreAfter,
         cleanStreakAfter: r.cleanStreakAfter,
         breakStreakAfter: r.breakStreakAfter,
+        breakdown: previewClass.breakdown,
       });
       onLogged?.();
     } catch (err) {
@@ -330,34 +338,59 @@ export default function BehavioralJournalFlow({
               {feedback.reasonLabel}
             </p>
 
+            {/* Per-trade score (the strict number, never inflated) */}
             <div className="mt-6 flex items-end gap-3">
               <span
                 className={`text-[44px] font-semibold leading-none tabular-nums ${ct.tone}`}
               >
-                {feedback.delta > 0 ? "+" : ""}
-                {feedback.delta}
+                {feedback.perTradeScore}
               </span>
               <span className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
-                Discipline change
+                / 100 · trade score
               </span>
             </div>
 
+            {/* Per-mistake breakdown — every mistake shown equally, no severity hint */}
+            {feedback.breakdown.length > 0 && (
+              <ul className="mt-4 space-y-1.5">
+                {feedback.breakdown.map((b) => (
+                  <li
+                    key={b.id}
+                    className="flex items-center justify-between rounded-lg bg-background/40 px-3 py-2 text-[12px] ring-1 ring-border/60"
+                  >
+                    <span className="text-text-primary/85">{b.label}</span>
+                    <span className="font-semibold tabular-nums text-rose-300">
+                      −{b.penalty}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Overall (avg) score block */}
             <div className="mt-6 rounded-xl bg-background/60 ring-1 ring-border px-4 py-3.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] uppercase tracking-[0.18em] text-text-secondary/70">
-                  Score
+                  Overall score
                 </span>
                 <span className="text-[11px] uppercase tracking-[0.18em] text-text-secondary/60">
                   {ds.label}
                 </span>
               </div>
               <div className="mt-2 flex items-baseline gap-3">
-                <span className="text-[22px] font-semibold tabular-nums text-text-secondary/70 line-through decoration-text-secondary/40">
-                  {feedback.scoreBefore}
-                </span>
-                <ArrowRight className="h-4 w-4 text-text-secondary/60" />
+                {feedback.scoreBefore != null && (
+                  <>
+                    <span className="text-[22px] font-semibold tabular-nums text-text-secondary/70">
+                      {feedback.scoreBefore}
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-text-secondary/60" />
+                  </>
+                )}
                 <span className={`text-[28px] font-semibold tabular-nums ${ct.tone}`}>
                   {feedback.scoreAfter}
+                </span>
+                <span className="text-[11px] text-text-secondary/55">
+                  avg of all trades
                 </span>
               </div>
             </div>

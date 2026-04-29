@@ -159,7 +159,11 @@ export function buildQuickPrompts(
   }
 
   const hi = tradeCount >= 20;
-  const candidates: QuickPrompt[] = [REVIEW_LAST, SPOT_PATTERNS, EDUCATION];
+  // Spec: removed duplicate "Review my last trade" / "Review my trades".
+  // Core staples: pattern spotting + education.
+  const candidates: QuickPrompt[] = [SPOT_PATTERNS, EDUCATION];
+  // Silence unused-import warning — REVIEW_LAST kept for potential future use.
+  void REVIEW_LAST;
 
   if (typeof disciplineScore === "number") {
     candidates.push(disciplinePrompt(disciplineScore, hi));

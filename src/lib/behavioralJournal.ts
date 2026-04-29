@@ -1,20 +1,34 @@
-// Behavioral Journal — the new source of truth for trade behavior.
+// Behavioral Journal — deterministic per-trade discipline scoring engine.
 //
-// Single deterministic system:
-//   - Each user has one running discipline_score (0..100), starts at 100.
-//   - Each logged trade applies a fixed delta:
-//       clean   → +2
-//       minor   → -5  (1 mistake)
-//       bad     → -10 (2+ mistakes)
-//       severe  → -15 (any severe mistake — overrides everything)
-//   - Severe mistakes (overleveraging, revenge, no_setup, ignored_sl)
-//     ALWAYS classify as severe regardless of count.
-//   - Multiple mistakes never stack; the worst severity wins.
-//   - Streaks: clean_streak += 1 on clean (else 0); break_streak += 1 on
-//     non-clean (else 0).
+// SCORING MODEL (strict, no inflation, hard-capped):
+//   • Each trade starts at 100.
+//   • Each selected mistake subtracts a fixed penalty.
+//   • Penalties stack across multiple mistakes BUT total penalty is capped
+//     at MAX_PENALTY (80). So a trade can never score below MIN_TRADE_SCORE (20).
+//   • A clean trade (no mistakes) = 100.
+//   • Per-trade score = max(MIN_TRADE_SCORE, 100 - capped_penalty).
 //
-// Pure logic + Supabase IO for the journal_entries table and
-// profiles.discipline_score.
+//   Overall discipline score = simple average of per-trade scores across all
+//   logged trades. NEVER exceeds 100. With 0 trades → null ("inactive").
+//
+// Penalty weights:
+//   Severe (-25):   overleveraged, revenge_trade, no_setup, ignored_sl
+//   Moderate(-15):  broke_risk_rule, oversized
+//   Moderate(-10):  moved_sl, fomo
+//   Minor (-5):     early_entry, late_entry
+//
+// Classification (drives feedback tone, not scoring):
+//   • clean   — 0 mistakes
+//   • minor   — total raw penalty ≤ 10
+//   • bad     — total raw penalty 11..40 and no severe-tier mistake
+//   • severe  — any severe-tier mistake OR total raw penalty > 40
+//
+// Storage mapping (keeps existing journal_entries columns):
+//   • score_before = 100 (per-trade base — kept for back-compat)
+//   • score_after  = per-trade score (0..100)
+//   • score_delta  = score_after - 100 (≤ 0)
+//   • profiles.discipline_score = current rolling AVERAGE of score_after
+//     across all entries. We re-compute on every insert.
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -31,25 +45,31 @@ export type MistakeId =
   | "broke_risk_rule";
 
 export type Classification = "clean" | "minor" | "bad" | "severe";
-export type DisciplineState = "controlled" | "drift" | "unstable" | "out_of_control";
+export type DisciplineState = "controlled" | "drift" | "unstable" | "out_of_control" | "inactive";
 
 export type MistakeDef = {
   id: MistakeId;
   label: string;
   severe: boolean;
+  /** Penalty subtracted from the per-trade base of 100. Always positive. */
+  penalty: number;
 };
 
 export const MISTAKES: MistakeDef[] = [
-  { id: "overleveraged",   label: "Overleveraged",          severe: true  },
-  { id: "revenge_trade",   label: "Revenge trade",          severe: true  },
-  { id: "no_setup",        label: "Entered without setup",  severe: true  },
-  { id: "ignored_sl",      label: "Ignored stop loss",      severe: true  },
-  { id: "early_entry",     label: "Early entry",            severe: false },
-  { id: "late_entry",      label: "Late entry",             severe: false },
-  { id: "moved_sl",        label: "Moved stop loss",        severe: false },
-  { id: "oversized",       label: "Oversized position",     severe: false },
-  { id: "fomo",            label: "FOMO entry",             severe: false },
-  { id: "broke_risk_rule", label: "Broke risk rule",        severe: false },
+  // Severe (-25)
+  { id: "overleveraged",   label: "Overleveraged",          severe: true,  penalty: 25 },
+  { id: "revenge_trade",   label: "Revenge trade",          severe: true,  penalty: 25 },
+  { id: "no_setup",        label: "Entered without setup",  severe: true,  penalty: 25 },
+  { id: "ignored_sl",      label: "Ignored stop loss",      severe: true,  penalty: 25 },
+  // Moderate (-15)
+  { id: "broke_risk_rule", label: "Broke risk rule",        severe: false, penalty: 15 },
+  { id: "oversized",       label: "Oversized position",     severe: false, penalty: 15 },
+  // Moderate (-10)
+  { id: "moved_sl",        label: "Moved stop loss",        severe: false, penalty: 10 },
+  { id: "fomo",            label: "FOMO entry",             severe: false, penalty: 10 },
+  // Minor (-5)
+  { id: "early_entry",     label: "Early entry",            severe: false, penalty: 5  },
+  { id: "late_entry",      label: "Late entry",             severe: false, penalty: 5  },
 ];
 
 export const MISTAKE_LABEL: Record<MistakeId, string> = MISTAKES.reduce(
@@ -60,46 +80,77 @@ export const MISTAKE_LABEL: Record<MistakeId, string> = MISTAKES.reduce(
   {} as Record<MistakeId, string>,
 );
 
+export const MISTAKE_PENALTY: Record<MistakeId, number> = MISTAKES.reduce(
+  (acc, m) => {
+    acc[m.id] = m.penalty;
+    return acc;
+  },
+  {} as Record<MistakeId, number>,
+);
+
 export const SEVERE_IDS: Set<MistakeId> = new Set(
   MISTAKES.filter((m) => m.severe).map((m) => m.id),
 );
 
-export const CLEAN_DELTA = 2;
-export const MINOR_DELTA = -5;
-export const BAD_DELTA = -10;
-export const SEVERE_DELTA = -15;
+export const PER_TRADE_BASE = 100;
+export const MAX_PENALTY = 80;
+export const MIN_TRADE_SCORE = 20;
 export const SCORE_MIN = 0;
 export const SCORE_MAX = 100;
-export const SCORE_INIT = 100;
 
-export function classify(mistakes: MistakeId[]): {
+export type ClassifyResult = {
   classification: Classification;
-  delta: number;
+  /** Raw sum of penalties before capping. */
+  rawPenalty: number;
+  /** Penalty actually applied (rawPenalty capped at MAX_PENALTY). */
+  appliedPenalty: number;
+  /** Final per-trade score (0..100). */
+  perTradeScore: number;
+  /** Negative or zero — perTradeScore - 100. Kept for storage compatibility. */
+  scoreDelta: number;
+  /** Short human label used in feedback cards. */
   reasonLabel: string;
-} {
-  const hasSevere = mistakes.some((m) => SEVERE_IDS.has(m));
-  if (hasSevere) {
-    const first = mistakes.find((m) => SEVERE_IDS.has(m))!;
-    return {
-      classification: "severe",
-      delta: SEVERE_DELTA,
-      reasonLabel: MISTAKE_LABEL[first],
-    };
-  }
+  /** Per-mistake breakdown for transparent feedback. */
+  breakdown: { id: MistakeId; label: string; penalty: number }[];
+};
+
+export function classify(mistakes: MistakeId[]): ClassifyResult {
+  const breakdown = mistakes.map((id) => ({
+    id,
+    label: MISTAKE_LABEL[id],
+    penalty: MISTAKE_PENALTY[id] ?? 0,
+  }));
+  const rawPenalty = breakdown.reduce((sum, b) => sum + b.penalty, 0);
+  const appliedPenalty = Math.min(MAX_PENALTY, rawPenalty);
+  const perTradeScore = Math.max(MIN_TRADE_SCORE, PER_TRADE_BASE - appliedPenalty);
+  const scoreDelta = perTradeScore - PER_TRADE_BASE;
+
+  let classification: Classification;
+  let reasonLabel: string;
+
   if (mistakes.length === 0) {
-    return { classification: "clean", delta: CLEAN_DELTA, reasonLabel: "Clean execution" };
+    classification = "clean";
+    reasonLabel = "Clean execution";
+  } else {
+    const hasSevere = mistakes.some((m) => SEVERE_IDS.has(m));
+    if (hasSevere || rawPenalty > 40) {
+      classification = "severe";
+    } else if (rawPenalty <= 10) {
+      classification = "minor";
+    } else {
+      classification = "bad";
+    }
+    reasonLabel = breakdown.map((b) => b.label).join(", ");
   }
-  if (mistakes.length === 1) {
-    return {
-      classification: "minor",
-      delta: MINOR_DELTA,
-      reasonLabel: MISTAKE_LABEL[mistakes[0]],
-    };
-  }
+
   return {
-    classification: "bad",
-    delta: BAD_DELTA,
-    reasonLabel: mistakes.map((m) => MISTAKE_LABEL[m]).join(", "),
+    classification,
+    rawPenalty,
+    appliedPenalty,
+    perTradeScore,
+    scoreDelta,
+    reasonLabel,
+    breakdown,
   };
 }
 
@@ -107,11 +158,16 @@ export function clampScore(n: number): number {
   return Math.max(SCORE_MIN, Math.min(SCORE_MAX, Math.round(n)));
 }
 
-export function disciplineState(score: number): {
+/**
+ * Map a 0..100 score to a behavioral state.
+ * `null` (no trades) → "inactive".
+ */
+export function disciplineState(score: number | null): {
   state: DisciplineState;
   label: string;
-  tone: "ok" | "drift" | "warn" | "risk";
+  tone: "ok" | "drift" | "warn" | "risk" | "inactive";
 } {
+  if (score == null) return { state: "inactive", label: "Inactive", tone: "inactive" };
   if (score >= 80) return { state: "controlled", label: "Controlled", tone: "ok" };
   if (score >= 60) return { state: "drift", label: "Slight drift", tone: "drift" };
   if (score >= 40) return { state: "unstable", label: "Unstable", tone: "warn" };
@@ -137,17 +193,34 @@ export type JournalEntry = {
 
 // ── IO ──────────────────────────────────────────────────────────────────
 
-export async function getCurrentScore(): Promise<number> {
+/**
+ * Returns the current overall discipline score (average of per-trade scores)
+ * or `null` when the user has logged 0 trades — meaning "inactive".
+ *
+ * Reads `profiles.discipline_score`, which is recomputed by `logTrade` on
+ * every insert. We sanity-check against entry count to ensure null state is
+ * accurate (e.g. after a manual reset).
+ */
+export async function getCurrentScore(): Promise<number | null> {
   const { data: auth } = await supabase.auth.getUser();
   const uid = auth?.user?.id;
-  if (!uid) return SCORE_INIT;
+  if (!uid) return null;
+
+  // Count entries — if none exist, system is inactive regardless of profile cache.
+  const { count } = await supabase
+    .from("journal_entries")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", uid);
+
+  if (!count || count === 0) return null;
+
   const { data } = await supabase
     .from("profiles")
     .select("discipline_score")
     .eq("id", uid)
     .maybeSingle();
   const v = (data as { discipline_score?: number } | null)?.discipline_score;
-  return typeof v === "number" ? clampScore(v) : SCORE_INIT;
+  return typeof v === "number" ? clampScore(v) : null;
 }
 
 export async function fetchEntries(limit = 50): Promise<JournalEntry[]> {
@@ -164,32 +237,64 @@ export async function fetchEntries(limit = 50): Promise<JournalEntry[]> {
   return (data ?? []) as unknown as JournalEntry[];
 }
 
+/** Pull every score_after for the user — used to recompute the overall avg. */
+async function fetchAllScoreAfters(uid: string): Promise<number[]> {
+  const { data } = await supabase
+    .from("journal_entries")
+    .select("score_after")
+    .eq("user_id", uid);
+  return ((data ?? []) as { score_after: number }[]).map((r) => r.score_after);
+}
+
 export type LogTradeInput = {
   asset: string;
   result_r: number;
   mistakes: MistakeId[];
   note?: string | null;
+  /** Primary screenshot stored on the journal entry (back-compat). */
   screenshotFile?: File | null;
+  /** Additional screenshots — uploaded to storage, paths returned in the result. */
+  extraScreenshotFiles?: File[];
 };
 
 export type LogTradeResult = {
   entry: JournalEntry;
-  scoreBefore: number;
+  /** Overall discipline score AFTER this trade (rolling average). */
+  scoreBefore: number | null;
   scoreAfter: number;
+  /** Per-trade score (0..100) for THIS trade. */
+  perTradeScore: number;
+  /** Same as perTradeScore - 100 (≤0). Kept for UI back-compat. */
   delta: number;
   classification: Classification;
   reasonLabel: string;
   cleanStreakAfter: number;
   breakStreakAfter: number;
+  /** Storage paths of any extra screenshots uploaded alongside the primary one. */
+  extraScreenshotPaths: string[];
 };
+
+async function uploadScreenshot(uid: string, file: File): Promise<string> {
+  const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+  const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage
+    .from("trade-screenshots")
+    .upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type || undefined,
+    });
+  if (error) throw error;
+  return path;
+}
 
 export async function logTrade(input: LogTradeInput): Promise<LogTradeResult> {
   const { data: auth } = await supabase.auth.getUser();
   const uid = auth?.user?.id;
   if (!uid) throw new Error("Not authenticated");
 
-  // 1. Resolve current state
-  const [scoreBefore, lastEntry] = await Promise.all([
+  // Resolve previous overall score (for the feedback card) + last streaks.
+  const [prevScore, lastEntry] = await Promise.all([
     getCurrentScore(),
     supabase
       .from("journal_entries")
@@ -201,32 +306,31 @@ export async function logTrade(input: LogTradeInput): Promise<LogTradeResult> {
       .then((r) => r.data as { clean_streak_after: number; break_streak_after: number } | null),
   ]);
 
-  const { classification, delta, reasonLabel } = classify(input.mistakes);
-  const scoreAfter = clampScore(scoreBefore + delta);
-
-  const isClean = classification === "clean";
+  const c = classify(input.mistakes);
+  const isClean = c.classification === "clean";
   const cleanPrev = lastEntry?.clean_streak_after ?? 0;
   const breakPrev = lastEntry?.break_streak_after ?? 0;
   const clean_streak_after = isClean ? cleanPrev + 1 : 0;
   const break_streak_after = isClean ? 0 : breakPrev + 1;
 
-  // 2. Optional screenshot upload
+  // Upload primary + extra screenshots (best-effort for extras).
   let screenshot_path: string | null = null;
   if (input.screenshotFile) {
-    const ext = input.screenshotFile.name.split(".").pop()?.toLowerCase() || "png";
-    const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const { error: upErr } = await supabase.storage
-      .from("trade-screenshots")
-      .upload(path, input.screenshotFile, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: input.screenshotFile.type || undefined,
-      });
-    if (upErr) throw upErr;
-    screenshot_path = path;
+    screenshot_path = await uploadScreenshot(uid, input.screenshotFile);
+  }
+  const extraPaths: string[] = [];
+  if (input.extraScreenshotFiles && input.extraScreenshotFiles.length > 0) {
+    for (const f of input.extraScreenshotFiles) {
+      try {
+        extraPaths.push(await uploadScreenshot(uid, f));
+      } catch (err) {
+        console.warn("[journal] extra screenshot upload failed:", err);
+      }
+    }
   }
 
-  // 3. Insert entry
+  // Insert entry — score_before stores the per-trade base (100), score_after
+  // stores the per-trade score, score_delta stores per-trade delta.
   const { data: inserted, error: insErr } = await supabase
     .from("journal_entries")
     .insert({
@@ -234,10 +338,10 @@ export async function logTrade(input: LogTradeInput): Promise<LogTradeResult> {
       asset: input.asset.trim().toUpperCase(),
       result_r: input.result_r,
       mistakes: input.mistakes,
-      classification,
-      score_delta: delta,
-      score_before: scoreBefore,
-      score_after: scoreAfter,
+      classification: c.classification,
+      score_delta: c.scoreDelta,
+      score_before: PER_TRADE_BASE,
+      score_after: c.perTradeScore,
       clean_streak_after,
       break_streak_after,
       note: input.note?.trim() || null,
@@ -247,21 +351,28 @@ export async function logTrade(input: LogTradeInput): Promise<LogTradeResult> {
     .single();
   if (insErr) throw insErr;
 
-  // 4. Update profile.discipline_score
+  // Recompute overall average across ALL entries for this user.
+  const all = await fetchAllScoreAfters(uid);
+  const avg = all.length > 0
+    ? clampScore(all.reduce((s, n) => s + n, 0) / all.length)
+    : c.perTradeScore;
+
   await supabase
     .from("profiles")
-    .update({ discipline_score: scoreAfter })
+    .update({ discipline_score: avg })
     .eq("id", uid);
 
   return {
     entry: inserted as unknown as JournalEntry,
-    scoreBefore,
-    scoreAfter,
-    delta,
-    classification,
-    reasonLabel,
+    scoreBefore: prevScore,
+    scoreAfter: avg,
+    perTradeScore: c.perTradeScore,
+    delta: c.scoreDelta,
+    classification: c.classification,
+    reasonLabel: c.reasonLabel,
     cleanStreakAfter: clean_streak_after,
     breakStreakAfter: break_streak_after,
+    extraScreenshotPaths: extraPaths,
   };
 }
 
@@ -298,16 +409,20 @@ export function mistakeFrequency(entries: JournalEntry[]): {
     .sort((a, b) => b.count - a.count);
 }
 
+/**
+ * Behavior-aware next-action / insight suggestion.
+ * Accepts nullable score so callers can pass the inactive state directly.
+ */
 export function nextActionFromBehavior(args: {
   entries: JournalEntry[];
-  score: number;
-}): { title: string; sub: string; tone: "ok" | "drift" | "warn" | "risk" } {
+  score: number | null;
+}): { title: string; sub: string; tone: "ok" | "drift" | "warn" | "risk" | "inactive" } {
   const last = args.entries[0];
-  if (!last) {
+  if (!last || args.score == null) {
     return {
       title: "Log your first trade",
       sub: "Seneca needs one trade to start tracking your behavior.",
-      tone: "drift",
+      tone: "inactive",
     };
   }
   if (last.classification === "severe") {

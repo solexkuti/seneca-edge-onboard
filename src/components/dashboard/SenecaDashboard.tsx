@@ -33,18 +33,21 @@ const TONE_TEXT: Record<string, string> = {
   drift: "text-amber-300",
   warn: "text-orange-300",
   risk: "text-rose-300",
+  inactive: "text-text-secondary/70",
 };
 const TONE_DOT: Record<string, string> = {
   ok: "bg-gold",
   drift: "bg-amber-400",
   warn: "bg-orange-400",
   risk: "bg-rose-400",
+  inactive: "bg-text-secondary/40",
 };
 const TONE_BAR: Record<string, string> = {
   ok: "bg-gold",
   drift: "bg-amber-400/80",
   warn: "bg-orange-400/80",
   risk: "bg-rose-400/80",
+  inactive: "bg-text-secondary/30",
 };
 
 function shortLine(input: string | null | undefined, max = 56): string | null {
@@ -74,9 +77,9 @@ function presenceLine(args: {
   hasEntries: boolean;
   classification?: string;
   breakStreak: number;
-  score: number;
+  score: number | null;
 }): string {
-  if (!args.hasEntries) return "Seneca is ready when you are";
+  if (!args.hasEntries || args.score == null) return "Seneca is ready when you are";
   if (args.classification === "severe" || args.breakStreak >= 2 || args.score < 60)
     return "Seneca has a suggestion";
   return "Seneca is observing your behavior";
@@ -88,9 +91,9 @@ function senecaInsight(args: {
   breakStreak: number;
   cleanStreak: number;
   lastMistakeLabel?: string | null;
-  score: number;
+  score: number | null;
 }): { headline: string; suggestion: string } {
-  if (!args.hasEntries) {
+  if (!args.hasEntries || args.score == null) {
     return {
       headline: "No data yet",
       suggestion: "Log one trade to start the read",
@@ -212,18 +215,18 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
                   className={`text-[56px] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[ds.tone]}`}
                   style={ds.tone === "ok" ? { textShadow: "0 0 25px rgba(198,161,91,0.35)" } : undefined}
                 >
-                  {loading ? "—" : score}
+                  {loading || score == null ? "—" : score}
                 </span>
                 <span className="mb-2 text-[14px] font-medium text-text-secondary/70 tabular-nums">/100</span>
                 <span className="mb-2 ml-auto text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
-                  Discipline
+                  {score == null ? "Inactive" : "Discipline"}
                 </span>
               </div>
 
               <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-text-primary/[0.05]">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${score}%` }}
+                  animate={{ width: `${score ?? 0}%` }}
                   transition={{ duration: 0.7, ease }}
                   className={`h-full rounded-full ${TONE_BAR[ds.tone]} ${ds.tone === "ok" ? "shadow-glow-gold" : ""}`}
                 />
@@ -306,7 +309,7 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
           <div className="rounded-2xl bg-card p-5">
             <div className="flex items-baseline gap-2">
               <span className={`text-[26px] font-semibold leading-none tabular-nums ${TONE_TEXT[ds.tone]}`}>
-                {loading ? "—" : score}
+                {loading || score == null ? "—" : score}
               </span>
               <span className="text-[11px] font-medium uppercase tracking-wider text-text-secondary/65">
                 {ds.label}
