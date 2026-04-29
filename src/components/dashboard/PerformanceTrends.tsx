@@ -247,8 +247,8 @@ export default function PerformanceTrends({
           >
             <defs>
               <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(var(--gold) / 0.35)" />
-                <stop offset="100%" stopColor="hsl(var(--gold) / 0)" />
+                <stop offset="0%" stopColor="rgba(198, 161, 91, 0.35)" />
+                <stop offset="100%" stopColor="rgba(198, 161, 91, 0)" />
               </linearGradient>
             </defs>
 
@@ -291,7 +291,7 @@ export default function PerformanceTrends({
             <motion.path
               d={pnlPath}
               fill="none"
-              stroke="hsl(var(--gold))"
+              stroke="var(--gold)"
               strokeWidth={1.75}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -306,7 +306,7 @@ export default function PerformanceTrends({
               cx={lastX}
               cy={lastY}
               r={3}
-              fill="hsl(var(--gold))"
+              fill="var(--gold)"
               initial={{ opacity: 0, scale: 0.6 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4, ease, delay: 1.0 }}
