@@ -70,7 +70,7 @@ function controlStateBlurb(args: {
   if (args.classification === "severe") return "Exits losing control";
   if (args.breakStreak >= 2) return "Discipline drifting";
   if (args.cleanStreak >= 3) return "System holding";
-  return "Holding the line";
+  return "Control is stable";
 }
 
 function presenceLine(args: {
@@ -82,51 +82,7 @@ function presenceLine(args: {
   if (!args.hasEntries || args.score == null) return "Seneca is ready when you are";
   if (args.classification === "severe" || args.breakStreak >= 2 || args.score < 60)
     return "Seneca has a suggestion";
-  return "Seneca is observing your behavior";
-}
-
-function senecaInsight(args: {
-  hasEntries: boolean;
-  classification?: string;
-  breakStreak: number;
-  cleanStreak: number;
-  lastMistakeLabel?: string | null;
-  score: number | null;
-}): { headline: string; suggestion: string } {
-  if (!args.hasEntries || args.score == null) {
-    return {
-      headline: "No data yet",
-      suggestion: "Log one trade to start the read",
-    };
-  }
-  if (args.classification === "severe") {
-    return {
-      headline: `Severe: ${args.lastMistakeLabel ?? "rule break"}`,
-      suggestion: "Step away. Reset before re-entry",
-    };
-  }
-  if (args.breakStreak >= 2) {
-    return {
-      headline: `${args.breakStreak} broken trades in a row`,
-      suggestion: "Cut size. Run next setup through analyzer",
-    };
-  }
-  if (args.score < 60) {
-    return {
-      headline: "Pattern: discipline drifting",
-      suggestion: "Take only A+ setups today",
-    };
-  }
-  if (args.cleanStreak >= 3) {
-    return {
-      headline: `${args.cleanStreak} clean in a row`,
-      suggestion: "Same system. Same size. Don't reach",
-    };
-  }
-  return {
-    headline: "Behavior in range",
-    suggestion: "Grade every entry before clicking buy",
-  };
+  return "Seneca is tracking your behavior patterns";
 }
 
 export default function SenecaDashboard({ userName }: { userName?: string }) {
