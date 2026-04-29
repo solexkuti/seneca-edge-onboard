@@ -146,10 +146,15 @@ export function buildQuickPrompts(
   inputs: QuickPromptInputs,
   rotation = 0,
 ): QuickPrompt[] {
-  const { tradeCount, disciplineScore, winRate, avgRR } = inputs;
+  const { tradeCount, disciplineScore, winRate, avgRR, conversationCount = 0 } = inputs;
 
   // -------- Zero data: education-only set --------
   if (tradeCount === 0) {
+    // Trust-builder appears only on the very first turn (no user msgs yet,
+    // or a single one — covers the intro-only state).
+    if (conversationCount <= 1) {
+      return [WHAT_MAKES_DIFFERENT, ZERO_FOCUS, EDUCATION];
+    }
     return [ZERO_FOCUS, EDUCATION];
   }
 
