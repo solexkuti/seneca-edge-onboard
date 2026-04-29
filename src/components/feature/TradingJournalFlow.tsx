@@ -19,12 +19,20 @@ import {
   XCircle,
   TrendingUp,
   TrendingDown,
-  Sparkles,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import FeatureShell from "./FeatureShell";
 import PreTradeIntercept from "./PreTradeIntercept";
+import {
+  SenecaScreen,
+  SenecaHeader,
+  MentorLine,
+  PrimaryAction,
+  SecondaryAction,
+  FadeIn,
+} from "@/components/seneca";
+import { SenecaVoice } from "@/lib/senecaVoice";
+import { useSenecaContext } from "@/hooks/useSenecaContext";
 import { playFeedback } from "@/lib/feedback";
 import { supabase } from "@/integrations/supabase/client";
 import { useTraderState } from "@/hooks/useTraderState";
