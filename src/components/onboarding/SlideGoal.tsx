@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Target, Crosshair, Shield, Settings2 } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import type { SlideProps } from "./OnboardingFlow";
-import { patchProfile, type GoalChoice } from "@/lib/onboardingProfile";
+import { patchProfile, readProfile, type GoalChoice } from "@/lib/onboardingProfile";
 
 const goals: { id: GoalChoice; label: string; icon: React.ReactNode }[] = [
   { id: "consistency", label: "Consistency", icon: <Target className="h-5 w-5" /> },
@@ -13,7 +13,9 @@ const goals: { id: GoalChoice; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function SlideGoal({ onNext }: SlideProps) {
-  const [selected, setSelected] = useState<GoalChoice | null>(null);
+  const [selected, setSelected] = useState<GoalChoice | null>(
+    () => readProfile().goal ?? null,
+  );
 
   return (
     <div className="flex flex-col gap-6">
