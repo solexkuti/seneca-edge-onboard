@@ -152,8 +152,8 @@ export default function MistakeBreakdown() {
       return b.count - a.count;
     });
     const clean = seed.get("__clean")!;
-    return { rows: all, total: entries.length, totalClean: clean.count };
-  }, [entries]);
+    return { rows: all, total: filteredEntries.length, totalClean: clean.count };
+  }, [filteredEntries]);
 
   return (
     <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
