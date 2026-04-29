@@ -841,6 +841,32 @@ Deno.serve(async (req) => {
         const avgScoreStr = bp.avgScore == null ? "n/a" : `${bp.avgScore}`;
         contextBlock += `\n\n[Behavior Patterns — Pattern Detection Engine, multi-trade view]\nDeterministic. Recency-weighted (newest=1.0, decays 0.025 per step, floor 0.5). Window: last ${bp.windowSize ?? 20} trades.\nUse this to anchor any answer about repeating behavior, weaknesses, or trend. Cite numbers verbatim. Never invent counts. Never use random phrasing.\n- Window used: ${bp.totalTrades} of ${bp.totalAvailable ?? bp.totalTrades} available · clean rate: ${bp.cleanRate}% · avg score: ${avgScoreStr}\n- Behavior state: ${stateLabel}\n- Dominant weakness (≥30% weighted required): ${dom}\n- Trend (last ${rvp.recentCount} vs previous ${rvp.previousCount}): ${trendLabel} · avg score ${recentSc} vs ${prevSc} (Δ ${deltaStr}) · mistakes/trade ${rvp.recentMistakeRate} vs ${rvp.previousMistakeRate}\n- Mistake frequency (top 5):\n${freqLines}\n- Repeating in recent window (also seen earlier):\n${repeatLines}\n- Headlines you may quote verbatim:\n${headlines}${mentorLine}${insufficientNote}`;
       }
+      if (context!.relapseLoops) {
+        const rl = context!.relapseLoops;
+        const relLines = rl.relapses.length > 0
+          ? rl.relapses
+              .slice(0, 5)
+              .map(
+                (r) =>
+                  `  - [${r.severity}] ${r.mistakeLabel}: ${r.recentOccurrences}× in last 3 (was ${r.previousOccurrences}× earlier) — line: "${r.message}"`,
+              )
+              .join("\n")
+          : "  (none)";
+        const loopLines = rl.loops.length > 0
+          ? rl.loops
+              .slice(0, 5)
+              .map(
+                (l) =>
+                  `  - ${l.loopLabel ?? `${l.mistakeLabel} after ${l.context}`}: ×${l.occurrences} — line: "${l.message}"`,
+              )
+              .join("\n")
+          : "  (none)";
+        const preTrade = rl.preTradeAwareness
+          ? `\n- PRE-TRADE AWARENESS LINE (use verbatim if user asks "should I take this trade" / before next entry): "${rl.preTradeAwareness}"`
+          : "";
+        const headLines = rl.headlines.map((h) => `  • ${h}`).join("\n");
+        contextBlock += `\n\n[Relapse & Behavioral Loops — deterministic]\nUse these lines verbatim when relevant. Never paraphrase. Never invent.\n- Improving state: ${rl.improving ? "YES" : "no"}\n- Relapses (improving user slipping back into a previously-reduced mistake):\n${relLines}\n- Behavioral loops (same context → same mistake, recurring):\n${loopLines}${preTrade}\n- Headlines:\n${headLines || "  (none)"}`;
+      }
     } else {
       contextBlock =
         "\n\nUSER CONTEXT: none yet. Offer warm, general guidance. Do NOT mention missing data. Do NOT refuse. Invite the user to share more about their situation through your soft closing.";
