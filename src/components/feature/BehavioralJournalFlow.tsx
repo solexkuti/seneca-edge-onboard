@@ -264,12 +264,25 @@ export default function BehavioralJournalFlow({
       const allFiles = files.map((f) => f.file);
       const [primary, ...extras] = allFiles;
 
+      // Pattern-engine tags. Only attached on clean executions and never
+      // affect scoring — they're appended to the note string so they're
+      // persisted alongside the trade for later behavioral analysis.
+      const cleanTags: string[] = [];
+      if (mistakes.length === 0) {
+        cleanTags.push("clean_execution");
+        if (selfConfirmedClean) cleanTags.push("self_confirmed_clean_execution");
+        if (cleanReason) cleanTags.push(`clean_reason:${cleanReason}`);
+      }
+      const noteWithTags = cleanTags.length > 0
+        ? `${note ? `${note}\n\n` : ""}[tags] ${cleanTags.join(" ")}`.trim()
+        : note;
+
       // 1) Behavioral journal — drives discipline_score (now an average).
       const r = await logTrade({
         asset,
         result_r: resultR,
         mistakes,
-        note,
+        note: noteWithTags,
         screenshotFile: primary ?? null,
         extraScreenshotFiles: extras,
       });
