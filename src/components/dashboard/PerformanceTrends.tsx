@@ -241,7 +241,7 @@ export default function PerformanceTrends({
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease }}
-              className={`text-[22px] font-semibold leading-none tabular-nums ${
+              className={`text-[20px] font-semibold leading-none tabular-nums tracking-tight ${
                 finalPnl > 0
                   ? "text-gold"
                   : finalPnl < 0
