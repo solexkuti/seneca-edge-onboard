@@ -290,24 +290,26 @@ export default function PerformanceTrends({
       {/* Chart */}
       <div className="mt-3 px-1.5 pb-3">
         {!showChart ? (
-          <div className="m-3 rounded-xl bg-background/40 px-4 py-6 text-center ring-1 ring-border/50">
-            <p className="text-[12.5px] text-text-primary">
-              {loading
-                ? "Loading…"
-                : !hasTrades
+          loading ? (
+            <div className="m-3 rounded-xl bg-background/40 px-4 py-6 text-center ring-1 ring-border/50">
+              <p className="text-[12.5px] text-text-primary">Loading…</p>
+            </div>
+          ) : (
+            <Link
+              to="/hub/journal"
+              preload="intent"
+              className="group m-3 block rounded-xl bg-background/40 px-4 py-6 text-center ring-1 ring-border/50 transition-all hover:bg-background/60 hover:ring-primary/30 hover:shadow-glow-gold active:scale-[0.99]"
+            >
+              <p className="text-[12.5px] text-text-primary group-hover:underline underline-offset-4 decoration-primary/50">
+                {!hasTrades
                   ? "Log your first trade to activate performance tracking."
                   : "Log one more trade to see the trend."}
-            </p>
-            {!loading && !hasTrades && (
-              <Link
-                to="/hub/journal"
-                preload="intent"
-                className="mt-3 inline-flex items-center rounded-full bg-primary/15 px-3.5 py-1.5 text-[11.5px] font-semibold text-text-primary ring-1 ring-primary/30"
-              >
-                Log a trade
-              </Link>
-            )}
-          </div>
+              </p>
+              <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3.5 py-1.5 text-[11.5px] font-semibold text-text-primary ring-1 ring-primary/30 transition group-hover:bg-primary/25">
+                Log a trade <ArrowUpRight className="h-3 w-3" strokeWidth={2.4} />
+              </span>
+            </Link>
+          )
         ) : (
           <svg
             viewBox={`0 0 ${W} ${H}`}
