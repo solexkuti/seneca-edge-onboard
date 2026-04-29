@@ -347,6 +347,57 @@ export type Database = {
         }
         Relationships: []
       }
+      journal_entries: {
+        Row: {
+          asset: string
+          break_streak_after: number
+          classification: string
+          clean_streak_after: number
+          created_at: string
+          id: string
+          mistakes: string[]
+          note: string | null
+          result_r: number
+          score_after: number
+          score_before: number
+          score_delta: number
+          screenshot_path: string | null
+          user_id: string
+        }
+        Insert: {
+          asset: string
+          break_streak_after?: number
+          classification: string
+          clean_streak_after?: number
+          created_at?: string
+          id?: string
+          mistakes?: string[]
+          note?: string | null
+          result_r: number
+          score_after: number
+          score_before: number
+          score_delta: number
+          screenshot_path?: string | null
+          user_id: string
+        }
+        Update: {
+          asset?: string
+          break_streak_after?: number
+          classification?: string
+          clean_streak_after?: number
+          created_at?: string
+          id?: string
+          mistakes?: string[]
+          note?: string | null
+          result_r?: number
+          score_after?: number
+          score_before?: number
+          score_delta?: number
+          screenshot_path?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       lock_attempt_events: {
         Row: {
           checklist_confirmed: boolean
@@ -471,6 +522,7 @@ export type Database = {
         Row: {
           challenge: string | null
           created_at: string
+          discipline_score: number
           experience: string | null
           goal: string | null
           id: string
@@ -482,6 +534,7 @@ export type Database = {
         Insert: {
           challenge?: string | null
           created_at?: string
+          discipline_score?: number
           experience?: string | null
           goal?: string | null
           id: string
@@ -493,6 +546,7 @@ export type Database = {
         Update: {
           challenge?: string | null
           created_at?: string
+          discipline_score?: number
           experience?: string | null
           goal?: string | null
           id?: string
