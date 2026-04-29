@@ -173,12 +173,19 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
               </div>
 
               <div className="mt-5 flex items-end gap-3">
-                <span
-                  className={`text-[56px] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[ds.tone]}`}
-                  style={ds.tone === "ok" ? { textShadow: "0 0 25px rgba(198,161,91,0.35)" } : undefined}
-                >
-                  {loading || score == null ? "—" : score}
-                </span>
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.span
+                    key={loading || score == null ? "—" : String(score)}
+                    initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, y: -6, filter: "blur(4px)" }}
+                    transition={{ duration: 0.4, ease }}
+                    className={`text-[56px] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[ds.tone]}`}
+                    style={ds.tone === "ok" ? { textShadow: "0 0 25px rgba(198,161,91,0.35)" } : undefined}
+                  >
+                    {loading || score == null ? "—" : score}
+                  </motion.span>
+                </AnimatePresence>
                 <span className="mb-2 text-[14px] font-medium text-text-secondary/70 tabular-nums">/100</span>
                 <span className="mb-2 ml-auto text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/55">
                   {score == null ? "Inactive" : "Discipline"}
@@ -187,16 +194,25 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
 
               <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-text-primary/[0.05]">
                 <motion.div
-                  initial={{ width: 0 }}
+                  initial={false}
                   animate={{ width: `${score ?? 0}%` }}
                   transition={{ duration: 0.7, ease }}
                   className={`h-full rounded-full ${TONE_BAR[ds.tone]} ${ds.tone === "ok" ? "shadow-glow-gold" : ""}`}
                 />
               </div>
 
-              <p className="mt-5 text-[13.5px] font-medium leading-snug text-text-primary/90">
-                {blurb}
-              </p>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.p
+                  key={blurb}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.35, ease }}
+                  className="mt-5 text-[13.5px] font-medium leading-snug text-text-primary/90"
+                >
+                  {blurb}
+                </motion.p>
+              </AnimatePresence>
             </div>
 
             {/* Presence chip — links into mentor */}
