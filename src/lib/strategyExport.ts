@@ -137,7 +137,7 @@ export function downloadPdf(
         doc.setDrawColor(150);
         doc.rect(M, y - 9, 10, 10);
       } else {
-        doc.setFillColor(120);
+        doc.setFillColor(120, 120, 120);
         doc.circle(M + 4, y - 4, 1.6, "F");
       }
       doc.setFont("helvetica", "normal");
