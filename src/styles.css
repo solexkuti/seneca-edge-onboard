@@ -98,12 +98,12 @@
 
   /* Very subtle ambient depth — wide, low-opacity glow behind content */
   --gradient-bg-glow:
-    radial-gradient(70% 50% at 50% 0%, rgba(111, 111, 174, 0.10), transparent 70%),
-    radial-gradient(60% 50% at 50% 100%, rgba(79, 135, 168, 0.07), transparent 75%);
+    radial-gradient(70% 50% at 50% 0%, rgba(111, 111, 174, 0.04), transparent 70%),
+    radial-gradient(60% 50% at 50% 100%, rgba(79, 135, 168, 0.03), transparent 75%);
 
   /* Shadows — soft diffused, no harsh edges */
-  --shadow-soft:    0 6px 22px -14px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.02) inset;
-  --shadow-card:    0 24px 60px -28px rgba(0, 0, 0, 0.7),  0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  --shadow-soft:    0 4px 16px -14px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.015) inset;
+  --shadow-card:    0 14px 36px -28px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.02) inset;
   --shadow-glow-primary: 0 0 0 1px rgba(111, 111, 174, 0.18), 0 18px 50px -22px rgba(91, 83, 144, 0.55);
   --shadow-glow-cyan:    0 0 0 1px rgba(79, 135, 168, 0.18), 0 18px 50px -22px rgba(79, 135, 168, 0.45);
   --shadow-glow-pink:    0 18px 50px -22px rgba(160, 95, 150, 0.35);
