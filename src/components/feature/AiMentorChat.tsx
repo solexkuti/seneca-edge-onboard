@@ -29,11 +29,35 @@ import { analyzeBehaviorPatterns } from "@/lib/behaviorPatternAnalysis";
 import { detectRelapseAndLoops } from "@/lib/relapseAndLoopDetection";
 import { usePerformance } from "@/hooks/usePerformance";
 import { buildQuickPrompts } from "@/lib/mentorQuickPrompts";
+import {
+  INITIAL_STATE,
+  type ConversationState,
+  detectPattern,
+  isGuidedQuestion,
+  isYes,
+  isNo,
+  getScript,
+  DEEP_DIVE_CLOSING,
+  type DeepDiveOption,
+} from "@/lib/mentorConversationState";
+
+type ChipAction =
+  | { kind: "yes_dig" }
+  | { kind: "not_now" }
+  | { kind: "deep_dive_option"; option: DeepDiveOption };
+
+type Chip = {
+  id: string;
+  label: string;
+  action: ChipAction;
+};
 
 type Msg = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  /** Optional UI chips rendered under the bubble. Tap-once and they disappear. */
+  chips?: Chip[];
 };
 
 const MENTOR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mentor-chat`;
