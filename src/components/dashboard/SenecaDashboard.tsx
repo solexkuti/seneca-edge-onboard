@@ -309,7 +309,7 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
           <div className="rounded-2xl bg-card p-5">
             <div className="flex items-baseline gap-2">
               <span className={`text-[26px] font-semibold leading-none tabular-nums ${TONE_TEXT[ds.tone]}`}>
-                {loading ? "—" : score}
+                {loading || score == null ? "—" : score}
               </span>
               <span className="text-[11px] font-medium uppercase tracking-wider text-text-secondary/65">
                 {ds.label}
