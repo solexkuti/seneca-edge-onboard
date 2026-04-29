@@ -58,15 +58,25 @@ export default function SlideTestimonial({ onNext }: SlideProps) {
 
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-10 px-2 text-center">
-      <motion.h2
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="font-display text-[24px] font-semibold leading-tight tracking-tight text-text-primary"
-      >
-        Built for traders<br />
-        <span className="text-gold-soft">who chose discipline</span>
-      </motion.h2>
+      <div className="flex flex-col items-center gap-3">
+        <motion.h2
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="font-display text-[24px] font-semibold leading-tight tracking-tight text-text-primary"
+        >
+          Built for traders<br />
+          <span className="text-gold-soft">who chose discipline</span>
+        </motion.h2>
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 0.6, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          className="max-w-[300px] text-[12.5px] leading-relaxed text-text-secondary"
+        >
+          Thousands of trades analyzed. Patterns recognized. Still learning.
+        </motion.p>
+      </div>
 
       <motion.figure
         initial={{ opacity: 0, scale: 0.97, y: 10 }}
