@@ -1,9 +1,9 @@
 // MistakeBreakdown — groups journal entries by mistake type and shows
 // count, win rate, and avg R for each. Read-only insight surface.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, CalendarIcon, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { ArrowLeft, CalendarIcon, ChevronDown, Download, FileSpreadsheet, FileText, ImageIcon } from "lucide-react";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
