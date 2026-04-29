@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Mail, Lock, ArrowLeft, Loader2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import type { SlideProps } from "./OnboardingFlow";
 import {
   signInWithGoogle,
