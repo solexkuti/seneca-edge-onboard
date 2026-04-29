@@ -54,16 +54,16 @@ export const SenecaVoice = {
     logged: "Logged. I'll watch for the pattern.",
   },
 
-  // ---------- Mentor (strict enforcer mode) ----------
+  // ---------- Mentor (calm companion mode) ----------
   mentor: {
-    greeting: "I'm watching. Speak.",
-    empty: "I have your full state. What's the move?",
-    watching: "Watching.",
+    greeting: "I'm here. What's on your mind?",
+    empty: "I have your full picture. Where do you want to start?",
+    watching: "With you.",
     actions: {
       continue: "Continue",
-      fix: "Fix it",
-      ack: "Acknowledged",
-      step_back: "Step back",
+      adjust: "Adjust",
+      review: "Review",
+      ack: "Got it",
     },
   },
 
