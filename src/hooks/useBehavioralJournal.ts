@@ -1,4 +1,5 @@
-// useBehavioralJournal — live view of the new journal_entries table + score.
+// useBehavioralJournal — live view of journal_entries + overall avg score.
+// Score is `null` when the user has 0 entries (system is "inactive").
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -9,7 +10,7 @@ import {
 
 export function useBehavioralJournal(limit = 50) {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [score, setScore] = useState<number>(100);
+  const [score, setScore] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
