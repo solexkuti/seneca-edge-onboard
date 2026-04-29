@@ -28,9 +28,9 @@ export default function SlideFeeling({ onNext }: SlideProps) {
         transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
         className="font-display text-[34px] font-semibold leading-[1.12] tracking-[-0.01em] text-text-primary sm:text-[38px]"
       >
-        It tracks your discipline
+        It tracks how you trade
         <br />
-        <span className="text-gold-soft">while you trade</span>
+        <span className="text-gold-soft">so you see what drives results</span>
       </motion.h1>
 
       <motion.p
