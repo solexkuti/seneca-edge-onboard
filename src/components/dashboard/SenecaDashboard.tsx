@@ -416,7 +416,11 @@ function DisciplinePanel({
 }: {
   score: number; label: string; tone: string;
   cleanStreak: number; worstStreak: number;
-  breakdown: { decision_score: number; execution_score: number; penalties: { reason: string; amount: number }[] };
+  breakdown: {
+    decision_score: number;
+    execution_score: number;
+    penalties: { reason: string; impact: number }[];
+  };
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -483,7 +487,7 @@ function DisciplinePanel({
               <Row label="Penalties" value="None" />
             ) : (
               breakdown.penalties.map((p, i) => (
-                <Row key={i} label={p.reason} value={`-${p.amount}`} negative />
+                <Row key={i} label={p.reason} value={`-${Math.abs(p.impact)}`} negative />
               ))
             )}
           </div>
