@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { useTraderState } from "@/hooks/useTraderState";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
 import { mistakeFrequency, MISTAKE_LABEL } from "@/lib/behavioralJournal";
+import { analyzeBehaviorPatterns } from "@/lib/behaviorPatternAnalysis";
 import { usePerformance } from "@/hooks/usePerformance";
 import { buildQuickPrompts } from "@/lib/mentorQuickPrompts";
 
