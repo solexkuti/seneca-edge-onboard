@@ -49,43 +49,6 @@ export default function AiMentorChat() {
 
   // Dynamic, state-driven quick prompts. Rotation key updates whenever the
   // user logs new activity or discipline shifts — so chips feel reactive.
-  const userMsgCount = useMemo(
-    () => messages.filter((m) => m.role === "user").length,
-    [messages],
-  );
-
-  const quickPrompts = useMemo(() => {
-    const tradeCount = Math.max(
-      performancePayload?.windowSize ?? 0,
-      behavioralEntries.length,
-      rows.length,
-    );
-    const rotation =
-      behavioralEntries.length +
-      Math.floor((traderState.discipline.score ?? 0) / 10);
-    return buildQuickPrompts(
-      {
-        tradeCount,
-        disciplineScore: traderState.loading
-          ? null
-          : traderState.discipline.score,
-        winRate: performancePayload?.winRate ?? null,
-        avgRR: performancePayload?.avgRR ?? null,
-        conversationCount: userMsgCount,
-      },
-      rotation,
-    );
-  }, [
-    performancePayload?.windowSize,
-    performancePayload?.winRate,
-    performancePayload?.avgRR,
-    behavioralEntries.length,
-    rows.length,
-    traderState.loading,
-    traderState.discipline.score,
-    userMsgCount,
-  ]);
-
   const [recentPatterns, setRecentPatterns] = useState<DbBehaviorPattern[]>([]);
   const [activeStrategy, setActiveStrategy] =
     useState<ActiveStrategyContext | null>(null);
