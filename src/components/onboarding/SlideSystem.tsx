@@ -2,7 +2,11 @@ import { motion } from "framer-motion";
 import type { SlideProps } from "./OnboardingFlow";
 import ContinueButton from "./ContinueButton";
 
-const BULLETS = ["Analyze your trades", "Build your rules", "Stay in control"];
+const BULLETS = [
+  "Upload your chart. Get real feedback.",
+  "Build your rules. Trade with structure.",
+  "Stay in control. Think before you act.",
+];
 
 /**
  * Slide 2 — SYSTEM

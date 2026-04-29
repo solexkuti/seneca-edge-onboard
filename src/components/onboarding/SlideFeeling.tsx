@@ -39,7 +39,7 @@ export default function SlideFeeling({ onNext }: SlideProps) {
         transition={{ duration: 0.7, delay: 0.4 }}
         className="text-[15px] leading-relaxed text-text-secondary"
       >
-        Stay aligned when it matters most.
+        So you stop breaking your own rules.
       </motion.p>
 
       <ContinueButton onClick={onNext} delay={0.7} />
