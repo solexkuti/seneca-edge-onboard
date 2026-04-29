@@ -279,6 +279,8 @@ export default function AiMentorChat() {
     const intent = classifyIntent(trimmed);
 
     // CASE A: zero trades — branch by intent. Only block data-dependent intents.
+    // METRICS_SYSTEM and GENERAL_TRADING_QUESTION are educational — always
+    // allowed to hit the AI even with no data.
     if (tradeCount === 0) {
       if (intent === "TRADE_REVIEW") {
         respondLocally(
@@ -294,10 +296,10 @@ export default function AiMentorChat() {
         );
         return;
       }
-      if (intent === "METRICS_EXPLANATION") {
+      if (intent === "METRICS_PERSONAL") {
         respondLocally(
           history,
-          "Your metrics aren't active yet because nothing has been logged.\n\nOnce you start trading, I'll calculate things like win rate, RR, and discipline automatically.",
+          "You don't have any data yet — log your first trade and I'll break it down for you.",
         );
         return;
       }
@@ -308,7 +310,7 @@ export default function AiMentorChat() {
         );
         return;
       }
-      // GENERAL_TRADING_QUESTION → fall through to AI (education is allowed).
+      // METRICS_SYSTEM and GENERAL_TRADING_QUESTION → fall through to AI.
     }
 
     // CASE B: user asks about "last trade" but none exists.
