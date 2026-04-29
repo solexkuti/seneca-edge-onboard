@@ -995,16 +995,16 @@ export default function BehavioralJournalFlow({
                       value={entryStr}
                       onChange={(e) => setEntryStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="—"
+                      placeholder="0.00"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
-                  <Field label="Actual Exit">
+                  <Field label="Exit">
                     <input
                       value={exitStr}
                       onChange={(e) => setExitStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="Where you closed"
+                      placeholder="0.00"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
@@ -1013,7 +1013,7 @@ export default function BehavioralJournalFlow({
                       value={slStr}
                       onChange={(e) => setSlStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="Planned risk"
+                      placeholder="0.00"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
@@ -1022,7 +1022,7 @@ export default function BehavioralJournalFlow({
                       value={tpStr}
                       onChange={(e) => setTpStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="Planned target"
+                      placeholder="0.00"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
@@ -1034,7 +1034,7 @@ export default function BehavioralJournalFlow({
                       value={riskStr}
                       onChange={(e) => setRiskStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="e.g. 1"
+                      placeholder="—"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
@@ -1045,7 +1045,7 @@ export default function BehavioralJournalFlow({
                       placeholder={
                         autoRealizedR != null
                           ? `auto ${autoRealizedR > 0 ? "+" : ""}${autoRealizedR.toFixed(2)}`
-                          : "e.g. 1.5  or  -1"
+                          : "+1.5 / -1"
                       }
                       inputMode="decimal"
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
