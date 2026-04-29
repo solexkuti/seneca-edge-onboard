@@ -920,14 +920,14 @@ function StepParse({
     <div className="space-y-6">
       <Question
         title="Structuring your edge"
-        sub="The AI restates your words as binary rules. Nothing invented."
+        sub="Seneca restates your words as binary rules. Nothing invented."
       />
 
       {busy && !hasRules ? (
         <div className="flex flex-col items-center gap-3 py-12">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Reading your strategy
+            Seneca is reading your strategy
           </p>
         </div>
       ) : (
@@ -939,7 +939,7 @@ function StepParse({
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-card px-4 py-2.5 text-sm font-medium text-foreground ring-1 ring-border shadow-soft hover:bg-background disabled:opacity-50"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {hasRules ? "Re-parse" : "Parse with AI"}
+            {hasRules ? "Refine again" : "Refine with Seneca"}
           </button>
 
           {hasRules && (
