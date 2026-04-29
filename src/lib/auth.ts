@@ -160,7 +160,16 @@ export async function syncProfileFromOnboarding(
 
     // 2) Build a patch that ONLY contains fields we should write.
     //    Never null-out a column that already has a value.
-    const patch: Record<string, unknown> = { id: userId };
+    const patch: {
+      id: string;
+      username?: string;
+      market?: string;
+      experience?: string;
+      challenge?: string;
+      goal?: string;
+      onboarded_at?: string;
+      onboarding_completed?: boolean;
+    } = { id: userId };
 
     if (localName && !existing?.username) patch.username = localName;
     if (localMarket && !existing?.market) patch.market = localMarket;
