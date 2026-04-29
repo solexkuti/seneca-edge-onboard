@@ -441,12 +441,18 @@ export default function BehavioralJournalFlow({
     return `You often enter extra digits in ${fieldLabel(offender[0]).toLowerCase()}. Be careful with scaling.`;
   }, [repeatCounts]);
 
-  // Outcome is REQUIRED. R is required (existing rule). Hard validation
-  // blocks must be cleared. Warnings require explicit preview confirmation.
+  // Required: asset, direction (always set), entry, stop loss,
+  // (exit OR manual R), and outcome. Hard validation blocks must be
+  // cleared. Warnings require explicit preview confirmation.
+  const hasExitOrR = exit !== null || Number.isFinite(manualR as number);
   const canNextFromStep0 =
     asset.trim().length > 0 &&
+    entry !== null &&
+    sl !== null &&
+    hasExitOrR &&
     Number.isFinite(resultR) &&
     outcome !== null &&
+    !accountSizeInvalid &&
     !pnlDollarInvalid &&
     !validation.hasBlock &&
     (!validation.hasWarn || previewConfirmed);
