@@ -8,6 +8,7 @@ import {
   LineChart,
 } from "lucide-react";
 import SelectionCard from "./SelectionCard";
+import ContinueButton from "./ContinueButton";
 import type { SlideProps } from "./OnboardingFlow";
 import { patchProfile, readProfile, type MarketChoice } from "@/lib/onboardingProfile";
 
