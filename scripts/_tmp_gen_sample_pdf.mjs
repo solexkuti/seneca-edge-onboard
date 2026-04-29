@@ -1,44 +1,43 @@
-// Generate a sample strategy PDF using the SAME canonical pipeline the app uses.
-// We import the runtime modules directly (TS via bun) and invoke downloadPdf
-// against a synthetic blueprint, redirecting jsPDF's save() to a real file.
-
 import { writeFileSync } from "node:fs";
 
-// Stub the browser globals jsPDF expects on import.
-globalThis.atob = globalThis.atob ?? ((s) => Buffer.from(s, "base64").toString("binary"));
-globalThis.btoa = globalThis.btoa ?? ((s) => Buffer.from(s, "binary").toString("base64"));
-const winStub = { atob: globalThis.atob, btoa: globalThis.btoa };
-globalThis.window = globalThis.window ?? winStub;
-Object.assign(globalThis.window, winStub);
-globalThis.document = globalThis.document ?? {
-  createElement: () => ({ getContext: () => null, style: {}, setAttribute() {}, appendChild() {} }),
-  body: { appendChild() {} },
+globalThis.atob = (s) => Buffer.from(s, "base64").toString("binary");
+globalThis.btoa = (s) => Buffer.from(s, "binary").toString("base64");
+globalThis.window = { atob: globalThis.atob, btoa: globalThis.btoa };
+globalThis.document = {
+  createElement: () => ({ getContext: () => null, style: {}, setAttribute() {}, appendChild() {}, click() {}, set href(_v){}, get href(){return ""}, set download(_v){} }),
+  body: { appendChild() {}, removeChild() {} },
 };
-globalThis.navigator = globalThis.navigator ?? { userAgent: "node" };
+globalThis.navigator = { userAgent: "node" };
+globalThis.URL = globalThis.URL ?? class { static createObjectURL() { return "blob:x"; } static revokeObjectURL() {} };
+globalThis.Blob = globalThis.Blob ?? class { constructor(p){ this.p=p; } };
 
-const jspdfMod = await import("jspdf");
-const jsPDF = jspdfMod.jsPDF ?? jspdfMod.default;
-console.log("jsPDF keys:", Object.keys(jspdfMod));
-const origSave = jsPDF.prototype.save;
-jsPDF.prototype.save = function (filename) {
-  const ab = this.output("arraybuffer");
-  const out = `/tmp/${filename}`;
-  writeFileSync(out, Buffer.from(ab));
-  console.log("WROTE", out, "bytes=", Buffer.from(ab).length);
-  return this;
-};
+// Patch BOTH jsPDF builds so whichever strategyExport pulls in is covered.
+async function patch(modPath) {
+  try {
+    const mod = await import(modPath);
+    const J = mod.jsPDF ?? mod.default;
+    if (!J?.prototype) return;
+    J.prototype.save = function (filename) {
+      const ab = this.output("arraybuffer");
+      const out = `/tmp/${filename}`;
+      writeFileSync(out, Buffer.from(ab));
+      console.log("WROTE", out, "bytes=", Buffer.from(ab).length);
+      return this;
+    };
+    console.log("patched", modPath);
+  } catch (e) { console.log("skip", modPath, e.message); }
+}
+await patch("jspdf");
+await patch("/dev-server/node_modules/jspdf/dist/jspdf.es.min.js");
+await patch("/dev-server/node_modules/jspdf/dist/jspdf.node.min.js");
 
 const { downloadPdf } = await import("../src/lib/strategyExport.ts");
 
 const bp = {
-  id: "sample-bp",
-  user_id: "u",
-  strategy_id: null,
+  id: "sample-bp", user_id: "u", strategy_id: null,
   name: "London ORB — Gold Sweep Reclaim",
   account_types: ["prop", "personal"],
-  risk_per_trade_pct: 0.5,
-  daily_loss_limit_pct: 2,
-  max_drawdown_pct: 6,
+  risk_per_trade_pct: 0.5, daily_loss_limit_pct: 2, max_drawdown_pct: 6,
   raw_input: null,
   tier_strictness: { a_plus: 100, b_plus: 80, c: 60 },
   tier_rules: { a_plus: "", b_plus: "", c: "" },
@@ -72,15 +71,11 @@ const bp = {
       "Journal every trade within 30 minutes of close",
     ],
   },
-  ambiguity_flags: [],
-  refinement_history: [],
+  ambiguity_flags: [], refinement_history: [],
   checklist: { a_plus: ["seed"], b_plus: [], c: [] },
   trading_plan: "seed",
-  locked: false,
-  locked_at: null,
-  version: 1,
-  status: "finalized",
-  current_step: "output",
+  locked: false, locked_at: null, version: 1,
+  status: "finalized", current_step: "output",
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 };
@@ -88,5 +83,3 @@ const bp = {
 console.log("FULL  ->", downloadPdf(bp, "full"));
 console.log("CHECK ->", downloadPdf(bp, "checklist"));
 console.log("PLAN  ->", downloadPdf(bp, "plan"));
-
-jsPDF.prototype.save = origSave;
