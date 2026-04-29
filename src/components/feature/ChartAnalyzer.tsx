@@ -1068,37 +1068,30 @@ function ResultView({
         </div>
       )}
 
-      {/* Actions */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <button
+      {/* Actions — one primary, one quiet */}
+      <div className="space-y-2.5">
+        <PrimaryAction
           onClick={() => {
             if (result.breakdown.overall === "invalid") {
-              toast.error("Setup is invalid — does not match strategy. Do not trade this.");
+              toast.error("This isn't your setup. Skip it.");
               return;
             }
             if (result.breakdown.overall === "weak") {
-              toast.warning("Proceeding with a weak setup — review carefully.");
+              toast.warning("Borderline setup — review before you act.");
             }
             navigate({ to: "/hub/mind" });
           }}
           disabled={result.breakdown.overall === "invalid"}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-mix px-4 py-3 text-[13.5px] font-semibold text-white shadow-soft hover:shadow-card-premium disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {result.breakdown.overall === "invalid" ? "Blocked" : "Trade Gate"}
-          <ArrowRight className="h-4 w-4" />
-        </button>
-        <button
-          onClick={onReset}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-card px-4 py-3 text-[13.5px] font-semibold text-text-primary ring-1 ring-border shadow-soft hover:shadow-card-premium"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Re-analyze
-        </button>
+          {result.breakdown.overall === "invalid"
+            ? "Skip this setup"
+            : "Continue to trade gate"}
+        </PrimaryAction>
+        <SecondaryAction onClick={onReset}>Try another chart</SecondaryAction>
       </div>
-      <div className="flex items-center justify-center gap-2 rounded-xl bg-card/60 px-3 py-2 ring-1 ring-border">
-        <Save className="h-3.5 w-3.5 text-text-secondary" />
-        <p className="text-[11.5px] text-text-secondary">Saved · ID {result.row.id.slice(0, 8)}</p>
-      </div>
+      <p className="text-center text-xs text-muted-foreground">
+        Saved with you · {result.row.id.slice(0, 8)}
+      </p>
     </motion.div>
   );
 }
