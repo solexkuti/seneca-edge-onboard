@@ -25,6 +25,7 @@ import MentorRecoveryChecklist from "./MentorRecoveryChecklist";
 import { useTraderState } from "@/hooks/useTraderState";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
 import { mistakeFrequency, MISTAKE_LABEL } from "@/lib/behavioralJournal";
+import { usePerformance } from "@/hooks/usePerformance";
 
 type Msg = {
   id: string;
@@ -39,6 +40,7 @@ const SESSION_ID =
     : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const QUICK_PROMPTS: { label: string; prompt: string }[] = [
+  { label: "Review my trades", prompt: "Review my last 20 trades. What's the pattern in my performance — win rate, RR, and biggest leak?" },
   { label: "Review my last trade", prompt: "Review my last trade. What did I do wrong, and what was right?" },
   { label: "Why am I losing control?", prompt: "Look at my recent behavior. Why am I losing control, and what's the pattern?" },
   { label: "Help me fix my exits", prompt: "My exits are an issue. Based on my last trades, how do I fix them?" },
@@ -48,6 +50,7 @@ export default function AiMentorChat() {
   const { state: traderState } = useTraderState();
   const { rows, entries: journal } = useDbJournal();
   const { entries: behavioralEntries, score: behavioralScore } = useBehavioralJournal(20);
+  const { mentorPayload: performancePayload } = usePerformance(20);
   const intelligence = useMemo(() => computeIntelligence(rows), [rows]);
   const [recentPatterns, setRecentPatterns] = useState<DbBehaviorPattern[]>([]);
   const [activeStrategy, setActiveStrategy] =
