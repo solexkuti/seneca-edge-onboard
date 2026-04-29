@@ -191,10 +191,7 @@ export default function PerformanceTrends({
       <div className="flex items-start justify-between gap-3 px-5 pt-5">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
-            Last {count > 0 ? count : 20} trades
-          </p>
-          <p className="mt-1 text-[13.5px] font-semibold leading-snug text-text-primary">
-            Performance trend
+            Trend · last {count > 0 ? count : 20} trades
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -241,7 +238,7 @@ export default function PerformanceTrends({
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease }}
-              className={`text-[22px] font-semibold leading-none tabular-nums ${
+              className={`text-[20px] font-semibold leading-none tabular-nums tracking-tight ${
                 finalPnl > 0
                   ? "text-gold"
                   : finalPnl < 0
@@ -279,7 +276,7 @@ export default function PerformanceTrends({
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease, delay: 0.05 }}
-            className="mt-1 text-[22px] font-semibold leading-none tabular-nums text-text-primary"
+            className="mt-1 text-[20px] font-semibold leading-none tabular-nums tracking-tight text-text-primary"
           >
             {showChart ? fmtPct(series.finalWinRate) : "—"}
           </motion.p>
