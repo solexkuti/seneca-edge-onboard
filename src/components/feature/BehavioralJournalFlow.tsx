@@ -16,8 +16,11 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  Eye,
   ImagePlus,
   Loader2,
+  Star,
+  Trash2,
   TrendingDown,
   TrendingUp,
   X,
@@ -117,6 +120,8 @@ export default function BehavioralJournalFlow({
   const [confidence, setConfidence] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const [files, setFiles] = useState<{ file: File; preview: string; tag: ScreenshotTag }[]>([]);
+  // Index of the screenshot currently shown full-size in the lightbox, or null.
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackPayload | null>(null);
@@ -183,10 +188,43 @@ export default function BehavioralJournalFlow({
       if (target) URL.revokeObjectURL(target.preview);
       return prev.filter((_, i) => i !== idx);
     });
+    // Close the lightbox if we just removed the item it was showing.
+    setLightboxIdx((cur) => {
+      if (cur === null) return cur;
+      if (cur === idx) return null;
+      return cur > idx ? cur - 1 : cur;
+    });
   }
 
   function setFileTag(idx: number, tag: ScreenshotTag) {
     setFiles((prev) => prev.map((f, i) => (i === idx ? { ...f, tag } : f)));
+  }
+
+  function clearAllFiles() {
+    setFiles((prev) => {
+      for (const f of prev) URL.revokeObjectURL(f.preview);
+      return [];
+    });
+    setLightboxIdx(null);
+  }
+
+  // Move the chosen screenshot to position 0 — that's the one persisted as
+  // the trade's primary `screenshot_url`; everything else uploads as extras.
+  function makePrimary(idx: number) {
+    setFiles((prev) => {
+      if (idx <= 0 || idx >= prev.length) return prev;
+      const next = [...prev];
+      const [picked] = next.splice(idx, 1);
+      next.unshift(picked);
+      return next;
+    });
+    setLightboxIdx((cur) => (cur === idx ? 0 : cur));
+  }
+
+  function formatBytes(n: number): string {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   function toggleMistake(id: MistakeId) {
@@ -717,55 +755,107 @@ export default function BehavioralJournalFlow({
                 </Field>
 
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
-                    Screenshots (optional)
-                  </p>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
+                      Screenshots (optional)
+                    </p>
+                    {files.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={clearAllFiles}
+                        className="inline-flex items-center gap-1 text-[10.5px] font-medium text-text-secondary/70 hover:text-text-primary"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Clear all
+                      </button>
+                    )}
+                  </div>
                   <p className="mt-1 text-[10.5px] text-text-secondary/55">
-                    Up to {MAX_SCREENSHOTS} images. Tap to tag.
+                    {files.length === 0
+                      ? `Up to ${MAX_SCREENSHOTS} images. First one becomes the primary.`
+                      : `${files.length}/${MAX_SCREENSHOTS} attached · tap to preview, ★ to set primary`}
                   </p>
 
                   {files.length > 0 && (
-                    <div className="mt-3 -mx-1 flex gap-2 overflow-x-auto pb-1 px-1 no-scrollbar">
-                      {files.map((f, i) => (
-                        <div
-                          key={i}
-                          className="relative shrink-0 w-32 rounded-xl overflow-hidden ring-1 ring-border bg-card"
-                        >
-                          <img
-                            src={f.preview}
-                            alt={`Screenshot ${i + 1}`}
-                            className="block h-24 w-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeFileAt(i)}
-                            className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-background/85 ring-1 ring-border text-text-primary"
-                            aria-label={`Remove screenshot ${i + 1}`}
+                    <ul className="mt-3 grid grid-cols-3 gap-2">
+                      {files.map((f, i) => {
+                        const isPrimary = i === 0;
+                        return (
+                          <li
+                            key={`${f.file.name}-${i}`}
+                            className={`group relative rounded-xl overflow-hidden ring-1 bg-card ${
+                              isPrimary ? "ring-primary/45" : "ring-border"
+                            }`}
                           >
-                            <X className="h-3 w-3" />
-                          </button>
-                          <div className="flex flex-wrap gap-1 p-1.5">
-                            {SCREENSHOT_TAGS.map((t) => {
-                              const active = f.tag === t.id;
-                              return (
-                                <button
-                                  key={t.id}
-                                  type="button"
-                                  onClick={() => setFileTag(i, t.id)}
-                                  className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 transition ${
-                                    active
-                                      ? "bg-primary/20 ring-primary/40 text-text-primary"
-                                      : "bg-background/40 ring-border text-text-secondary"
-                                  }`}
-                                >
-                                  {t.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                            <button
+                              type="button"
+                              onClick={() => setLightboxIdx(i)}
+                              className="block w-full focus:outline-none focus:ring-2 focus:ring-primary/40"
+                              aria-label={`Preview screenshot ${i + 1}`}
+                            >
+                              <img
+                                src={f.preview}
+                                alt={`Screenshot ${i + 1}`}
+                                className="block aspect-square w-full object-cover"
+                              />
+                              <span
+                                aria-hidden
+                                className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/55 opacity-0 transition group-hover:opacity-100"
+                              >
+                                <Eye className="h-4 w-4 text-text-primary" />
+                              </span>
+                            </button>
+
+                            {isPrimary && (
+                              <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-primary/25 ring-1 ring-primary/45 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-wider text-text-primary">
+                                <Star className="h-2.5 w-2.5 fill-current" />
+                                Primary
+                              </span>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => removeFileAt(i)}
+                              className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-background/85 ring-1 ring-border text-text-primary hover:text-rose-300"
+                              aria-label={`Remove screenshot ${i + 1}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+
+                            <div className="px-1.5 pb-1.5 pt-1">
+                              <p
+                                className="truncate text-[9.5px] text-text-secondary/80"
+                                title={f.file.name}
+                              >
+                                {f.file.name}
+                              </p>
+                              <p className="text-[9px] tabular-nums text-text-secondary/55">
+                                {formatBytes(f.file.size)}
+                              </p>
+                              <div className="mt-1 flex flex-wrap gap-0.5">
+                                {SCREENSHOT_TAGS.map((t) => {
+                                  const active = f.tag === t.id;
+                                  return (
+                                    <button
+                                      key={t.id}
+                                      type="button"
+                                      onClick={() => setFileTag(i, t.id)}
+                                      className={`rounded-full px-1.5 py-0.5 text-[8.5px] font-semibold ring-1 transition ${
+                                        active
+                                          ? "bg-primary/20 ring-primary/40 text-text-primary"
+                                          : "bg-background/40 ring-border text-text-secondary"
+                                      }`}
+                                    >
+                                      {t.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   )}
 
                   {files.length < MAX_SCREENSHOTS && (
@@ -775,7 +865,9 @@ export default function BehavioralJournalFlow({
                       className="mt-3 w-full rounded-xl bg-card ring-1 ring-border px-4 py-4 flex items-center justify-center gap-2 text-text-secondary text-[12.5px] font-medium hover:bg-text-primary/[0.03] transition"
                     >
                       <ImagePlus className="h-4 w-4" />
-                      {files.length === 0 ? "Add screenshots" : `Add more (${files.length}/${MAX_SCREENSHOTS})`}
+                      {files.length === 0
+                        ? "Add screenshots"
+                        : `Add more (${files.length}/${MAX_SCREENSHOTS})`}
                     </button>
                   )}
 
@@ -790,6 +882,81 @@ export default function BehavioralJournalFlow({
                       if (e.target) e.target.value = "";
                     }}
                   />
+
+                  {/* Lightbox preview */}
+                  <AnimatePresence>
+                    {lightboxIdx !== null && files[lightboxIdx] && (
+                      <motion.div
+                        key="screenshot-lightbox"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-sm p-4"
+                        onClick={() => setLightboxIdx(null)}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Screenshot preview"
+                      >
+                        <motion.div
+                          initial={{ scale: 0.96, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.96, opacity: 0 }}
+                          transition={{ duration: 0.18 }}
+                          className="relative w-full max-w-[480px] rounded-2xl bg-card ring-1 ring-border overflow-hidden"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <img
+                            src={files[lightboxIdx].preview}
+                            alt={`Screenshot ${lightboxIdx + 1} full preview`}
+                            className="block w-full max-h-[70vh] object-contain bg-background"
+                          />
+                          <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2.5">
+                            <div className="min-w-0">
+                              <p
+                                className="truncate text-[12px] text-text-primary"
+                                title={files[lightboxIdx].file.name}
+                              >
+                                {files[lightboxIdx].file.name}
+                              </p>
+                              <p className="text-[10.5px] tabular-nums text-text-secondary/65">
+                                {formatBytes(files[lightboxIdx].file.size)} ·
+                                {" "}#{lightboxIdx + 1} of {files.length}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              {lightboxIdx !== 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => makePrimary(lightboxIdx)}
+                                  className="inline-flex items-center gap-1 rounded-full bg-primary/15 ring-1 ring-primary/35 px-2.5 py-1 text-[10.5px] font-semibold text-text-primary"
+                                >
+                                  <Star className="h-3 w-3" />
+                                  Set primary
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => removeFileAt(lightboxIdx)}
+                                className="inline-flex items-center gap-1 rounded-full bg-card ring-1 ring-border px-2.5 py-1 text-[10.5px] font-semibold text-rose-300 hover:text-rose-200"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                Remove
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setLightboxIdx(null)}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-card ring-1 ring-border text-text-primary"
+                                aria-label="Close preview"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
             </motion.section>
