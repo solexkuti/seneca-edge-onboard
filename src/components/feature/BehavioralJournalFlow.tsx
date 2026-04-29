@@ -27,6 +27,14 @@ import {
   X,
 } from "lucide-react";
 import { validateTradePrices } from "@/lib/priceValidation";
+import {
+  analyzeForCorrection,
+  fieldLabel,
+  type CorrectionAnalysis,
+  type FieldId,
+  type PriceCandidate,
+} from "@/lib/priceCorrection";
+import { PriceCorrectionModal } from "@/components/feature/PriceCorrectionModal";
 import { toast } from "sonner";
 import {
   MISTAKES,
@@ -52,6 +60,9 @@ import { detectRelapseAndLoops } from "@/lib/relapseAndLoopDetection";
 import { userKey } from "@/lib/userScopedStorage";
 
 const ACCOUNT_SIZE_STORAGE_SUFFIX = "journal:account_size";
+/** Per-user repeat-mistake counters for the price-correction engine. */
+const CORRECTION_REPEAT_STORAGE_SUFFIX = "journal:correction_repeats";
+const REPEAT_HINT_THRESHOLD = 3;
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
