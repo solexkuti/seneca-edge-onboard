@@ -47,6 +47,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
 import { detectRelapseAndLoops } from "@/lib/relapseAndLoopDetection";
+import { userKey } from "@/lib/userScopedStorage";
+
+const ACCOUNT_SIZE_STORAGE_SUFFIX = "journal:account_size";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
