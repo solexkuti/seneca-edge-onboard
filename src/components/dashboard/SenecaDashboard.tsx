@@ -100,15 +100,22 @@ export default function SenecaDashboard({ userName }: { userName?: string }) {
     [entries, score],
   );
 
-  // Dashboard-level copy override: sharpen the default "Stay in rhythm"
-  // case into a more decision-discipline framing without touching the
-  // shared behavioral library.
+  // Dashboard-level copy overrides: sharpen the default "Stay in rhythm"
+  // case AND the soft "Tighten execution" warn case into more decision-
+  // discipline framing without touching the shared behavioral library.
   const action = useMemo(() => {
     if (rawAction.title === "Stay in rhythm") {
       return {
         ...rawAction,
         title: "Maintain consistency",
         sub: "Run every setup through the analyzer before execution.",
+      };
+    }
+    if (rawAction.title === "Tighten execution") {
+      return {
+        ...rawAction,
+        title: "Your discipline is drifting",
+        sub: "Vet your next setup with the analyzer before execution. Slow down. Confirm before you commit.",
       };
     }
     return rawAction;
