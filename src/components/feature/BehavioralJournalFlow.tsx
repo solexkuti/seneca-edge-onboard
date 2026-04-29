@@ -45,6 +45,8 @@ import {
   type Outcome,
 } from "@/lib/tradeLogs";
 import { supabase } from "@/integrations/supabase/client";
+import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
+import { detectRelapseAndLoops } from "@/lib/relapseAndLoopDetection";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
