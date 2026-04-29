@@ -310,6 +310,7 @@ export default function MistakeBreakdown() {
                 winRate === null
                   ? 0
                   : Math.min(1, Math.max(0, winRate));
+              const isOpen = expanded[r.id] ?? true;
               return (
                 <div
                   key={r.id}
@@ -336,9 +337,20 @@ export default function MistakeBreakdown() {
                     </p>
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between text-[10.5px] text-text-secondary tabular-nums">
-                    <span>
-                      W {r.wins} · L {r.losses} · BE {r.breakeven}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpanded((s) => ({ ...s, [r.id]: !isOpen }))
+                    }
+                    className="mt-2.5 -mx-1 flex w-[calc(100%+0.5rem)] items-center justify-between rounded-md px-1 py-1 text-[10.5px] text-text-secondary tabular-nums hover:text-text-primary transition"
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      <ChevronDown
+                        className={`h-3 w-3 transition-transform ${
+                          isOpen ? "" : "-rotate-90"
+                        }`}
+                      />
+                      {isOpen ? "Hide trades" : "Show trades"}
                     </span>
                     <span
                       className={
@@ -351,7 +363,22 @@ export default function MistakeBreakdown() {
                     >
                       Net {fmtR(r.netR)}
                     </span>
-                  </div>
+                  </button>
+
+                  {isOpen && r.entries.length > 0 && (
+                    <ul className="mt-2 space-y-1.5">
+                      {r.entries
+                        .slice()
+                        .sort(
+                          (a, b) =>
+                            new Date(b.created_at).getTime() -
+                            new Date(a.created_at).getTime(),
+                        )
+                        .map((e) => (
+                          <TradeRow key={e.id} entry={e} />
+                        ))}
+                    </ul>
+                  )}
                 </div>
               );
             })}
