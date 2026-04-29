@@ -57,25 +57,30 @@ export default function SegmentedProgress({
       aria-valuemax={count}
       aria-valuenow={active + 1}
       onClick={handleTrackClick}
-      className="relative h-[3px] w-full cursor-pointer rounded-full bg-text-secondary/15"
+      className="relative h-[3px] w-full cursor-pointer rounded-full bg-[rgba(255,255,255,0.06)]"
     >
-      {/* Filled portion — drives both the bar and the leading-edge bloom */}
+      {/* Filled portion — gold ramp, glow scales with active dwell */}
       <motion.span
         animate={controls}
         initial={{ width: `${base * 100}%` }}
-        className="absolute inset-y-0 left-0 rounded-full bg-gradient-primary"
+        className="absolute inset-y-0 left-0 rounded-full bg-gold-gradient"
+        style={{ boxShadow: "0 0 10px rgba(198,161,91,0.35)" }}
       >
-        {/* Soft outward bloom riding the fill edge */}
+        {/* Soft outward bloom riding the fill edge — only meaningful while dwelling */}
         <span
           aria-hidden
-          className="pointer-events-none absolute right-0 top-1/2 h-3 w-6 -translate-y-1/2 translate-x-1/2 rounded-full bg-gradient-primary opacity-60 blur-md"
+          className="pointer-events-none absolute right-0 top-1/2 h-3 w-6 -translate-y-1/2 translate-x-1/2 rounded-full bg-gold-gradient opacity-70 blur-md"
         />
-        {/* Crisp glowing tip dot for definition */}
+        {/* Crisp glowing tip — gentle gold pulse only on the active edge */}
         <motion.span
           aria-hidden
-          animate={{ opacity: [0.85, 1, 0.85], scale: [1, 1.15, 1] }}
+          animate={
+            duration > 0
+              ? { opacity: [0.85, 1, 0.85], scale: [1, 1.18, 1] }
+              : { opacity: 0.85, scale: 1 }
+          }
           transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-          className="pointer-events-none absolute right-0 top-1/2 h-[7px] w-[7px] -translate-y-1/2 translate-x-1/2 rounded-full bg-gradient-primary shadow-[0_0_8px_rgba(108,92,231,0.55)]"
+          className="pointer-events-none absolute right-0 top-1/2 h-[7px] w-[7px] -translate-y-1/2 translate-x-1/2 rounded-full bg-gold shadow-[0_0_10px_rgba(198,161,91,0.65)]"
         />
       </motion.span>
     </div>
