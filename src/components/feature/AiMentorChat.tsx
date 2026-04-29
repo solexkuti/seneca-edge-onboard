@@ -10,8 +10,7 @@ import {
   type DbBehaviorPattern,
 } from "@/lib/dbBehaviorPatterns";
 import {
-  detectMentorState,
-  pickMentorSuggestions,
+  pickIntroSuggestions,
   INTENT_STYLES,
 } from "@/lib/mentorSuggestions";
 import { readProfile, summarizeProfile } from "@/lib/onboardingProfile";
