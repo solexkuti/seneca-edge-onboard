@@ -365,3 +365,118 @@ export function interrogate(bp: StrategyBlueprint): IntelligenceReport {
     overlaps.length === 0;
   return { contradictions, vague, missing, overlaps, score, clean };
 }
+
+/* -------------------------------------------------------------------------- */
+/*                  7. Strictness control / finalize gate                      */
+/* -------------------------------------------------------------------------- */
+
+export type StrictnessVerdict = {
+  /** "ok" lets the user proceed; "warn" shows yellow; "block" stops finalize. */
+  severity: "ok" | "warn" | "block";
+  /** Human-readable reasons (one per blocker / warning). */
+  reasons: string[];
+  /** Critical missing categories that MUST be filled before finalize. */
+  criticalMissing: RuleCategoryV2[];
+};
+
+const CRITICAL_MISSING: RuleCategoryV2[] = ["entry", "risk"];
+
+/**
+ * Decide whether the builder may advance past the Interrogation step.
+ * Locked blueprints are grandfathered: their verdict is downgraded to "warn"
+ * regardless of issues, so existing systems keep working untouched.
+ */
+export function evaluateStrictness(
+  report: IntelligenceReport,
+  opts: { isLocked?: boolean } = {},
+): StrictnessVerdict {
+  const reasons: string[] = [];
+  const criticalMissing = report.missing
+    .map((m) => m.category)
+    .filter((c) => CRITICAL_MISSING.includes(c));
+
+  if (report.contradictions.length > 0) {
+    reasons.push(
+      `${report.contradictions.length} contradiction${report.contradictions.length === 1 ? "" : "s"} — rules conflict.`,
+    );
+  }
+  if (criticalMissing.length > 0) {
+    reasons.push(
+      `Missing required: ${criticalMissing.join(", ")}.`,
+    );
+  }
+  if (report.vague.length > 2) {
+    reasons.push(
+      `${report.vague.length} vague rules — tighten or drop them.`,
+    );
+  }
+
+  let severity: StrictnessVerdict["severity"] = "ok";
+  if (reasons.length > 0) severity = "block";
+  else if (report.vague.length > 0 || report.missing.length > 0 || report.overlaps.length > 0) {
+    severity = "warn";
+  }
+
+  // Grandfather locked blueprints — never block them.
+  if (opts.isLocked && severity === "block") severity = "warn";
+
+  return { severity, reasons, criticalMissing };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                   8. Structured-output validation                           */
+/* -------------------------------------------------------------------------- */
+
+export type RuleAtomicityIssue = {
+  category: RuleCategoryV2;
+  rule: string;
+  problem: "compound" | "non_binary" | "too_long" | "empty";
+  hint: string;
+};
+
+const COMPOUND_JOINERS = /\b(and then|then also|plus|along with)\b/i;
+const NON_BINARY = /\b(maybe|sometimes|usually|often|prefer|try to|if possible|depends)\b/i;
+
+/**
+ * Atomic = one condition. Binary = yes/no testable. Machine-readable = ≤12 words
+ * and free of hedging language. Returns issues for Chart Analyzer compatibility.
+ */
+export function validateStructuredOutput(rules: StructuredRulesV2): RuleAtomicityIssue[] {
+  const out: RuleAtomicityIssue[] = [];
+  for (const cat of RULE_CATEGORIES_V2) {
+    for (const rule of (rules[cat] ?? []) as string[]) {
+      const trimmed = rule.trim();
+      if (!trimmed) {
+        out.push({ category: cat, rule, problem: "empty", hint: "Remove blank rule." });
+        continue;
+      }
+      if (COMPOUND_JOINERS.test(trimmed)) {
+        out.push({
+          category: cat,
+          rule,
+          problem: "compound",
+          hint: "Split into separate atomic rules.",
+        });
+        continue;
+      }
+      if (NON_BINARY.test(trimmed)) {
+        out.push({
+          category: cat,
+          rule,
+          problem: "non_binary",
+          hint: "Replace hedging language with a yes/no condition.",
+        });
+        continue;
+      }
+      if (trimmed.split(/\s+/).length > 14) {
+        out.push({
+          category: cat,
+          rule,
+          problem: "too_long",
+          hint: "Trim to ≤12 words.",
+        });
+      }
+    }
+  }
+  return out;
+}
