@@ -496,6 +496,17 @@ export default function BehavioralJournalFlow({
           ))}
         </div>
 
+        {preTradeAwareness && step === 0 && (
+          <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/[0.06] px-4 py-3">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary/80">
+              Pre-trade awareness
+            </div>
+            <p className="mt-1 text-[13px] leading-snug text-text-primary">
+              {preTradeAwareness}
+            </p>
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           {step === 0 && (
             <motion.section
