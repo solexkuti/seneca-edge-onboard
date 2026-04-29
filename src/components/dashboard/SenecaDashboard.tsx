@@ -1,6 +1,7 @@
 // SenecaDashboard — behavioral intelligence hub.
-// Order: Control State → Next Action → Seneca Insight → Behavior → System → Tools.
-// Copy: max 1–2 lines per section. Mentor is reachable from presence chip + global orb.
+// Order: Control State → Next Action → Behavior → Performance → System → Tools.
+// Single mentor entry point: the presence chip inside Control State.
+// (No second "Seneca insight" surface — duplicate routing was removed.)
 
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
