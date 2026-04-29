@@ -49,6 +49,11 @@ export default function AiMentorChat() {
 
   // Dynamic, state-driven quick prompts. Rotation key updates whenever the
   // user logs new activity or discipline shifts — so chips feel reactive.
+  const userMsgCount = useMemo(
+    () => messages.filter((m) => m.role === "user").length,
+    [messages],
+  );
+
   const quickPrompts = useMemo(() => {
     const tradeCount = Math.max(
       performancePayload?.windowSize ?? 0,
@@ -58,8 +63,6 @@ export default function AiMentorChat() {
     const rotation =
       behavioralEntries.length +
       Math.floor((traderState.discipline.score ?? 0) / 10);
-    // We can't read `messages` here without re-render churn — pass via state.
-    // The component computes a separate userMsgCount and re-derives below.
     return buildQuickPrompts(
       {
         tradeCount,
@@ -68,11 +71,10 @@ export default function AiMentorChat() {
           : traderState.discipline.score,
         winRate: performancePayload?.winRate ?? null,
         avgRR: performancePayload?.avgRR ?? null,
-        conversationCount: userMsgCountRef.current,
+        conversationCount: userMsgCount,
       },
       rotation,
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     performancePayload?.windowSize,
     performancePayload?.winRate,
@@ -81,8 +83,7 @@ export default function AiMentorChat() {
     rows.length,
     traderState.loading,
     traderState.discipline.score,
-    // re-run when user sends a message
-    // (tracked via state below)
+    userMsgCount,
   ]);
 
   const [recentPatterns, setRecentPatterns] = useState<DbBehaviorPattern[]>([]);
