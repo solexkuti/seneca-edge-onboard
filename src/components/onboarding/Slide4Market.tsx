@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import type { SlideProps } from "./OnboardingFlow";
-import { patchProfile, type MarketChoice } from "@/lib/onboardingProfile";
+import { patchProfile, readProfile, type MarketChoice } from "@/lib/onboardingProfile";
 
 const markets: { id: MarketChoice; label: string; icon: React.ReactNode }[] = [
   { id: "forex", label: "Forex", icon: <DollarSign className="h-5 w-5" /> },
@@ -20,7 +20,9 @@ const markets: { id: MarketChoice; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function Slide4Market({ onNext }: SlideProps) {
-  const [selected, setSelected] = useState<MarketChoice | null>(null);
+  const [selected, setSelected] = useState<MarketChoice | null>(
+    () => readProfile().market ?? null,
+  );
 
   return (
     <div className="flex flex-col gap-6">
