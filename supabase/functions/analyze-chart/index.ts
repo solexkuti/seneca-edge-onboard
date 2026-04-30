@@ -654,14 +654,10 @@ Deno.serve(async (req) => {
     // can produce hidden_observation + behavioral_insight grounded in
     // Layers 1–3 without round-tripping the chart twice.
     const insight_request = body?.insight_request ?? null;
-    if (!exec_image_url || typeof exec_image_url !== "string") {
-      return new Response(JSON.stringify({ error: "exec_image_url required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     // ── INSIGHT-ONLY MODE (second pass from client) ──────────────────────
+    // Must be checked BEFORE the exec_image_url guard since the client does
+    // not re-send the image on the second pass.
     if (insight_request && typeof insight_request === "object") {
       const out = await generateInsight(
         insight_request.structural ?? null,
@@ -672,6 +668,13 @@ Deno.serve(async (req) => {
         JSON.stringify({ status: "insight", insight: out }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    if (!exec_image_url || typeof exec_image_url !== "string") {
+      return new Response(JSON.stringify({ error: "exec_image_url required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // ── STAGE 1: validation ──────────────────────────────────────────────
