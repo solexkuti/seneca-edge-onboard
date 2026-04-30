@@ -16,6 +16,11 @@ import {
   Brain,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
+  StickyNote,
+  AlertTriangle,
+  Clock,
+  Globe2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
