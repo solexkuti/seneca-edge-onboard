@@ -647,12 +647,31 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { exec_image_url, higher_image_url } = await req.json();
+    const body = await req.json();
+    const exec_image_url: string | undefined = body?.exec_image_url;
+    const higher_image_url: string | null = body?.higher_image_url ?? null;
+    // Optional second-pass: client sends back its alignment + condition so we
+    // can produce hidden_observation + behavioral_insight grounded in
+    // Layers 1–3 without round-tripping the chart twice.
+    const insight_request = body?.insight_request ?? null;
     if (!exec_image_url || typeof exec_image_url !== "string") {
       return new Response(JSON.stringify({ error: "exec_image_url required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // ── INSIGHT-ONLY MODE (second pass from client) ──────────────────────
+    if (insight_request && typeof insight_request === "object") {
+      const out = await generateInsight(
+        insight_request.structural ?? null,
+        insight_request.market_condition ?? null,
+        insight_request.alignment ?? {},
+      );
+      return new Response(
+        JSON.stringify({ status: "insight", insight: out }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     // ── STAGE 1: validation ──────────────────────────────────────────────
@@ -674,12 +693,13 @@ Deno.serve(async (req) => {
         }
       | null;
 
+    // Tightened gate: all axis/candle flags AND confidence ≥ 0.7.
     const isValid =
       !!v &&
       v.has_candles &&
       v.has_price_axis &&
       v.has_time_axis &&
-      v.confidence >= 0.6;
+      v.confidence >= 0.7;
 
     if (!isValid) {
       const details: string[] = [];
@@ -703,10 +723,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── STAGE 2: PRIMARY extraction + market interpretation (parallel) ──
-    const [primaryExec, marketInterp] = await Promise.all([
+    // ── STAGE 2: feature extraction + structural analysis (parallel) ────
+    const [primaryExec, structural] = await Promise.all([
       extract(PRIMARY_MODEL, EXTRACT_SYSTEM_PRIMARY, exec_image_url, "exec"),
-      interpretMarket(exec_image_url),
+      analyzeStructure(exec_image_url),
     ]);
 
     // ── STAGE 3: confidence eval ─────────────────────────────────────────
