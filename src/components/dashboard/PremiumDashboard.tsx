@@ -2,7 +2,7 @@
 // Read-only: pulls metrics from existing hooks. No engine or DB changes.
 
 import { Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowUpRight,
   LineChart,
@@ -11,8 +11,13 @@ import {
   ShieldCheck,
   Wallet,
   Target,
+  TrendingUp,
+  Activity,
+  Brain,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
 import { usePerformance } from "@/hooks/usePerformance";
 import { useTraderState } from "@/hooks/useTraderState";
