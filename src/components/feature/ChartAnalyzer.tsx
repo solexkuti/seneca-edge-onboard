@@ -698,45 +698,69 @@ function ResultView({
       exit={{ opacity: 0, y: -8 }}
       className="space-y-4"
     >
-      <ChartPreview
-        src={result.execPreview}
-        label="Execution chart"
-        heightClass="h-44"
-      />
-      {result.higherPreview && (
+      <LayerReveal index={0}>
         <ChartPreview
-          src={result.higherPreview}
-          label="Higher timeframe"
-          heightClass="h-32"
+          src={result.execPreview}
+          label="Execution chart"
+          heightClass="h-44"
         />
+      </LayerReveal>
+      {result.higherPreview && (
+        <LayerReveal index={1}>
+          <ChartPreview
+            src={result.higherPreview}
+            label="Higher timeframe"
+            heightClass="h-32"
+          />
+        </LayerReveal>
       )}
 
       {/* Layer 1 — Structural Analysis */}
-      <StructuralAnalysisCard structural={structural} />
+      <LayerReveal index={2} glow>
+        <StructuralAnalysisCard structural={structural} />
+      </LayerReveal>
 
       {/* Layer 2 — Market Condition */}
-      <MarketConditionCard condition={condition} />
+      <LayerReveal index={3}>
+        <MarketConditionCard condition={condition} />
+      </LayerReveal>
 
       {/* Trade Grade */}
-      <TradeGradeCard alignment={alignment} />
+      <LayerReveal index={4} glow>
+        <TradeGradeCard alignment={alignment} />
+      </LayerReveal>
 
       {/* Confidence Breakdown */}
-      <ConfidenceBreakdownCard confidence={confidence} />
+      <LayerReveal index={5}>
+        <ConfidenceBreakdownCard confidence={confidence} />
+      </LayerReveal>
 
       {/* Strategy Alignment */}
-      <StrategyAlignmentCard alignment={alignment} />
+      <LayerReveal index={6}>
+        <StrategyAlignmentCard alignment={alignment} />
+      </LayerReveal>
 
       {/* Detailed Breakdown */}
-      <DetailedBreakdownCard alignment={alignment} />
+      <LayerReveal index={7}>
+        <DetailedBreakdownCard alignment={alignment} />
+      </LayerReveal>
 
       {/* Layer 4/5 — Hidden Insight + Behavioral */}
-      {aiInsight && <HiddenInsightCard insight={aiInsight} />}
+      {aiInsight && (
+        <LayerReveal index={8} glow>
+          <HiddenInsightCard insight={aiInsight} />
+        </LayerReveal>
+      )}
 
       {/* Insight (rule-based fallback) */}
-      <InsightCard alignment={alignment} />
+      <LayerReveal index={9}>
+        <InsightCard alignment={alignment} />
+      </LayerReveal>
 
       {alignment.behavioral_note && (
-        <BehavioralNoteCard note={alignment.behavioral_note} />
+        <LayerReveal index={10}>
+          <BehavioralNoteCard note={alignment.behavioral_note} />
+        </LayerReveal>
       )}
 
       <DisclaimerCard />
