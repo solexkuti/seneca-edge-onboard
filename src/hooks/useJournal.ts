@@ -38,7 +38,9 @@ export function useJournal(): JournalEntry[] {
     };
     window.addEventListener(JOURNAL_EVENT, onUpdate);
     window.addEventListener("storage", onStorage);
-    const { data: sub } = supabase.auth.onAuthStateChange(() => refresh());
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") refresh();
+    });
 
     return () => {
       cancelled = true;
