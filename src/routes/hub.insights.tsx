@@ -23,7 +23,8 @@ function InsightsPage() {
   const perf = usePerformance(60);
 
   const total = entries.length;
-  const winRate = perf?.winRate != null ? Math.round(perf.winRate * 100) : null;
+  const wr = perf?.metrics?.winRate;
+  const winRate = typeof wr === "number" && perf?.hasTrades ? Math.round(wr * 100) : null;
   const ruleAdherence = score != null ? Math.round(score) : null;
   const gap =
     winRate != null && ruleAdherence != null
