@@ -18,6 +18,7 @@ const corsHeaders = {
 
 const PRIMARY_MODEL = "google/gemini-2.5-flash";
 const FALLBACK_MODEL = "openai/gpt-5-mini";
+const REASONING_MODEL = "google/gemini-2.5-pro"; // structural + insight reasoning
 const LOW_CONFIDENCE_THRESHOLD = 0.75;
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
@@ -174,6 +175,12 @@ const EXTRACT_SCHEMA = {
     key_zone_present: { type: "boolean" },
     fib_alignment: { type: "boolean" },
     quality: { type: "string", enum: ["clear", "messy", "unclear"] },
+    candle_overlap: {
+      type: "string",
+      enum: ["low", "medium", "high"],
+      description:
+        "Visual estimate of how much candle bodies overlap. High = bodies stacking inside one another (chop). Low = each candle expands range.",
+    },
     confidence_score: { type: "number", minimum: 0, maximum: 1 },
     regions: {
       type: "array",
@@ -190,6 +197,7 @@ const EXTRACT_SCHEMA = {
     "key_zone_present",
     "fib_alignment",
     "quality",
+    "candle_overlap",
     "confidence_score",
   ],
   additionalProperties: false,
@@ -212,6 +220,7 @@ type ChartExtraction = {
   key_zone_present: boolean;
   fib_alignment: boolean;
   quality: "clear" | "messy" | "unclear";
+  candle_overlap: "low" | "medium" | "high";
   confidence_score: number;
   regions?: ChartRegion[];
 };
