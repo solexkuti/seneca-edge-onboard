@@ -209,6 +209,10 @@ function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const [asset, setAsset] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("15m");
 
+  // Trade-log context — when active, replace selectors with a step indicator.
+  const [logStep, setLogStep] = useState(getTradeLogStep());
+  useEffect(() => subscribeTradeLogStep(setLogStep), []);
+
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-white/[0.05] bg-[#0E0F11]/85 px-4 backdrop-blur-xl md:px-6">
       {/* Mobile menu */}
@@ -221,22 +225,35 @@ function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
         <Menu className="h-5 w-5" strokeWidth={1.9} />
       </button>
 
-      <div className="hidden items-center gap-2 md:flex">
-        <PlaceholderSelect
-          label="Asset"
-          options={ASSETS}
-          value={asset}
-          setValue={setAsset}
-          width="w-[148px]"
-        />
-        <PlaceholderSelect
-          label="TF"
-          options={TIMEFRAMES}
-          value={timeframe}
-          setValue={setTimeframe}
-          width="w-[104px]"
-        />
-      </div>
+      {logStep ? (
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 items-center gap-2 rounded-lg border border-gold/20 bg-gold/[0.06] px-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
+            <span className="h-1.5 w-1.5 rounded-full bg-gold shadow-[0_0_10px_rgba(198,161,91,0.6)]" />
+            Log Trade
+            <span className="text-gold/70">·</span>
+            <span className="text-gold">
+              Step {logStep.step} of {logStep.total}
+            </span>
+          </span>
+        </div>
+      ) : (
+        <div className="hidden items-center gap-2 md:flex">
+          <PlaceholderSelect
+            label="Asset"
+            options={ASSETS}
+            value={asset}
+            setValue={setAsset}
+            width="w-[148px]"
+          />
+          <PlaceholderSelect
+            label="TF"
+            options={TIMEFRAMES}
+            value={timeframe}
+            setValue={setTimeframe}
+            width="w-[104px]"
+          />
+        </div>
+      )}
 
       <div className="ml-auto flex items-center gap-2">
         <button
