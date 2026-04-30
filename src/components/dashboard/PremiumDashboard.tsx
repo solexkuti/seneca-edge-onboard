@@ -246,9 +246,13 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
         <FullStatsPanel />
       </div>
 
-      {/* ── 3 + 4. Trade History  +  Behavior Breakdown ─────── */}
-      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
+      {/* ── 3. Trade History (full rebuild) ─────────────────── */}
+      <div className="mt-5">
         <TradeHistoryPanel />
+      </div>
+
+      {/* ── 4. Behavior Breakdown (full rebuild) ────────────── */}
+      <div className="mt-5">
         <BehaviorBreakdownCard />
       </div>
     </div>
