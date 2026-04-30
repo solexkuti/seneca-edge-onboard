@@ -813,34 +813,30 @@ function StructuralAnalysisCard({
       </div>
     );
   }
-  const swings = structural.swing_points
-    ? `HH ${structural.swing_points.hh ?? 0} · HL ${structural.swing_points.hl ?? 0} · LH ${structural.swing_points.lh ?? 0} · LL ${structural.swing_points.ll ?? 0}`
-    : "—";
+  const sp = structural.swing_points;
+  const swings = `HH ${sp.HH ? "✓" : "—"} · HL ${sp.HL ? "✓" : "—"} · LH ${sp.LH ? "✓" : "—"} · LL ${sp.LL ? "✓" : "—"}`;
+  const bosLabel = structural.bos.occurred
+    ? `BOS ${structural.bos.direction ?? ""}`.trim()
+    : "No BOS";
   return (
     <div className="rounded-2xl bg-gradient-to-br from-card to-card/60 p-4 ring-1 ring-border shadow-card-premium">
       <SectionHeader label="Structural analysis" accent />
       <div className="mt-3 grid grid-cols-3 gap-2">
         <Stat label="Swings" value={swings} />
-        <Stat
-          label="Momentum"
-          value={(structural.momentum ?? "—").toString()}
-        />
-        <Stat
-          label="Displacement"
-          value={(structural.displacement ?? "—").toString()}
-        />
+        <Stat label="Momentum" value={structural.momentum_strength} />
+        <Stat label="Structure" value={bosLabel} />
       </div>
-      {structural.bos_choch && (
+      {structural.bos.trigger && (
         <p className="mt-3 text-[12.5px] leading-snug text-text-primary">
           <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-            Structural shift:
+            BOS trigger:
           </span>{" "}
-          {structural.bos_choch}
+          {structural.bos.trigger}
         </p>
       )}
-      {structural.notes && (
+      {structural.summary && (
         <p className="mt-2 text-[12.5px] leading-snug text-text-secondary">
-          {structural.notes}
+          {structural.summary}
         </p>
       )}
     </div>
@@ -852,14 +848,22 @@ function MarketConditionCard({ condition }: { condition: MarketCondition }) {
     <div className="rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft">
       <SectionHeader label="Market condition" />
       <div className="mt-3 grid grid-cols-3 gap-2">
-        <Stat label="State" value={MARKET_CONDITION_LABEL[condition.state]} />
+        <Stat label="State" value={MARKET_CONDITION_LABEL[condition.label]} />
         <Stat label="Bias" value={MARKET_BIAS_LABEL[condition.bias]} />
         <Stat label="Clarity" value={MARKET_CLARITY_LABEL[condition.clarity]} />
       </div>
-      {condition.reason && (
-        <p className="mt-3 text-[12.5px] leading-snug text-text-primary">
-          {condition.reason}
-        </p>
+      {condition.reasoning.length > 0 && (
+        <ul className="mt-3 space-y-1">
+          {condition.reasoning.map((r, i) => (
+            <li
+              key={i}
+              className="flex items-start gap-2 text-[12.5px] leading-snug text-text-primary"
+            >
+              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand" />
+              <span>{r}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -870,6 +874,11 @@ function ConfidenceBreakdownCard({
 }: {
   confidence: ConfidenceBreakdown;
 }) {
+  const factors: { label: string; score: number }[] = [
+    { label: "Structure clarity", score: confidence.structure_clarity },
+    { label: "Trend strength", score: confidence.trend_strength },
+    { label: "Confirmation signals", score: confidence.confirmation_signals },
+  ];
   return (
     <div className="rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft">
       <div className="flex items-center gap-2">
@@ -877,29 +886,31 @@ function ConfidenceBreakdownCard({
           Confidence
         </span>
         <span className="ml-auto text-[13px] font-semibold text-text-primary">
-          {confidence.overall_pct}%
+          {confidence.overall}%
         </span>
       </div>
       <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-text-secondary/10">
         <div
           className="h-full rounded-full bg-gradient-mix transition-all"
-          style={{ width: `${confidence.overall_pct}%` }}
+          style={{ width: `${confidence.overall}%` }}
         />
       </div>
       <ul className="mt-3 space-y-1.5">
-        {confidence.factors.map((f, i) => (
+        {factors.map((f, i) => (
           <li key={i} className="flex items-start gap-2">
             <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand" />
             <p className="text-[12px] leading-snug text-text-primary">
               <span className="font-semibold">{f.label}</span>{" "}
               <span className="text-text-secondary">· {f.score}/100</span>
-              <span className="block text-[11.5px] text-text-secondary">
-                {f.why}
-              </span>
             </p>
           </li>
         ))}
       </ul>
+      {confidence.why && (
+        <p className="mt-2 text-[11.5px] italic leading-snug text-text-secondary">
+          {confidence.why}
+        </p>
+      )}
     </div>
   );
 }
