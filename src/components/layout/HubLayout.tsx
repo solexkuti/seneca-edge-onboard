@@ -208,7 +208,13 @@ function PlaceholderSelect({
   );
 }
 
-function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
+function TopBar({
+  onOpenMobileNav,
+  pathname,
+}: {
+  onOpenMobileNav: () => void;
+  pathname: string;
+}) {
   // Local UI-only state — selectors are pure placeholders, no engine wiring.
   const [asset, setAsset] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("15m");
@@ -216,6 +222,9 @@ function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   // Trade-log context — when active, replace selectors with a step indicator.
   const [logStep, setLogStep] = useState(getTradeLogStep());
   useEffect(() => subscribeTradeLogStep(setLogStep), []);
+
+  // Dashboard route — selectors should not appear here.
+  const isDashboard = pathname === "/hub" || pathname === "/hub/";
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-white/[0.05] bg-[#0E0F11]/85 px-4 backdrop-blur-xl md:px-6">
@@ -240,7 +249,7 @@ function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
             </span>
           </span>
         </div>
-      ) : (
+      ) : isDashboard ? null : (
         <div className="hidden items-center gap-2 md:flex">
           <PlaceholderSelect
             label="Asset"
@@ -342,7 +351,7 @@ export default function HubLayout({ children }: { children?: ReactNode }) {
 
         {/* Main column */}
         <div className="flex min-h-[100svh] flex-col md:pl-[240px]">
-          <TopBar onOpenMobileNav={() => setMobileOpen(true)} />
+          <TopBar onOpenMobileNav={() => setMobileOpen(true)} pathname={pathname} />
           <main className="relative flex-1">
             {/* Subtle ambient wash, very faint */}
             <div
