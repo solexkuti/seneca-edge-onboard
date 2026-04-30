@@ -495,12 +495,19 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ── HARD LOCK ENFORCEMENT ────────────────────────────────────────────
-    // Mirror the client-side TRADER_STATE: refuse to analyze if the caller
-    // is in lock state. This is defense-in-depth against direct API calls
-    // that bypass the AnalyzerLockScreen.
-    const lockResp = await enforceAnalyzerLock(req);
-    if (lockResp) return lockResp;
+    // ── INTELLIGENCE-ONLY (no enforcement) ───────────────────────────────
+    // Per Seneca Edge design: the analyzer is a neutral evaluator, never an
+    // enforcement gate. Checklist / discipline state are surfaced as context
+    // in the response, never used to block analysis. Only auth is required.
+    {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      if (!authHeader.toLowerCase().startsWith("bearer ")) {
+        return new Response(
+          JSON.stringify({ error: "Authentication required" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
 
     const { exec_image_url, higher_image_url } = await req.json();
     if (!exec_image_url || typeof exec_image_url !== "string") {
