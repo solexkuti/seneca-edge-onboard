@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import Logo from "@/components/brand/Logo";
 import RequireAuth from "@/components/auth/RequireAuth";
+import SystemStatusIndicator from "@/components/layout/SystemStatusIndicator";
 
 // ─────────────────────────────────────────────────────────────
 // Sidebar nav definition. Uses existing routes; Replay/Insights/
