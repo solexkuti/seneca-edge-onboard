@@ -670,21 +670,25 @@ function UploadCard({
 
 // ── result view ──────────────────────────────────────────────────────────────
 
+type ResultShape = {
+  row: ChartAnalysisRow;
+  alignment: StrategyAlignment;
+  structural: StructuralAnalysis | null;
+  condition: MarketCondition;
+  confidence: ConfidenceBreakdown;
+  aiInsight: AiInsight | null;
+  execPreview: string;
+  higherPreview: string | null;
+};
+
 function ResultView({
   result,
   onReset,
 }: {
-  result: {
-    row: ChartAnalysisRow;
-    alignment: StrategyAlignment;
-    marketInterp: MarketInterpretation | null;
-    execPreview: string;
-    higherPreview: string | null;
-    pipelineConfidence: number;
-  };
+  result: ResultShape;
   onReset: () => void;
 }) {
-  const { alignment, marketInterp } = result;
+  const { alignment, structural, condition, confidence, aiInsight } = result;
 
   return (
     <motion.div
@@ -694,7 +698,6 @@ function ResultView({
       exit={{ opacity: 0, y: -8 }}
       className="space-y-4"
     >
-      {/* Charts (preview only — no enforcement overlays) */}
       <ChartPreview
         src={result.execPreview}
         label="Execution chart"
@@ -708,33 +711,36 @@ function ResultView({
         />
       )}
 
-      {/* SECTION 1 — Market Summary (top card, no strategy reference) */}
-      <MarketSummaryCard
-        marketInterp={marketInterp}
-        pipelineConfidence={result.pipelineConfidence}
-      />
+      {/* Layer 1 — Structural Analysis */}
+      <StructuralAnalysisCard structural={structural} />
 
-      {/* SECTION 2 — Trade Grade (prominent) + Verdict */}
+      {/* Layer 2 — Market Condition */}
+      <MarketConditionCard condition={condition} />
+
+      {/* Trade Grade */}
       <TradeGradeCard alignment={alignment} />
 
-      {/* SECTION 3 — Strategy Alignment (expandable) */}
+      {/* Confidence Breakdown */}
+      <ConfidenceBreakdownCard confidence={confidence} />
+
+      {/* Strategy Alignment */}
       <StrategyAlignmentCard alignment={alignment} />
 
-      {/* SECTION 4 — Detailed Breakdown (collapsible) */}
+      {/* Detailed Breakdown */}
       <DetailedBreakdownCard alignment={alignment} />
 
-      {/* SECTION 5 — Insight Feedback */}
+      {/* Layer 4/5 — Hidden Insight + Behavioral */}
+      {aiInsight && <HiddenInsightCard insight={aiInsight} />}
+
+      {/* Insight (rule-based fallback) */}
       <InsightCard alignment={alignment} />
 
-      {/* SECTION 6 — Behavioral Note (optional) */}
       {alignment.behavioral_note && (
         <BehavioralNoteCard note={alignment.behavioral_note} />
       )}
 
-      {/* Disclaimer (mandatory) */}
       <DisclaimerCard />
 
-      {/* Actions — never block. "Outside your defined system" is just a tag. */}
       <div className="grid grid-cols-2 gap-2.5">
         <button
           onClick={onReset}
@@ -792,90 +798,163 @@ function ChartPreview({
   );
 }
 
-const CONDITION_LABEL: Record<MarketInterpretation["market_condition"], string> = {
-  trending: "Trending",
-  consolidating: "Consolidating",
-  choppy: "Choppy",
-};
-const BIAS_LABEL: Record<MarketInterpretation["directional_bias"], string> = {
-  bullish: "Bullish",
-  bearish: "Bearish",
-  neutral: "Neutral",
-};
-const CLARITY_LABEL: Record<MarketInterpretation["clarity"], string> = {
-  high: "High",
-  medium: "Medium",
-  low: "Low",
-};
-
-function MarketSummaryCard({
-  marketInterp,
-  pipelineConfidence,
+function StructuralAnalysisCard({
+  structural,
 }: {
-  marketInterp: MarketInterpretation | null;
-  pipelineConfidence: number;
+  structural: StructuralAnalysis | null;
 }) {
-  if (!marketInterp) {
+  if (!structural) {
     return (
       <div className="rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-            Market summary
-          </span>
-        </div>
+        <SectionHeader label="Structural analysis" />
         <p className="mt-2 text-[12.5px] text-text-secondary">
-          Market reading unavailable for this image. Strategy alignment below is
-          authoritative.
+          Structural reading unavailable for this image.
         </p>
       </div>
     );
   }
-
-  const condition = CONDITION_LABEL[marketInterp.market_condition];
-  const bias = BIAS_LABEL[marketInterp.directional_bias];
-  const clarity = CLARITY_LABEL[marketInterp.clarity];
-
+  const swings = structural.swing_points
+    ? `HH ${structural.swing_points.hh ?? 0} · HL ${structural.swing_points.hl ?? 0} · LH ${structural.swing_points.lh ?? 0} · LL ${structural.swing_points.ll ?? 0}`
+    : "—";
   return (
     <div className="rounded-2xl bg-gradient-to-br from-card to-card/60 p-4 ring-1 ring-border shadow-card-premium">
-      <div className="flex items-center gap-2">
-        <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
-        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
-          Market summary
-        </span>
-        <span className="ml-auto text-[10.5px] text-text-secondary">
-          AI confidence {Math.round(pipelineConfidence * 100)}%
-        </span>
-      </div>
-
-      <p className="mt-3 text-[13.5px] leading-snug text-text-primary">
-        {marketInterp.summary}
-      </p>
-
+      <SectionHeader label="Structural analysis" accent />
       <div className="mt-3 grid grid-cols-3 gap-2">
-        <Stat label="Condition" value={condition} />
-        <Stat label="Bias" value={bias} />
-        <Stat label="Clarity" value={clarity} />
+        <Stat label="Swings" value={swings} />
+        <Stat
+          label="Momentum"
+          value={(structural.momentum ?? "—").toString()}
+        />
+        <Stat
+          label="Displacement"
+          value={(structural.displacement ?? "—").toString()}
+        />
       </div>
+      {structural.bos_choch && (
+        <p className="mt-3 text-[12.5px] leading-snug text-text-primary">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+            Structural shift:
+          </span>{" "}
+          {structural.bos_choch}
+        </p>
+      )}
+      {structural.notes && (
+        <p className="mt-2 text-[12.5px] leading-snug text-text-secondary">
+          {structural.notes}
+        </p>
+      )}
+    </div>
+  );
+}
 
-      {marketInterp.key_observations.length > 0 && (
-        <div className="mt-3 rounded-xl bg-card/60 p-3 ring-1 ring-border">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-            Key observations
+function MarketConditionCard({ condition }: { condition: MarketCondition }) {
+  return (
+    <div className="rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft">
+      <SectionHeader label="Market condition" />
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <Stat label="State" value={MARKET_CONDITION_LABEL[condition.state]} />
+        <Stat label="Bias" value={MARKET_BIAS_LABEL[condition.bias]} />
+        <Stat label="Clarity" value={MARKET_CLARITY_LABEL[condition.clarity]} />
+      </div>
+      {condition.reason && (
+        <p className="mt-3 text-[12.5px] leading-snug text-text-primary">
+          {condition.reason}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ConfidenceBreakdownCard({
+  confidence,
+}: {
+  confidence: ConfidenceBreakdown;
+}) {
+  return (
+    <div className="rounded-2xl bg-card p-4 ring-1 ring-border shadow-soft">
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+          Confidence
+        </span>
+        <span className="ml-auto text-[13px] font-semibold text-text-primary">
+          {confidence.overall_pct}%
+        </span>
+      </div>
+      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-text-secondary/10">
+        <div
+          className="h-full rounded-full bg-gradient-mix transition-all"
+          style={{ width: `${confidence.overall_pct}%` }}
+        />
+      </div>
+      <ul className="mt-3 space-y-1.5">
+        {confidence.factors.map((f, i) => (
+          <li key={i} className="flex items-start gap-2">
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand" />
+            <p className="text-[12px] leading-snug text-text-primary">
+              <span className="font-semibold">{f.label}</span>{" "}
+              <span className="text-text-secondary">· {f.score}/100</span>
+              <span className="block text-[11.5px] text-text-secondary">
+                {f.why}
+              </span>
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function HiddenInsightCard({ insight }: { insight: AiInsight }) {
+  return (
+    <div className="space-y-3">
+      {insight.hidden_observation && (
+        <div className="rounded-2xl bg-card p-4 ring-1 ring-brand/30 shadow-soft">
+          <SectionHeader label="Hidden observation" accent />
+          <p className="mt-2 text-[12.5px] leading-snug text-text-primary">
+            {insight.hidden_observation}
           </p>
-          <ul className="mt-2 space-y-1">
-            {marketInterp.key_observations.slice(0, 5).map((obs, i) => (
-              <li
-                key={i}
-                className="flex items-start gap-2 text-[12.5px] leading-snug text-text-primary"
-              >
-                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand" />
-                <span>{obs}</span>
-              </li>
-            ))}
-          </ul>
         </div>
       )}
+      {insight.behavioral_insight && (
+        <div className="rounded-2xl bg-card p-4 ring-1 ring-amber-500/25 shadow-soft">
+          <div className="flex items-start gap-2">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+                Behavioral insight
+              </p>
+              <p className="mt-1 text-[12.5px] leading-snug text-text-primary">
+                {insight.behavioral_insight}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      {insight.conclusion && (
+        <div className="rounded-2xl bg-gradient-to-br from-card to-card/60 p-4 ring-1 ring-border shadow-card-premium">
+          <SectionHeader label="Conclusion" accent />
+          <p className="mt-2 text-[13px] leading-snug text-text-primary">
+            {insight.conclusion}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionHeader({
+  label,
+  accent,
+}: {
+  label: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {accent && <Sparkles className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />}
+      <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+        {label}
+      </span>
     </div>
   );
 }
@@ -892,6 +971,7 @@ function Stat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
 
 const GRADE_STYLES: Record<
   StrategyAlignment["grade"],
