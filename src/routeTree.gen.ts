@@ -9,16 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as HubRouteImport } from './routes/hub'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HubIndexRouteImport } from './routes/hub.index'
 import { Route as HubTradesRouteImport } from './routes/hub.trades'
 import { Route as HubStrategyRouteImport } from './routes/hub.strategy'
 import { Route as HubStatsRouteImport } from './routes/hub.stats'
 import { Route as HubStateRouteImport } from './routes/hub.state'
+import { Route as HubSettingsRouteImport } from './routes/hub.settings'
+import { Route as HubReplayRouteImport } from './routes/hub.replay'
 import { Route as HubRecoveryRouteImport } from './routes/hub.recovery'
 import { Route as HubMindRouteImport } from './routes/hub.mind'
 import { Route as HubMentorRouteImport } from './routes/hub.mentor'
 import { Route as HubJournalRouteImport } from './routes/hub.journal'
+import { Route as HubInsightsRouteImport } from './routes/hub.insights'
 import { Route as HubDailyRouteImport } from './routes/hub.daily'
 import { Route as HubClassicRouteImport } from './routes/hub.classic'
 import { Route as HubChartRouteImport } from './routes/hub.chart'
@@ -32,70 +36,90 @@ import { Route as HubStrategyIdRouteImport } from './routes/hub.strategy.$id'
 import { Route as HubJournalHistoryRouteImport } from './routes/hub.journal.history'
 import { Route as HubJournalBreakdownRouteImport } from './routes/hub.journal.breakdown'
 
+const HubRoute = HubRouteImport.update({
+  id: '/hub',
+  path: '/hub',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HubIndexRoute = HubIndexRouteImport.update({
-  id: '/hub/',
-  path: '/hub/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => HubRoute,
 } as any)
 const HubTradesRoute = HubTradesRouteImport.update({
-  id: '/hub/trades',
-  path: '/hub/trades',
-  getParentRoute: () => rootRouteImport,
+  id: '/trades',
+  path: '/trades',
+  getParentRoute: () => HubRoute,
 } as any)
 const HubStrategyRoute = HubStrategyRouteImport.update({
-  id: '/hub/strategy',
-  path: '/hub/strategy',
-  getParentRoute: () => rootRouteImport,
+  id: '/strategy',
+  path: '/strategy',
+  getParentRoute: () => HubRoute,
 } as any)
 const HubStatsRoute = HubStatsRouteImport.update({
-  id: '/hub/stats',
-  path: '/hub/stats',
-  getParentRoute: () => rootRouteImport,
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => HubRoute,
 } as any)
 const HubStateRoute = HubStateRouteImport.update({
-  id: '/hub/state',
-  path: '/hub/state',
-  getParentRoute: () => rootRouteImport,
+  id: '/state',
+  path: '/state',
+  getParentRoute: () => HubRoute,
+} as any)
+const HubSettingsRoute = HubSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => HubRoute,
+} as any)
+const HubReplayRoute = HubReplayRouteImport.update({
+  id: '/replay',
+  path: '/replay',
+  getParentRoute: () => HubRoute,
 } as any)
 const HubRecoveryRoute = HubRecoveryRouteImport.update({
-  id: '/hub/recovery',
-  path: '/hub/recovery',
-  getParentRoute: () => rootRouteImport,
+  id: '/recovery',
+  path: '/recovery',
+  getParentRoute: () => HubRoute,
 } as any)
 const HubMindRoute = HubMindRouteImport.update({
-  id: '/hub/mind',
-  path: '/hub/mind',
-  getParentRoute: () => rootRouteImport,
+  id: '/mind',
+  path: '/mind',
+  getParentRoute: () => HubRoute,
 } as any)
 const HubMentorRoute = HubMentorRouteImport.update({
-  id: '/hub/mentor',
-  path: '/hub/mentor',
-  getParentRoute: () => rootRouteImport,
+  id: '/mentor',
+  path: '/mentor',
+  getParentRoute: () => HubRoute,
 } as any)
 const HubJournalRoute = HubJournalRouteImport.update({
-  id: '/hub/journal',
-  path: '/hub/journal',
-  getParentRoute: () => rootRouteImport,
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => HubRoute,
+} as any)
+const HubInsightsRoute = HubInsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
+  getParentRoute: () => HubRoute,
 } as any)
 const HubDailyRoute = HubDailyRouteImport.update({
-  id: '/hub/daily',
-  path: '/hub/daily',
-  getParentRoute: () => rootRouteImport,
+  id: '/daily',
+  path: '/daily',
+  getParentRoute: () => HubRoute,
 } as any)
 const HubClassicRoute = HubClassicRouteImport.update({
-  id: '/hub/classic',
-  path: '/hub/classic',
-  getParentRoute: () => rootRouteImport,
+  id: '/classic',
+  path: '/classic',
+  getParentRoute: () => HubRoute,
 } as any)
 const HubChartRoute = HubChartRouteImport.update({
-  id: '/hub/chart',
-  path: '/hub/chart',
-  getParentRoute: () => rootRouteImport,
+  id: '/chart',
+  path: '/chart',
+  getParentRoute: () => HubRoute,
 } as any)
 const DevResetRoute = DevResetRouteImport.update({
   id: '/dev/reset',
@@ -145,16 +169,20 @@ const HubJournalBreakdownRoute = HubJournalBreakdownRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/hub': typeof HubRouteWithChildren
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/dev/reset': typeof DevResetRoute
   '/hub/chart': typeof HubChartRoute
   '/hub/classic': typeof HubClassicRoute
   '/hub/daily': typeof HubDailyRoute
+  '/hub/insights': typeof HubInsightsRoute
   '/hub/journal': typeof HubJournalRouteWithChildren
   '/hub/mentor': typeof HubMentorRoute
   '/hub/mind': typeof HubMindRoute
   '/hub/recovery': typeof HubRecoveryRoute
+  '/hub/replay': typeof HubReplayRoute
+  '/hub/settings': typeof HubSettingsRoute
   '/hub/state': typeof HubStateRoute
   '/hub/stats': typeof HubStatsRoute
   '/hub/strategy': typeof HubStrategyRouteWithChildren
@@ -175,9 +203,12 @@ export interface FileRoutesByTo {
   '/hub/chart': typeof HubChartRoute
   '/hub/classic': typeof HubClassicRoute
   '/hub/daily': typeof HubDailyRoute
+  '/hub/insights': typeof HubInsightsRoute
   '/hub/mentor': typeof HubMentorRoute
   '/hub/mind': typeof HubMindRoute
   '/hub/recovery': typeof HubRecoveryRoute
+  '/hub/replay': typeof HubReplayRoute
+  '/hub/settings': typeof HubSettingsRoute
   '/hub/state': typeof HubStateRoute
   '/hub/stats': typeof HubStatsRoute
   '/hub/trades': typeof HubTradesRoute
@@ -192,16 +223,20 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/hub': typeof HubRouteWithChildren
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/dev/reset': typeof DevResetRoute
   '/hub/chart': typeof HubChartRoute
   '/hub/classic': typeof HubClassicRoute
   '/hub/daily': typeof HubDailyRoute
+  '/hub/insights': typeof HubInsightsRoute
   '/hub/journal': typeof HubJournalRouteWithChildren
   '/hub/mentor': typeof HubMentorRoute
   '/hub/mind': typeof HubMindRoute
   '/hub/recovery': typeof HubRecoveryRoute
+  '/hub/replay': typeof HubReplayRoute
+  '/hub/settings': typeof HubSettingsRoute
   '/hub/state': typeof HubStateRoute
   '/hub/stats': typeof HubStatsRoute
   '/hub/strategy': typeof HubStrategyRouteWithChildren
@@ -218,16 +253,20 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/hub'
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/dev/reset'
     | '/hub/chart'
     | '/hub/classic'
     | '/hub/daily'
+    | '/hub/insights'
     | '/hub/journal'
     | '/hub/mentor'
     | '/hub/mind'
     | '/hub/recovery'
+    | '/hub/replay'
+    | '/hub/settings'
     | '/hub/state'
     | '/hub/stats'
     | '/hub/strategy'
@@ -248,9 +287,12 @@ export interface FileRouteTypes {
     | '/hub/chart'
     | '/hub/classic'
     | '/hub/daily'
+    | '/hub/insights'
     | '/hub/mentor'
     | '/hub/mind'
     | '/hub/recovery'
+    | '/hub/replay'
+    | '/hub/settings'
     | '/hub/state'
     | '/hub/stats'
     | '/hub/trades'
@@ -264,16 +306,20 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/hub'
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/dev/reset'
     | '/hub/chart'
     | '/hub/classic'
     | '/hub/daily'
+    | '/hub/insights'
     | '/hub/journal'
     | '/hub/mentor'
     | '/hub/mind'
     | '/hub/recovery'
+    | '/hub/replay'
+    | '/hub/settings'
     | '/hub/state'
     | '/hub/stats'
     | '/hub/strategy'
@@ -289,25 +335,21 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HubRoute: typeof HubRouteWithChildren
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignUpRoute: typeof AuthSignUpRoute
   DevResetRoute: typeof DevResetRoute
-  HubChartRoute: typeof HubChartRoute
-  HubClassicRoute: typeof HubClassicRoute
-  HubDailyRoute: typeof HubDailyRoute
-  HubJournalRoute: typeof HubJournalRouteWithChildren
-  HubMentorRoute: typeof HubMentorRoute
-  HubMindRoute: typeof HubMindRoute
-  HubRecoveryRoute: typeof HubRecoveryRoute
-  HubStateRoute: typeof HubStateRoute
-  HubStatsRoute: typeof HubStatsRoute
-  HubStrategyRoute: typeof HubStrategyRouteWithChildren
-  HubTradesRoute: typeof HubTradesRoute
-  HubIndexRoute: typeof HubIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/hub': {
+      id: '/hub'
+      path: '/hub'
+      fullPath: '/hub'
+      preLoaderRoute: typeof HubRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -317,87 +359,108 @@ declare module '@tanstack/react-router' {
     }
     '/hub/': {
       id: '/hub/'
-      path: '/hub'
+      path: '/'
       fullPath: '/hub/'
       preLoaderRoute: typeof HubIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof HubRoute
     }
     '/hub/trades': {
       id: '/hub/trades'
-      path: '/hub/trades'
+      path: '/trades'
       fullPath: '/hub/trades'
       preLoaderRoute: typeof HubTradesRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof HubRoute
     }
     '/hub/strategy': {
       id: '/hub/strategy'
-      path: '/hub/strategy'
+      path: '/strategy'
       fullPath: '/hub/strategy'
       preLoaderRoute: typeof HubStrategyRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof HubRoute
     }
     '/hub/stats': {
       id: '/hub/stats'
-      path: '/hub/stats'
+      path: '/stats'
       fullPath: '/hub/stats'
       preLoaderRoute: typeof HubStatsRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof HubRoute
     }
     '/hub/state': {
       id: '/hub/state'
-      path: '/hub/state'
+      path: '/state'
       fullPath: '/hub/state'
       preLoaderRoute: typeof HubStateRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof HubRoute
+    }
+    '/hub/settings': {
+      id: '/hub/settings'
+      path: '/settings'
+      fullPath: '/hub/settings'
+      preLoaderRoute: typeof HubSettingsRouteImport
+      parentRoute: typeof HubRoute
+    }
+    '/hub/replay': {
+      id: '/hub/replay'
+      path: '/replay'
+      fullPath: '/hub/replay'
+      preLoaderRoute: typeof HubReplayRouteImport
+      parentRoute: typeof HubRoute
     }
     '/hub/recovery': {
       id: '/hub/recovery'
-      path: '/hub/recovery'
+      path: '/recovery'
       fullPath: '/hub/recovery'
       preLoaderRoute: typeof HubRecoveryRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof HubRoute
     }
     '/hub/mind': {
       id: '/hub/mind'
-      path: '/hub/mind'
+      path: '/mind'
       fullPath: '/hub/mind'
       preLoaderRoute: typeof HubMindRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof HubRoute
     }
     '/hub/mentor': {
       id: '/hub/mentor'
-      path: '/hub/mentor'
+      path: '/mentor'
       fullPath: '/hub/mentor'
       preLoaderRoute: typeof HubMentorRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof HubRoute
     }
     '/hub/journal': {
       id: '/hub/journal'
-      path: '/hub/journal'
+      path: '/journal'
       fullPath: '/hub/journal'
       preLoaderRoute: typeof HubJournalRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof HubRoute
+    }
+    '/hub/insights': {
+      id: '/hub/insights'
+      path: '/insights'
+      fullPath: '/hub/insights'
+      preLoaderRoute: typeof HubInsightsRouteImport
+      parentRoute: typeof HubRoute
     }
     '/hub/daily': {
       id: '/hub/daily'
-      path: '/hub/daily'
+      path: '/daily'
       fullPath: '/hub/daily'
       preLoaderRoute: typeof HubDailyRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof HubRoute
     }
     '/hub/classic': {
       id: '/hub/classic'
-      path: '/hub/classic'
+      path: '/classic'
       fullPath: '/hub/classic'
       preLoaderRoute: typeof HubClassicRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof HubRoute
     }
     '/hub/chart': {
       id: '/hub/chart'
-      path: '/hub/chart'
+      path: '/chart'
       fullPath: '/hub/chart'
       preLoaderRoute: typeof HubChartRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof HubRoute
     }
     '/dev/reset': {
       id: '/dev/reset'
@@ -497,23 +560,50 @@ const HubStrategyRouteWithChildren = HubStrategyRoute._addFileChildren(
   HubStrategyRouteChildren,
 )
 
-const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AuthSignInRoute: AuthSignInRoute,
-  AuthSignUpRoute: AuthSignUpRoute,
-  DevResetRoute: DevResetRoute,
+interface HubRouteChildren {
+  HubChartRoute: typeof HubChartRoute
+  HubClassicRoute: typeof HubClassicRoute
+  HubDailyRoute: typeof HubDailyRoute
+  HubInsightsRoute: typeof HubInsightsRoute
+  HubJournalRoute: typeof HubJournalRouteWithChildren
+  HubMentorRoute: typeof HubMentorRoute
+  HubMindRoute: typeof HubMindRoute
+  HubRecoveryRoute: typeof HubRecoveryRoute
+  HubReplayRoute: typeof HubReplayRoute
+  HubSettingsRoute: typeof HubSettingsRoute
+  HubStateRoute: typeof HubStateRoute
+  HubStatsRoute: typeof HubStatsRoute
+  HubStrategyRoute: typeof HubStrategyRouteWithChildren
+  HubTradesRoute: typeof HubTradesRoute
+  HubIndexRoute: typeof HubIndexRoute
+}
+
+const HubRouteChildren: HubRouteChildren = {
   HubChartRoute: HubChartRoute,
   HubClassicRoute: HubClassicRoute,
   HubDailyRoute: HubDailyRoute,
+  HubInsightsRoute: HubInsightsRoute,
   HubJournalRoute: HubJournalRouteWithChildren,
   HubMentorRoute: HubMentorRoute,
   HubMindRoute: HubMindRoute,
   HubRecoveryRoute: HubRecoveryRoute,
+  HubReplayRoute: HubReplayRoute,
+  HubSettingsRoute: HubSettingsRoute,
   HubStateRoute: HubStateRoute,
   HubStatsRoute: HubStatsRoute,
   HubStrategyRoute: HubStrategyRouteWithChildren,
   HubTradesRoute: HubTradesRoute,
   HubIndexRoute: HubIndexRoute,
+}
+
+const HubRouteWithChildren = HubRoute._addFileChildren(HubRouteChildren)
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  HubRoute: HubRouteWithChildren,
+  AuthSignInRoute: AuthSignInRoute,
+  AuthSignUpRoute: AuthSignUpRoute,
+  DevResetRoute: DevResetRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

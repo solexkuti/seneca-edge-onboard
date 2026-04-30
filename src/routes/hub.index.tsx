@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import SenecaDashboard from "@/components/dashboard/SenecaDashboard";
+import PremiumDashboard from "@/components/dashboard/PremiumDashboard";
 import { getUserName, saveUserName } from "@/lib/userName";
-import RequireAuth from "@/components/auth/RequireAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/hub/")({
@@ -68,10 +67,6 @@ function HubPage() {
       cancelled = true;
     };
   }, []);
-  return (
-    <RequireAuth>
-      <SenecaDashboard userName={name} />
-    </RequireAuth>
-  );
+  return <PremiumDashboard userName={name} />;
 }
 
