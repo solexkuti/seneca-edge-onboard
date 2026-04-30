@@ -230,6 +230,22 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
           </div>
         </Card>
       </div>
+
+      {/* ── 1. Performance Trend (equity curve) ─────────────── */}
+      <div className="mt-5">
+        <PerformanceTrendCard />
+      </div>
+
+      {/* ── 2. Full Stats Panel ─────────────────────────────── */}
+      <div className="mt-5">
+        <FullStatsPanel />
+      </div>
+
+      {/* ── 3 + 4. Trade History  +  Behavior Breakdown ─────── */}
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
+        <TradeHistoryPanel />
+        <BehaviorBreakdownCard />
+      </div>
     </div>
   );
 }
