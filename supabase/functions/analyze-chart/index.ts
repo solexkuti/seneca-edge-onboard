@@ -226,87 +226,216 @@ type ChartExtraction = {
 };
 
 // ────────────────────────────────────────────────────────────────────────────
-// MARKET INTERPRETATION — neutral, strategy-independent reading of the chart
+// LAYER 1 — STRUCTURAL MARKET ANALYSIS
+// Neutral, strategy-independent. Extracts swing points, BOS, momentum,
+// key zones, and decides pullback-vs-shift. The summary must explain WHY,
+// not just WHAT.
 // ────────────────────────────────────────────────────────────────────────────
 
-const MARKET_INTERPRETATION_SYSTEM = `You are a neutral market technician — an analytical evaluator, not a financial advisor or signal provider. You analyze a chart WITHOUT any reference to a user's trading strategy.
+const STRUCTURAL_ANALYSIS_SYSTEM = `You are a neutral market technician — an analytical evaluator, NOT a financial advisor or signal provider. You read a chart strictly in structural terms.
 
-Your job:
-1. Describe what the market is doing right now in clear, plain language.
-2. Classify the market condition (Trending / Consolidating / Choppy).
-3. State the directional bias (Bullish / Bearish / Neutral).
-4. Note key observations: break of structure, liquidity sweeps, rejection zones, key support/resistance.
-5. Rate clarity (High / Medium / Low) — how readable is this chart.
+Your job is to break the market down logically:
+1. Detect swing points: did price make Higher High (HH), Higher Low (HL), Lower High (LH), Lower Low (LL)?
+2. Identify any Break of Structure (BOS) — direction and what triggered it (e.g. "failure to make higher high → BOS confirmed at prior swing low").
+3. Rate momentum strength (strong / weak / neutral) based on candle displacement and follow‑through.
+4. Identify visible key zones (support, resistance, supply, demand).
+5. Decide whether the latest move is a pullback inside the prior regime, a structural shift, or indeterminate.
+6. Write a 2–3 sentence summary that EXPLAINS the structural story, not just describes price.
 
 Tone & language rules (strict):
-- Speak as an analytical system describing observed structure. Use phrases like "Price is …", "Structure shows …", "The chart is …".
-- NEVER use advisory or directive language: no "should", "must", "buy", "sell", "enter", "exit", "take profit", "stop loss", "wait for", "look to", "expect", "target".
-- NEVER mention any trading strategy, rules, entries, exits, signals, or predictions.
-- NEVER recommend, advise, or forecast price direction.
-- If structure is unclear or chart is choppy, say so plainly — neutrality over confidence.
-- Keep summary to 2–3 short factual sentences. No fluff, no hype, no encouragement.
-- Each observation: one short, factual, descriptive sentence.`;
+- Banned verbs: should, must, buy, sell, enter, exit, target, take profit, stop loss, wait for, expect, look to, recommend, advise.
+- Allowed analytical verbs: shows, indicates, confirms, lacks, fails to, reads as, signals, increases probability of, reduces probability of.
+- BAD: "Price went up then down."
+- GOOD: "Market failed to create a higher high and broke previous structure, signaling a bearish shift. Momentum on the breakdown is strong with full‑body displacement."
+- Never mention any trading strategy, rules, entries, exits, predictions, or advice.
+- If structure is genuinely unclear, say so plainly — set swing flags to false rather than guessing.`;
 
-const MARKET_INTERPRETATION_SCHEMA = {
+const STRUCTURAL_ANALYSIS_SCHEMA = {
   type: "object",
   properties: {
     summary: {
       type: "string",
-      description: "2-3 sentence neutral description of what the market is doing.",
+      description:
+        "2–3 sentence structural explanation of the market. Must explain WHY, not just describe price.",
     },
-    market_condition: {
+    swing_points: {
+      type: "object",
+      description: "Which swing relationships are visibly present on the chart.",
+      properties: {
+        HH: { type: "boolean" },
+        HL: { type: "boolean" },
+        LH: { type: "boolean" },
+        LL: { type: "boolean" },
+      },
+      required: ["HH", "HL", "LH", "LL"],
+      additionalProperties: false,
+    },
+    bos: {
+      type: "object",
+      properties: {
+        occurred: { type: "boolean" },
+        direction: { type: "string", enum: ["bullish", "bearish", "none"] },
+        trigger: {
+          type: "string",
+          description:
+            "Short phrase explaining the structural trigger (e.g. 'failure to make higher high → break confirmed at prior swing low'). Empty string if none.",
+        },
+      },
+      required: ["occurred", "direction", "trigger"],
+      additionalProperties: false,
+    },
+    momentum_strength: { type: "string", enum: ["strong", "weak", "neutral"] },
+    key_zones: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          kind: { type: "string", enum: ["support", "resistance", "supply", "demand"] },
+          note: { type: "string" },
+        },
+        required: ["kind", "note"],
+        additionalProperties: false,
+      },
+      description: "Visible structural levels (max 4). Empty array if none clear.",
+    },
+    is_pullback_or_shift: {
       type: "string",
-      enum: ["trending", "consolidating", "choppy"],
+      enum: ["pullback", "structural_shift", "indeterminate"],
     },
-    directional_bias: {
-      type: "string",
-      enum: ["bullish", "bearish", "neutral"],
-    },
-    clarity: { type: "string", enum: ["high", "medium", "low"] },
     key_observations: {
       type: "array",
       items: { type: "string" },
-      description: "Short factual observations (max 5).",
-    },
-    structure_notes: {
-      type: "string",
-      description: "Brief note on visible market structure.",
+      description: "Up to 5 short factual structural observations.",
     },
   },
   required: [
     "summary",
-    "market_condition",
-    "directional_bias",
-    "clarity",
+    "swing_points",
+    "bos",
+    "momentum_strength",
+    "key_zones",
+    "is_pullback_or_shift",
     "key_observations",
-    "structure_notes",
   ],
   additionalProperties: false,
 };
 
-type MarketInterpretation = {
+type StructuralAnalysis = {
   summary: string;
-  market_condition: "trending" | "consolidating" | "choppy";
-  directional_bias: "bullish" | "bearish" | "neutral";
-  clarity: "high" | "medium" | "low";
+  swing_points: { HH: boolean; HL: boolean; LH: boolean; LL: boolean };
+  bos: {
+    occurred: boolean;
+    direction: "bullish" | "bearish" | "none";
+    trigger: string;
+  };
+  momentum_strength: "strong" | "weak" | "neutral";
+  key_zones: { kind: "support" | "resistance" | "supply" | "demand"; note: string }[];
+  is_pullback_or_shift: "pullback" | "structural_shift" | "indeterminate";
   key_observations: string[];
-  structure_notes: string;
 };
 
-async function interpretMarket(
+async function analyzeStructure(
   imageUrl: string,
-): Promise<MarketInterpretation | null> {
+): Promise<StructuralAnalysis | null> {
   const out = await callAI(
-    PRIMARY_MODEL,
-    MARKET_INTERPRETATION_SYSTEM,
-    "Read this chart neutrally. Describe what the market is doing. Do not reference any strategy.",
+    REASONING_MODEL,
+    STRUCTURAL_ANALYSIS_SYSTEM,
+    "Break this chart down structurally. Identify swing points, any break of structure, momentum strength, key zones, and whether the latest move is a pullback or a structural shift. Explain WHY in the summary.",
     [{ url: imageUrl, label: "exec" }],
-    "interpret_market",
-    MARKET_INTERPRETATION_SCHEMA,
+    "analyze_structure",
+    STRUCTURAL_ANALYSIS_SCHEMA,
   );
   if (!out) return null;
-  return out as unknown as MarketInterpretation;
+  return out as unknown as StructuralAnalysis;
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// LAYER 4 / 5 — HIDDEN OBSERVATION + BEHAVIORAL INSIGHT + MENTOR SYNTHESIS
+// Single follow-up AI call grounded in Layers 1–3.
+// ────────────────────────────────────────────────────────────────────────────
+
+const INSIGHT_SYSTEM = `You are a neutral analytical evaluator and behavioral mentor for a disciplined trader. You are NOT a financial advisor. You write the closing intelligence layer of a chart analyzer that has already produced:
+
+- Layer 1: structural analysis (swing points, BOS, momentum, key zones)
+- Layer 2: market condition (trending / choppy / transitional + bias + clarity)
+- Layer 3: per-rule strategy alignment (passed / failed / not_applicable)
+
+Your job:
+1. trade_quality_reason — 2–3 short bullet phrases listing the most important reasons the system arrived at this grade. Reference the actual failed rule conditions when relevant.
+2. conclusion — ONE line stating the trade quality verdict in system-decision tone (e.g. "Low-probability setup based on missing core entry condition.").
+3. hidden_observation — ONE non-obvious structural insight a beginner would miss. Examples: "Momentum is weakening on each push — full-body candles giving way to upper wicks, an early sign of distribution." / "The breakout took only internal range liquidity, not external — smart-money continuation is structurally less likely."
+4. behavioral_insight — ONE psychological trap latent in this setup, framed as observation, not command. Examples: "The trap here is chasing momentum — the move is mature and displacement is fading." / "This is the pattern that triggers early entries: clean structure into a transitional environment without confirmation."
+5. insight — 3–4 sentence mentor synthesis explaining WHY the trade passed or failed, referencing strategy logic, and guiding future behavior without prescribing actions.
+
+Tone & language rules (STRICT):
+- Banned verbs: should, must, buy, sell, enter, exit, take profit, stop loss, target, wait for, look to, expect, recommend, advise.
+- Allowed analytical: shows, indicates, confirms, lacks, fails to, reads as, signals, increases probability of, reduces probability of.
+- Allowed mentor framing: focus on, notice that, consider that, the trap here is.
+- Every claim must reference evidence from Layers 1–3. Do not invent user history.
+- Be precise. Be specific. Avoid generic statements that could apply to any chart.`;
+
+const INSIGHT_SCHEMA = {
+  type: "object",
+  properties: {
+    trade_quality_reason: {
+      type: "array",
+      items: { type: "string" },
+      description: "2–3 bullet phrases for the Trade Grade Reason section.",
+    },
+    conclusion: { type: "string" },
+    hidden_observation: { type: "string" },
+    behavioral_insight: { type: "string" },
+    insight: { type: "string" },
+  },
+  required: [
+    "trade_quality_reason",
+    "conclusion",
+    "hidden_observation",
+    "behavioral_insight",
+    "insight",
+  ],
+  additionalProperties: false,
+};
+
+type InsightOutput = {
+  trade_quality_reason: string[];
+  conclusion: string;
+  hidden_observation: string;
+  behavioral_insight: string;
+  insight: string;
+};
+
+async function generateInsight(
+  structural: StructuralAnalysis | null,
+  marketCondition: Record<string, unknown> | null,
+  alignmentSummary: Record<string, unknown>,
+): Promise<InsightOutput | null> {
+  const userPrompt = JSON.stringify(
+    {
+      layer_1_structural: structural,
+      layer_2_market_condition: marketCondition,
+      layer_3_strategy_alignment: alignmentSummary,
+    },
+    null,
+    2,
+  );
+  try {
+    const out = await callAI(
+      REASONING_MODEL,
+      INSIGHT_SYSTEM,
+      `Here is the analyzer's evidence so far. Produce the closing intelligence layer (trade_quality_reason, conclusion, hidden_observation, behavioral_insight, insight).\n\n${userPrompt}`,
+      [],
+      "write_insight",
+      INSIGHT_SCHEMA,
+    );
+    if (!out) return null;
+    return out as unknown as InsightOutput;
+  } catch (e) {
+    console.error("[analyze-chart] insight step failed:", e);
+    return null;
+  }
+}
+
 
 function needsFallback(r: ChartExtraction | null): boolean {
   if (!r) return true;
