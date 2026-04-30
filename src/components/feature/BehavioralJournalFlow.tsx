@@ -57,6 +57,22 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
 import { detectRelapseAndLoops } from "@/lib/relapseAndLoopDetection";
+import {
+  setTradeLogStep,
+  clearTradeLogStep,
+} from "@/lib/tradeLogTopBar";
+
+// Post-trade reflection — rotating mentor-like prompts shown while the user
+// logs a completed trade. Reflective and disciplined; never a warning.
+const POST_TRADE_REFLECTIONS = [
+  "Execution matters more than outcome. Capture the truth.",
+  "Was this trade according to plan, or emotion?",
+  "Every trade you log trains your edge.",
+  "Honest journaling is how discipline compounds.",
+  "Outcome is feedback. Behavior is the system.",
+  "Describe what you did — not what you wish you had done.",
+  "The market rewards honesty before it rewards skill.",
+] as const;
 import { userKey } from "@/lib/userScopedStorage";
 
 const ACCOUNT_SIZE_STORAGE_SUFFIX = "journal:account_size";
