@@ -68,6 +68,13 @@ function pickRegions(
  * Decide pass/fail/NA for a single canonical rule against the chart features.
  * Each category has its own observability heuristics.
  */
+// FAIL reasons follow a structured "Expected · Missing · Impact" format so the
+// user always sees what the system was looking for, what it didn't find, and
+// why that weakens the setup. PASS reasons stay short and factual.
+function fail(expected: string, missing: string, impact: string): string {
+  return `Expected: ${expected} Missing: ${missing} Impact: ${impact}`;
+}
+
 function evaluateRule(
   rule: CanonicalRule,
   exec: ChartFeatures,
@@ -91,20 +98,28 @@ function evaluateRule(
         ...base,
         status: passed ? "passed" : "failed",
         reason: passed
-          ? "Break of structure visible on chart."
-          : `Break of structure required — chart shows ${exec.structure ?? "no clear structure"}.`,
+          ? "Break of structure confirmed on chart."
+          : fail(
+              "confirmed break of structure.",
+              `no clean break visible (${exec.structure ?? "no clear structure"}).`,
+              "directional thesis is unverified — entry has no structural anchor.",
+            ),
         regions: kinds.length ? pickRegions(exec, "exec", kinds) : undefined,
       };
     }
     if (t.includes("liquidity") || t.includes("sweep")) {
       kinds.push("sweep");
-      const passed = exec.liquidity && exec.liquidity !== "none" && exec.liquidity !== "unclear";
+      const passed = !!exec.liquidity && exec.liquidity !== "none" && exec.liquidity !== "unclear";
       return {
         ...base,
         status: passed ? "passed" : "failed",
         reason: passed
-          ? "Liquidity sweep visible on chart."
-          : "No liquidity sweep visible on chart.",
+          ? "Liquidity sweep visible before the move."
+          : fail(
+              "liquidity sweep before entry.",
+              "no prior high or low taken before the move.",
+              "reduces probability of institutional participation behind the entry.",
+            ),
         regions: kinds.length ? pickRegions(exec, "exec", kinds) : undefined,
       };
     }
@@ -117,8 +132,12 @@ function evaluateRule(
         ...base,
         status: passed ? "passed" : "failed",
         reason: passed
-          ? "Retest/pullback context plausible from chart."
-          : "Retest/pullback condition not visible.",
+          ? "Retest / pullback context is present on the chart."
+          : fail(
+              "a retest or pullback into a key zone before entry.",
+              "no retest visible — price is mid‑move with no return to structure.",
+              "entries without a retest sit further from invalidation, weakening risk‑to‑reward.",
+            ),
         regions: kinds.length ? pickRegions(exec, "exec", kinds) : undefined,
       };
     }
@@ -136,21 +155,27 @@ function evaluateRule(
       let passed = trend !== "unclear";
       if (wantUp) passed = trend === "uptrend";
       if (wantDown) passed = trend === "downtrend";
+      const wanted = wantUp ? "uptrend" : wantDown ? "downtrend" : "a clear directional trend";
       return {
         ...base,
         status: passed ? "passed" : "failed",
         reason: passed
-          ? `Trend reads as ${trend}.`
-          : `Required trend not present — chart trend is ${trend}.`,
+          ? `Trend reads as ${trend} — aligned with the rule.`
+          : fail(
+              `${wanted} on the execution timeframe.`,
+              `chart trend reads ${trend}.`,
+              "counter‑trend or trendless entries underperform under your own rules.",
+            ),
         regions: kinds.length ? pickRegions(exec, "exec", kinds) : undefined,
       };
     }
-    // Confirmation candles, indicator triggers, etc. — not observable from a
-    // static screenshot. Mark as N/A so the user sees it was not auto-passed.
+    // Confirmation candles, indicator triggers, etc. cannot be read from a
+    // static screenshot. Be precise about WHY this is N/A, not vague.
     return {
       ...base,
       status: "not_applicable",
-      reason: "Not directly observable from a static chart — confirm manually.",
+      reason:
+        "Condition not visible on this chart — requires live indicator state or candle close.",
     };
   }
 
@@ -163,14 +188,18 @@ function evaluateRule(
         ...base,
         status: passed ? "passed" : "failed",
         reason: passed
-          ? "Structure clear enough to define invalidation."
-          : "Structure unclear — invalidation level cannot be defined.",
+          ? "Structure is clear enough to anchor the invalidation."
+          : fail(
+              "readable structure to anchor invalidation.",
+              "structure is unclear or absent on this chart.",
+              "stop placement becomes arbitrary — risk cannot be defined precisely.",
+            ),
       };
     }
     return {
       ...base,
       status: "not_applicable",
-      reason: "Invalidation level needs to be set manually on the chart.",
+      reason: "Invalidation level is set on the trade ticket — outside chart scope.",
     };
   }
 
@@ -182,16 +211,18 @@ function evaluateRule(
         ...base,
         status: passed ? "passed" : "failed",
         reason: passed
-          ? "Volatility within acceptable range."
-          : "Volatility elevated — recheck stop placement.",
+          ? "Volatility reads within acceptable range."
+          : fail(
+              "volatility within your normal range.",
+              "volatility is elevated on this chart.",
+              "stops are more likely to be hunted; default sizing becomes oversized risk.",
+            ),
       };
     }
-    // Risk-per-trade %, RR ratios, position sizing — numeric rules a chart
-    // image cannot verify. N/A by design.
     return {
       ...base,
       status: "not_applicable",
-      reason: "Numeric risk rule — verify on your trade ticket, not the chart.",
+      reason: "Numeric risk parameter — verified on the trade ticket, not the chart.",
     };
   }
 
@@ -206,17 +237,25 @@ function evaluateRule(
       return {
         ...base,
         status: passed ? "passed" : "failed",
-        reason: !trendClear
-          ? "Trend unclear on one of the timeframes."
-          : conflict
-            ? `Mismatched: exec ${exec.trend} vs higher ${higher.trend}.`
-            : `Aligned: ${exec.trend} on both timeframes.`,
+        reason: passed
+          ? `Aligned: ${exec.trend} on both execution and higher timeframes.`
+          : !trendClear
+            ? fail(
+                "a readable trend on both timeframes.",
+                "trend is unclear on at least one timeframe.",
+                "higher‑timeframe context cannot anchor the entry.",
+              )
+            : fail(
+                "execution and HTF in agreement.",
+                `HTF reads ${higher.trend} while execution reads ${exec.trend}.`,
+                "counter‑trend setups historically underperform under your rules.",
+              ),
       };
     }
     return {
       ...base,
       status: "not_applicable",
-      reason: "Context rule (session/news) — verify outside the chart.",
+      reason: "Requires additional context (session / time / news) outside this image.",
     };
   }
 
@@ -224,7 +263,7 @@ function evaluateRule(
   return {
     ...base,
     status: "not_applicable",
-    reason: "Behavioral rule — only you can confirm this.",
+    reason: "Self‑reported condition — outside chart scope.",
   };
 }
 
