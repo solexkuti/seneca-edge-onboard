@@ -208,7 +208,17 @@ export default function BehavioralJournalFlow({
 
   // Pre-trade awareness — quiet, deterministic line surfaced before the
   // user logs the next trade when a relapse or behavioral loop is active.
-  const { entries: priorEntries } = useBehavioralJournal(50);
+  //
+  // CRITICAL: snapshot the journal ONCE at mount. We must not subscribe to
+  // live updates while the user is filling out the form — any refetch would
+  // bubble new array references into derived state and cause perceived
+  // "reloads" mid-entry. The form's content depends only on user input.
+  const { entries: liveEntries } = useBehavioralJournal(50);
+  const priorEntriesRef = useRef<typeof liveEntries | null>(null);
+  if (priorEntriesRef.current === null && liveEntries && liveEntries.length > 0) {
+    priorEntriesRef.current = liveEntries;
+  }
+  const priorEntries = priorEntriesRef.current ?? liveEntries;
   const preTradeAwareness = useMemo(() => {
     if (!priorEntries || priorEntries.length < 3) return null;
     return detectRelapseAndLoops(priorEntries).preTradeAwareness;

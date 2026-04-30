@@ -22,24 +22,34 @@ export function useAuth(): AuthState {
   useEffect(() => {
     let mounted = true;
 
+    const apply = (session: Session | null) => {
+      if (!mounted) return;
+      setState((prev) => {
+        const nextStatus: AuthState["status"] = session?.user
+          ? "authenticated"
+          : "unauthenticated";
+        const nextUserId = session?.user?.id ?? null;
+        const prevUserId = prev.user?.id ?? null;
+        // Skip updates that don't change identity or auth status. Supabase
+        // fires onAuthStateChange very frequently (TOKEN_REFRESHED on focus,
+        // INITIAL_SESSION on tab restore, USER_UPDATED, etc.). Returning the
+        // same state reference avoids cascading re-renders in consumers like
+        // RequireAuth that wrap mid-interaction flows (e.g. journal entry).
+        if (prev.status === nextStatus && prevUserId === nextUserId) {
+          return prev;
+        }
+        return { status: nextStatus, user: session?.user ?? null, session };
+      });
+    };
+
     // 1) Subscribe FIRST so we catch the initial SIGNED_IN event.
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setState({
-        status: session?.user ? "authenticated" : "unauthenticated",
-        user: session?.user ?? null,
-        session: session ?? null,
-      });
+      apply(session ?? null);
     });
 
     // 2) Then fetch any persisted session.
     supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setState({
-        status: data.session?.user ? "authenticated" : "unauthenticated",
-        user: data.session?.user ?? null,
-        session: data.session ?? null,
-      });
+      apply(data.session ?? null);
     });
 
     return () => {

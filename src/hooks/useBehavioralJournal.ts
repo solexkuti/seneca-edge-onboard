@@ -35,8 +35,14 @@ export function useBehavioralJournal(limit = 50) {
       await refresh();
     })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      refresh();
+    // Only refetch on actual identity changes — NOT on TOKEN_REFRESHED /
+    // USER_UPDATED / INITIAL_SESSION, which Supabase fires often (tab focus,
+    // background refresh) and would otherwise spam re-renders into any
+    // consumer mid-interaction (e.g. the trade-logging form).
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+        refresh();
+      }
     });
 
     return () => {
