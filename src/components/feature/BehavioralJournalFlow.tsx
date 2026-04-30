@@ -57,6 +57,22 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
 import { detectRelapseAndLoops } from "@/lib/relapseAndLoopDetection";
+import {
+  setTradeLogStep,
+  clearTradeLogStep,
+} from "@/lib/tradeLogTopBar";
+
+// Post-trade reflection — rotating mentor-like prompts shown while the user
+// logs a completed trade. Reflective and disciplined; never a warning.
+const POST_TRADE_REFLECTIONS = [
+  "Execution matters more than outcome. Capture the truth.",
+  "Was this trade according to plan, or emotion?",
+  "Every trade you log trains your edge.",
+  "Honest journaling is how discipline compounds.",
+  "Outcome is feedback. Behavior is the system.",
+  "Describe what you did — not what you wish you had done.",
+  "The market rewards honesty before it rewards skill.",
+] as const;
 import { userKey } from "@/lib/userScopedStorage";
 
 const ACCOUNT_SIZE_STORAGE_SUFFIX = "journal:account_size";
@@ -206,23 +222,47 @@ export default function BehavioralJournalFlow({
   const [feedback, setFeedback] = useState<FeedbackPayload | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Pre-trade awareness — quiet, deterministic line surfaced before the
-  // user logs the next trade when a relapse or behavioral loop is active.
-  //
-  // CRITICAL: snapshot the journal ONCE at mount. We must not subscribe to
-  // live updates while the user is filling out the form — any refetch would
-  // bubble new array references into derived state and cause perceived
-  // "reloads" mid-entry. The form's content depends only on user input.
+  // Snapshot the journal ONCE at mount. We must not subscribe to live updates
+  // while the user is filling out the form — any refetch would bubble new
+  // array references into derived state and cause perceived "reloads"
+  // mid-entry. The form's content depends only on user input.
   const { entries: liveEntries } = useBehavioralJournal(50);
   const priorEntriesRef = useRef<typeof liveEntries | null>(null);
   if (priorEntriesRef.current === null && liveEntries && liveEntries.length > 0) {
     priorEntriesRef.current = liveEntries;
   }
   const priorEntries = priorEntriesRef.current ?? liveEntries;
-  const preTradeAwareness = useMemo(() => {
-    if (!priorEntries || priorEntries.length < 3) return null;
-    return detectRelapseAndLoops(priorEntries).preTradeAwareness;
-  }, [priorEntries]);
+
+  // Post-trade reflection — rotating mentor-like prompt shown while the user
+  // logs a completed trade. Pure UI; rotates on a slow interval and on step
+  // change. Never blocks. Never a warning.
+  const [reflectionIdx, setReflectionIdx] = useState(() =>
+    Math.floor(Math.random() * POST_TRADE_REFLECTIONS.length),
+  );
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setReflectionIdx((i) => (i + 1) % POST_TRADE_REFLECTIONS.length);
+    }, 7000);
+    return () => window.clearInterval(id);
+  }, []);
+  // Also rotate on each step transition for a fresh prompt.
+  useEffect(() => {
+    setReflectionIdx((i) => (i + 1) % POST_TRADE_REFLECTIONS.length);
+  }, [step]);
+  const postTradeReflection = POST_TRADE_REFLECTIONS[reflectionIdx];
+
+  // Broadcast current step to the HubLayout top bar so it can swap
+  // Asset/Timeframe selectors for "Log Trade · Step N of 4".
+  useEffect(() => {
+    if (feedback) {
+      clearTradeLogStep();
+      return;
+    }
+    setTradeLogStep(step + 1, 4);
+  }, [step, feedback]);
+  useEffect(() => {
+    return () => clearTradeLogStep();
+  }, []);
 
   // Derived numerics
   const entry = useMemo(() => parseNum(entryStr), [entryStr]);
@@ -911,16 +951,27 @@ export default function BehavioralJournalFlow({
           ))}
         </div>
 
-        {preTradeAwareness && step === 0 && (
-          <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/[0.06] px-4 py-3">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary/80">
-              Pre-trade awareness
-            </div>
-            <p className="mt-1 text-[13px] leading-snug text-text-primary">
-              {preTradeAwareness}
-            </p>
+        {/* Post-trade reflection — rotating mentor prompt. Calm, never blocking. */}
+        <div className="mt-5 rounded-2xl border border-gold/15 bg-gold/[0.04] px-4 py-3">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-gold/85">
+            <span className="h-1.5 w-1.5 rounded-full bg-gold shadow-[0_0_8px_rgba(198,161,91,0.55)]" />
+            Post-trade reflection
           </div>
-        )}
+          <div className="relative mt-1 min-h-[20px]">
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={postTradeReflection}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.35, ease }}
+                className="text-[13px] leading-snug text-text-primary"
+              >
+                {postTradeReflection}
+              </motion.p>
+            </AnimatePresence>
+          </div>
+        </div>
 
         <AnimatePresence mode="wait">
           {step === 0 && (
