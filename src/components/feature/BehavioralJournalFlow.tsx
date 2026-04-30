@@ -222,23 +222,36 @@ export default function BehavioralJournalFlow({
   const [feedback, setFeedback] = useState<FeedbackPayload | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Pre-trade awareness — quiet, deterministic line surfaced before the
-  // user logs the next trade when a relapse or behavioral loop is active.
-  //
-  // CRITICAL: snapshot the journal ONCE at mount. We must not subscribe to
-  // live updates while the user is filling out the form — any refetch would
-  // bubble new array references into derived state and cause perceived
-  // "reloads" mid-entry. The form's content depends only on user input.
-  const { entries: liveEntries } = useBehavioralJournal(50);
-  const priorEntriesRef = useRef<typeof liveEntries | null>(null);
-  if (priorEntriesRef.current === null && liveEntries && liveEntries.length > 0) {
-    priorEntriesRef.current = liveEntries;
-  }
-  const priorEntries = priorEntriesRef.current ?? liveEntries;
-  const preTradeAwareness = useMemo(() => {
-    if (!priorEntries || priorEntries.length < 3) return null;
-    return detectRelapseAndLoops(priorEntries).preTradeAwareness;
-  }, [priorEntries]);
+  // Post-trade reflection — rotating mentor-like prompt shown while the user
+  // logs a completed trade. Pure UI; rotates on a slow interval and on step
+  // change. Never blocks. Never a warning.
+  const [reflectionIdx, setReflectionIdx] = useState(() =>
+    Math.floor(Math.random() * POST_TRADE_REFLECTIONS.length),
+  );
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setReflectionIdx((i) => (i + 1) % POST_TRADE_REFLECTIONS.length);
+    }, 7000);
+    return () => window.clearInterval(id);
+  }, []);
+  // Also rotate on each step transition for a fresh prompt.
+  useEffect(() => {
+    setReflectionIdx((i) => (i + 1) % POST_TRADE_REFLECTIONS.length);
+  }, [step]);
+  const postTradeReflection = POST_TRADE_REFLECTIONS[reflectionIdx];
+
+  // Broadcast current step to the HubLayout top bar so it can swap
+  // Asset/Timeframe selectors for "Log Trade · Step N of 4".
+  useEffect(() => {
+    if (feedback) {
+      clearTradeLogStep();
+      return;
+    }
+    setTradeLogStep(step + 1, 4);
+  }, [step, feedback]);
+  useEffect(() => {
+    return () => clearTradeLogStep();
+  }, []);
 
   // Derived numerics
   const entry = useMemo(() => parseNum(entryStr), [entryStr]);
