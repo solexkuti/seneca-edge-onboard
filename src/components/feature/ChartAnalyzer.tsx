@@ -346,6 +346,14 @@ export default function ChartAnalyzer() {
         .catch((err) => {
           console.warn("[chart-analyzer] insight step skipped:", err);
         });
+    } catch (err) {
+      console.error("[chart-analyzer] analyze failed:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Could not analyze this chart.",
+      );
+      setPhase("setup");
+    }
+  }
 
   function reset() {
     setPhase("setup");
