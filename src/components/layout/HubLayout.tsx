@@ -152,16 +152,9 @@ function Sidebar({
         </ul>
       </nav>
 
-      {/* Footer tag */}
+      {/* Footer — dynamic system status */}
       <div className="px-5 py-4">
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-gold/80">
-            Edge · Active
-          </p>
-          <p className="mt-1 text-[12px] leading-snug text-text-secondary">
-            Disciplined intelligence, applied to every trade.
-          </p>
-        </div>
+        <SystemStatusIndicator />
       </div>
     </aside>
   );
