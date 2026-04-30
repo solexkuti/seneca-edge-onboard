@@ -222,6 +222,17 @@ export default function BehavioralJournalFlow({
   const [feedback, setFeedback] = useState<FeedbackPayload | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Snapshot the journal ONCE at mount. We must not subscribe to live updates
+  // while the user is filling out the form — any refetch would bubble new
+  // array references into derived state and cause perceived "reloads"
+  // mid-entry. The form's content depends only on user input.
+  const { entries: liveEntries } = useBehavioralJournal(50);
+  const priorEntriesRef = useRef<typeof liveEntries | null>(null);
+  if (priorEntriesRef.current === null && liveEntries && liveEntries.length > 0) {
+    priorEntriesRef.current = liveEntries;
+  }
+  const priorEntries = priorEntriesRef.current ?? liveEntries;
+
   // Post-trade reflection — rotating mentor-like prompt shown while the user
   // logs a completed trade. Pure UI; rotates on a slow interval and on step
   // change. Never blocks. Never a warning.
