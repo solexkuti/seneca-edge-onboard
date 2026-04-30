@@ -224,6 +224,11 @@ export function onTraderStateChange(cb: () => void): () => void {
 
 /** Auth listener — drops/recomputes state when the user changes. */
 export function onAuthChange(cb: () => void): () => void {
-  const sub = supabase.auth.onAuthStateChange(() => cb());
+  // Only react to true identity changes. TOKEN_REFRESHED / USER_UPDATED /
+  // INITIAL_SESSION fire often (tab focus, background refresh) and must
+  // NOT trigger global trader-state re-fetches mid-interaction.
+  const sub = supabase.auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_IN" || event === "SIGNED_OUT") cb();
+  });
   return () => sub.data.subscription.unsubscribe();
 }
