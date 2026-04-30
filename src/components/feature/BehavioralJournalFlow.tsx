@@ -951,16 +951,27 @@ export default function BehavioralJournalFlow({
           ))}
         </div>
 
-        {preTradeAwareness && step === 0 && (
-          <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/[0.06] px-4 py-3">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary/80">
-              Pre-trade awareness
-            </div>
-            <p className="mt-1 text-[13px] leading-snug text-text-primary">
-              {preTradeAwareness}
-            </p>
+        {/* Post-trade reflection — rotating mentor prompt. Calm, never blocking. */}
+        <div className="mt-5 rounded-2xl border border-gold/15 bg-gold/[0.04] px-4 py-3">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-gold/85">
+            <span className="h-1.5 w-1.5 rounded-full bg-gold shadow-[0_0_8px_rgba(198,161,91,0.55)]" />
+            Post-trade reflection
           </div>
-        )}
+          <div className="relative mt-1 min-h-[20px]">
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={postTradeReflection}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.35, ease }}
+                className="text-[13px] leading-snug text-text-primary"
+              >
+                {postTradeReflection}
+              </motion.p>
+            </AnimatePresence>
+          </div>
+        </div>
 
         <AnimatePresence mode="wait">
           {step === 0 && (
