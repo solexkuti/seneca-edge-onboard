@@ -820,7 +820,7 @@ Deno.serve(async (req) => {
             }))
         : [];
 
-    const toLegacy = (e: ChartExtraction | null) =>
+    const toLegacy = (e: ChartExtraction | null): Record<string, unknown> =>
       !e
         ? {}
         : {
@@ -833,6 +833,7 @@ Deno.serve(async (req) => {
             liquidity: e.liquidity_sweep ? "both" : "none",
             volatility: "normal",
             quality: e.quality,
+            candle_overlap: e.candle_overlap,
             regions: sanitizeRegions(e.regions),
           };
 
@@ -843,7 +844,30 @@ Deno.serve(async (req) => {
         model_used: modelUsed,
         confidence: finalExec.confidence_score,
         // Strategy-independent market interpretation (Section 2 of analyzer redesign).
-        market_interpretation: marketInterp,
+        // Layer 1 — structural analysis (replaces legacy market_interpretation).
+        structural,
+        // Back-compat: synthesize a minimal market_interpretation from structural
+        // so older clients that read it still get something useful.
+        market_interpretation: structural
+          ? {
+              summary: structural.summary,
+              market_condition:
+                structural.is_pullback_or_shift === "structural_shift"
+                  ? "trending"
+                  : structural.momentum_strength === "weak"
+                    ? "consolidating"
+                    : "trending",
+              directional_bias:
+                structural.bos.direction === "bullish"
+                  ? "bullish"
+                  : structural.bos.direction === "bearish"
+                    ? "bearish"
+                    : "neutral",
+              clarity: structural.swing_points.HH || structural.swing_points.LL ? "high" : "medium",
+              key_observations: structural.key_observations ?? [],
+              structure_notes: structural.bos.trigger || "",
+            }
+          : null,
         chart_analysis: {
           trend: finalExec.trend,
           structure_detected: finalExec.structure_detected,
