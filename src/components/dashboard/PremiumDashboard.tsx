@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   Clock,
   Globe2,
+  ImageIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
@@ -888,30 +889,35 @@ const VIOLATIONS: ViolationRow[] = [
   },
 ];
 
-const TIMELINE = [
+const TIMELINE: {
+  date: string;
+  items: { asset: string; rule: string; impact: string; screenshot: string | null }[];
+}[] = [
   {
     date: "Apr 28",
     items: [
-      { rule: "No Stop Loss", impact: "−1.0R" },
-      { rule: "Revenge Trade", impact: "−0.5R" },
+      { asset: "EUR/USD", rule: "No Stop Loss", impact: "−1.0R", screenshot: null },
+      { asset: "BTC/USD", rule: "Revenge Trade", impact: "−0.5R", screenshot: null },
     ],
   },
   {
     date: "Apr 25",
     items: [
-      { rule: "Overtrading", impact: "−0.8R" },
-      { rule: "Counter-trend Entry", impact: "−0.8R" },
+      { asset: "GBP/JPY", rule: "Overtrading", impact: "−0.8R", screenshot: null },
+      { asset: "XAU/USD", rule: "Counter-trend Entry", impact: "−0.8R", screenshot: null },
     ],
   },
   {
     date: "Apr 23",
-    items: [{ rule: "Early Exit", impact: "missed +0.9R" }],
+    items: [
+      { asset: "NAS100", rule: "Early Exit", impact: "missed +0.9R", screenshot: null },
+    ],
   },
   {
     date: "Apr 22",
     items: [
-      { rule: "No Stop Loss", impact: "−1.0R" },
-      { rule: "Revenge Trade", impact: "−0.5R" },
+      { asset: "EUR/USD", rule: "No Stop Loss", impact: "−1.0R", screenshot: null },
+      { asset: "ETH/USD", rule: "Revenge Trade", impact: "−0.5R", screenshot: null },
     ],
   },
 ];
@@ -1128,15 +1134,45 @@ function BehaviorBreakdownCard() {
                   {d.items.length} event{d.items.length === 1 ? "" : "s"}
                 </span>
               </div>
-              <ul className="mt-2 space-y-1.5">
+              <ul className="mt-2 space-y-2">
                 {d.items.map((it, i) => (
                   <li
                     key={i}
-                    className="flex items-center justify-between text-[12.5px]"
+                    className="flex items-center gap-3 text-[12.5px]"
                   >
-                    <span className="text-text-primary/90">{it.rule}</span>
+                    {/* Screenshot thumbnail */}
+                    {it.screenshot ? (
+                      <img
+                        src={it.screenshot}
+                        alt={`${it.asset} ${it.rule} screenshot`}
+                        loading="lazy"
+                        className="h-10 w-14 shrink-0 rounded-md object-cover ring-1 ring-white/[0.06]"
+                      />
+                    ) : (
+                      <div
+                        className="flex h-10 w-14 shrink-0 items-center justify-center rounded-md bg-white/[0.03] ring-1 ring-white/[0.06]"
+                        aria-label="No screenshot"
+                      >
+                        <ImageIcon
+                          className="h-3.5 w-3.5 text-text-secondary/50"
+                          strokeWidth={1.7}
+                        />
+                      </div>
+                    )}
+
+                    {/* Asset + rule */}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary/70 tabular-nums">
+                        {it.asset}
+                      </p>
+                      <p className="truncate text-[12.5px] text-text-primary/90">
+                        {it.rule}
+                      </p>
+                    </div>
+
+                    {/* Result (R) */}
                     <span
-                      className={`tabular-nums font-semibold ${it.impact.startsWith("missed") ? "text-amber-200" : "text-rose-300"}`}
+                      className={`shrink-0 tabular-nums font-semibold ${it.impact.startsWith("missed") ? "text-amber-200" : "text-rose-300"}`}
                     >
                       {it.impact}
                     </span>
