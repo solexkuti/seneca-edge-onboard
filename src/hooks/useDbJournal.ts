@@ -38,7 +38,9 @@ export function useDbJournal(): {
     const onUpdate = () => refresh();
     window.addEventListener(JOURNAL_EVENT, onUpdate);
 
-    const { data: sub } = supabase.auth.onAuthStateChange(() => refresh());
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") refresh();
+    });
 
     return () => {
       window.removeEventListener(JOURNAL_EVENT, onUpdate);
