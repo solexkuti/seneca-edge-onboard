@@ -797,6 +797,40 @@ function ResultView({
 
 // ── result subcomponents ─────────────────────────────────────────────────────
 
+function LayerReveal({
+  index,
+  glow,
+  children,
+}: {
+  index: number;
+  glow?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14, filter: "blur(6px)" }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={{
+        duration: 0.55,
+        delay: 0.08 + index * 0.07,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      className={`relative ${glow ? "rounded-2xl shadow-glow-gold" : ""}`}
+    >
+      {glow && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-3 top-0 h-px overflow-hidden rounded-full"
+        >
+          <span className="block h-full w-full animate-shimmer-bg bg-[linear-gradient(90deg,transparent,rgba(231,201,138,0.55),transparent)]" />
+        </span>
+      )}
+      {children}
+    </motion.div>
+  );
+}
+
+
 function ChartPreview({
   src,
   label,
