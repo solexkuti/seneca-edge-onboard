@@ -218,19 +218,45 @@ export default function ChartAnalyzer() {
         exec: data.features?.exec ?? {},
         higher: data.features?.higher ?? null,
       };
-      const pipelineConf: number = Number(data?.confidence ?? 0);
       const validationConfPct: number = Number(
-        data?.confidence_pct ?? Math.round(pipelineConf * 100),
+        data?.confidence_pct ?? Math.round(Number(data?.confidence ?? 0) * 100),
       );
-      const marketInterp = (data?.market_interpretation ??
-        null) as MarketInterpretation | null;
+      // Layer 1 — structural analysis from the edge function (preferred).
+      const structural = (data?.structural ?? null) as StructuralAnalysis | null;
+      const candleOverlap =
+        (data?.features?.exec?.candle_overlap as
+          | "low"
+          | "medium"
+          | "high"
+          | undefined) ?? null;
+      const trend =
+        (data?.chart_analysis?.trend as
+          | "bullish"
+          | "bearish"
+          | "range"
+          | "unknown"
+          | undefined) ?? null;
 
-      // New alignment layer (canonical rules → per-rule pass/fail/NA + grade).
+      // Layer 2 — deterministic market condition.
+      const condition = classifyMarketCondition({
+        structural,
+        candle_overlap: candleOverlap,
+        trend,
+      });
+
+      // Layer 3 — alignment.
       const canonical = buildCanonicalStrategy(activeStrategy);
       const alignment = evaluateAlignment(canonical, features);
 
-      // Legacy breakdown — kept ONLY for the chart_analyses storage shape and
-      // the discipline engine, which still consumes the 4-section format.
+      // Confidence breakdown — always available, deterministic.
+      const confidence = computeConfidenceBreakdown({
+        quality: features.exec?.quality,
+        structural,
+        candle_overlap: candleOverlap,
+        alignment,
+      });
+
+      // Legacy breakdown — kept for storage shape and the discipline engine.
       const legacy = evaluateChartAgainstStrategy(
         features,
         activeStrategy.structured_rules as never,
@@ -254,7 +280,6 @@ export default function ChartAnalyzer() {
         trade_id: null,
       });
 
-      // TRADER_STATE event — analyzer remains a *signal*, not an enforcer.
       const verdictForState: AnalyzerVerdict = legacy.overall;
       const violations = alignment.failed.map(
         (r) => `${r.category}: ${r.condition}`,
@@ -267,22 +292,60 @@ export default function ChartAnalyzer() {
         reason: alignment.insight,
       }).then(() => void refreshTraderState());
 
+      // Render Layers 0–3 immediately. Layer 4–5 (insight) loads after.
       setResult({
         row,
         alignment,
-        marketInterp,
+        structural,
+        condition,
+        confidence,
+        aiInsight: null,
         execPreview,
         higherPreview,
-        pipelineConfidence: pipelineConf,
       });
       setPhase("result");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Analysis failed";
-      console.error("[chart-analyzer] failed:", e);
-      toast.error(msg);
-      setPhase("setup");
-    }
-  }
+
+      // Fire-and-forget Layer 4/5 insight call. Failure is silent.
+      void supabase.functions
+        .invoke("analyze-chart", {
+          body: {
+            exec_image_url: "",
+            insight_request: {
+              structural,
+              market_condition: condition,
+              alignment: {
+                grade: alignment.grade,
+                verdict: alignment.verdict,
+                match_pct: alignment.match_pct,
+                weighted_score: alignment.weighted_score,
+                passed: alignment.passed.map((r) => ({
+                  category: r.category,
+                  condition: r.condition,
+                  reason: r.reason,
+                })),
+                failed: alignment.failed.map((r) => ({
+                  category: r.category,
+                  condition: r.condition,
+                  reason: r.reason,
+                })),
+                not_applicable: alignment.not_applicable.map((r) => ({
+                  category: r.category,
+                  condition: r.condition,
+                })),
+              },
+            },
+          },
+        })
+        .then(({ data: insightData }) => {
+          const ins = (insightData as { insight?: AiInsight | null } | null)
+            ?.insight;
+          if (ins && typeof ins === "object") {
+            setResult((r) => (r ? { ...r, aiInsight: ins } : r));
+          }
+        })
+        .catch((err) => {
+          console.warn("[chart-analyzer] insight step skipped:", err);
+        });
 
   function reset() {
     setPhase("setup");
