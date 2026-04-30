@@ -168,7 +168,7 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
             ) : (
               <ul className="divide-y divide-white/[0.05]">
                 {recent.map((t) => {
-                  const r = typeof t.r_multiple === "number" ? t.r_multiple : null;
+                  const r = typeof t.rr === "number" ? t.rr : null;
                   const positive = r != null && r > 0;
                   const negative = r != null && r < 0;
                   return (
