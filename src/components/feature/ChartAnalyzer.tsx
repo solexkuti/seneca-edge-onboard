@@ -54,14 +54,25 @@ import { buildCanonicalStrategy } from "@/lib/strategySchema";
 import { supabase } from "@/integrations/supabase/client";
 import { logAnalyzerEvent, type AnalyzerVerdict } from "@/lib/analyzerEvents";
 import { useTraderState } from "@/hooks/useTraderState";
+import {
+  classifyMarketCondition,
+  MARKET_CONDITION_LABEL,
+  MARKET_BIAS_LABEL,
+  MARKET_CLARITY_LABEL,
+  type MarketCondition,
+  type StructuralAnalysis,
+} from "@/lib/marketCondition";
+import {
+  computeConfidenceBreakdown,
+  type ConfidenceBreakdown,
+} from "@/lib/analyzerConfidence";
 
-type MarketInterpretation = {
-  summary: string;
-  market_condition: "trending" | "consolidating" | "choppy";
-  directional_bias: "bullish" | "bearish" | "neutral";
-  clarity: "high" | "medium" | "low";
-  key_observations: string[];
-  structure_notes: string;
+type AiInsight = {
+  trade_quality_reason: string[];
+  conclusion: string;
+  hidden_observation: string;
+  behavioral_insight: string;
+  insight: string;
 };
 
 const TIMEFRAMES = ["1m", "5m", "15m", "1H", "4H", "1D", "1W"] as const;
@@ -70,7 +81,7 @@ type Phase = "setup" | "analyzing" | "result" | "invalid";
 
 const STEP_LABELS = [
   "Validating image",
-  "Reading the market",
+  "Reading structural context",
   "Checking against your strategy",
 ];
 
@@ -89,10 +100,12 @@ export default function ChartAnalyzer() {
   const [result, setResult] = useState<{
     row: ChartAnalysisRow;
     alignment: StrategyAlignment;
-    marketInterp: MarketInterpretation | null;
+    structural: StructuralAnalysis | null;
+    condition: MarketCondition;
+    confidence: ConfidenceBreakdown;
+    aiInsight: AiInsight | null;
     execPreview: string;
     higherPreview: string | null;
-    pipelineConfidence: number; // 0–1
   } | null>(null);
 
   const execInputRef = useRef<HTMLInputElement>(null);
