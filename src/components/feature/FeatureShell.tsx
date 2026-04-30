@@ -3,73 +3,68 @@ import { ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 
+// FeatureShell — page wrapper used by feature routes (Journal, State, Mind,
+// Recovery, Strategy, Trades, Stats, etc.). The outer hub layout already
+// provides sidebar + topbar chrome, so this component now produces a clean
+// centered content column with consistent typography.
 export default function FeatureShell({
   eyebrow,
   title,
   subtitle,
   children,
+  back = "/hub",
 }: {
   eyebrow: string;
   title: string;
   subtitle?: string;
   children: ReactNode;
+  back?: string;
 }) {
   return (
-    <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
-      {/* Ambient glow */}
-      <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-90" />
-      <div
-        className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[420px] -translate-x-1/2 rounded-full opacity-60 blur-3xl"
-        style={{
-          background:
-            "radial-gradient(closest-side, rgba(108,92,231,0.22), transparent 70%)",
-        }}
-      />
-
-      <div className="relative z-10 mx-auto w-full max-w-[440px] px-5 pt-6 pb-10">
-        {/* Top nav */}
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="flex items-center justify-between"
+    <div className="mx-auto w-full max-w-[1180px] px-5 py-8 md:px-8 md:py-10">
+      {/* Top nav */}
+      <motion.div
+        initial={{ opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="flex items-center justify-between"
+      >
+        <Link
+          to={back}
+          className="group inline-flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-[12px] font-medium text-text-secondary transition-colors hover:border-white/10 hover:bg-white/[0.04] hover:text-text-primary"
+          aria-label="Back"
         >
-          <Link
-            to="/hub"
-            className="group flex h-10 w-10 items-center justify-center rounded-xl bg-card ring-1 ring-border shadow-soft transition-all hover:shadow-card-premium"
-            aria-label="Back to Control Hub"
-          >
-            <ArrowLeft
-              className="h-4 w-4 text-text-primary transition-transform group-hover:-translate-x-0.5"
-              strokeWidth={2.2}
-            />
-          </Link>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/80">
-            {eyebrow}
-          </span>
-          <span className="h-10 w-10" />
-        </motion.div>
+          <ArrowLeft
+            className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5"
+            strokeWidth={2.2}
+          />
+          Back
+        </Link>
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-gold/80">
+          {eyebrow}
+        </span>
+        <span className="h-7 w-7" />
+      </motion.div>
 
-        {/* Title */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-4"
-        >
-          <h1 className="text-[26px] font-bold leading-[1.1] tracking-tight text-text-primary">
-            {title}
-          </h1>
-          {subtitle ? (
-            <p className="mt-1.5 text-[13.5px] leading-snug text-text-secondary">
-              {subtitle}
-            </p>
-          ) : null}
-        </motion.div>
+      {/* Title */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="mt-6"
+      >
+        <h1 className="font-display text-[28px] font-semibold leading-[1.1] tracking-tight text-text-primary md:text-[32px]">
+          {title}
+        </h1>
+        {subtitle ? (
+          <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-text-secondary">
+            {subtitle}
+          </p>
+        ) : null}
+      </motion.div>
 
-        {/* Content */}
-        <div className="mt-6">{children}</div>
-      </div>
+      {/* Content */}
+      <div className="mt-8">{children}</div>
     </div>
   );
 }
