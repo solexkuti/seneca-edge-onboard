@@ -1,5 +1,9 @@
 import { Link, useRouterState, Outlet } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  getTradeLogStep,
+  subscribeTradeLogStep,
+} from "@/lib/tradeLogTopBar";
 import {
   LayoutDashboard,
   LineChart,
