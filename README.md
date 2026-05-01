@@ -8,6 +8,17 @@ most traders don’t fail because of strategy — they fail because of inconsist
 
 Seneca Edge is built to solve that.
 
+## Product Preview
+
+### Dashboard (Control Layer)
+![Dashboard](./assets/dashboard.png)
+
+### Behavior & Discipline Tracking
+![Behavior](./assets/behavior.png)
+
+### Trade History & Performance
+![Performance](./assets/performance.png)
+
 ⸻
 
 ## Overview
