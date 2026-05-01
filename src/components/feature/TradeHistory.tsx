@@ -1,219 +1,591 @@
-// TradeHistory — list of journal_entries with thumbnails, classification,
-// score impact. Fullscreen screenshot preview on tap.
+// TradeHistory — Phase 3 redesign.
+//
+// Reads directly from the unified `trades` table (executed + missed),
+// runs each row through tradeFromRow() so every downstream renderer sees
+// the canonical Trade object, then groups by day. Hybrid card layout per
+// spec: thumbnail · header · body (rules followed/broken, expandable).
+//
+// UX guarantee (Section 13): in 5 seconds the user knows what they
+// traded, what they did wrong, which rules broke, when, and what it cost.
 
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-import { ArrowLeft, ImageOff, X } from "lucide-react";
-import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  MISTAKE_LABEL,
-  getScreenshotUrl,
-  type Classification,
-  type JournalEntry,
-} from "@/lib/behavioralJournal";
+  ArrowLeft,
+  ChevronDown,
+  Eye,
+  Filter,
+  ImageOff,
+  Loader2,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  X,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  tradeFromRow,
+  type Trade,
+  type TradeRow,
+  MISSED_REASON_LABELS,
+} from "@/lib/trade";
+import { getScreenshotUrl } from "@/lib/behavioralJournal";
+import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
-const CLASS_TONE: Record<Classification, { label: string; chip: string; tone: string }> = {
-  clean:  { label: "Clean",  chip: "bg-emerald-500/10 ring-emerald-500/20 text-emerald-300", tone: "text-emerald-300" },
-  minor:  { label: "Minor",  chip: "bg-amber-500/10 ring-amber-500/20 text-amber-300",       tone: "text-amber-300" },
-  bad:    { label: "Bad",    chip: "bg-orange-500/10 ring-orange-500/20 text-orange-300",    tone: "text-orange-300" },
-  severe: { label: "Severe", chip: "bg-rose-500/10 ring-rose-500/20 text-rose-300",          tone: "text-rose-300" },
-};
+type TypeFilter = "all" | "executed" | "missed";
+type RangeFilter = "7d" | "30d" | "all";
 
-function fmtR(n: number): string {
+const TYPE_TABS: { id: TypeFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "executed", label: "Executed" },
+  { id: "missed", label: "Missed" },
+];
+
+const RANGE_TABS: { id: RangeFilter; label: string }[] = [
+  { id: "7d", label: "7d" },
+  { id: "30d", label: "30d" },
+  { id: "all", label: "All time" },
+];
+
+function fmtR(n: number | null): string {
+  if (n == null || !Number.isFinite(n)) return "—";
   return `${n > 0 ? "+" : ""}${n.toFixed(2)}R`;
 }
-function fmtTime(iso: string): string {
+
+function fmtDay(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleString(undefined, {
+  const today = new Date();
+  const yest = new Date();
+  yest.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return "Today";
+  if (d.toDateString() === yest.toDateString()) return "Yesterday";
+  return d.toLocaleDateString(undefined, {
+    weekday: "short",
     month: "short",
     day: "numeric",
+  });
+}
+
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
 export default function TradeHistory() {
-  const { entries, score, loading } = useBehavioralJournal(100);
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [rangeFilter, setRangeFilter] = useState<RangeFilter>("30d");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) {
+        if (!cancelled) {
+          setTrades([]);
+          setLoading(false);
+        }
+        return;
+      }
+      const { data, error } = await supabase
+        .from("trades")
+        .select("*")
+        .eq("user_id", userId)
+        .order("executed_at", { ascending: false })
+        .limit(200);
+
+      if (cancelled) return;
+      if (error) {
+        console.error("[history] fetch failed", error);
+        setTrades([]);
+      } else {
+        setTrades((data as unknown as TradeRow[]).map(tradeFromRow));
+      }
+      setLoading(false);
+    }
+    load();
+
+    const onUpdate = () => load();
+    window.addEventListener(JOURNAL_EVENT, onUpdate);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(JOURNAL_EVENT, onUpdate);
+    };
+  }, []);
+
+  const filtered = useMemo(() => {
+    const now = Date.now();
+    const cutoff =
+      rangeFilter === "7d"
+        ? now - 7 * 86400_000
+        : rangeFilter === "30d"
+          ? now - 30 * 86400_000
+          : 0;
+    return trades.filter((t) => {
+      if (typeFilter !== "all" && t.tradeType !== typeFilter) return false;
+      if (cutoff && new Date(t.createdAt).getTime() < cutoff) return false;
+      return true;
+    });
+  }, [trades, typeFilter, rangeFilter]);
+
+  // Group by day
+  const groups = useMemo(() => {
+    const map = new Map<string, Trade[]>();
+    for (const t of filtered) {
+      const key = t.createdAt.slice(0, 10);
+      const list = map.get(key) ?? [];
+      list.push(t);
+      map.set(key, list);
+    }
+    return Array.from(map.entries());
+  }, [filtered]);
+
+  // Day-level stats
+  const dayStats = (list: Trade[]) => {
+    const exec = list.filter((t) => t.tradeType === "executed");
+    const totalR = exec.reduce((s, t) => s + (t.resultR ?? 0), 0);
+    const broken = exec.filter((t) => t.rulesBroken.length > 0).length;
+    return { totalR, broken, count: list.length };
+  };
 
   return (
-    <div className="relative min-h-[100svh] w-full overflow-hidden bg-background">
-      <div className="pointer-events-none absolute inset-0 bg-app-glow opacity-50" />
-
-      <div className="relative z-10 mx-auto w-full max-w-[480px] px-5 pt-8 pb-24">
+    <div className="relative min-h-[100svh] w-full bg-[#0B0B0D]">
+      <div className="relative z-10 mx-auto w-full max-w-[640px] px-5 pt-8 pb-24">
+        {/* Header */}
         <header className="flex items-center justify-between">
           <Link
             to="/hub"
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary/70 hover:text-text-primary"
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9A9A9A] hover:text-[#EDEDED]"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Dashboard
           </Link>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
-            History
+          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9A9A9A]/80">
+            Trade History
           </span>
         </header>
 
         <div className="mt-6 flex items-end justify-between">
           <div>
-            <h1 className="text-[22px] font-semibold tracking-tight text-text-primary">
+            <h1 className="font-serif text-[26px] tracking-tight text-[#EDEDED]">
               Trade history
             </h1>
-            <p className="mt-1 text-[12.5px] text-text-secondary">
-              {loading ? "Loading…" : `${entries.length} trades · score ${score}/100`}
+            <p className="mt-1 text-[12.5px] text-[#9A9A9A]">
+              {loading ? "Loading…" : `${filtered.length} trades`}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/hub/journal/breakdown"
-              className="rounded-full bg-card ring-1 ring-border px-3.5 py-2 text-[11.5px] font-semibold text-text-primary active:scale-[0.98] transition"
-            >
-              Breakdown
-            </Link>
-            <Link
-              to="/hub/journal"
-              className="rounded-full bg-primary/15 ring-1 ring-primary/30 px-3.5 py-2 text-[11.5px] font-semibold text-text-primary active:scale-[0.98] transition"
-            >
-              Log trade
-            </Link>
+          <Link
+            to="/hub/journal"
+            className="rounded-full bg-[#C6A15B]/15 ring-1 ring-[#C6A15B]/40 px-3.5 py-2 text-[11.5px] font-semibold text-[#E7C98A] hover:bg-[#C6A15B]/20 transition"
+          >
+            Log trade
+          </Link>
+        </div>
+
+        {/* Filters */}
+        <div className="mt-5 space-y-2">
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/70">
+            <Filter className="h-3 w-3" />
+            <span>Filter</span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-[#18181A] p-1 ring-1 ring-white/5">
+            {TYPE_TABS.map((t) => {
+              const active = typeFilter === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTypeFilter(t.id)}
+                  className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                    active
+                      ? "bg-[#C6A15B]/15 text-[#E7C98A] ring-1 ring-[#C6A15B]/30"
+                      : "text-[#9A9A9A] hover:text-[#EDEDED]"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-[#18181A] p-1 ring-1 ring-white/5">
+            {RANGE_TABS.map((r) => {
+              const active = rangeFilter === r.id;
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setRangeFilter(r.id)}
+                  className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                    active
+                      ? "bg-[#C6A15B]/15 text-[#E7C98A] ring-1 ring-[#C6A15B]/30"
+                      : "text-[#9A9A9A] hover:text-[#EDEDED]"
+                  }`}
+                >
+                  {r.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {!loading && entries.length === 0 && (
-          <div className="mt-12 rounded-2xl bg-card ring-1 ring-border p-6 text-center">
-            <p className="text-[13.5px] text-text-primary">No trades yet.</p>
-            <p className="mt-1 text-[12px] text-text-secondary">
-              Log your first trade to start tracking behavior.
+        {/* Body */}
+        {loading && (
+          <div className="mt-12 flex items-center justify-center text-[#9A9A9A]">
+            <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading trades…
+          </div>
+        )}
+
+        {!loading && filtered.length === 0 && (
+          <div className="mt-12 rounded-2xl bg-[#18181A] ring-1 ring-white/5 p-6 text-center">
+            <p className="text-[13.5px] text-[#EDEDED]">No trades in this view.</p>
+            <p className="mt-1 text-[12px] text-[#9A9A9A]">
+              Try a different filter, or log a trade to get started.
             </p>
           </div>
         )}
 
-        <div className="mt-6 space-y-3">
-          {entries.map((e, i) => (
-            <Item
-              key={e.id}
-              entry={e}
-              delay={Math.min(i, 6) * 0.04}
-              onPreview={async (path) => {
-                const url = await getScreenshotUrl(path);
-                if (url) setPreviewUrl(url);
-              }}
-            />
-          ))}
+        <div className="mt-6 space-y-6">
+          {groups.map(([day, list]) => {
+            const s = dayStats(list);
+            return (
+              <section key={day}>
+                <div className="flex items-baseline justify-between mb-2 px-1">
+                  <h2 className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#9A9A9A]">
+                    {fmtDay(list[0].createdAt)}
+                  </h2>
+                  <div className="flex items-center gap-3 text-[10.5px] tabular-nums text-[#9A9A9A]">
+                    <span>{s.count} trades</span>
+                    {s.broken > 0 && (
+                      <span className="text-rose-400/90">
+                        {s.broken} rule break{s.broken > 1 ? "s" : ""}
+                      </span>
+                    )}
+                    <span
+                      className={
+                        s.totalR > 0
+                          ? "text-[#E7C98A]"
+                          : s.totalR < 0
+                            ? "text-rose-400/90"
+                            : "text-[#9A9A9A]"
+                      }
+                    >
+                      {fmtR(s.totalR)}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {list.map((t, i) => (
+                    <TradeCard
+                      key={t.id}
+                      trade={t}
+                      delay={Math.min(i, 6) * 0.03}
+                      expanded={expandedId === t.id}
+                      onToggle={() =>
+                        setExpandedId(expandedId === t.id ? null : t.id)
+                      }
+                      onPreview={async (path) => {
+                        const url = await getScreenshotUrl(path);
+                        if (url) setPreviewUrl(url);
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </div>
 
-      {previewUrl && (
-        <button
-          type="button"
-          onClick={() => setPreviewUrl(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4"
-        >
-          <X className="absolute right-5 top-5 h-6 w-6 text-white/80" />
-          <img
-            src={previewUrl}
-            alt="Trade screenshot"
-            className="max-h-[90vh] max-w-full rounded-xl object-contain"
-          />
-        </button>
-      )}
+      {/* Lightbox */}
+      <AnimatePresence>
+        {previewUrl && (
+          <motion.button
+            type="button"
+            onClick={() => setPreviewUrl(null)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B0B0D]/95 backdrop-blur-sm p-4"
+          >
+            <X className="absolute right-5 top-5 h-6 w-6 text-[#EDEDED]/80" />
+            <img
+              src={previewUrl}
+              alt="Trade screenshot"
+              className="max-h-[90vh] max-w-full rounded-xl object-contain ring-1 ring-white/10"
+            />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function Item({
-  entry,
+// ───────────────────────── Card ─────────────────────────
+
+function TradeCard({
+  trade,
   delay,
+  expanded,
+  onToggle,
   onPreview,
 }: {
-  entry: JournalEntry;
+  trade: Trade;
   delay: number;
+  expanded: boolean;
+  onToggle: () => void;
   onPreview: (path: string) => void;
 }) {
-  const ct = CLASS_TONE[entry.classification];
   const [thumb, setThumb] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
-    if (entry.screenshot_path) {
-      getScreenshotUrl(entry.screenshot_path).then((u) => {
+    if (trade.screenshotUrl) {
+      getScreenshotUrl(trade.screenshotUrl).then((u) => {
         if (!cancelled) setThumb(u);
       });
     }
     return () => {
       cancelled = true;
     };
-  }, [entry.screenshot_path]);
+  }, [trade.screenshotUrl]);
 
-  const mistakesText = useMemo(() => {
-    if (entry.mistakes.length === 0) return null;
-    return entry.mistakes.map((m) => MISTAKE_LABEL[m]).join(" · ");
-  }, [entry.mistakes]);
+  const isMissed = trade.tradeType === "missed";
+  const r = trade.resultR;
+  const broken = trade.rulesBroken.length;
+  const followed = trade.rulesFollowed.length;
+  const hasDetails =
+    trade.notes ||
+    trade.rulesBroken.length > 0 ||
+    trade.rulesFollowed.length > 0 ||
+    isMissed;
+
+  const DirIcon = trade.direction === "buy" ? TrendingUp : TrendingDown;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease, delay }}
-      className="rounded-2xl bg-card ring-1 ring-border p-4"
+      transition={{ duration: 0.3, ease, delay }}
+      className={`rounded-xl bg-[#18181A] ring-1 transition-colors ${
+        isMissed
+          ? "ring-[#C6A15B]/20"
+          : broken > 0
+            ? "ring-rose-500/15"
+            : "ring-white/5"
+      }`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 p-3.5">
         {/* Thumbnail */}
         <button
           type="button"
-          onClick={() => entry.screenshot_path && onPreview(entry.screenshot_path)}
-          disabled={!entry.screenshot_path}
-          className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-background/60 ring-1 ring-border flex items-center justify-center"
+          onClick={() =>
+            trade.screenshotUrl && onPreview(trade.screenshotUrl)
+          }
+          disabled={!trade.screenshotUrl}
+          className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-[#0B0B0D] ring-1 ring-white/10 flex items-center justify-center"
         >
-          {thumb ? (
+          {isMissed ? (
+            <Eye className="h-5 w-5 text-[#C6A15B]/70" />
+          ) : thumb ? (
             <img src={thumb} alt="" className="h-full w-full object-cover" />
           ) : (
-            <ImageOff className="h-4 w-4 text-text-secondary/50" />
+            <ImageOff className="h-4 w-4 text-[#9A9A9A]/50" />
           )}
         </button>
 
+        {/* Header + body */}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="truncate text-[13.5px] font-semibold text-text-primary">
-              {entry.asset}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[13.5px] font-semibold text-[#EDEDED]">
+              {trade.asset || "—"}
             </span>
             <span
-              className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ring-1 ${ct.chip}`}
+              className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ring-1 ${
+                trade.direction === "buy"
+                  ? "bg-[#C6A15B]/10 ring-[#C6A15B]/25 text-[#E7C98A]"
+                  : "bg-rose-500/10 ring-rose-500/25 text-rose-300"
+              }`}
             >
-              {ct.label}
+              <DirIcon className="h-2.5 w-2.5" />
+              {trade.direction === "buy" ? "Long" : "Short"}
             </span>
+            {isMissed && (
+              <span className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ring-1 bg-[#C6A15B]/10 ring-[#C6A15B]/30 text-[#E7C98A]">
+                <Eye className="h-2.5 w-2.5" /> Missed
+              </span>
+            )}
+            {!isMissed && trade.executionType && (
+              <span
+                className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ring-1 ${
+                  trade.executionType === "controlled"
+                    ? "bg-emerald-500/10 ring-emerald-500/25 text-emerald-300"
+                    : "bg-amber-500/10 ring-amber-500/25 text-amber-300"
+                }`}
+              >
+                {trade.executionType}
+              </span>
+            )}
           </div>
-          <p className="mt-0.5 text-[10.5px] text-text-secondary/70">
-            {fmtTime(entry.created_at)}
+
+          <p className="mt-0.5 text-[10.5px] text-[#9A9A9A]/80">
+            {fmtTime(trade.createdAt)}
+            {trade.session && ` · ${trade.session}`}
+            {trade.marketType && ` · ${trade.marketType}`}
           </p>
-          {mistakesText && (
-            <p className="mt-1.5 line-clamp-2 text-[11.5px] text-text-secondary/80">
-              {mistakesText}
-            </p>
+
+          {/* Quick rule summary */}
+          {!isMissed && (broken > 0 || followed > 0) && (
+            <div className="mt-1.5 flex items-center gap-3 text-[10.5px]">
+              {followed > 0 && (
+                <span className="text-emerald-400/90">
+                  ✓ {followed} followed
+                </span>
+              )}
+              {broken > 0 && (
+                <span className="text-rose-400/90">✗ {broken} broken</span>
+              )}
+            </div>
           )}
-          {entry.note && (
-            <p className="mt-1 line-clamp-2 text-[11.5px] italic text-text-secondary/65">
-              "{entry.note}"
+
+          {isMissed && trade.missedReason && (
+            <p className="mt-1.5 text-[11.5px] text-[#9A9A9A]">
+              {MISSED_REASON_LABELS[trade.missedReason]}
+              {trade.missedPotentialR != null && (
+                <span className="ml-2 inline-flex items-center gap-1 text-[#E7C98A]">
+                  <Target className="h-3 w-3" /> {trade.missedPotentialR.toFixed(1)}
+                  R missed
+                </span>
+              )}
             </p>
           )}
         </div>
 
+        {/* Right column — outcome */}
         <div className="shrink-0 text-right">
-          <p
-            className={`text-[14px] font-semibold tabular-nums ${entry.result_r >= 0 ? "text-emerald-300" : "text-rose-300"}`}
-          >
-            {fmtR(entry.result_r)}
-          </p>
-          <p className={`mt-1 text-[12px] font-semibold tabular-nums ${ct.tone}`}>
-            {entry.score_delta > 0 ? "+" : ""}
-            {entry.score_delta}
-          </p>
-          <p className="mt-0.5 text-[9.5px] uppercase tracking-wider text-text-secondary/55 tabular-nums">
-            {entry.score_before}→{entry.score_after}
-          </p>
+          {isMissed ? (
+            <p className="text-[12px] uppercase tracking-wider text-[#C6A15B]">
+              Not taken
+            </p>
+          ) : (
+            <p
+              className={`text-[14px] font-semibold tabular-nums ${
+                (r ?? 0) > 0
+                  ? "text-[#E7C98A]"
+                  : (r ?? 0) < 0
+                    ? "text-rose-400"
+                    : "text-[#9A9A9A]"
+              }`}
+            >
+              {fmtR(r)}
+            </p>
+          )}
+          {hasDetails && (
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-label={expanded ? "Collapse" : "Expand"}
+              className="mt-1 inline-flex items-center justify-center rounded-md p-1 text-[#9A9A9A] hover:text-[#EDEDED] transition-colors"
+            >
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+              />
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Expanded breakdown */}
+      <AnimatePresence initial={false}>
+        {expanded && hasDetails && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease }}
+            className="overflow-hidden border-t border-white/5"
+          >
+            <div className="px-4 py-3 space-y-3">
+              {trade.rulesFollowed.length > 0 && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-400/80 mb-1.5">
+                    Rules followed
+                  </p>
+                  <ul className="space-y-1">
+                    {trade.rulesFollowed.map((r) => (
+                      <li
+                        key={r}
+                        className="text-[11.5px] text-[#EDEDED]/80 flex items-start gap-1.5"
+                      >
+                        <span className="text-emerald-400 mt-0.5">✓</span>
+                        <span>{r}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {trade.rulesBroken.length > 0 && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-rose-400/80 mb-1.5">
+                    Rules broken
+                  </p>
+                  <ul className="space-y-1">
+                    {trade.rulesBroken.map((r) => (
+                      <li
+                        key={r}
+                        className="text-[11.5px] text-[#EDEDED]/80 flex items-start gap-1.5"
+                      >
+                        <span className="text-rose-400 mt-0.5">✗</span>
+                        <span>{r}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {trade.notes && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80 mb-1.5">
+                    Notes
+                  </p>
+                  <p className="text-[11.5px] italic text-[#9A9A9A]">
+                    "{trade.notes}"
+                  </p>
+                </div>
+              )}
+              {(trade.entryPrice != null ||
+                trade.exitPrice != null ||
+                trade.stopLoss != null ||
+                trade.takeProfit != null) && (
+                <div className="grid grid-cols-4 gap-2 pt-1">
+                  {[
+                    ["Entry", trade.entryPrice],
+                    ["Exit", trade.exitPrice],
+                    ["SL", trade.stopLoss],
+                    ["TP", trade.takeProfit],
+                  ].map(([label, val]) => (
+                    <div key={label as string}>
+                      <p className="text-[9px] uppercase tracking-wider text-[#9A9A9A]/70">
+                        {label as string}
+                      </p>
+                      <p className="text-[11px] tabular-nums text-[#EDEDED]/80">
+                        {val != null ? Number(val).toString() : "—"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
