@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import BehavioralJournalFlow from "@/components/feature/BehavioralJournalFlow";
+import TradeEntrySwitcher from "@/components/feature/TradeEntrySwitcher";
 import RequireAuth from "@/components/auth/RequireAuth";
 
 // /hub/journal — Log Trade flow. Strictly the index of the journal section;
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/hub/journal/")({
   }),
   component: () => (
     <RequireAuth>
-      <BehavioralJournalFlow />
+      <TradeEntrySwitcher />
     </RequireAuth>
   ),
 });
