@@ -37,6 +37,7 @@ import {
 } from "@/lib/trade";
 import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 import { ViolationDetailModal } from "@/components/feature/ViolationDetailModal";
+import { SwipeablePanels } from "@/components/feature/SwipeablePanels";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -194,132 +195,163 @@ export default function BehaviorBreakdown() {
         )}
 
         {!loading && scoped.length > 0 && (
-          <>
-            {/* Score header */}
-            <motion.section
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease }}
-              className="mt-6 rounded-2xl bg-[#18181A] ring-1 ring-white/5 p-5"
-            >
-              <div className="grid grid-cols-3 gap-4">
-                <Stat
-                  label="Behavior score"
-                  value={`${score.score}`}
-                  suffix="/100"
-                  glow
-                  tone={
-                    score.label === "controlled"
-                      ? "gold"
-                      : score.label === "inconsistent"
-                        ? "loss"
-                        : "warn"
-                  }
-                />
-                <Stat
-                  label="Rule adherence"
-                  value={`${Math.round(adherence.pct * 100)}`}
-                  suffix="%"
-                  tone="muted"
-                  sub={`${adherence.cleanTrades}/${adherence.totalTrades} clean`}
-                />
-                <Stat
-                  label="Execution"
-                  value={`${Math.round(split.controlledPct * 100)}`}
-                  suffix="%"
-                  tone="muted"
-                  sub="controlled"
-                />
-              </div>
-              <p className="mt-4 text-[12.5px] text-[#9A9A9A]">{score.description}</p>
-            </motion.section>
-
-            {/* Insights */}
-            {insights.length > 0 && (
-              <section className="mt-6">
-                <h2 className="px-1 text-[12px] font-semibold uppercase tracking-[0.18em] text-[#9A9A9A] mb-2">
-                  Insights
-                </h2>
-                <div className="space-y-2">
-                  {insights.map((i, idx) => (
-                    <motion.div
-                      key={i.id}
-                      initial={{ opacity: 0, y: 4 }}
+          <div className="mt-6">
+            <SwipeablePanels
+              panels={[
+                {
+                  id: "score",
+                  label: "Score",
+                  node: (
+                    <motion.section
+                      initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, ease, delay: Math.min(idx, 5) * 0.04 }}
-                      className={`rounded-xl ring-1 px-4 py-3 text-[12.5px] ${SEVERITY_TONE[i.severity]}`}
+                      transition={{ duration: 0.4, ease }}
+                      className="rounded-2xl bg-[#18181A] ring-1 ring-white/5 p-5"
                     >
-                      {i.message}
-                    </motion.div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Asset Behavior */}
-            {assets.length > 0 && (
-              <section className="mt-8">
-                <div className="flex items-center justify-between px-1 mb-2">
-                  <h2 className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#9A9A9A]">
-                    Asset behavior
-                  </h2>
-                  <span className="text-[10.5px] text-[#9A9A9A]/70">
-                    where emotion lives
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {assets.map((a, i) => (
-                    <AssetCard key={a.asset} asset={a} delay={i * 0.04} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Rule Violations */}
-            <section className="mt-8">
-              <div className="flex items-center justify-between px-1 mb-2">
-                <h2 className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#9A9A9A]">
-                  Rule violations
-                </h2>
-                <span className="text-[10.5px] text-[#9A9A9A]/70">
-                  ranked by impact
-                </span>
-              </div>
-              {violations.length === 0 ? (
-                <div className="rounded-xl bg-[#18181A] ring-1 ring-emerald-500/15 p-5 text-center">
-                  <p className="text-[13px] text-emerald-300">
-                    No rule breaks logged in this window.
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-xl bg-[#18181A] ring-1 ring-white/5 overflow-hidden">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="text-[10px] uppercase tracking-[0.14em] text-[#9A9A9A]/70 border-b border-white/5">
-                        <th className="px-4 py-2.5 font-semibold">Rule</th>
-                        <th className="px-3 py-2.5 font-semibold text-right tabular-nums">
-                          Times
-                        </th>
-                        <th className="px-3 py-2.5 font-semibold text-right tabular-nums">
-                          Impact
-                        </th>
-                        <th className="px-4 py-2.5 font-semibold text-right">Last</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {violations.map((v) => (
-                        <ViolationRow
-                          key={v.rule}
-                          v={v}
-                          onOpen={() => setOpenViolation(v)}
+                      <div className="grid grid-cols-3 gap-4">
+                        <Stat
+                          label="Behavior"
+                          value={`${score.score}`}
+                          suffix="/100"
+                          glow
+                          tone={
+                            score.label === "controlled"
+                              ? "gold"
+                              : score.label === "inconsistent"
+                                ? "loss"
+                                : "warn"
+                          }
                         />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-          </>
+                        <Stat
+                          label="Adherence"
+                          value={`${Math.round(adherence.pct * 100)}`}
+                          suffix="%"
+                          tone="muted"
+                          sub={`${adherence.cleanTrades}/${adherence.totalTrades} clean`}
+                        />
+                        <Stat
+                          label="Execution"
+                          value={`${Math.round(split.controlledPct * 100)}`}
+                          suffix="%"
+                          tone="muted"
+                          sub="controlled"
+                        />
+                      </div>
+                      <p className="mt-4 text-[12.5px] text-[#9A9A9A]">
+                        {score.description}
+                      </p>
+                    </motion.section>
+                  ),
+                },
+                {
+                  id: "insights",
+                  label: "Insights",
+                  node:
+                    insights.length > 0 ? (
+                      <div>
+                        <h2 className="px-1 text-[12px] font-semibold uppercase tracking-[0.18em] text-[#9A9A9A] mb-2">
+                          Insights
+                        </h2>
+                        <div className="space-y-2">
+                          {insights.map((i, idx) => (
+                            <motion.div
+                              key={i.id}
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{
+                                duration: 0.3,
+                                ease,
+                                delay: Math.min(idx, 5) * 0.04,
+                              }}
+                              className={`rounded-xl ring-1 px-4 py-3 text-[12.5px] ${SEVERITY_TONE[i.severity]}`}
+                            >
+                              {i.message}
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <EmptyPanel message="No insights yet — log more trades." />
+                    ),
+                },
+                {
+                  id: "assets",
+                  label: "Assets",
+                  node:
+                    assets.length > 0 ? (
+                      <div>
+                        <div className="flex items-center justify-between px-1 mb-2">
+                          <h2 className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#9A9A9A]">
+                            Asset behavior
+                          </h2>
+                          <span className="text-[10.5px] text-[#9A9A9A]/70">
+                            where emotion lives
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {assets.map((a, i) => (
+                            <AssetCard key={a.asset} asset={a} delay={i * 0.04} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <EmptyPanel message="No asset data in this window." />
+                    ),
+                },
+                {
+                  id: "violations",
+                  label: "Violations",
+                  node: (
+                    <div>
+                      <div className="flex items-center justify-between px-1 mb-2">
+                        <h2 className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#9A9A9A]">
+                          Rule violations
+                        </h2>
+                        <span className="text-[10.5px] text-[#9A9A9A]/70">
+                          ranked by impact
+                        </span>
+                      </div>
+                      {violations.length === 0 ? (
+                        <div className="rounded-xl bg-[#18181A] ring-1 ring-emerald-500/15 p-5 text-center">
+                          <p className="text-[13px] text-emerald-300">
+                            No rule breaks logged in this window.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl bg-[#18181A] ring-1 ring-white/5 overflow-hidden">
+                          <table className="w-full text-left">
+                            <thead>
+                              <tr className="text-[10px] uppercase tracking-[0.14em] text-[#9A9A9A]/70 border-b border-white/5">
+                                <th className="px-4 py-2.5 font-semibold">Rule</th>
+                                <th className="px-3 py-2.5 font-semibold text-right tabular-nums">
+                                  Times
+                                </th>
+                                <th className="px-3 py-2.5 font-semibold text-right tabular-nums">
+                                  Impact
+                                </th>
+                                <th className="px-4 py-2.5 font-semibold text-right">
+                                  Last
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {violations.map((v) => (
+                                <ViolationRow
+                                  key={v.rule}
+                                  v={v}
+                                  onOpen={() => setOpenViolation(v)}
+                                />
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          </div>
         )}
       </div>
 
@@ -328,6 +360,14 @@ export default function BehaviorBreakdown() {
         open={openViolation !== null}
         onClose={() => setOpenViolation(null)}
       />
+    </div>
+  );
+}
+
+function EmptyPanel({ message }: { message: string }) {
+  return (
+    <div className="rounded-xl bg-[#18181A] ring-1 ring-white/5 p-6 text-center">
+      <p className="text-[12.5px] text-[#9A9A9A]">{message}</p>
     </div>
   );
 }
