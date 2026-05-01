@@ -67,11 +67,12 @@ Structured asset classification (Synthetic / Forex)
     
 ## Architecture
 
-LAYER                TECHNOLOGY
-chart engine        TradingView advance charts library
-Backend & Auth      Supabase (Edge functions,postgres)
-Ai Pipelines        Google Gemini2.5 flash + GPT-5mini(fallback)
-Replay Engine       Custom candle streaming system (Deno/supabase Edge Runtime)
+| Layer | Technology |
+|------|------------|
+| Chart Engine | TradingView Advanced Charts Library |
+| Backend & Auth | Supabase (Edge Functions, Postgres) |
+| AI Pipeline | Gemini 2.5 Flash + GPT-5 Mini (fallback) |
+| Replay Engine | Custom candle streaming system (Deno / Supabase Edge Runtime) 
 
 The AI system uses a multi-layer validation pipeline:
 
@@ -98,14 +99,15 @@ Market conditions that closely mirror live execution
 
 ## Project Status
 
-MODULE                         STATUS
-Replay Engine                   complete 
-Trade simulator                 Functional
-Trade Journal                    Live
-Performance Analytics            Live
-Forex Data Integration           in progress
-Ai Mentor                        in development
-TradingView chart integration    in progress
+| Module | Status |
+|--------|--------|
+| Replay Engine | Complete |
+| Trade Simulator | Functional |
+| Trade Journal | Live |
+| Performance Analytics | Live |
+| Forex Data Integration | In Progress |
+| AI Mentor | In Development |
+| TradingView Chart Integration | In Progress |
 
 ## Integration & Collaboration
 
