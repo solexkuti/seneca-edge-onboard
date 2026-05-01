@@ -98,7 +98,7 @@ export type TradeInsert = {
   market: string;
   market_type: MarketType | null;
   asset: string;
-  direction: "buy" | "sell";
+  direction: "long" | "short";
   entry_price: number | null;
   exit_price: number | null;
   stop_loss: number | null;
