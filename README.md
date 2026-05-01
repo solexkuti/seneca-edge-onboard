@@ -10,15 +10,30 @@ Seneca Edge is built to solve that.
 
 ## Product Preview
 
-### Dashboard (Control Layer)
+---
+
+### 🧭 Dashboard (Control Layer)
+
 ![Dashboard](./assets/dashboard.png)
 
-### Behavior & Discipline Tracking
+Control your entire trading process in one place. Monitor discipline, track performance, and stay aligned with your system at a glance.
+
+---
+### 🧠 Behavior & Discipline Tracking
+
 ![Behavior](./assets/behavior.png)
 
-### Trade History & Performance
+Track execution errors, identify repeated mistakes, and build awareness of your trading behavior over time.
+
+---
+
+### 📊 Trade History & Performance
+
 ![Performance](./assets/performance.png)
 
+Review every trade with full context. Analyze outcomes, consistency, and long-term performance trends.
+
+---
 ⸻
 
 ## Overview
