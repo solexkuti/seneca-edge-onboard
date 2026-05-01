@@ -9,7 +9,7 @@
 // so when those land, they just push raw payloads through
 // tradeFromDeriv() / tradeFromMt5() (already in src/lib/trade/normalize.ts).
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -17,8 +17,11 @@ import {
   Plug,
   ShieldCheck,
   Sparkles,
+  Crown,
 } from "lucide-react";
 import { HubPageContainer } from "@/components/layout/HubLayout";
+import { SyncStatusBanner } from "@/components/feature/SyncStatusBanner";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 export const Route = createFileRoute("/hub/connections")({
   head: () => ({
