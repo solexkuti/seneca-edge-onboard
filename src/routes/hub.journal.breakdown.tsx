@@ -1,20 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
-import MistakeBreakdown from "@/components/feature/MistakeBreakdown";
+import BehaviorBreakdown from "@/components/feature/BehaviorBreakdown";
 import RequireAuth from "@/components/auth/RequireAuth";
 
 export const Route = createFileRoute("/hub/journal/breakdown")({
   head: () => ({
     meta: [
-      { title: "Mistake Breakdown — SenecaEdge" },
+      { title: "Behavior Breakdown — SenecaEdge" },
       {
         name: "description",
-        content: "See which mistakes show up most and how each one affects your win rate.",
+        content:
+          "Asset behavior, rule violations, and the patterns shaping your edge.",
       },
     ],
   }),
   component: () => (
     <RequireAuth>
-      <MistakeBreakdown />
+      <BehaviorBreakdown />
     </RequireAuth>
   ),
 });
+
