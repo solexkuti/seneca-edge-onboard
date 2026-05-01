@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   tradeFromRow,
   generateInsights,
+  generateRecommendations,
   behaviorScore,
   ruleAdherence,
   executionSplit,
@@ -23,6 +24,7 @@ import {
   type Insight,
 } from "@/lib/trade";
 import { JOURNAL_EVENT } from "@/lib/tradingJournal";
+import { Recommendations } from "@/components/feature/Recommendations";
 
 export const Route = createFileRoute("/hub/insights")({
   head: () => ({
@@ -96,6 +98,10 @@ function InsightsPage() {
   }, []);
 
   const insights = useMemo(() => generateInsights(trades), [trades]);
+  const recommendations = useMemo(
+    () => generateRecommendations(trades),
+    [trades],
+  );
   const score = useMemo(() => behaviorScore(trades), [trades]);
   const adherence = useMemo(() => ruleAdherence(trades), [trades]);
   const split = useMemo(() => executionSplit(trades), [trades]);
