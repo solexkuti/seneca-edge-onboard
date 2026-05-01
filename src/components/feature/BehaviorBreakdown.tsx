@@ -310,7 +310,11 @@ export default function BehaviorBreakdown() {
                     </thead>
                     <tbody>
                       {violations.map((v) => (
-                        <ViolationRow key={v.rule} v={v} />
+                        <ViolationRow
+                          key={v.rule}
+                          v={v}
+                          onOpen={() => setOpenViolation(v)}
+                        />
                       ))}
                     </tbody>
                   </table>
@@ -320,6 +324,12 @@ export default function BehaviorBreakdown() {
           </>
         )}
       </div>
+
+      <ViolationDetailModal
+        violation={openViolation}
+        open={openViolation !== null}
+        onClose={() => setOpenViolation(null)}
+      />
     </div>
   );
 }
