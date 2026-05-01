@@ -27,6 +27,7 @@ import { Route as HubDailyRouteImport } from './routes/hub.daily'
 import { Route as HubConnectionsRouteImport } from './routes/hub.connections'
 import { Route as HubClassicRouteImport } from './routes/hub.classic'
 import { Route as HubChartRouteImport } from './routes/hub.chart'
+import { Route as HubBillingRouteImport } from './routes/hub.billing'
 import { Route as DevResetRouteImport } from './routes/dev.reset'
 import { Route as AuthSignUpRouteImport } from './routes/auth.sign-up'
 import { Route as AuthSignInRouteImport } from './routes/auth.sign-in'
@@ -127,6 +128,11 @@ const HubChartRoute = HubChartRouteImport.update({
   path: '/chart',
   getParentRoute: () => HubRoute,
 } as any)
+const HubBillingRoute = HubBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => HubRoute,
+} as any)
 const DevResetRoute = DevResetRouteImport.update({
   id: '/dev/reset',
   path: '/dev/reset',
@@ -179,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/dev/reset': typeof DevResetRoute
+  '/hub/billing': typeof HubBillingRoute
   '/hub/chart': typeof HubChartRoute
   '/hub/classic': typeof HubClassicRoute
   '/hub/connections': typeof HubConnectionsRoute
@@ -207,6 +214,7 @@ export interface FileRoutesByTo {
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/dev/reset': typeof DevResetRoute
+  '/hub/billing': typeof HubBillingRoute
   '/hub/chart': typeof HubChartRoute
   '/hub/classic': typeof HubClassicRoute
   '/hub/connections': typeof HubConnectionsRoute
@@ -235,6 +243,7 @@ export interface FileRoutesById {
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/dev/reset': typeof DevResetRoute
+  '/hub/billing': typeof HubBillingRoute
   '/hub/chart': typeof HubChartRoute
   '/hub/classic': typeof HubClassicRoute
   '/hub/connections': typeof HubConnectionsRoute
@@ -266,6 +275,7 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/dev/reset'
+    | '/hub/billing'
     | '/hub/chart'
     | '/hub/classic'
     | '/hub/connections'
@@ -294,6 +304,7 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/dev/reset'
+    | '/hub/billing'
     | '/hub/chart'
     | '/hub/classic'
     | '/hub/connections'
@@ -321,6 +332,7 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/dev/reset'
+    | '/hub/billing'
     | '/hub/chart'
     | '/hub/classic'
     | '/hub/connections'
@@ -481,6 +493,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HubChartRouteImport
       parentRoute: typeof HubRoute
     }
+    '/hub/billing': {
+      id: '/hub/billing'
+      path: '/billing'
+      fullPath: '/hub/billing'
+      preLoaderRoute: typeof HubBillingRouteImport
+      parentRoute: typeof HubRoute
+    }
     '/dev/reset': {
       id: '/dev/reset'
       path: '/dev/reset'
@@ -580,6 +599,7 @@ const HubStrategyRouteWithChildren = HubStrategyRoute._addFileChildren(
 )
 
 interface HubRouteChildren {
+  HubBillingRoute: typeof HubBillingRoute
   HubChartRoute: typeof HubChartRoute
   HubClassicRoute: typeof HubClassicRoute
   HubConnectionsRoute: typeof HubConnectionsRoute
@@ -599,6 +619,7 @@ interface HubRouteChildren {
 }
 
 const HubRouteChildren: HubRouteChildren = {
+  HubBillingRoute: HubBillingRoute,
   HubChartRoute: HubChartRoute,
   HubClassicRoute: HubClassicRoute,
   HubConnectionsRoute: HubConnectionsRoute,
