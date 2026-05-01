@@ -37,6 +37,8 @@ import { Route as HubStrategyNewRouteImport } from './routes/hub.strategy.new'
 import { Route as HubStrategyIdRouteImport } from './routes/hub.strategy.$id'
 import { Route as HubJournalHistoryRouteImport } from './routes/hub.journal.history'
 import { Route as HubJournalBreakdownRouteImport } from './routes/hub.journal.breakdown'
+import { Route as HubConnectionsMt5RouteImport } from './routes/hub.connections.mt5'
+import { Route as HubConnectionsAutomateRouteImport } from './routes/hub.connections.automate'
 
 const HubRoute = HubRouteImport.update({
   id: '/hub',
@@ -178,6 +180,16 @@ const HubJournalBreakdownRoute = HubJournalBreakdownRouteImport.update({
   path: '/breakdown',
   getParentRoute: () => HubJournalRoute,
 } as any)
+const HubConnectionsMt5Route = HubConnectionsMt5RouteImport.update({
+  id: '/mt5',
+  path: '/mt5',
+  getParentRoute: () => HubConnectionsRoute,
+} as any)
+const HubConnectionsAutomateRoute = HubConnectionsAutomateRouteImport.update({
+  id: '/automate',
+  path: '/automate',
+  getParentRoute: () => HubConnectionsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -188,7 +200,7 @@ export interface FileRoutesByFullPath {
   '/hub/billing': typeof HubBillingRoute
   '/hub/chart': typeof HubChartRoute
   '/hub/classic': typeof HubClassicRoute
-  '/hub/connections': typeof HubConnectionsRoute
+  '/hub/connections': typeof HubConnectionsRouteWithChildren
   '/hub/daily': typeof HubDailyRoute
   '/hub/insights': typeof HubInsightsRoute
   '/hub/journal': typeof HubJournalRouteWithChildren
@@ -202,6 +214,8 @@ export interface FileRoutesByFullPath {
   '/hub/strategy': typeof HubStrategyRouteWithChildren
   '/hub/trades': typeof HubTradesRoute
   '/hub/': typeof HubIndexRoute
+  '/hub/connections/automate': typeof HubConnectionsAutomateRoute
+  '/hub/connections/mt5': typeof HubConnectionsMt5Route
   '/hub/journal/breakdown': typeof HubJournalBreakdownRoute
   '/hub/journal/history': typeof HubJournalHistoryRoute
   '/hub/strategy/$id': typeof HubStrategyIdRoute
@@ -217,7 +231,7 @@ export interface FileRoutesByTo {
   '/hub/billing': typeof HubBillingRoute
   '/hub/chart': typeof HubChartRoute
   '/hub/classic': typeof HubClassicRoute
-  '/hub/connections': typeof HubConnectionsRoute
+  '/hub/connections': typeof HubConnectionsRouteWithChildren
   '/hub/daily': typeof HubDailyRoute
   '/hub/insights': typeof HubInsightsRoute
   '/hub/mentor': typeof HubMentorRoute
@@ -229,6 +243,8 @@ export interface FileRoutesByTo {
   '/hub/stats': typeof HubStatsRoute
   '/hub/trades': typeof HubTradesRoute
   '/hub': typeof HubIndexRoute
+  '/hub/connections/automate': typeof HubConnectionsAutomateRoute
+  '/hub/connections/mt5': typeof HubConnectionsMt5Route
   '/hub/journal/breakdown': typeof HubJournalBreakdownRoute
   '/hub/journal/history': typeof HubJournalHistoryRoute
   '/hub/strategy/$id': typeof HubStrategyIdRoute
@@ -246,7 +262,7 @@ export interface FileRoutesById {
   '/hub/billing': typeof HubBillingRoute
   '/hub/chart': typeof HubChartRoute
   '/hub/classic': typeof HubClassicRoute
-  '/hub/connections': typeof HubConnectionsRoute
+  '/hub/connections': typeof HubConnectionsRouteWithChildren
   '/hub/daily': typeof HubDailyRoute
   '/hub/insights': typeof HubInsightsRoute
   '/hub/journal': typeof HubJournalRouteWithChildren
@@ -260,6 +276,8 @@ export interface FileRoutesById {
   '/hub/strategy': typeof HubStrategyRouteWithChildren
   '/hub/trades': typeof HubTradesRoute
   '/hub/': typeof HubIndexRoute
+  '/hub/connections/automate': typeof HubConnectionsAutomateRoute
+  '/hub/connections/mt5': typeof HubConnectionsMt5Route
   '/hub/journal/breakdown': typeof HubJournalBreakdownRoute
   '/hub/journal/history': typeof HubJournalHistoryRoute
   '/hub/strategy/$id': typeof HubStrategyIdRoute
@@ -292,6 +310,8 @@ export interface FileRouteTypes {
     | '/hub/strategy'
     | '/hub/trades'
     | '/hub/'
+    | '/hub/connections/automate'
+    | '/hub/connections/mt5'
     | '/hub/journal/breakdown'
     | '/hub/journal/history'
     | '/hub/strategy/$id'
@@ -319,6 +339,8 @@ export interface FileRouteTypes {
     | '/hub/stats'
     | '/hub/trades'
     | '/hub'
+    | '/hub/connections/automate'
+    | '/hub/connections/mt5'
     | '/hub/journal/breakdown'
     | '/hub/journal/history'
     | '/hub/strategy/$id'
@@ -349,6 +371,8 @@ export interface FileRouteTypes {
     | '/hub/strategy'
     | '/hub/trades'
     | '/hub/'
+    | '/hub/connections/automate'
+    | '/hub/connections/mt5'
     | '/hub/journal/breakdown'
     | '/hub/journal/history'
     | '/hub/strategy/$id'
@@ -563,8 +587,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HubJournalBreakdownRouteImport
       parentRoute: typeof HubJournalRoute
     }
+    '/hub/connections/mt5': {
+      id: '/hub/connections/mt5'
+      path: '/mt5'
+      fullPath: '/hub/connections/mt5'
+      preLoaderRoute: typeof HubConnectionsMt5RouteImport
+      parentRoute: typeof HubConnectionsRoute
+    }
+    '/hub/connections/automate': {
+      id: '/hub/connections/automate'
+      path: '/automate'
+      fullPath: '/hub/connections/automate'
+      preLoaderRoute: typeof HubConnectionsAutomateRouteImport
+      parentRoute: typeof HubConnectionsRoute
+    }
   }
 }
+
+interface HubConnectionsRouteChildren {
+  HubConnectionsAutomateRoute: typeof HubConnectionsAutomateRoute
+  HubConnectionsMt5Route: typeof HubConnectionsMt5Route
+}
+
+const HubConnectionsRouteChildren: HubConnectionsRouteChildren = {
+  HubConnectionsAutomateRoute: HubConnectionsAutomateRoute,
+  HubConnectionsMt5Route: HubConnectionsMt5Route,
+}
+
+const HubConnectionsRouteWithChildren = HubConnectionsRoute._addFileChildren(
+  HubConnectionsRouteChildren,
+)
 
 interface HubJournalRouteChildren {
   HubJournalBreakdownRoute: typeof HubJournalBreakdownRoute
@@ -602,7 +654,7 @@ interface HubRouteChildren {
   HubBillingRoute: typeof HubBillingRoute
   HubChartRoute: typeof HubChartRoute
   HubClassicRoute: typeof HubClassicRoute
-  HubConnectionsRoute: typeof HubConnectionsRoute
+  HubConnectionsRoute: typeof HubConnectionsRouteWithChildren
   HubDailyRoute: typeof HubDailyRoute
   HubInsightsRoute: typeof HubInsightsRoute
   HubJournalRoute: typeof HubJournalRouteWithChildren
@@ -622,7 +674,7 @@ const HubRouteChildren: HubRouteChildren = {
   HubBillingRoute: HubBillingRoute,
   HubChartRoute: HubChartRoute,
   HubClassicRoute: HubClassicRoute,
-  HubConnectionsRoute: HubConnectionsRoute,
+  HubConnectionsRoute: HubConnectionsRouteWithChildren,
   HubDailyRoute: HubDailyRoute,
   HubInsightsRoute: HubInsightsRoute,
   HubJournalRoute: HubJournalRouteWithChildren,
