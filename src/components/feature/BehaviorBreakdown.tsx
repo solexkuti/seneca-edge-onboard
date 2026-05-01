@@ -38,6 +38,7 @@ import {
   type RuleViolationRow,
 } from "@/lib/trade";
 import { JOURNAL_EVENT } from "@/lib/tradingJournal";
+import { ViolationDetailModal } from "@/components/feature/ViolationDetailModal";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
