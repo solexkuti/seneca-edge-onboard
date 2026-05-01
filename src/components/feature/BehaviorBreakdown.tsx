@@ -134,6 +134,12 @@ export default function BehaviorBreakdown() {
   const violations = useMemo(() => ruleViolations(scoped), [scoped]);
   const assets = useMemo(() => assetBehavior(scoped), [scoped]);
   const insights = useMemo(() => generateInsights(scoped), [scoped]);
+  const summary = useMemo(() => summarize(scoped), [scoped]);
+
+  const rangeLabel = useMemo(
+    () => (range === "7d" ? "Last 7 days" : range === "30d" ? "Last 30 days" : "All time"),
+    [range],
+  );
 
   return (
     <div className="relative min-h-[100svh] w-full bg-[#0B0B0D]">
