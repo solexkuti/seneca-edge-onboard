@@ -63,17 +63,27 @@ function fmtR(n: number): string {
 function InsightsPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [pulseKey, setPulseKey] = useState(0);
+  const [newTradeBanner, setNewTradeBanner] = useState<{ count: number; key: number } | null>(null);
+  const isInitialLoad = useRef(true);
+  const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      setLoading(true);
+    let userIdCache: string | null = null;
+
+    async function load(opts: { silent?: boolean; addedCount?: number } = {}) {
+      if (opts.silent) setRefreshing(true);
+      else setLoading(true);
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
+      userIdCache = userId ?? null;
       if (!userId) {
         if (!cancelled) {
           setTrades([]);
           setLoading(false);
+          setRefreshing(false);
         }
         return;
       }
@@ -86,14 +96,51 @@ function InsightsPage() {
       if (!cancelled) {
         setTrades(((data as unknown as TradeRow[]) ?? []).map(tradeFromRow));
         setLoading(false);
+        setRefreshing(false);
+        if (!isInitialLoad.current) {
+          setPulseKey((k) => k + 1);
+          if (opts.addedCount && opts.addedCount > 0) {
+            setNewTradeBanner({ count: opts.addedCount, key: Date.now() });
+            if (bannerTimer.current) clearTimeout(bannerTimer.current);
+            bannerTimer.current = setTimeout(() => setNewTradeBanner(null), 4000);
+          }
+        }
+        isInitialLoad.current = false;
       }
     }
+
     load();
-    const onUpdate = () => load();
+    const onUpdate = () => load({ silent: true, addedCount: 1 });
     window.addEventListener(JOURNAL_EVENT, onUpdate);
+
+    // Realtime: listen for INSERT/UPDATE on trades for this user
+    const channel = supabase
+      .channel("insights-trades-live")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "trades" },
+        (payload) => {
+          const row = payload.new as { user_id?: string } | null;
+          if (!userIdCache || !row || row.user_id !== userIdCache) return;
+          load({ silent: true, addedCount: 1 });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "trades" },
+        (payload) => {
+          const row = payload.new as { user_id?: string } | null;
+          if (!userIdCache || !row || row.user_id !== userIdCache) return;
+          load({ silent: true });
+        },
+      )
+      .subscribe();
+
     return () => {
       cancelled = true;
       window.removeEventListener(JOURNAL_EVENT, onUpdate);
+      supabase.removeChannel(channel);
+      if (bannerTimer.current) clearTimeout(bannerTimer.current);
     };
   }, []);
 
