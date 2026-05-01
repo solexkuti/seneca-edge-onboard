@@ -225,3 +225,124 @@ export function assetBehavior(trades: Trade[]): AssetBehavior[] {
     })
     .sort((a, b) => b.trades - a.trades);
 }
+
+// ---------- Behavior trend (time series) ----------
+
+export interface BehaviorTrendPoint {
+  /** ISO date (YYYY-MM-DD) — the bucket key */
+  date: string;
+  /** Bucket label, e.g. "Mar 12" */
+  label: string;
+  /** Rolling behavior score 0–100 (null if no data up to this point) */
+  score: number | null;
+  /** Daily adherence pct 0–1 (null if no trades that day) */
+  adherence: number | null;
+  /** Daily controlled execution pct 0–1 (null if no trades that day) */
+  controlled: number | null;
+  /** Trades executed in this bucket */
+  trades: number;
+  /** Rule violations in this bucket */
+  violations: number;
+  /** Sum of R for the bucket */
+  totalR: number;
+}
+
+/**
+ * Build a daily time-series of behavior metrics.
+ *
+ * - `windowDays` determines how many trailing days to emit (e.g. 7, 30, 90).
+ *   Pass 0 / undefined for "all time" (uses the trade range).
+ * - The `score` field is a rolling 7-day score so the line stays smooth even
+ *   when individual days have few trades.
+ */
+export function behaviorTrend(
+  trades: Trade[],
+  windowDays?: number,
+): BehaviorTrendPoint[] {
+  const executed = trades.filter((t) => t.tradeType === "executed");
+  if (!executed.length) return [];
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // Determine start date
+  let start: Date;
+  if (windowDays && windowDays > 0) {
+    start = new Date(today);
+    start.setDate(start.getDate() - (windowDays - 1));
+  } else {
+    const earliest = executed.reduce(
+      (min, t) => Math.min(min, new Date(t.createdAt).getTime()),
+      Date.now(),
+    );
+    start = new Date(earliest);
+    start.setHours(0, 0, 0, 0);
+  }
+
+  const dayMs = 86400_000;
+  const days: BehaviorTrendPoint[] = [];
+  const dayKey = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  // Bucket trades by day
+  const buckets = new Map<string, Trade[]>();
+  for (const t of executed) {
+    const d = new Date(t.createdAt);
+    const k = dayKey(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+    const list = buckets.get(k);
+    if (list) list.push(t);
+    else buckets.set(k, [t]);
+  }
+
+  // Walk every day from start → today
+  for (let ts = start.getTime(); ts <= today.getTime(); ts += dayMs) {
+    const d = new Date(ts);
+    const key = dayKey(d);
+    const ts_trades = buckets.get(key) ?? [];
+    const violations = ts_trades.reduce(
+      (n, t) => n + t.rulesBroken.length,
+      0,
+    );
+    const totalR = ts_trades.reduce((s, t) => s + (t.resultR ?? 0), 0);
+    const clean = ts_trades.filter((t) => t.rulesBroken.length === 0).length;
+    const controlled = ts_trades.filter(
+      (t) => t.executionType === "controlled",
+    ).length;
+    days.push({
+      date: key,
+      label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      score: null, // filled in rolling pass below
+      adherence: ts_trades.length ? clean / ts_trades.length : null,
+      controlled: ts_trades.length ? controlled / ts_trades.length : null,
+      trades: ts_trades.length,
+      violations,
+      totalR,
+    });
+  }
+
+  // Rolling 7-day behavior score
+  const ROLL = 7;
+  for (let i = 0; i < days.length; i++) {
+    let cleanSum = 0;
+    let controlledSum = 0;
+    let total = 0;
+    for (let j = Math.max(0, i - ROLL + 1); j <= i; j++) {
+      const key = days[j].date;
+      const ts_trades = buckets.get(key) ?? [];
+      total += ts_trades.length;
+      cleanSum += ts_trades.filter((t) => t.rulesBroken.length === 0).length;
+      controlledSum += ts_trades.filter(
+        (t) => t.executionType === "controlled",
+      ).length;
+    }
+    if (total === 0) {
+      days[i].score = null;
+    } else {
+      const adherence = cleanSum / total;
+      const control = controlledSum / total;
+      days[i].score = Math.round(adherence * 70 + control * 30);
+    }
+  }
+
+  return days;
+}

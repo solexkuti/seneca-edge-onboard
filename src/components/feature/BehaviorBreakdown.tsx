@@ -30,6 +30,7 @@ import {
   assetBehavior,
   generateInsights,
   summarize,
+  behaviorTrend,
   type Trade,
   type TradeRow,
   type Insight,
@@ -40,6 +41,7 @@ import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 import { ViolationDetailModal } from "@/components/feature/ViolationDetailModal";
 import { SwipeablePanels } from "@/components/feature/SwipeablePanels";
 import { ExportMenu } from "@/components/feature/ExportMenu";
+import { BehaviorTrendsChart } from "@/components/feature/BehaviorTrendsChart";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -135,6 +137,10 @@ export default function BehaviorBreakdown() {
   const assets = useMemo(() => assetBehavior(scoped), [scoped]);
   const insights = useMemo(() => generateInsights(scoped), [scoped]);
   const summary = useMemo(() => summarize(scoped), [scoped]);
+  const trend = useMemo(() => {
+    const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+    return behaviorTrend(trades, days);
+  }, [trades, range]);
 
   const rangeLabel = useMemo(
     () => (range === "7d" ? "Last 7 days" : range === "30d" ? "Last 30 days" : "All time"),
@@ -265,6 +271,11 @@ export default function BehaviorBreakdown() {
                       </p>
                     </motion.section>
                   ),
+                },
+                {
+                  id: "trends",
+                  label: "Trends",
+                  node: <BehaviorTrendsChart data={trend} />,
                 },
                 {
                   id: "insights",
