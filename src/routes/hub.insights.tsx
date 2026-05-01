@@ -373,12 +373,14 @@ function Stat({
   suffix,
   tone = "muted",
   glow,
+  flashKey,
 }: {
   label: string;
   value: string;
   suffix?: string;
   tone?: "gold" | "loss" | "muted";
   glow?: boolean;
+  flashKey?: number;
 }) {
   const toneClass =
     tone === "gold"
@@ -386,12 +388,42 @@ function Stat({
       : tone === "loss"
         ? "text-rose-300"
         : "text-[#EDEDED]";
+  const prevValue = useRef(value);
+  const [flash, setFlash] = useState(false);
+  useEffect(() => {
+    if (flashKey === undefined) return;
+    if (prevValue.current !== value) {
+      setFlash(true);
+      const t = setTimeout(() => setFlash(false), 900);
+      prevValue.current = value;
+      return () => clearTimeout(t);
+    }
+  }, [flashKey, value]);
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#18181A] p-4">
+    <motion.div
+      animate={
+        flash
+          ? {
+              borderColor: ["rgba(255,255,255,0.06)", "rgba(198,161,91,0.55)", "rgba(255,255,255,0.06)"],
+              boxShadow: [
+                "0 0 0 rgba(198,161,91,0)",
+                "0 0 28px rgba(198,161,91,0.35)",
+                "0 0 0 rgba(198,161,91,0)",
+              ],
+            }
+          : undefined
+      }
+      transition={{ duration: 0.9, ease }}
+      className="rounded-xl border border-white/[0.06] bg-[#18181A] p-4"
+    >
       <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80">
         {label}
       </p>
-      <p
+      <motion.p
+        key={`${label}-${value}`}
+        initial={{ opacity: 0.4, y: -4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease }}
         className={`mt-1 font-serif text-[26px] leading-none tabular-nums ${toneClass} ${
           glow ? "drop-shadow-[0_0_18px_rgba(198,161,91,0.35)]" : ""
         }`}
@@ -400,8 +432,8 @@ function Stat({
         {suffix && (
           <span className="text-[13px] text-[#9A9A9A]/70">{suffix}</span>
         )}
-      </p>
-    </div>
+      </motion.p>
+    </motion.div>
   );
 }
 
