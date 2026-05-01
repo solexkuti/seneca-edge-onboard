@@ -80,6 +80,7 @@ export default function BehaviorBreakdown() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<RangeFilter>("30d");
+  const [openViolation, setOpenViolation] = useState<RuleViolationRow | null>(null);
 
   useEffect(() => {
     let cancelled = false;
