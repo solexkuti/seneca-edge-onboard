@@ -4,10 +4,10 @@
 // performance / behavior numbers from the unified Trade pipeline.
 // Pure intelligence: never blocks, never lectures.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-import { Brain, Loader2, Sparkles, TrendingUp } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Brain, Loader2, RefreshCw, Sparkles, TrendingUp, Zap } from "lucide-react";
 import { HubPageContainer } from "@/components/layout/HubLayout";
 import { supabase } from "@/integrations/supabase/client";
 import {
