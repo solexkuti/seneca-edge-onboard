@@ -39,6 +39,7 @@ import { Route as HubJournalHistoryRouteImport } from './routes/hub.journal.hist
 import { Route as HubJournalBreakdownRouteImport } from './routes/hub.journal.breakdown'
 import { Route as HubConnectionsMt5RouteImport } from './routes/hub.connections.mt5'
 import { Route as HubConnectionsAutomateRouteImport } from './routes/hub.connections.automate'
+import { Route as ApiPublicHooksDerivSyncRouteImport } from './routes/api/public/hooks/deriv-sync'
 
 const HubRoute = HubRouteImport.update({
   id: '/hub',
@@ -190,6 +191,11 @@ const HubConnectionsAutomateRoute = HubConnectionsAutomateRouteImport.update({
   path: '/automate',
   getParentRoute: () => HubConnectionsRoute,
 } as any)
+const ApiPublicHooksDerivSyncRoute = ApiPublicHooksDerivSyncRouteImport.update({
+  id: '/api/public/hooks/deriv-sync',
+  path: '/api/public/hooks/deriv-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -222,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/hub/strategy/new': typeof HubStrategyNewRoute
   '/hub/journal/': typeof HubJournalIndexRoute
   '/hub/strategy/': typeof HubStrategyIndexRoute
+  '/api/public/hooks/deriv-sync': typeof ApiPublicHooksDerivSyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/hub/strategy/new': typeof HubStrategyNewRoute
   '/hub/journal': typeof HubJournalIndexRoute
   '/hub/strategy': typeof HubStrategyIndexRoute
+  '/api/public/hooks/deriv-sync': typeof ApiPublicHooksDerivSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -284,6 +292,7 @@ export interface FileRoutesById {
   '/hub/strategy/new': typeof HubStrategyNewRoute
   '/hub/journal/': typeof HubJournalIndexRoute
   '/hub/strategy/': typeof HubStrategyIndexRoute
+  '/api/public/hooks/deriv-sync': typeof ApiPublicHooksDerivSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -318,6 +327,7 @@ export interface FileRouteTypes {
     | '/hub/strategy/new'
     | '/hub/journal/'
     | '/hub/strategy/'
+    | '/api/public/hooks/deriv-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -347,6 +357,7 @@ export interface FileRouteTypes {
     | '/hub/strategy/new'
     | '/hub/journal'
     | '/hub/strategy'
+    | '/api/public/hooks/deriv-sync'
   id:
     | '__root__'
     | '/'
@@ -379,6 +390,7 @@ export interface FileRouteTypes {
     | '/hub/strategy/new'
     | '/hub/journal/'
     | '/hub/strategy/'
+    | '/api/public/hooks/deriv-sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -387,6 +399,7 @@ export interface RootRouteChildren {
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignUpRoute: typeof AuthSignUpRoute
   DevResetRoute: typeof DevResetRoute
+  ApiPublicHooksDerivSyncRoute: typeof ApiPublicHooksDerivSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -601,6 +614,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HubConnectionsAutomateRouteImport
       parentRoute: typeof HubConnectionsRoute
     }
+    '/api/public/hooks/deriv-sync': {
+      id: '/api/public/hooks/deriv-sync'
+      path: '/api/public/hooks/deriv-sync'
+      fullPath: '/api/public/hooks/deriv-sync'
+      preLoaderRoute: typeof ApiPublicHooksDerivSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -698,6 +718,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthSignInRoute: AuthSignInRoute,
   AuthSignUpRoute: AuthSignUpRoute,
   DevResetRoute: DevResetRoute,
+  ApiPublicHooksDerivSyncRoute: ApiPublicHooksDerivSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
