@@ -10,3 +10,4 @@ export * from "./types";
 export * from "./normalize";
 export * from "./analysis";
 export * from "./insights";
+export * from "./recommendations";
