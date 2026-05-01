@@ -95,6 +95,45 @@ export type Database = {
         }
         Relationships: []
       }
+      candles: {
+        Row: {
+          close: number
+          fetched_at: string
+          high: number
+          low: number
+          open: number
+          provider: string
+          symbol: string
+          time: number
+          timeframe: string
+          volume: number | null
+        }
+        Insert: {
+          close: number
+          fetched_at?: string
+          high: number
+          low: number
+          open: number
+          provider: string
+          symbol: string
+          time: number
+          timeframe: string
+          volume?: number | null
+        }
+        Update: {
+          close?: number
+          fetched_at?: string
+          high?: number
+          low?: number
+          open?: number
+          provider?: string
+          symbol?: string
+          time?: number
+          timeframe?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
       chart_analyses: {
         Row: {
           ai_insight: string | null
@@ -769,6 +808,128 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      replay_sessions: {
+        Row: {
+          category: string
+          created_at: string
+          cursor_time: number
+          equity: number
+          id: string
+          provider: string
+          range_from: number
+          range_to: number
+          speed: number
+          starting_equity: number
+          status: string
+          symbol: string
+          symbol_label: string | null
+          timeframe: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          cursor_time: number
+          equity?: number
+          id?: string
+          provider: string
+          range_from: number
+          range_to: number
+          speed?: number
+          starting_equity?: number
+          status?: string
+          symbol: string
+          symbol_label?: string | null
+          timeframe?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          cursor_time?: number
+          equity?: number
+          id?: string
+          provider?: string
+          range_from?: number
+          range_to?: number
+          speed?: number
+          starting_equity?: number
+          status?: string
+          symbol?: string
+          symbol_label?: string | null
+          timeframe?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      replay_trades: {
+        Row: {
+          closed_at: number | null
+          created_at: string
+          direction: string
+          entry_price: number
+          exit_price: number | null
+          id: string
+          lot_size: number | null
+          opened_at: number
+          pnl: number | null
+          result: string | null
+          risk_pct: number | null
+          rr: number | null
+          session_id: string
+          stop_loss: number | null
+          take_profit: number | null
+          user_id: string
+        }
+        Insert: {
+          closed_at?: number | null
+          created_at?: string
+          direction: string
+          entry_price: number
+          exit_price?: number | null
+          id?: string
+          lot_size?: number | null
+          opened_at: number
+          pnl?: number | null
+          result?: string | null
+          risk_pct?: number | null
+          rr?: number | null
+          session_id: string
+          stop_loss?: number | null
+          take_profit?: number | null
+          user_id: string
+        }
+        Update: {
+          closed_at?: number | null
+          created_at?: string
+          direction?: string
+          entry_price?: number
+          exit_price?: number | null
+          id?: string
+          lot_size?: number | null
+          opened_at?: number
+          pnl?: number | null
+          result?: string | null
+          risk_pct?: number | null
+          rr?: number | null
+          session_id?: string
+          stop_loss?: number | null
+          take_profit?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "replay_trades_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "replay_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       session_state: {
         Row: {
