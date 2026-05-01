@@ -62,7 +62,7 @@ export function tradeFromRow(row: TradeRow): Trade {
     source: row.source,
     asset: row.asset ?? row.market,
     marketType: row.market_type,
-    direction: row.direction,
+    direction: row.direction === "long" || row.direction === "buy" ? "buy" : "sell",
     entryPrice: row.entry_price,
     exitPrice: row.exit_price,
     stopLoss: row.stop_loss,
