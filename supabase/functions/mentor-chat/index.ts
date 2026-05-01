@@ -742,7 +742,7 @@ Deno.serve(async (req) => {
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
     const userText = lastUser?.content ?? "";
     const { state: detectedState, spiral } = detectState(userText);
-    const MODEL = "google/gemini-2.5-flash";
+    const MODEL = "google/gemini-2.5-pro";
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
