@@ -24,27 +24,24 @@ interface DerivResponse {
 }
 
 /**
- * Open a Deriv WS, run a sequence of req_id-tagged requests, return their
- * responses in order. Always closes the socket. Throws on first error.
+ * Open a Deriv WS, authorize, run a sequence of req_id-tagged requests, return
+ * the authorize response plus per-request responses. Always closes the socket.
  */
-async function derivCall(
+async function derivSession(
   token: string,
   requests: Array<Record<string, unknown>>,
-): Promise<DerivResponse[]> {
+): Promise<{ authorize: DerivResponse; results: DerivResponse[] }> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(DERIV_WS_URL);
-    const responses: DerivResponse[] = [];
+    const results: DerivResponse[] = [];
+    let authorize: DerivResponse | null = null;
     let idx = 0;
     let settled = false;
 
-    const finish = (err: Error | null, value?: DerivResponse[]) => {
+    const finish = (err: Error | null, value?: { authorize: DerivResponse; results: DerivResponse[] }) => {
       if (settled) return;
       settled = true;
-      try {
-        ws.close();
-      } catch {
-        // ignore
-      }
+      try { ws.close(); } catch { /* ignore */ }
       if (err) reject(err);
       else resolve(value!);
     };
@@ -55,50 +52,39 @@ async function derivCall(
     );
 
     const sendNext = () => {
-      const req = requests[idx];
-      ws.send(JSON.stringify({ ...req, req_id: idx + 1 }));
+      ws.send(JSON.stringify({ ...requests[idx], req_id: idx + 1 }));
     };
 
     ws.addEventListener("open", () => {
-      // First call is always authorize
       ws.send(JSON.stringify({ authorize: token, req_id: 0 }));
     });
 
     ws.addEventListener("message", (ev) => {
       let msg: DerivResponse;
-      try {
-        msg = JSON.parse(typeof ev.data === "string" ? ev.data : "");
-      } catch {
-        return;
-      }
+      try { msg = JSON.parse(typeof ev.data === "string" ? ev.data : ""); } catch { return; }
       if (msg.req_id === 0) {
         if (msg.error) {
           clearTimeout(timeout);
-          return finish(
-            new Error(`Deriv auth failed: ${msg.error.message}`),
-          );
+          return finish(new Error(`Deriv auth failed: ${msg.error.message}`));
         }
-        // Authorized — start running queue
+        authorize = msg;
         if (requests.length === 0) {
           clearTimeout(timeout);
-          return finish(null, [msg]);
+          return finish(null, { authorize, results: [] });
         }
         sendNext();
         return;
       }
-      // Tagged response
       if (typeof msg.req_id === "number" && msg.req_id >= 1) {
         if (msg.error) {
           clearTimeout(timeout);
-          return finish(
-            new Error(`Deriv ${msg.msg_type} error: ${msg.error.message}`),
-          );
+          return finish(new Error(`Deriv ${msg.msg_type} error: ${msg.error.message}`));
         }
-        responses[msg.req_id - 1] = msg;
+        results[msg.req_id - 1] = msg;
         idx += 1;
         if (idx >= requests.length) {
           clearTimeout(timeout);
-          return finish(null, responses);
+          return finish(null, { authorize: authorize!, results });
         }
         sendNext();
       }
