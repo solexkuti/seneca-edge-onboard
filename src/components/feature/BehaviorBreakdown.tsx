@@ -166,24 +166,39 @@ export default function BehaviorBreakdown() {
               {loading ? "Loading…" : `${scoped.length} trades · ${range}`}
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-[#18181A] p-1 ring-1 ring-white/5">
-            {RANGE_TABS.map((r) => {
-              const active = range === r.id;
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setRange(r.id)}
-                  className={`px-3 py-1.5 text-[12px] font-medium rounded-md transition-colors ${
-                    active
-                      ? "bg-[#C6A15B]/15 text-[#E7C98A] ring-1 ring-[#C6A15B]/30"
-                      : "text-[#9A9A9A] hover:text-[#EDEDED]"
-                  }`}
-                >
-                  {r.label}
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-2">
+            <ExportMenu
+              disabled={loading || scoped.length === 0}
+              buildPayload={() => ({
+                generatedAt: new Date(),
+                rangeLabel,
+                score,
+                adherence,
+                split,
+                summary,
+                insights,
+                violations,
+              })}
+            />
+            <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-[#18181A] p-1 ring-1 ring-white/5">
+              {RANGE_TABS.map((r) => {
+                const active = range === r.id;
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setRange(r.id)}
+                    className={`px-3 py-1.5 text-[12px] font-medium rounded-md transition-colors ${
+                      active
+                        ? "bg-[#C6A15B]/15 text-[#E7C98A] ring-1 ring-[#C6A15B]/30"
+                        : "text-[#9A9A9A] hover:text-[#EDEDED]"
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
