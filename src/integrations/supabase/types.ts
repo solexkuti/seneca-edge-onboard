@@ -230,6 +230,96 @@ export type Database = {
         }
         Relationships: []
       }
+      deriv_connections: {
+        Row: {
+          account_id: string | null
+          account_label: string | null
+          api_token: string
+          auto_sync: boolean
+          balance: number | null
+          created_at: string
+          currency: string | null
+          id: string
+          is_virtual: boolean
+          last_deal_at: string | null
+          last_error: string | null
+          last_synced_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          account_label?: string | null
+          api_token: string
+          auto_sync?: boolean
+          balance?: number | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          is_virtual?: boolean
+          last_deal_at?: string | null
+          last_error?: string | null
+          last_synced_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          account_label?: string | null
+          api_token?: string
+          auto_sync?: boolean
+          balance?: number | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          is_virtual?: boolean
+          last_deal_at?: string | null
+          last_error?: string | null
+          last_synced_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      deriv_imports: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          latest_deal_at: string | null
+          rows_duplicate: number
+          rows_imported: number
+          rows_skipped: number
+          rows_total: number
+          trigger: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          latest_deal_at?: string | null
+          rows_duplicate?: number
+          rows_imported?: number
+          rows_skipped?: number
+          rows_total?: number
+          trigger?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          latest_deal_at?: string | null
+          rows_duplicate?: number
+          rows_imported?: number
+          rows_skipped?: number
+          rows_total?: number
+          trigger?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       discipline_logs: {
         Row: {
           created_at: string

@@ -77,15 +77,17 @@ const PROVIDERS: Provider[] = [
   {
     id: "deriv",
     name: "Deriv",
-    tagline: "Synthetic indices · binaries",
+    tagline: "Pro · WebSocket sync",
     description:
-      "Stream contracts as they close. Behavior analysis runs on every trade automatically.",
-    status: "soon",
+      "Stream closed contracts in real time. Premium adds auto-sync every 15 minutes — no exports, no buttons.",
+    status: "pro",
     bullets: [
       "Boom / Crash / Volatility indices",
       "Auto-pulled trade results",
-      "Session and asset tagging",
+      "Premium: hands-off every 15 min",
     ],
+    href: "/hub/connections/deriv",
+    upsell: { label: "See automation tiers →", href: "/hub/connections/automate" },
   },
 ];
 
