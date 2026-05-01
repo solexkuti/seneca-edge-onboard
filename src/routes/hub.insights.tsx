@@ -178,6 +178,9 @@ function InsightsPage() {
             </div>
           </section>
 
+          {/* Recommendations — actionable next moves from top violations */}
+          <Recommendations recommendations={recommendations} />
+
           {/* Session performance */}
           <section>
             <h2 className="px-1 mb-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-[#9A9A9A]">
