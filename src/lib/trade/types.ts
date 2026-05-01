@@ -71,7 +71,6 @@ export const emptyTrade = (
   partial: Partial<Trade> & Pick<Trade, "userId">,
 ): Trade => ({
   id: crypto.randomUUID(),
-  userId: partial.userId,
   source: "manual",
   asset: "",
   marketType: null,
