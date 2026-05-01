@@ -1,0 +1,128 @@
+// Lightweight Charts renderer.
+//
+// Wrapped to be client-only — Lightweight Charts touches `window`/canvas at
+// import time, so the parent route should mount it after hydration. Exposes
+// imperative `setData` / `update` methods plus optional SL/TP price-line
+// markers via refs.
+
+import { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
+import {
+  createChart,
+  CandlestickSeries,
+  type IChartApi,
+  type ISeriesApi,
+  type Time,
+  type IPriceLine,
+} from "lightweight-charts";
+import type { Candle } from "@/lib/replay/types";
+
+export interface ReplayChartHandle {
+  setData: (candles: Candle[]) => void;
+  update: (candle: Candle) => void;
+  setLevels: (levels: { entry?: number | null; sl?: number | null; tp?: number | null }) => void;
+}
+
+interface Props {
+  className?: string;
+}
+
+export const ReplayChart = forwardRef<ReplayChartHandle, Props>(function ReplayChart(
+  { className },
+  ref,
+) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const linesRef = useRef<{ entry?: IPriceLine; sl?: IPriceLine; tp?: IPriceLine }>({});
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const chart = createChart(containerRef.current, {
+      layout: {
+        background: { color: "#0F1014" },
+        textColor: "#9A9A9A",
+        fontFamily: "Inter, system-ui, sans-serif",
+      },
+      grid: {
+        vertLines: { color: "rgba(255,255,255,0.04)" },
+        horzLines: { color: "rgba(255,255,255,0.04)" },
+      },
+      rightPriceScale: { borderColor: "rgba(255,255,255,0.06)" },
+      timeScale: { borderColor: "rgba(255,255,255,0.06)", timeVisible: true, secondsVisible: false },
+      autoSize: true,
+      crosshair: { mode: 1 },
+    });
+    const series = chart.addSeries(CandlestickSeries, {
+      upColor: "#C6A15B",
+      downColor: "#5b3535",
+      borderUpColor: "#E7C98A",
+      borderDownColor: "#7a4848",
+      wickUpColor: "#C6A15B",
+      wickDownColor: "#7a4848",
+    });
+    chartRef.current = chart;
+    seriesRef.current = series;
+
+    const ro = new ResizeObserver(() => chart.timeScale().fitContent());
+    ro.observe(containerRef.current);
+
+    return () => {
+      ro.disconnect();
+      chart.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
+      linesRef.current = {};
+    };
+  }, []);
+
+  useImperativeHandle(ref, () => ({
+    setData(candles) {
+      const series = seriesRef.current;
+      if (!series) return;
+      series.setData(
+        candles.map((c) => ({
+          time: c.time as Time,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+        })),
+      );
+      chartRef.current?.timeScale().fitContent();
+    },
+    update(candle) {
+      seriesRef.current?.update({
+        time: candle.time as Time,
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+      });
+    },
+    setLevels({ entry, sl, tp }) {
+      const series = seriesRef.current;
+      if (!series) return;
+      const cur = linesRef.current;
+      if (cur.entry) { series.removePriceLine(cur.entry); cur.entry = undefined; }
+      if (cur.sl)    { series.removePriceLine(cur.sl);    cur.sl = undefined; }
+      if (cur.tp)    { series.removePriceLine(cur.tp);    cur.tp = undefined; }
+      if (entry != null) {
+        cur.entry = series.createPriceLine({
+          price: entry, color: "#C6A15B", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "Entry",
+        });
+      }
+      if (sl != null) {
+        cur.sl = series.createPriceLine({
+          price: sl, color: "#a04848", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "SL",
+        });
+      }
+      if (tp != null) {
+        cur.tp = series.createPriceLine({
+          price: tp, color: "#7da06b", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "TP",
+        });
+      }
+    },
+  }), []);
+
+  return <div ref={containerRef} className={className} style={{ width: "100%", height: "100%" }} />;
+});
