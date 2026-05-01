@@ -4,10 +4,10 @@
 // performance / behavior numbers from the unified Trade pipeline.
 // Pure intelligence: never blocks, never lectures.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-import { Brain, Loader2, Sparkles, TrendingUp } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Brain, Loader2, RefreshCw, Sparkles, TrendingUp, Zap } from "lucide-react";
 import { HubPageContainer } from "@/components/layout/HubLayout";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -63,17 +63,27 @@ function fmtR(n: number): string {
 function InsightsPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [pulseKey, setPulseKey] = useState(0);
+  const [newTradeBanner, setNewTradeBanner] = useState<{ count: number; key: number } | null>(null);
+  const isInitialLoad = useRef(true);
+  const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      setLoading(true);
+    let userIdCache: string | null = null;
+
+    async function load(opts: { silent?: boolean; addedCount?: number } = {}) {
+      if (opts.silent) setRefreshing(true);
+      else setLoading(true);
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
+      userIdCache = userId ?? null;
       if (!userId) {
         if (!cancelled) {
           setTrades([]);
           setLoading(false);
+          setRefreshing(false);
         }
         return;
       }
@@ -86,14 +96,51 @@ function InsightsPage() {
       if (!cancelled) {
         setTrades(((data as unknown as TradeRow[]) ?? []).map(tradeFromRow));
         setLoading(false);
+        setRefreshing(false);
+        if (!isInitialLoad.current) {
+          setPulseKey((k) => k + 1);
+          if (opts.addedCount && opts.addedCount > 0) {
+            setNewTradeBanner({ count: opts.addedCount, key: Date.now() });
+            if (bannerTimer.current) clearTimeout(bannerTimer.current);
+            bannerTimer.current = setTimeout(() => setNewTradeBanner(null), 4000);
+          }
+        }
+        isInitialLoad.current = false;
       }
     }
+
     load();
-    const onUpdate = () => load();
+    const onUpdate = () => load({ silent: true, addedCount: 1 });
     window.addEventListener(JOURNAL_EVENT, onUpdate);
+
+    // Realtime: listen for INSERT/UPDATE on trades for this user
+    const channel = supabase
+      .channel("insights-trades-live")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "trades" },
+        (payload) => {
+          const row = payload.new as { user_id?: string } | null;
+          if (!userIdCache || !row || row.user_id !== userIdCache) return;
+          load({ silent: true, addedCount: 1 });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "trades" },
+        (payload) => {
+          const row = payload.new as { user_id?: string } | null;
+          if (!userIdCache || !row || row.user_id !== userIdCache) return;
+          load({ silent: true });
+        },
+      )
+      .subscribe();
+
     return () => {
       cancelled = true;
       window.removeEventListener(JOURNAL_EVENT, onUpdate);
+      supabase.removeChannel(channel);
+      if (bannerTimer.current) clearTimeout(bannerTimer.current);
     };
   }, []);
 
@@ -134,32 +181,82 @@ function InsightsPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-8 relative">
+          {/* Live status row: pulsing dot + refreshing hint */}
+          <div className="flex items-center justify-between px-1 -mt-2">
+            <div className="flex items-center gap-2 text-[10.5px] uppercase tracking-[0.18em] text-[#9A9A9A]/80">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#C6A15B] opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#C6A15B]" />
+              </span>
+              Live
+            </div>
+            <AnimatePresence>
+              {refreshing && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="flex items-center gap-1.5 text-[10.5px] text-[#C6A15B]"
+                >
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                  Syncing new trades…
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* New trade arrival banner */}
+          <AnimatePresence>
+            {newTradeBanner && (
+              <motion.div
+                key={newTradeBanner.key}
+                initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                transition={{ duration: 0.35, ease }}
+                className="rounded-xl border border-[#C6A15B]/40 bg-[#C6A15B]/[0.07] px-4 py-3 flex items-center gap-2.5 shadow-[0_0_25px_rgba(198,161,91,0.15)]"
+              >
+                <Zap className="h-4 w-4 text-[#E7C98A]" />
+                <p className="text-[12.5px] text-[#EDEDED]">
+                  New trade synced — your insights just refreshed.
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Headline numbers */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <motion.div
+            key={`stats-${pulseKey}`}
+            className="grid grid-cols-2 md:grid-cols-4 gap-3"
+          >
             <Stat
               label="Behavior"
               value={`${score.score}`}
               suffix="/100"
               tone="gold"
               glow
+              flashKey={pulseKey}
             />
             <Stat
               label="Adherence"
               value={`${Math.round(adherence.pct * 100)}`}
               suffix="%"
+              flashKey={pulseKey}
             />
             <Stat
               label="Controlled"
               value={`${Math.round(split.controlledPct * 100)}`}
               suffix="%"
+              flashKey={pulseKey}
             />
             <Stat
               label="Total R"
               value={fmtR(summary.totalR)}
               tone={summary.totalR > 0 ? "gold" : summary.totalR < 0 ? "loss" : "muted"}
+              flashKey={pulseKey}
             />
-          </div>
+          </motion.div>
 
           {/* Insight cards */}
           <section>
@@ -173,7 +270,11 @@ function InsightsPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {insights.map((i, idx) => (
-                <InsightCard key={i.id} insight={i} delay={idx * 0.04} />
+                <InsightCard
+                  key={`${i.id}-${pulseKey}`}
+                  insight={i}
+                  delay={idx * 0.04}
+                />
               ))}
             </div>
           </section>
@@ -272,12 +373,14 @@ function Stat({
   suffix,
   tone = "muted",
   glow,
+  flashKey,
 }: {
   label: string;
   value: string;
   suffix?: string;
   tone?: "gold" | "loss" | "muted";
   glow?: boolean;
+  flashKey?: number;
 }) {
   const toneClass =
     tone === "gold"
@@ -285,12 +388,42 @@ function Stat({
       : tone === "loss"
         ? "text-rose-300"
         : "text-[#EDEDED]";
+  const prevValue = useRef(value);
+  const [flash, setFlash] = useState(false);
+  useEffect(() => {
+    if (flashKey === undefined) return;
+    if (prevValue.current !== value) {
+      setFlash(true);
+      const t = setTimeout(() => setFlash(false), 900);
+      prevValue.current = value;
+      return () => clearTimeout(t);
+    }
+  }, [flashKey, value]);
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#18181A] p-4">
+    <motion.div
+      animate={
+        flash
+          ? {
+              borderColor: ["rgba(255,255,255,0.06)", "rgba(198,161,91,0.55)", "rgba(255,255,255,0.06)"],
+              boxShadow: [
+                "0 0 0 rgba(198,161,91,0)",
+                "0 0 28px rgba(198,161,91,0.35)",
+                "0 0 0 rgba(198,161,91,0)",
+              ],
+            }
+          : undefined
+      }
+      transition={{ duration: 0.9, ease }}
+      className="rounded-xl border border-white/[0.06] bg-[#18181A] p-4"
+    >
       <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80">
         {label}
       </p>
-      <p
+      <motion.p
+        key={`${label}-${value}`}
+        initial={{ opacity: 0.4, y: -4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease }}
         className={`mt-1 font-serif text-[26px] leading-none tabular-nums ${toneClass} ${
           glow ? "drop-shadow-[0_0_18px_rgba(198,161,91,0.35)]" : ""
         }`}
@@ -299,8 +432,8 @@ function Stat({
         {suffix && (
           <span className="text-[13px] text-[#9A9A9A]/70">{suffix}</span>
         )}
-      </p>
-    </div>
+      </motion.p>
+    </motion.div>
   );
 }
 
