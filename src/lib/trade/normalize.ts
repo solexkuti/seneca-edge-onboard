@@ -127,7 +127,7 @@ export function tradeToInsert(t: Trade): TradeInsert {
     market: t.asset, // legacy `market` column kept in sync with `asset`
     market_type: t.marketType,
     asset: t.asset,
-    direction: t.direction,
+    direction: t.direction === "buy" ? "long" : "short",
     entry_price: t.entryPrice,
     exit_price: t.exitPrice,
     stop_loss: t.stopLoss,
