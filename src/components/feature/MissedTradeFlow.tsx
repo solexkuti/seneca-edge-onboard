@@ -84,7 +84,7 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
         market: asset.trim(),
         market_type: marketType,
         asset: asset.trim(),
-        direction,
+        direction: direction === "buy" ? "long" : "short",
         trade_type: "missed",
         missed_potential_r: potentialR,
         missed_reason: reason,
