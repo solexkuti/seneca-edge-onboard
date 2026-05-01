@@ -1,134 +1,312 @@
-import { createFileRoute } from "@tanstack/react-router";
+// /hub/insights — Insights Engine surface.
+//
+// Dedicated home for generateInsights() output, plus the supporting
+// performance / behavior numbers from the unified Trade pipeline.
+// Pure intelligence: never blocks, never lectures.
+
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import {
-  TrendingUp,
-  Scale,
-  AlertTriangle,
-  Brain,
-} from "lucide-react";
+import { Brain, Loader2, Sparkles, TrendingUp } from "lucide-react";
 import { HubPageContainer } from "@/components/layout/HubLayout";
-import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
-import { usePerformance } from "@/hooks/usePerformance";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  tradeFromRow,
+  generateInsights,
+  behaviorScore,
+  ruleAdherence,
+  executionSplit,
+  summarize,
+  sessionPerformance,
+  type Trade,
+  type TradeRow,
+  type Insight,
+} from "@/lib/trade";
+import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 
 export const Route = createFileRoute("/hub/insights")({
   head: () => ({
-    meta: [{ title: "Insights — SenecaEdge" }],
+    meta: [
+      { title: "Insights — SenecaEdge" },
+      {
+        name: "description",
+        content:
+          "The patterns shaping your edge — surfaced from your trades, not theory.",
+      },
+    ],
   }),
   component: InsightsPage,
 });
 
-function InsightsPage() {
-  // Read-only: existing hooks. No new logic, no engine changes.
-  const { entries, score } = useBehavioralJournal(60);
-  const perf = usePerformance(60);
+const ease = [0.22, 1, 0.36, 1] as const;
 
-  const total = entries.length;
-  const wr = perf?.metrics?.winRate;
-  const winRate = typeof wr === "number" && perf?.hasTrades ? Math.round(wr * 100) : null;
-  const ruleAdherence = score != null ? Math.round(score) : null;
-  const gap =
-    winRate != null && ruleAdherence != null
-      ? Math.abs(winRate - ruleAdherence)
-      : null;
+const SEVERITY_TONE: Record<Insight["severity"], string> = {
+  positive: "border-emerald-500/25 bg-emerald-500/5 text-emerald-200",
+  neutral: "border-white/[0.08] bg-[#18181A] text-[#EDEDED]",
+  warning: "border-amber-500/25 bg-amber-500/5 text-amber-200",
+  critical: "border-rose-500/30 bg-rose-500/5 text-rose-200",
+};
+
+const SEVERITY_LABEL: Record<Insight["severity"], string> = {
+  positive: "Strength",
+  neutral: "Note",
+  warning: "Watch",
+  critical: "Critical",
+};
+
+function fmtR(n: number): string {
+  return `${n > 0 ? "+" : ""}${n.toFixed(1)}R`;
+}
+
+function InsightsPage() {
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) {
+        if (!cancelled) {
+          setTrades([]);
+          setLoading(false);
+        }
+        return;
+      }
+      const { data } = await supabase
+        .from("trades")
+        .select("*")
+        .eq("user_id", userId)
+        .order("executed_at", { ascending: false })
+        .limit(500);
+      if (!cancelled) {
+        setTrades(((data as unknown as TradeRow[]) ?? []).map(tradeFromRow));
+        setLoading(false);
+      }
+    }
+    load();
+    const onUpdate = () => load();
+    window.addEventListener(JOURNAL_EVENT, onUpdate);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(JOURNAL_EVENT, onUpdate);
+    };
+  }, []);
+
+  const insights = useMemo(() => generateInsights(trades), [trades]);
+  const score = useMemo(() => behaviorScore(trades), [trades]);
+  const adherence = useMemo(() => ruleAdherence(trades), [trades]);
+  const split = useMemo(() => executionSplit(trades), [trades]);
+  const summary = useMemo(() => summarize(trades), [trades]);
+  const sessions = useMemo(() => sessionPerformance(trades), [trades]);
 
   return (
     <HubPageContainer
       eyebrow="Intelligence"
       title="Insights"
-      subtitle="The gap between what you planned and what you executed — surfaced as patterns, not just numbers."
+      subtitle="The patterns shaping your edge — surfaced from your trades, not theory."
       wide
     >
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <InsightCard
-          Icon={Scale}
-          eyebrow="Strategy vs execution"
-          title={
-            gap != null ? `${gap}% gap between intent and action` : "Awaiting data"
-          }
-          body={
-            gap != null
-              ? "Where rule adherence lags win rate, profitability is leaking from the system — not the market."
-              : "Log a few trades to surface the gap between your plan and your execution."
-          }
-          accent
-        />
-        <InsightCard
-          Icon={TrendingUp}
-          eyebrow="Win rate vs rule adherence"
-          title={
-            winRate != null && ruleAdherence != null
-              ? `${winRate}% wins · ${ruleAdherence}% adherence`
-              : "Not enough trades yet"
-          }
-          body="High win rate with low adherence usually means you're being rewarded for breaking rules. The market eventually corrects this."
-        />
-        <InsightCard
-          Icon={AlertTriangle}
-          eyebrow="Mistake frequency"
-          title={total > 0 ? `${total} trades observed` : "No journal entries"}
-          body="Recurring mistakes are tracked across your journal. The fewer unique repeat patterns, the cleaner your edge."
-        />
-        <InsightCard
-          Icon={Brain}
-          eyebrow="Behavior patterns"
-          title="Patterns are tracked silently"
-          body="Seneca surfaces drift, revenge trading, and overtrading as they emerge. Visit your dashboard for live signals."
-        />
-      </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-[#9A9A9A]">
+          <Loader2 className="h-4 w-4 animate-spin mr-2" /> Reading your trades…
+        </div>
+      ) : trades.length === 0 ? (
+        <div className="rounded-2xl border border-white/[0.06] bg-[#18181A] p-10 text-center">
+          <Sparkles className="mx-auto h-6 w-6 text-[#C6A15B]" />
+          <p className="mt-3 text-[14px] text-[#EDEDED]">No trades yet.</p>
+          <p className="mt-1 text-[12.5px] text-[#9A9A9A]">
+            Log a few trades and your behavior patterns surface here automatically.
+          </p>
+          <Link
+            to="/hub/journal"
+            className="mt-5 inline-block rounded-lg bg-[#C6A15B] px-5 py-2.5 text-[13px] font-medium text-[#0B0B0D] hover:bg-[#E7C98A] transition-colors"
+          >
+            Log a trade
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {/* Headline numbers */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Stat
+              label="Behavior"
+              value={`${score.score}`}
+              suffix="/100"
+              tone="gold"
+              glow
+            />
+            <Stat
+              label="Adherence"
+              value={`${Math.round(adherence.pct * 100)}`}
+              suffix="%"
+            />
+            <Stat
+              label="Controlled"
+              value={`${Math.round(split.controlledPct * 100)}`}
+              suffix="%"
+            />
+            <Stat
+              label="Total R"
+              value={fmtR(summary.totalR)}
+              tone={summary.totalR > 0 ? "gold" : summary.totalR < 0 ? "loss" : "muted"}
+            />
+          </div>
 
-      <div className="mt-8 rounded-2xl border border-white/[0.06] bg-[#16181D] p-6">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-gold/80">
-          Note
-        </p>
-        <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-text-secondary">
-          Deeper analytical breakdowns — equity curve, drawdown distribution, time-of-day clustering — will surface here as your journal matures.
-        </p>
-      </div>
+          {/* Insight cards */}
+          <section>
+            <div className="flex items-center justify-between px-1 mb-3">
+              <h2 className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#9A9A9A]">
+                What your trades are telling you
+              </h2>
+              <span className="text-[10.5px] text-[#9A9A9A]/70">
+                {insights.length} observations
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {insights.map((i, idx) => (
+                <InsightCard key={i.id} insight={i} delay={idx * 0.04} />
+              ))}
+            </div>
+          </section>
+
+          {/* Session performance */}
+          <section>
+            <h2 className="px-1 mb-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-[#9A9A9A]">
+              Session performance
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {sessions.map((s) => (
+                <div
+                  key={s.session}
+                  className="rounded-xl border border-white/[0.06] bg-[#18181A] p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] font-semibold text-[#EDEDED]">
+                      {s.session}
+                    </span>
+                    <span
+                      className={`text-[10px] uppercase tracking-wider ${
+                        s.behaviorLabel === "Controlled"
+                          ? "text-emerald-300"
+                          : s.behaviorLabel === "Overtrading"
+                            ? "text-rose-300"
+                            : "text-[#9A9A9A]"
+                      }`}
+                    >
+                      {s.behaviorLabel}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] tabular-nums">
+                    <div>
+                      <p className="text-[9.5px] uppercase tracking-wider text-[#9A9A9A]/70">
+                        Trades
+                      </p>
+                      <p className="text-[#EDEDED]">{s.trades}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9.5px] uppercase tracking-wider text-[#9A9A9A]/70">
+                        Win rate
+                      </p>
+                      <p className="text-[#EDEDED]">
+                        {s.trades ? `${Math.round(s.winRate * 100)}%` : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9.5px] uppercase tracking-wider text-[#9A9A9A]/70">
+                        Total
+                      </p>
+                      <p
+                        className={
+                          s.totalR > 0
+                            ? "text-[#E7C98A]"
+                            : s.totalR < 0
+                              ? "text-rose-400"
+                              : "text-[#9A9A9A]"
+                        }
+                      >
+                        {fmtR(s.totalR)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* CTA */}
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/hub/journal/breakdown"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#18181A] px-4 py-2 text-[12.5px] text-[#EDEDED] hover:border-[#C6A15B]/40 transition-colors"
+            >
+              <TrendingUp className="h-3.5 w-3.5" /> Behavior breakdown
+            </Link>
+            <Link
+              to="/hub/journal/history"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#18181A] px-4 py-2 text-[12.5px] text-[#EDEDED] hover:border-[#C6A15B]/40 transition-colors"
+            >
+              <Brain className="h-3.5 w-3.5" /> Trade history
+            </Link>
+          </div>
+        </div>
+      )}
     </HubPageContainer>
   );
 }
 
-function InsightCard({
-  Icon,
-  eyebrow,
-  title,
-  body,
-  accent,
+function Stat({
+  label,
+  value,
+  suffix,
+  tone = "muted",
+  glow,
 }: {
-  Icon: typeof TrendingUp;
-  eyebrow: string;
-  title: string;
-  body: string;
-  accent?: boolean;
+  label: string;
+  value: string;
+  suffix?: string;
+  tone?: "gold" | "loss" | "muted";
+  glow?: boolean;
 }) {
+  const toneClass =
+    tone === "gold"
+      ? "text-[#E7C98A]"
+      : tone === "loss"
+        ? "text-rose-300"
+        : "text-[#EDEDED]";
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-[#18181A] p-4">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80">
+        {label}
+      </p>
+      <p
+        className={`mt-1 font-serif text-[26px] leading-none tabular-nums ${toneClass} ${
+          glow ? "drop-shadow-[0_0_18px_rgba(198,161,91,0.35)]" : ""
+        }`}
+      >
+        {value}
+        {suffix && (
+          <span className="text-[13px] text-[#9A9A9A]/70">{suffix}</span>
+        )}
+      </p>
+    </div>
+  );
+}
+
+function InsightCard({ insight, delay }: { insight: Insight; delay: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className={[
-        "relative overflow-hidden rounded-2xl border bg-[#16181D] p-6",
-        accent
-          ? "border-gold/25 shadow-[0_0_32px_-12px_rgba(198,161,91,0.35)]"
-          : "border-white/[0.06]",
-      ].join(" ")}
+      transition={{ duration: 0.4, ease, delay }}
+      className={`rounded-2xl border p-4 ${SEVERITY_TONE[insight.severity]}`}
     >
-      <div className="flex items-start gap-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03]">
-          <Icon className="h-[18px] w-[18px] text-gold" strokeWidth={1.9} />
-        </div>
-        <div className="min-w-0">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/70">
-            {eyebrow}
-          </p>
-          <h3 className="mt-1.5 font-display text-[19px] font-semibold leading-snug tracking-tight text-text-primary">
-            {title}
-          </h3>
-          <p className="mt-2 text-[13px] leading-relaxed text-text-secondary">
-            {body}
-          </p>
-        </div>
-      </div>
+      <p className="text-[10px] uppercase tracking-[0.18em] opacity-70">
+        {SEVERITY_LABEL[insight.severity]}
+      </p>
+      <p className="mt-1.5 text-[13.5px] leading-relaxed">{insight.message}</p>
     </motion.div>
   );
 }
