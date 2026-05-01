@@ -473,6 +473,45 @@ export type Database = {
         }
         Relationships: []
       }
+      mt5_imports: {
+        Row: {
+          account_label: string | null
+          created_at: string
+          filename: string
+          id: string
+          latest_deal_at: string | null
+          rows_duplicate: number
+          rows_imported: number
+          rows_skipped: number
+          rows_total: number
+          user_id: string
+        }
+        Insert: {
+          account_label?: string | null
+          created_at?: string
+          filename: string
+          id?: string
+          latest_deal_at?: string | null
+          rows_duplicate?: number
+          rows_imported?: number
+          rows_skipped?: number
+          rows_total?: number
+          user_id: string
+        }
+        Update: {
+          account_label?: string | null
+          created_at?: string
+          filename?: string
+          id?: string
+          latest_deal_at?: string | null
+          rows_duplicate?: number
+          rows_imported?: number
+          rows_skipped?: number
+          rows_total?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       pressure_events: {
         Row: {
           created_at: string
@@ -529,6 +568,7 @@ export type Database = {
           market: string | null
           onboarded_at: string | null
           onboarding_completed: boolean
+          subscription_tier: Database["public"]["Enums"]["subscription_tier"]
           updated_at: string
           username: string | null
         }
@@ -542,6 +582,7 @@ export type Database = {
           market?: string | null
           onboarded_at?: string | null
           onboarding_completed?: boolean
+          subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           updated_at?: string
           username?: string | null
         }
@@ -555,6 +596,7 @@ export type Database = {
           market?: string | null
           onboarded_at?: string | null
           onboarding_completed?: boolean
+          subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           updated_at?: string
           username?: string | null
         }
@@ -922,6 +964,7 @@ export type Database = {
         Row: {
           analysis_id: string | null
           asset: string | null
+          broker_deal_id: string | null
           closed_at: string | null
           created_at: string
           direction: Database["public"]["Enums"]["trade_direction"]
@@ -955,6 +998,7 @@ export type Database = {
         Insert: {
           analysis_id?: string | null
           asset?: string | null
+          broker_deal_id?: string | null
           closed_at?: string | null
           created_at?: string
           direction: Database["public"]["Enums"]["trade_direction"]
@@ -988,6 +1032,7 @@ export type Database = {
         Update: {
           analysis_id?: string | null
           asset?: string | null
+          broker_deal_id?: string | null
           closed_at?: string | null
           created_at?: string
           direction?: Database["public"]["Enums"]["trade_direction"]
@@ -1083,6 +1128,7 @@ export type Database = {
         | "late_entry"
         | "no_setup"
         | "emotional"
+      subscription_tier: "free" | "pro" | "premium"
       trade_direction: "long" | "short"
       trade_kind: "executed" | "missed"
       trade_result: "win" | "loss" | "breakeven"
@@ -1248,6 +1294,7 @@ export const Constants = {
         "no_setup",
         "emotional",
       ],
+      subscription_tier: ["free", "pro", "premium"],
       trade_direction: ["long", "short"],
       trade_kind: ["executed", "missed"],
       trade_result: ["win", "loss", "breakeven"],
