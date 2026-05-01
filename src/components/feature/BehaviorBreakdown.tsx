@@ -30,6 +30,7 @@ import {
   assetBehavior,
   generateInsights,
   summarize,
+  behaviorTrend,
   type Trade,
   type TradeRow,
   type Insight,
@@ -40,6 +41,7 @@ import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 import { ViolationDetailModal } from "@/components/feature/ViolationDetailModal";
 import { SwipeablePanels } from "@/components/feature/SwipeablePanels";
 import { ExportMenu } from "@/components/feature/ExportMenu";
+import { BehaviorTrendsChart } from "@/components/feature/BehaviorTrendsChart";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
