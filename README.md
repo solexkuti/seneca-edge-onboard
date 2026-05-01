@@ -61,10 +61,10 @@ Reinforcement of rule-based trading discipline
 
 ## Data Integration
 
-Synthetic indices via Deriv API
-Forex market data (in progress)
-Structured asset classification (Synthetic / Forex)
-    
+- Synthetic indices via Deriv API  
+- Forex data integration supported via external APIs  
+- Structured asset classification (Synthetic / Forex)
+
 ## Architecture
 
 | Layer | Technology |
