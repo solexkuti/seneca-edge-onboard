@@ -33,6 +33,30 @@ Track execution errors, identify repeated mistakes, and build awareness of your 
 
 Review every trade with full context. Analyze outcomes, consistency, and long-term performance trends.
 
+## How It Works
+
+Seneca Edge is built around a simple loop:
+
+### 1. Replay & Observe
+Traders replay historical market data candle-by-candle to simulate real conditions. This removes hindsight bias and forces real-time decision-making.
+
+### 2. Execute & Simulate
+Trades are placed inside the simulation engine using defined risk parameters (stop loss, take profit, position sizing). Every action is tracked.
+
+### 3. Journal & Reflect
+Each trade is logged with structured reflection. Seneca Edge supports journaling for both simulated trades (from replay sessions) and externally executed trades (e.g., MT5). Traders record reasoning, execution quality, and emotional context.
+
+### 4. Analyze Behavior
+The system identifies recurring patterns such as overtrading, early exits, or rule violations.
+
+### 5. Improve Decision-Making
+Insights are used to refine execution, reinforce discipline, and build consistency over time.
+
+---
+
+The goal is not just better trades —  
+it is better decisions, repeated consistently.
+
 ---
 ⸻
 
