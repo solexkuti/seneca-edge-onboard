@@ -32,7 +32,7 @@ export interface TradeRow {
   market: string;
   market_type: MarketType | null;
   asset: string | null;
-  direction: "buy" | "sell";
+  direction: "long" | "short" | "buy" | "sell";
   entry_price: number | null;
   exit_price: number | null;
   stop_loss: number | null;
@@ -62,7 +62,7 @@ export function tradeFromRow(row: TradeRow): Trade {
     source: row.source,
     asset: row.asset ?? row.market,
     marketType: row.market_type,
-    direction: row.direction,
+    direction: row.direction === "long" || row.direction === "buy" ? "buy" : "sell",
     entryPrice: row.entry_price,
     exitPrice: row.exit_price,
     stopLoss: row.stop_loss,
@@ -98,7 +98,7 @@ export type TradeInsert = {
   market: string;
   market_type: MarketType | null;
   asset: string;
-  direction: "buy" | "sell";
+  direction: "long" | "short";
   entry_price: number | null;
   exit_price: number | null;
   stop_loss: number | null;
@@ -127,7 +127,7 @@ export function tradeToInsert(t: Trade): TradeInsert {
     market: t.asset, // legacy `market` column kept in sync with `asset`
     market_type: t.marketType,
     asset: t.asset,
-    direction: t.direction,
+    direction: t.direction === "buy" ? "long" : "short",
     entry_price: t.entryPrice,
     exit_price: t.exitPrice,
     stop_loss: t.stopLoss,
