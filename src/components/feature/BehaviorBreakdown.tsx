@@ -137,6 +137,10 @@ export default function BehaviorBreakdown() {
   const assets = useMemo(() => assetBehavior(scoped), [scoped]);
   const insights = useMemo(() => generateInsights(scoped), [scoped]);
   const summary = useMemo(() => summarize(scoped), [scoped]);
+  const trend = useMemo(() => {
+    const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+    return behaviorTrend(trades, days);
+  }, [trades, range]);
 
   const rangeLabel = useMemo(
     () => (range === "7d" ? "Last 7 days" : range === "30d" ? "Last 30 days" : "All time"),
