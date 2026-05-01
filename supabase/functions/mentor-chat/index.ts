@@ -981,7 +981,8 @@ Deno.serve(async (req) => {
       (hasTraderState ? AWARENESS_LAYER_ADDENDUM : "") +
       (patternActive && !zeroData ? PATTERN_AWARE_ADDENDUM : "") +
       (zeroData ? ZERO_DATA_ADDENDUM : "") +
-      (lowData ? LOW_DATA_ADDENDUM : "");
+      (lowData ? LOW_DATA_ADDENDUM : "") +
+      ANALYST_REINFORCEMENT;
 
     const upstream = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -994,6 +995,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           model: MODEL,
           stream: true,
+          reasoning: { effort: "medium" },
           messages: [
             { role: "system", content: systemContent },
             ...messages,
