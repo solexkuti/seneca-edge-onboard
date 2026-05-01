@@ -38,6 +38,7 @@ import { Route as HubStrategyIdRouteImport } from './routes/hub.strategy.$id'
 import { Route as HubJournalHistoryRouteImport } from './routes/hub.journal.history'
 import { Route as HubJournalBreakdownRouteImport } from './routes/hub.journal.breakdown'
 import { Route as HubConnectionsMt5RouteImport } from './routes/hub.connections.mt5'
+import { Route as HubConnectionsDerivRouteImport } from './routes/hub.connections.deriv'
 import { Route as HubConnectionsAutomateRouteImport } from './routes/hub.connections.automate'
 import { Route as ApiPublicHooksDerivSyncRouteImport } from './routes/api/public/hooks/deriv-sync'
 
@@ -186,6 +187,11 @@ const HubConnectionsMt5Route = HubConnectionsMt5RouteImport.update({
   path: '/mt5',
   getParentRoute: () => HubConnectionsRoute,
 } as any)
+const HubConnectionsDerivRoute = HubConnectionsDerivRouteImport.update({
+  id: '/deriv',
+  path: '/deriv',
+  getParentRoute: () => HubConnectionsRoute,
+} as any)
 const HubConnectionsAutomateRoute = HubConnectionsAutomateRouteImport.update({
   id: '/automate',
   path: '/automate',
@@ -221,6 +227,7 @@ export interface FileRoutesByFullPath {
   '/hub/trades': typeof HubTradesRoute
   '/hub/': typeof HubIndexRoute
   '/hub/connections/automate': typeof HubConnectionsAutomateRoute
+  '/hub/connections/deriv': typeof HubConnectionsDerivRoute
   '/hub/connections/mt5': typeof HubConnectionsMt5Route
   '/hub/journal/breakdown': typeof HubJournalBreakdownRoute
   '/hub/journal/history': typeof HubJournalHistoryRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/hub/trades': typeof HubTradesRoute
   '/hub': typeof HubIndexRoute
   '/hub/connections/automate': typeof HubConnectionsAutomateRoute
+  '/hub/connections/deriv': typeof HubConnectionsDerivRoute
   '/hub/connections/mt5': typeof HubConnectionsMt5Route
   '/hub/journal/breakdown': typeof HubJournalBreakdownRoute
   '/hub/journal/history': typeof HubJournalHistoryRoute
@@ -285,6 +293,7 @@ export interface FileRoutesById {
   '/hub/trades': typeof HubTradesRoute
   '/hub/': typeof HubIndexRoute
   '/hub/connections/automate': typeof HubConnectionsAutomateRoute
+  '/hub/connections/deriv': typeof HubConnectionsDerivRoute
   '/hub/connections/mt5': typeof HubConnectionsMt5Route
   '/hub/journal/breakdown': typeof HubJournalBreakdownRoute
   '/hub/journal/history': typeof HubJournalHistoryRoute
@@ -320,6 +329,7 @@ export interface FileRouteTypes {
     | '/hub/trades'
     | '/hub/'
     | '/hub/connections/automate'
+    | '/hub/connections/deriv'
     | '/hub/connections/mt5'
     | '/hub/journal/breakdown'
     | '/hub/journal/history'
@@ -350,6 +360,7 @@ export interface FileRouteTypes {
     | '/hub/trades'
     | '/hub'
     | '/hub/connections/automate'
+    | '/hub/connections/deriv'
     | '/hub/connections/mt5'
     | '/hub/journal/breakdown'
     | '/hub/journal/history'
@@ -383,6 +394,7 @@ export interface FileRouteTypes {
     | '/hub/trades'
     | '/hub/'
     | '/hub/connections/automate'
+    | '/hub/connections/deriv'
     | '/hub/connections/mt5'
     | '/hub/journal/breakdown'
     | '/hub/journal/history'
@@ -607,6 +619,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HubConnectionsMt5RouteImport
       parentRoute: typeof HubConnectionsRoute
     }
+    '/hub/connections/deriv': {
+      id: '/hub/connections/deriv'
+      path: '/deriv'
+      fullPath: '/hub/connections/deriv'
+      preLoaderRoute: typeof HubConnectionsDerivRouteImport
+      parentRoute: typeof HubConnectionsRoute
+    }
     '/hub/connections/automate': {
       id: '/hub/connections/automate'
       path: '/automate'
@@ -626,11 +645,13 @@ declare module '@tanstack/react-router' {
 
 interface HubConnectionsRouteChildren {
   HubConnectionsAutomateRoute: typeof HubConnectionsAutomateRoute
+  HubConnectionsDerivRoute: typeof HubConnectionsDerivRoute
   HubConnectionsMt5Route: typeof HubConnectionsMt5Route
 }
 
 const HubConnectionsRouteChildren: HubConnectionsRouteChildren = {
   HubConnectionsAutomateRoute: HubConnectionsAutomateRoute,
+  HubConnectionsDerivRoute: HubConnectionsDerivRoute,
   HubConnectionsMt5Route: HubConnectionsMt5Route,
 }
 
