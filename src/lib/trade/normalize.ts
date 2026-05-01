@@ -32,7 +32,7 @@ export interface TradeRow {
   market: string;
   market_type: MarketType | null;
   asset: string | null;
-  direction: "buy" | "sell";
+  direction: "long" | "short" | "buy" | "sell";
   entry_price: number | null;
   exit_price: number | null;
   stop_loss: number | null;
