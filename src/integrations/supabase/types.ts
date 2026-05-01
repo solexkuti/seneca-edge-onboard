@@ -790,6 +790,44 @@ export type Database = {
           },
         ]
       }
+      trade_annotations: {
+        Row: {
+          created_at: string
+          id: string
+          note: string
+          rule: string
+          trade_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string
+          rule: string
+          trade_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string
+          rule?: string
+          trade_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_annotations_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "trades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trade_logs: {
         Row: {
           closed_at: string | null
