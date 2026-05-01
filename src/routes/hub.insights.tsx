@@ -181,32 +181,82 @@ function InsightsPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-8 relative">
+          {/* Live status row: pulsing dot + refreshing hint */}
+          <div className="flex items-center justify-between px-1 -mt-2">
+            <div className="flex items-center gap-2 text-[10.5px] uppercase tracking-[0.18em] text-[#9A9A9A]/80">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#C6A15B] opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#C6A15B]" />
+              </span>
+              Live
+            </div>
+            <AnimatePresence>
+              {refreshing && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="flex items-center gap-1.5 text-[10.5px] text-[#C6A15B]"
+                >
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                  Syncing new trades…
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* New trade arrival banner */}
+          <AnimatePresence>
+            {newTradeBanner && (
+              <motion.div
+                key={newTradeBanner.key}
+                initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                transition={{ duration: 0.35, ease }}
+                className="rounded-xl border border-[#C6A15B]/40 bg-[#C6A15B]/[0.07] px-4 py-3 flex items-center gap-2.5 shadow-[0_0_25px_rgba(198,161,91,0.15)]"
+              >
+                <Zap className="h-4 w-4 text-[#E7C98A]" />
+                <p className="text-[12.5px] text-[#EDEDED]">
+                  New trade synced — your insights just refreshed.
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Headline numbers */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <motion.div
+            key={`stats-${pulseKey}`}
+            className="grid grid-cols-2 md:grid-cols-4 gap-3"
+          >
             <Stat
               label="Behavior"
               value={`${score.score}`}
               suffix="/100"
               tone="gold"
               glow
+              flashKey={pulseKey}
             />
             <Stat
               label="Adherence"
               value={`${Math.round(adherence.pct * 100)}`}
               suffix="%"
+              flashKey={pulseKey}
             />
             <Stat
               label="Controlled"
               value={`${Math.round(split.controlledPct * 100)}`}
               suffix="%"
+              flashKey={pulseKey}
             />
             <Stat
               label="Total R"
               value={fmtR(summary.totalR)}
               tone={summary.totalR > 0 ? "gold" : summary.totalR < 0 ? "loss" : "muted"}
+              flashKey={pulseKey}
             />
-          </div>
+          </motion.div>
 
           {/* Insight cards */}
           <section>
@@ -220,7 +270,11 @@ function InsightsPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {insights.map((i, idx) => (
-                <InsightCard key={i.id} insight={i} delay={idx * 0.04} />
+                <InsightCard
+                  key={`${i.id}-${pulseKey}`}
+                  insight={i}
+                  delay={idx * 0.04}
+                />
               ))}
             </div>
           </section>
