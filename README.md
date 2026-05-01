@@ -1,7 +1,6 @@
 # Seneca Edge
 Trade with clarity. Execute with discipline. Improve with data.
-
-Seneca Edge is a trading platform built for disciplined execution, structured reflection through journaling, and realistic simulation.
+Seneca Edge is a trading platform focused on disciplined execution, structured reflection, and realistic simulation.
 
 It focuses on one core problem:
 most traders don’t fail because of strategy — they fail because of inconsistent decision-making.
