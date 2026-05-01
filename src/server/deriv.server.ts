@@ -196,7 +196,7 @@ export async function syncDerivAccount(
     ? Math.floor(since.getTime() / 1000)
     : Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
 
-  const responses = await derivCall(apiToken, [
+  const session = await derivSession(apiToken, [
     {
       profit_table: 1,
       description: 1,
@@ -207,14 +207,11 @@ export async function syncDerivAccount(
     { balance: 1 },
   ]);
 
-  // Authorize response is responses-of-authorize-only path; here we got tagged
-  // responses back. We need to grab the authorize info separately.
-  const authResponses = await derivCall(apiToken, []);
-  const auth = authResponses[0] as AuthorizeResponse;
+  const auth = session.authorize as AuthorizeResponse;
   if (!auth.authorize) throw new Error("Deriv authorize returned no payload");
 
-  const profit = responses[0] as ProfitTableResponse;
-  const balance = responses[1] as BalanceResponse;
+  const profit = session.results[0] as ProfitTableResponse;
+  const balance = session.results[1] as BalanceResponse;
 
   const txs = profit.profit_table?.transactions ?? [];
   let imported = 0;
@@ -223,53 +220,70 @@ export async function syncDerivAccount(
   let latestDealAt: Date | null = null;
 
   if (txs.length > 0) {
-    const rows = txs
-      .map((t) => {
-        if (!t.contract_id || !t.sell_time) {
-          skipped += 1;
-          return null;
-        }
-        const sellAt = new Date(t.sell_time * 1000);
-        if (!latestDealAt || sellAt > latestDealAt) latestDealAt = sellAt;
-        const buyAt = new Date(t.purchase_time * 1000);
-        const pnl = Number(((t.sell_price ?? 0) - (t.buy_price ?? 0)).toFixed(2));
-        const risk = Math.max(t.buy_price ?? 0, 0.0001);
-        const rr = Number((pnl / risk).toFixed(2));
-        return {
-          user_id: userId,
-          source: "deriv" as const,
-          broker_deal_id: String(t.contract_id),
-          market: t.underlying_symbol || t.symbol || "synthetic",
-          market_type: "synthetic" as const,
-          asset: t.underlying_symbol || t.symbol || null,
-          direction: directionFromContractType(t.contract_type),
-          entry_price: null,
-          exit_price: null,
-          stop_loss: null,
-          take_profit: null,
-          lot_size: t.buy_price ?? null,
-          risk_r: risk,
-          rr,
-          pnl,
-          result:
-            pnl > 0 ? ("win" as const) : pnl < 0 ? ("loss" as const) : ("breakeven" as const),
-          executed_at: buyAt.toISOString(),
-          closed_at: sellAt.toISOString(),
-          session: sessionFromUtc(t.sell_time),
-          trade_type: "executed" as const,
-          execution_type: "controlled" as const,
-          rules_followed: [] as string[],
-          rules_broken: [] as string[],
-          notes: t.shortcode ? `Deriv ${t.contract_type} · ${t.shortcode}` : null,
-        };
-      })
-      .filter(Boolean) as Array<Record<string, unknown>>;
+    type TradeInsert = {
+      user_id: string;
+      source: "deriv";
+      broker_deal_id: string;
+      market: string;
+      market_type: "synthetic";
+      asset: string | null;
+      direction: "long" | "short";
+      lot_size: number | null;
+      risk_r: number;
+      rr: number;
+      pnl: number;
+      result: "win" | "loss" | "breakeven";
+      executed_at: string;
+      closed_at: string;
+      session: "asia" | "london" | "ny" | "off";
+      trade_type: "executed";
+      execution_type: "controlled";
+      rules_followed: string[];
+      rules_broken: string[];
+      notes: string | null;
+    };
+
+    const rows: TradeInsert[] = [];
+    for (const t of txs) {
+      if (!t.contract_id || !t.sell_time) {
+        skipped += 1;
+        continue;
+      }
+      const sellAt = new Date(t.sell_time * 1000);
+      if (!latestDealAt || sellAt > latestDealAt) latestDealAt = sellAt;
+      const buyAt = new Date(t.purchase_time * 1000);
+      const pnl = Number(((t.sell_price ?? 0) - (t.buy_price ?? 0)).toFixed(2));
+      const risk = Math.max(t.buy_price ?? 0, 0.0001);
+      const rr = Number((pnl / risk).toFixed(2));
+      rows.push({
+        user_id: userId,
+        source: "deriv",
+        broker_deal_id: String(t.contract_id),
+        market: t.underlying_symbol || t.symbol || "synthetic",
+        market_type: "synthetic",
+        asset: t.underlying_symbol || t.symbol || null,
+        direction: directionFromContractType(t.contract_type),
+        lot_size: t.buy_price ?? null,
+        risk_r: risk,
+        rr,
+        pnl,
+        result: pnl > 0 ? "win" : pnl < 0 ? "loss" : "breakeven",
+        executed_at: buyAt.toISOString(),
+        closed_at: sellAt.toISOString(),
+        session: sessionFromUtc(t.sell_time),
+        trade_type: "executed",
+        execution_type: "controlled",
+        rules_followed: [],
+        rules_broken: [],
+        notes: t.shortcode ? `Deriv ${t.contract_type} · ${t.shortcode}` : null,
+      });
+    }
 
     if (rows.length > 0) {
-      // Use upsert with ignoreDuplicates to leverage the unique index.
+      // Cast at the upsert boundary — generated types don't model trade_type/source enums perfectly.
       const { data, error } = await supabaseAdmin
         .from("trades")
-        .upsert(rows, {
+        .upsert(rows as never, {
           onConflict: "user_id,source,broker_deal_id",
           ignoreDuplicates: true,
         })
@@ -306,8 +320,8 @@ export async function verifyDerivToken(token: string): Promise<{
   is_virtual: boolean;
   fullname?: string;
 }> {
-  const responses = await derivCall(token, []);
-  const auth = responses[0] as AuthorizeResponse;
+  const session = await derivSession(token, []);
+  const auth = session.authorize as AuthorizeResponse;
   if (!auth.authorize) throw new Error("Token rejected by Deriv");
   return {
     loginid: auth.authorize.loginid,
