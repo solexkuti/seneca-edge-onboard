@@ -883,52 +883,100 @@ export type Database = {
       trades: {
         Row: {
           analysis_id: string | null
+          asset: string | null
           closed_at: string | null
           created_at: string
           direction: Database["public"]["Enums"]["trade_direction"]
           entry_price: number | null
           executed_at: string
+          execution_type: Database["public"]["Enums"]["execution_type"] | null
+          exit_price: number | null
           id: string
+          lot_size: number | null
           market: string
+          market_type: Database["public"]["Enums"]["market_type"] | null
+          missed_potential_r: number | null
+          missed_reason: Database["public"]["Enums"]["missed_reason"] | null
+          notes: string | null
+          pnl: number | null
           result: Database["public"]["Enums"]["trade_result"] | null
+          risk_r: number | null
           rr: number | null
+          rules_broken: string[]
+          rules_followed: string[]
+          screenshot_url: string | null
+          session: Database["public"]["Enums"]["trade_session"] | null
+          source: Database["public"]["Enums"]["trade_source"]
           stop_loss: number | null
           strategy_id: string | null
           take_profit: number | null
+          trade_type: Database["public"]["Enums"]["trade_kind"]
           updated_at: string
           user_id: string
         }
         Insert: {
           analysis_id?: string | null
+          asset?: string | null
           closed_at?: string | null
           created_at?: string
           direction: Database["public"]["Enums"]["trade_direction"]
           entry_price?: number | null
           executed_at?: string
+          execution_type?: Database["public"]["Enums"]["execution_type"] | null
+          exit_price?: number | null
           id?: string
+          lot_size?: number | null
           market: string
+          market_type?: Database["public"]["Enums"]["market_type"] | null
+          missed_potential_r?: number | null
+          missed_reason?: Database["public"]["Enums"]["missed_reason"] | null
+          notes?: string | null
+          pnl?: number | null
           result?: Database["public"]["Enums"]["trade_result"] | null
+          risk_r?: number | null
           rr?: number | null
+          rules_broken?: string[]
+          rules_followed?: string[]
+          screenshot_url?: string | null
+          session?: Database["public"]["Enums"]["trade_session"] | null
+          source?: Database["public"]["Enums"]["trade_source"]
           stop_loss?: number | null
           strategy_id?: string | null
           take_profit?: number | null
+          trade_type?: Database["public"]["Enums"]["trade_kind"]
           updated_at?: string
           user_id: string
         }
         Update: {
           analysis_id?: string | null
+          asset?: string | null
           closed_at?: string | null
           created_at?: string
           direction?: Database["public"]["Enums"]["trade_direction"]
           entry_price?: number | null
           executed_at?: string
+          execution_type?: Database["public"]["Enums"]["execution_type"] | null
+          exit_price?: number | null
           id?: string
+          lot_size?: number | null
           market?: string
+          market_type?: Database["public"]["Enums"]["market_type"] | null
+          missed_potential_r?: number | null
+          missed_reason?: Database["public"]["Enums"]["missed_reason"] | null
+          notes?: string | null
+          pnl?: number | null
           result?: Database["public"]["Enums"]["trade_result"] | null
+          risk_r?: number | null
           rr?: number | null
+          rules_broken?: string[]
+          rules_followed?: string[]
+          screenshot_url?: string | null
+          session?: Database["public"]["Enums"]["trade_session"] | null
+          source?: Database["public"]["Enums"]["trade_source"]
           stop_loss?: number | null
           strategy_id?: string | null
           take_profit?: number | null
+          trade_type?: Database["public"]["Enums"]["trade_kind"]
           updated_at?: string
           user_id?: string
         }
@@ -982,6 +1030,13 @@ export type Database = {
         | "neutral"
         | "confused"
         | "calm"
+      execution_type: "controlled" | "emotional"
+      market_type: "forex" | "synthetic" | "crypto"
+      missed_reason:
+        | "hesitation"
+        | "fear"
+        | "lack_of_confidence"
+        | "distraction"
       mistake_tag:
         | "fomo"
         | "revenge"
@@ -991,7 +1046,10 @@ export type Database = {
         | "no_setup"
         | "emotional"
       trade_direction: "long" | "short"
+      trade_kind: "executed" | "missed"
       trade_result: "win" | "loss" | "breakeven"
+      trade_session: "London" | "NY" | "Asia"
+      trade_source: "manual" | "deriv" | "mt5"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1135,6 +1193,14 @@ export const Constants = {
         "confused",
         "calm",
       ],
+      execution_type: ["controlled", "emotional"],
+      market_type: ["forex", "synthetic", "crypto"],
+      missed_reason: [
+        "hesitation",
+        "fear",
+        "lack_of_confidence",
+        "distraction",
+      ],
       mistake_tag: [
         "fomo",
         "revenge",
@@ -1145,7 +1211,10 @@ export const Constants = {
         "emotional",
       ],
       trade_direction: ["long", "short"],
+      trade_kind: ["executed", "missed"],
       trade_result: ["win", "loss", "breakeven"],
+      trade_session: ["London", "NY", "Asia"],
+      trade_source: ["manual", "deriv", "mt5"],
     },
   },
 } as const
