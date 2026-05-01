@@ -18,8 +18,6 @@ import {
   Loader2,
   AlertTriangle,
   Target,
-  TrendingUp,
-  TrendingDown,
   Activity,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
