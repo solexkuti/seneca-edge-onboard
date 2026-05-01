@@ -18,8 +18,6 @@ import {
   Loader2,
   AlertTriangle,
   Target,
-  TrendingUp,
-  TrendingDown,
   Activity,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +36,7 @@ import {
   type RuleViolationRow,
 } from "@/lib/trade";
 import { JOURNAL_EVENT } from "@/lib/tradingJournal";
+import { ViolationDetailModal } from "@/components/feature/ViolationDetailModal";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -79,6 +78,7 @@ export default function BehaviorBreakdown() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<RangeFilter>("30d");
+  const [openViolation, setOpenViolation] = useState<RuleViolationRow | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -308,7 +308,11 @@ export default function BehaviorBreakdown() {
                     </thead>
                     <tbody>
                       {violations.map((v) => (
-                        <ViolationRow key={v.rule} v={v} />
+                        <ViolationRow
+                          key={v.rule}
+                          v={v}
+                          onOpen={() => setOpenViolation(v)}
+                        />
                       ))}
                     </tbody>
                   </table>
@@ -318,6 +322,12 @@ export default function BehaviorBreakdown() {
           </>
         )}
       </div>
+
+      <ViolationDetailModal
+        violation={openViolation}
+        open={openViolation !== null}
+        onClose={() => setOpenViolation(null)}
+      />
     </div>
   );
 }
@@ -428,74 +438,40 @@ function AssetCard({ asset, delay }: { asset: AssetBehavior; delay: number }) {
 
 // ───────── Violation row ─────────
 
-function ViolationRow({ v }: { v: RuleViolationRow }) {
-  const [expanded, setExpanded] = useState(false);
+function ViolationRow({
+  v,
+  onOpen,
+}: {
+  v: RuleViolationRow;
+  onOpen: () => void;
+}) {
   const negative = v.totalImpactR < 0;
   return (
-    <>
-      <tr
-        onClick={() => setExpanded((x) => !x)}
-        className="cursor-pointer border-b border-white/5 last:border-b-0 hover:bg-white/[0.02] transition-colors"
+    <tr
+      onClick={onOpen}
+      className="cursor-pointer border-b border-white/5 last:border-b-0 hover:bg-white/[0.02] transition-colors"
+    >
+      <td className="px-4 py-3 text-[12.5px] text-[#EDEDED]">
+        <span className="inline-flex items-center gap-2">
+          {v.rule}
+          <span className="text-[10px] uppercase tracking-wider text-[#9A9A9A]/60">
+            open ›
+          </span>
+        </span>
+      </td>
+      <td className="px-3 py-3 text-[12.5px] text-[#EDEDED] text-right tabular-nums">
+        {v.timesBroken}
+      </td>
+      <td
+        className={`px-3 py-3 text-[12.5px] text-right tabular-nums ${
+          negative ? "text-rose-400" : "text-[#9A9A9A]"
+        }`}
       >
-        <td className="px-4 py-3 text-[12.5px] text-[#EDEDED]">{v.rule}</td>
-        <td className="px-3 py-3 text-[12.5px] text-[#EDEDED] text-right tabular-nums">
-          {v.timesBroken}
-        </td>
-        <td
-          className={`px-3 py-3 text-[12.5px] text-right tabular-nums ${
-            negative ? "text-rose-400" : "text-[#9A9A9A]"
-          }`}
-        >
-          {fmtR(v.totalImpactR)}
-        </td>
-        <td className="px-4 py-3 text-[11px] text-right text-[#9A9A9A]">
-          {fmtRelative(v.lastBrokenAt)}
-        </td>
-      </tr>
-      {expanded && (
-        <tr className="bg-[#0B0B0D]/40">
-          <td colSpan={4} className="px-4 py-3">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-[#9A9A9A]/70 mb-2">
-              Trades affected ({v.trades.length})
-            </p>
-            <div className="space-y-1.5">
-              {v.trades.slice(0, 6).map((t) => {
-                const Icon = t.direction === "buy" ? TrendingUp : TrendingDown;
-                return (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between text-[11.5px]"
-                  >
-                    <span className="flex items-center gap-2 text-[#EDEDED]/80">
-                      <Icon className="h-3 w-3 text-[#9A9A9A]" />
-                      {t.asset}
-                      <span className="text-[#9A9A9A]/70">
-                        · {fmtRelative(t.createdAt)}
-                      </span>
-                    </span>
-                    <span
-                      className={`tabular-nums ${
-                        (t.resultR ?? 0) > 0
-                          ? "text-[#E7C98A]"
-                          : (t.resultR ?? 0) < 0
-                            ? "text-rose-400"
-                            : "text-[#9A9A9A]"
-                      }`}
-                    >
-                      {t.resultR != null ? fmtR(t.resultR) : "—"}
-                    </span>
-                  </div>
-                );
-              })}
-              {v.trades.length > 6 && (
-                <p className="text-[10.5px] text-[#9A9A9A]/70 pt-1">
-                  + {v.trades.length - 6} more
-                </p>
-              )}
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
+        {fmtR(v.totalImpactR)}
+      </td>
+      <td className="px-4 py-3 text-[11px] text-right text-[#9A9A9A]">
+        {fmtRelative(v.lastBrokenAt)}
+      </td>
+    </tr>
   );
 }
