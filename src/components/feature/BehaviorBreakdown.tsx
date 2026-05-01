@@ -273,6 +273,11 @@ export default function BehaviorBreakdown() {
                   ),
                 },
                 {
+                  id: "trends",
+                  label: "Trends",
+                  node: <BehaviorTrendsChart data={trend} />,
+                },
+                {
                   id: "insights",
                   label: "Insights",
                   node:
