@@ -84,10 +84,19 @@ export type Pattern = {
 export type EdgeReport = {
   hasData: boolean;
   totalTrades: number;
-  systemEdge: EdgeBlock;     // followed_plan = true
-  actualEdge: EdgeBlock;     // all executed trades
-  missedR: number;           // sum of missed_potential_r
-  executionGapR: number;     // systemEdge.totalR - actualEdge.totalR
+  /** STRICT: only trades where the user followed their plan (no rules broken). */
+  systemEdge: EdgeBlock;
+  /** STRICT: only executed trades (excludes missed). Real P&L. */
+  actualEdge: EdgeBlock;
+  /** STRICT: opportunity R sitting on the missed-trades pile. Never folded into actual or system. */
+  missedR: number;
+  /** Number of missed setups logged. */
+  missedCount: number;
+  /**
+   * Execution Gap = (System Edge totalR + Missed Opportunity) − Actual Performance totalR.
+   * Positive = capability is being eaten by bad execution AND/OR hesitation.
+   */
+  executionGapR: number;
   disciplineScore: number;   // 0..100
   ruleAdherencePct: number;  // 0..100
   violations: ViolationImpact[];          // sorted by |totalImpactR| desc
