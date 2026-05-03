@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.mirror_trade_log_to_trades() FROM PUBLIC, anon, authenticated;
