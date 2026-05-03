@@ -189,7 +189,10 @@ function SubScore({
           {Math.round(weight * 100)}%
         </span>
       </div>
-      <p className="mt-1 text-[28px] font-bold leading-none tabular-nums text-foreground">
+      <p
+        className="mt-1 text-[28px] font-bold leading-none tabular-nums"
+        style={metricColorStyle(score)}
+      >
         {score}
         <span className="ml-1 text-[12px] text-muted-foreground">/100</span>
       </p>
@@ -198,7 +201,8 @@ function SubScore({
           initial={{ width: 0 }}
           animate={{ width: `${score}%` }}
           transition={{ duration: 0.5 }}
-          className="h-full bg-primary"
+          className="h-full"
+          style={{ backgroundColor: metricColorStyle(score).color }}
         />
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
