@@ -39,26 +39,27 @@ export const ReplayChart = forwardRef<ReplayChartHandle, Props>(function ReplayC
     if (!containerRef.current) return;
     const chart = createChart(containerRef.current, {
       layout: {
-        background: { color: "#0F1014" },
-        textColor: "#9A9A9A",
+        background: { color: "#111114" },
+        textColor: "#A1A1AA",
         fontFamily: "Inter, system-ui, sans-serif",
       },
       grid: {
-        vertLines: { color: "rgba(255,255,255,0.04)" },
-        horzLines: { color: "rgba(255,255,255,0.04)" },
+        vertLines: { color: "rgba(255,255,255,0.03)" },
+        horzLines: { color: "rgba(255,255,255,0.03)" },
       },
-      rightPriceScale: { borderColor: "rgba(255,255,255,0.06)" },
-      timeScale: { borderColor: "rgba(255,255,255,0.06)", timeVisible: true, secondsVisible: false },
+      rightPriceScale: { borderColor: "#1F1F23" },
+      timeScale: { borderColor: "#1F1F23", timeVisible: true, secondsVisible: false },
       autoSize: true,
       crosshair: { mode: 1 },
     });
+    // Candles use SOLID semantic performance colors — never gradient.
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: "#C6A15B",
-      downColor: "#5b3535",
-      borderUpColor: "#E7C98A",
-      borderDownColor: "#7a4848",
-      wickUpColor: "#C6A15B",
-      wickDownColor: "#7a4848",
+      upColor: "#22C55E",
+      downColor: "#EF4444",
+      borderUpColor: "#22C55E",
+      borderDownColor: "#EF4444",
+      wickUpColor: "#22C55E",
+      wickDownColor: "#EF4444",
     });
     chartRef.current = chart;
     seriesRef.current = series;
@@ -108,17 +109,17 @@ export const ReplayChart = forwardRef<ReplayChartHandle, Props>(function ReplayC
       if (cur.tp)    { series.removePriceLine(cur.tp);    cur.tp = undefined; }
       if (entry != null) {
         cur.entry = series.createPriceLine({
-          price: entry, color: "#C6A15B", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "Entry",
+          price: entry, color: "#FFB347", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "Entry",
         });
       }
       if (sl != null) {
         cur.sl = series.createPriceLine({
-          price: sl, color: "#a04848", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "SL",
+          price: sl, color: "#EF4444", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "SL",
         });
       }
       if (tp != null) {
         cur.tp = series.createPriceLine({
-          price: tp, color: "#7da06b", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "TP",
+          price: tp, color: "#22C55E", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "TP",
         });
       }
     },
