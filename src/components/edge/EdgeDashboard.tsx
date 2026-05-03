@@ -7,7 +7,6 @@ import { useEdgeData } from "@/lib/edge/useEdgeData";
 import {
   ActionPanel,
   AppShell,
-  BehaviorCard,
   ChartContainer,
   EmptyState,
   InsightCard,
@@ -172,7 +171,6 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
   ];
 
   const recentTrades = trades.slice(0, 8);
-  const topViolations = report.violations.slice(0, 5);
   const topPatterns = report.patterns.slice(0, 4);
 
   return (
