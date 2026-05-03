@@ -12,6 +12,7 @@ import {
   type TimeRange,
   type TradeLog,
 } from "@/lib/tradeLogs";
+import { metricColorStyle, metricToneFromRatio } from "@/lib/metricColor";
 
 const RANGES: { id: TimeRange; label: string }[] = [
   { id: "today", label: "Today" },
@@ -145,7 +146,19 @@ export default function TradeStats() {
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-2 gap-3">
-            <Card label="Win rate" value={fmtPct(m.winRate)} />
+            <Card
+              label="Win rate"
+              value={fmtPct(m.winRate)}
+              tone={
+                metricToneFromRatio(m.winRate) === "good"
+                  ? "ok"
+                  : metricToneFromRatio(m.winRate) === "warn"
+                    ? "warn"
+                    : metricToneFromRatio(m.winRate) === "bad"
+                      ? "risk"
+                      : undefined
+              }
+            />
             <Card label="Total trades" value={`${m.totalTrades}`} />
             <Card
               label="Net PnL"
@@ -206,21 +219,24 @@ function Card({
 }: {
   label: string;
   value: string;
-  tone?: "ok" | "risk";
+  tone?: "ok" | "warn" | "risk";
 }) {
+  const color =
+    tone === "ok"
+      ? "#22C55E"
+      : tone === "warn"
+        ? "#FACC15"
+        : tone === "risk"
+          ? "#EF4444"
+          : undefined;
   return (
     <div className="rounded-2xl bg-card ring-1 ring-border p-4">
       <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/60">
         {label}
       </p>
       <p
-        className={`mt-2 text-[22px] font-semibold tabular-nums ${
-          tone === "ok"
-            ? "text-emerald-300"
-            : tone === "risk"
-              ? "text-rose-300"
-              : "text-text-primary"
-        }`}
+        className="mt-2 text-[22px] font-semibold tabular-nums"
+        style={{ color: color ?? "var(--text-primary)" }}
       >
         {value}
       </p>

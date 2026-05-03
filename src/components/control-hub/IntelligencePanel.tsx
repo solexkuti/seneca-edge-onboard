@@ -10,6 +10,7 @@ import {
   DISCIPLINE_CLASS_LABEL,
   type DisciplineClass,
 } from "@/lib/intelligence";
+import { metricColorStyle, metricTone } from "@/lib/metricColor";
 import {
   fetchRecentPatterns,
   PATTERN_LABEL,
@@ -59,16 +60,19 @@ export default function IntelligencePanel() {
         <StatCard
           label="Discipline (last 20)"
           value={`${intel.disciplineScore ?? 0}%`}
+          valueColor={metricColorStyle(intel.disciplineScore ?? null).color}
           suffix={`of ${intel.windowSize}`}
           glow={
-            (intel.disciplineScore ?? 0) >= 80
+            metricTone(intel.disciplineScore ?? null) === "good"
               ? "emerald"
-              : (intel.disciplineScore ?? 0) >= 50
-              ? "amber"
-              : "rose"
+              : metricTone(intel.disciplineScore ?? null) === "warn"
+                ? "amber"
+                : metricTone(intel.disciplineScore ?? null) === "bad"
+                  ? "rose"
+                  : "none"
           }
           delay={0.1}
-          icon={<ShieldCheck className="h-3.5 w-3.5 text-emerald-700" strokeWidth={2.4} />}
+          icon={<ShieldCheck className="h-3.5 w-3.5 text-emerald-500" strokeWidth={2.4} />}
         />
       </div>
 
@@ -160,6 +164,7 @@ const GLOW_STYLES: Record<GlowTone, string> = {
 function StatCard({
   label,
   value,
+  valueColor,
   suffix,
   icon,
   glow = "none",
@@ -167,6 +172,7 @@ function StatCard({
 }: {
   label: string;
   value: string;
+  valueColor?: string;
   suffix?: string;
   icon?: React.ReactNode;
   glow?: GlowTone;
@@ -183,7 +189,10 @@ function StatCard({
       <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
         {label}
       </p>
-      <p className="mt-1 flex items-baseline gap-1.5 text-[22px] font-bold leading-none text-text-primary tabular-nums">
+      <p
+        className="mt-1 flex items-baseline gap-1.5 text-[22px] font-bold leading-none tabular-nums"
+        style={{ color: valueColor ?? "var(--text-primary)" }}
+      >
         {icon}
         {value}
         {suffix && <span className="text-[10.5px] font-medium text-text-secondary">{suffix}</span>}
@@ -296,7 +305,12 @@ function ClassificationCard({ cls, score }: { cls: DisciplineClass; score: numbe
       </div>
       <div className="flex items-baseline gap-1 text-text-primary">
         <Gauge className="h-3.5 w-3.5 text-text-secondary" strokeWidth={2.4} />
-        <span className="text-[18px] font-bold tabular-nums">{score}%</span>
+        <span
+          className="text-[18px] font-bold tabular-nums"
+          style={metricColorStyle(score)}
+        >
+          {score}%
+        </span>
       </div>
     </motion.div>
   );

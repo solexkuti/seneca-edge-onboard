@@ -28,6 +28,11 @@ import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
 import { usePerformance } from "@/hooks/usePerformance";
 import { useTraderState } from "@/hooks/useTraderState";
 import { disciplineState } from "@/lib/behavioralJournal";
+import {
+  metricColorStyle,
+  metricGlowShadow,
+  metricTextClass,
+} from "@/lib/metricColor";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -99,18 +104,19 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
           <CardEyebrow Icon={ShieldCheck}>Discipline score</CardEyebrow>
           <div className="mt-3 flex items-end gap-2">
             <span
-              className={`font-display text-[44px] font-semibold leading-none tabular-nums ${TONE_TEXT[ds.tone]}`}
-              style={
-                ds.tone === "ok"
-                  ? { textShadow: "0 0 28px rgba(198,161,91,0.40)" }
-                  : undefined
-              }
+              className="font-display text-[44px] font-semibold leading-none tabular-nums"
+              style={{
+                ...metricColorStyle(score),
+                textShadow: score == null ? undefined : metricGlowShadow(score),
+              }}
             >
               {score == null ? "—" : score}
             </span>
             <span className="mb-1.5 text-[13px] text-text-secondary">/100</span>
           </div>
-          <p className={`mt-1 text-[12.5px] font-medium ${TONE_TEXT[ds.tone]}`}>
+          <p
+            className={`mt-1 text-[12.5px] font-medium ${metricTextClass(score)}`}
+          >
             {ds.label}
           </p>
           <Divider />
@@ -959,8 +965,11 @@ function BehaviorBreakdownCard() {
           </p>
           <div className="mt-2 flex items-baseline gap-2">
             <span
-              className="font-display text-[44px] font-semibold leading-none tabular-nums text-gold"
-              style={{ textShadow: "0 0 28px rgba(198,161,91,0.35)" }}
+              className="font-display text-[44px] font-semibold leading-none tabular-nums"
+              style={{
+                ...metricColorStyle(behaviorScore),
+                textShadow: metricGlowShadow(behaviorScore),
+              }}
             >
               {behaviorScore}
             </span>
@@ -977,16 +986,20 @@ function BehaviorBreakdownCard() {
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/70">
               Rule adherence
             </p>
-            <p className="font-display text-[20px] font-semibold tabular-nums text-gold">
+            <p
+              className="font-display text-[20px] font-semibold tabular-nums"
+              style={metricColorStyle(adherence)}
+            >
               {adherence}%
             </p>
           </div>
           <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.05]">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-gold to-gold-soft"
+              className="h-full rounded-full"
               style={{
                 width: `${adherence}%`,
-                boxShadow: "0 0 18px rgba(198,161,91,0.35)",
+                backgroundColor: metricColorStyle(adherence).color,
+                boxShadow: `0 0 14px ${metricColorStyle(adherence).color}55`,
               }}
             />
           </div>
