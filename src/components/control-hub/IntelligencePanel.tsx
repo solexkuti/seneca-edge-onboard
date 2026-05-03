@@ -60,16 +60,19 @@ export default function IntelligencePanel() {
         <StatCard
           label="Discipline (last 20)"
           value={`${intel.disciplineScore ?? 0}%`}
+          valueColor={metricColorStyle(intel.disciplineScore ?? null).color}
           suffix={`of ${intel.windowSize}`}
           glow={
-            (intel.disciplineScore ?? 0) >= 80
+            metricTone(intel.disciplineScore ?? null) === "good"
               ? "emerald"
-              : (intel.disciplineScore ?? 0) >= 50
-              ? "amber"
-              : "rose"
+              : metricTone(intel.disciplineScore ?? null) === "warn"
+                ? "amber"
+                : metricTone(intel.disciplineScore ?? null) === "bad"
+                  ? "rose"
+                  : "none"
           }
           delay={0.1}
-          icon={<ShieldCheck className="h-3.5 w-3.5 text-emerald-700" strokeWidth={2.4} />}
+          icon={<ShieldCheck className="h-3.5 w-3.5 text-emerald-500" strokeWidth={2.4} />}
         />
       </div>
 
