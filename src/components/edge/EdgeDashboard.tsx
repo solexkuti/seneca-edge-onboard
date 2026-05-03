@@ -1,0 +1,395 @@
+// EdgeDashboard — composes the engine output into a single intelligence view.
+// Answers: "What is my strategy capable of vs what am I actually doing?"
+
+import { useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { useEdgeData } from "@/lib/edge/useEdgeData";
+import {
+  ActionPanel,
+  AppShell,
+  BehaviorCard,
+  ChartContainer,
+  EmptyState,
+  InsightCard,
+  LoadingSkeleton,
+  Modal,
+  TimelineList,
+  TopMetricsBar,
+  TradeCard,
+  ViolationTag,
+  type Metric,
+  type TimelineItem,
+  type Tone,
+} from "./primitives";
+import { EdgeVsExecutionChart } from "./EdgeVsExecutionChart";
+import type { TradeRow } from "@/lib/edge/types";
+
+function fmtR(n: number, sign = true): string {
+  const v = Number.isFinite(n) ? n : 0;
+  return `${sign && v > 0 ? "+" : ""}${v.toFixed(2)}R`;
+}
+
+function toneForRValue(r: number): Tone {
+  if (r > 0) return "profit";
+  if (r < 0) return "loss";
+  return "neutral";
+}
+
+function toneForScore(score: number): Tone {
+  if (score >= 75) return "profit";
+  if (score >= 50) return "warn";
+  return "loss";
+}
+
+export function EdgeDashboard({ userName }: { userName?: string }) {
+  const { status, report, error, trades, refresh } = useEdgeData();
+  const [openTrade, setOpenTrade] = useState<TradeRow | null>(null);
+
+  // Pre-compute timeline (newest first): rule violations + missed trades
+  const timeline = useMemo<TimelineItem[]>(() => {
+    if (!report || !report.hasData) return [];
+    const items: TimelineItem[] = [];
+    for (const t of trades) {
+      if (t.trade_type === "missed") {
+        items.push({
+          id: `missed-${t.id}`,
+          at: t.executed_at,
+          title: `Missed setup — ${t.asset ?? "—"}`,
+          detail: t.missed_potential_r
+            ? `Potential ${t.missed_potential_r.toFixed(2)}R left on the table`
+            : undefined,
+          tone: "warn",
+        });
+      } else if ((t.rules_broken ?? []).length > 0) {
+        items.push({
+          id: `viol-${t.id}`,
+          at: t.executed_at,
+          title: `Rule break — ${t.rules_broken.join(", ").replace(/_/g, " ")}`,
+          detail: `${t.asset ?? "—"} · ${fmtR(
+            typeof t.rr === "number" ? t.rr : 0,
+          )}`,
+          tone: t.result === "loss" ? "loss" : "warn",
+        });
+      }
+    }
+    return items
+      .sort((a, b) => (a.at < b.at ? 1 : -1))
+      .slice(0, 25);
+  }, [trades, report]);
+
+  // Header CTA
+  const headerActions = (
+    <Link
+      to="/hub/journal"
+      className="btn-gold rounded-lg px-4 py-2 text-sm font-semibold"
+    >
+      Log a trade
+    </Link>
+  );
+
+  if (status === "loading") {
+    return (
+      <AppShell title={userName ? `Edge · ${userName}` : "Seneca Edge"}>
+        <LoadingSkeleton rows={4} />
+      </AppShell>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <AppShell title="Seneca Edge">
+        <EmptyState
+          title="Couldn't load your edge"
+          description={error ?? "Try again."}
+          action={
+            <button
+              onClick={() => refresh()}
+              className="btn-ghost rounded-lg px-4 py-2 text-sm"
+            >
+              Retry
+            </button>
+          }
+        />
+      </AppShell>
+    );
+  }
+
+  // Empty state — no trades yet
+  if (!report.hasData) {
+    return (
+      <AppShell
+        title={userName ? `Edge · ${userName}` : "Seneca Edge"}
+        subtitle="What is my strategy capable of vs what am I actually doing?"
+        actions={headerActions}
+      >
+        <EmptyState
+          title="Start logging trades to see your execution patterns"
+          description="Every trade you log — executed or missed — sharpens the picture of your real edge versus your actual behavior."
+          action={
+            <Link
+              to="/hub/journal"
+              className="btn-gold rounded-lg px-5 py-2.5 text-sm font-semibold"
+            >
+              Log your first trade
+            </Link>
+          }
+        />
+      </AppShell>
+    );
+  }
+
+  const metrics: Metric[] = [
+    {
+      label: "System edge",
+      value: fmtR(report.systemEdge.totalR),
+      hint: `${report.systemEdge.sample} clean trades · ${report.systemEdge.winRate.toFixed(0)}% win`,
+      tone: toneForRValue(report.systemEdge.totalR),
+    },
+    {
+      label: "Actual result",
+      value: fmtR(report.actualEdge.totalR),
+      hint: `${report.actualEdge.sample} executed · ${report.actualEdge.winRate.toFixed(0)}% win`,
+      tone: toneForRValue(report.actualEdge.totalR),
+    },
+    {
+      label: "Execution gap",
+      value: fmtR(report.executionGapR + Math.abs(report.missedR)),
+      hint:
+        report.missedR > 0
+          ? `incl. ${report.missedR.toFixed(2)}R missed`
+          : "system minus actual",
+      tone:
+        report.executionGapR > 0 || report.missedR > 0 ? "warn" : "neutral",
+    },
+    {
+      label: "Discipline",
+      value: `${report.disciplineScore}%`,
+      hint: `${report.ruleAdherencePct.toFixed(0)}% rule adherence`,
+      tone: toneForScore(report.disciplineScore),
+    },
+  ];
+
+  const recentTrades = trades.slice(0, 8);
+  const topViolations = report.violations.slice(0, 5);
+  const topPatterns = report.patterns.slice(0, 4);
+
+  return (
+    <AppShell
+      title={userName ? `Edge · ${userName}` : "Seneca Edge"}
+      subtitle="What is my strategy capable of vs what am I actually doing?"
+      actions={headerActions}
+    >
+      <TopMetricsBar metrics={metrics} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <ChartContainer title="Edge vs Execution">
+            <EdgeVsExecutionChart trades={trades} />
+          </ChartContainer>
+
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-white">Recent trades</h3>
+              <Link
+                to="/hub/trades"
+                className="text-xs text-[#A1A1AA] hover:text-white"
+              >
+                View all →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {recentTrades.map((t) => (
+                <TradeCard
+                  key={t.id}
+                  onClick={() => setOpenTrade(t)}
+                  trade={{
+                    id: t.id,
+                    asset: t.asset ?? "—",
+                    direction: t.direction,
+                    rr:
+                      typeof t.rr === "number"
+                        ? t.rr
+                        : t.trade_type === "missed"
+                        ? t.missed_potential_r
+                        : null,
+                    result: t.result,
+                    trade_type: t.trade_type,
+                    rules_broken: t.rules_broken ?? [],
+                    occurred_at: t.executed_at,
+                  }}
+                />
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="space-y-6">
+          <section>
+            <h3 className="text-sm font-semibold text-white mb-3">
+              Behavior by impact
+            </h3>
+            {topViolations.length === 0 ? (
+              <EmptyState
+                title="No rule breaks yet"
+                description="Clean execution — keep it up."
+              />
+            ) : (
+              <div className="space-y-2">
+                {topViolations.map((v) => (
+                  <BehaviorCard
+                    key={v.type}
+                    type={v.type}
+                    count={v.count}
+                    totalImpactR={v.totalImpactR}
+                    lastOccurredAt={v.lastOccurredAt}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h3 className="text-sm font-semibold text-white mb-3">
+              Patterns detected
+            </h3>
+            {topPatterns.length === 0 ? (
+              <InsightCard
+                title="No high-signal patterns yet"
+                detail="Log a few more trades — pattern detection sharpens with sample size."
+                severity="info"
+              />
+            ) : (
+              <div className="space-y-3">
+                {topPatterns.map((p) => (
+                  <InsightCard
+                    key={p.id}
+                    title={p.title}
+                    detail={p.detail}
+                    severity={p.severity}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {report.sessions.length > 0 && (
+            <section>
+              <h3 className="text-sm font-semibold text-white mb-3">
+                Best session
+              </h3>
+              <div className="card-premium p-5">
+                <div className="text-xs uppercase tracking-wider text-[#6B7280]">
+                  {report.sessions[0].session}
+                </div>
+                <div
+                  className="text-2xl font-extrabold mt-1"
+                  style={{
+                    color:
+                      report.sessions[0].avgR >= 0 ? "#22C55E" : "#EF4444",
+                  }}
+                >
+                  {fmtR(report.sessions[0].avgR)} avg
+                </div>
+                <div className="text-xs text-[#A1A1AA] mt-1">
+                  {report.sessions[0].sample} trades ·{" "}
+                  {report.sessions[0].winRate.toFixed(0)}% win
+                </div>
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
+
+      <ChartContainer title="Behavior timeline">
+        <TimelineList items={timeline} />
+      </ChartContainer>
+
+      <ActionPanel
+        title="Close the gap"
+        description="The most direct way to recover R is to fix your top-impact rule break."
+        actions={
+          <>
+            <Link
+              to="/hub/journal"
+              className="btn-gold rounded-lg px-4 py-2 text-sm font-semibold"
+            >
+              Log next trade
+            </Link>
+            <Link
+              to="/hub/strategy"
+              className="btn-ghost rounded-lg px-4 py-2 text-sm"
+            >
+              Review strategy
+            </Link>
+          </>
+        }
+      />
+
+      <Modal
+        open={!!openTrade}
+        onClose={() => setOpenTrade(null)}
+        title={openTrade ? `${openTrade.asset ?? "Trade"} · ${new Date(openTrade.executed_at).toLocaleString()}` : "Trade"}
+      >
+        {openTrade && (
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <Field label="Direction" value={openTrade.direction ?? "—"} />
+              <Field label="Result" value={openTrade.result ?? "—"} />
+              <Field
+                label="R"
+                value={
+                  typeof openTrade.rr === "number"
+                    ? fmtR(openTrade.rr)
+                    : "—"
+                }
+              />
+              <Field label="Entry" value={openTrade.entry_price?.toString() ?? "—"} />
+              <Field label="Exit" value={openTrade.exit_price?.toString() ?? "—"} />
+              <Field label="Session" value={openTrade.session ?? "—"} />
+            </div>
+            {(openTrade.rules_broken ?? []).length > 0 && (
+              <div>
+                <div className="text-xs text-[#6B7280] uppercase mb-2">
+                  Rules broken
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {openTrade.rules_broken.map((r, i) => (
+                    <ViolationTag key={i} label={r} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {openTrade.notes && (
+              <div>
+                <div className="text-xs text-[#6B7280] uppercase mb-2">Notes</div>
+                <p className="text-[#A1A1AA] leading-relaxed">{openTrade.notes}</p>
+              </div>
+            )}
+            {openTrade.screenshot_url && (
+              <img
+                src={openTrade.screenshot_url}
+                alt="Trade screenshot"
+                className="w-full rounded-lg border border-[#1F1F23]"
+              />
+            )}
+          </div>
+        )}
+      </Modal>
+    </AppShell>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="card-premium p-3">
+      <div className="text-[10px] uppercase tracking-wider text-[#6B7280]">
+        {label}
+      </div>
+      <div className="text-sm font-semibold text-white mt-0.5 capitalize">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+export default EdgeDashboard;
