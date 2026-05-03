@@ -47,8 +47,14 @@ function toneForScore(score: number): Tone {
 }
 
 export function EdgeDashboard({ userName }: { userName?: string }) {
-  const { status, report, error, trades, refresh } = useEdgeData();
+  const { status, report, error, trades, violations, refresh } = useEdgeData();
   const [openTrade, setOpenTrade] = useState<TradeRow | null>(null);
+
+  // Layer 2 — derived intelligence (always computed, even with 0 trades)
+  const derived = useMemo(
+    () => buildDerivedMetrics(trades, violations),
+    [trades, violations],
+  );
 
   // Pre-compute timeline (newest first): rule violations + missed trades
   const timeline = useMemo<TimelineItem[]>(() => {
