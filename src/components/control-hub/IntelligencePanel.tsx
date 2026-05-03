@@ -305,7 +305,12 @@ function ClassificationCard({ cls, score }: { cls: DisciplineClass; score: numbe
       </div>
       <div className="flex items-baseline gap-1 text-text-primary">
         <Gauge className="h-3.5 w-3.5 text-text-secondary" strokeWidth={2.4} />
-        <span className="text-[18px] font-bold tabular-nums">{score}%</span>
+        <span
+          className="text-[18px] font-bold tabular-nums"
+          style={metricColorStyle(score)}
+        >
+          {score}%
+        </span>
       </div>
     </motion.div>
   );
