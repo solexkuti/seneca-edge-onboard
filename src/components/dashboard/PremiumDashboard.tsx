@@ -28,6 +28,11 @@ import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
 import { usePerformance } from "@/hooks/usePerformance";
 import { useTraderState } from "@/hooks/useTraderState";
 import { disciplineState } from "@/lib/behavioralJournal";
+import {
+  metricColorStyle,
+  metricGlowShadow,
+  metricTextClass,
+} from "@/lib/metricColor";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
