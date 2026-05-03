@@ -756,7 +756,7 @@ export default function BehavioralJournalFlow({
               ? session_tag
               : null;
           const marketType: "forex" | "crypto" | "synthetic" | null =
-            market === "forex" || market === "crypto" || market === "synthetic"
+            market === "forex" || market === "crypto"
               ? market
               : null;
           const pair = asset.trim().toUpperCase();
