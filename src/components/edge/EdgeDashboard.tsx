@@ -227,7 +227,7 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
             </div>
             <div
               className="text-2xl font-extrabold tracking-tight mt-1"
-              style={{ color: m.tone ? "#22C55E" : "#FFFFFF" }}
+              style={{ color: m.tone ? toneColor(m.tone) : "#FFFFFF" }}
             >
               {m.value}
             </div>
