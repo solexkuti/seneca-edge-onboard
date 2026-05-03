@@ -965,8 +965,11 @@ function BehaviorBreakdownCard() {
           </p>
           <div className="mt-2 flex items-baseline gap-2">
             <span
-              className="font-display text-[44px] font-semibold leading-none tabular-nums text-gold"
-              style={{ textShadow: "0 0 28px rgba(198,161,91,0.35)" }}
+              className="font-display text-[44px] font-semibold leading-none tabular-nums"
+              style={{
+                ...metricColorStyle(behaviorScore),
+                textShadow: metricGlowShadow(behaviorScore),
+              }}
             >
               {behaviorScore}
             </span>
@@ -983,16 +986,20 @@ function BehaviorBreakdownCard() {
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/70">
               Rule adherence
             </p>
-            <p className="font-display text-[20px] font-semibold tabular-nums text-gold">
+            <p
+              className="font-display text-[20px] font-semibold tabular-nums"
+              style={metricColorStyle(adherence)}
+            >
               {adherence}%
             </p>
           </div>
           <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.05]">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-gold to-gold-soft"
+              className="h-full rounded-full"
               style={{
                 width: `${adherence}%`,
-                boxShadow: "0 0 18px rgba(198,161,91,0.35)",
+                backgroundColor: metricColorStyle(adherence).color,
+                boxShadow: `0 0 14px ${metricColorStyle(adherence).color}55`,
               }}
             />
           </div>
