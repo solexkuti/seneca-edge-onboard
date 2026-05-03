@@ -10,6 +10,7 @@ import {
   DISCIPLINE_CLASS_LABEL,
   type DisciplineClass,
 } from "@/lib/intelligence";
+import { metricColorStyle, metricTone } from "@/lib/metricColor";
 import {
   fetchRecentPatterns,
   PATTERN_LABEL,
