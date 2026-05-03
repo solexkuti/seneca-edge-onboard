@@ -48,7 +48,7 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
 
   // Pre-compute timeline (newest first): rule violations + missed trades
   const timeline = useMemo<TimelineItem[]>(() => {
-    if (!report || !report.hasData) return [];
+    if (!report) return [];
     const items: TimelineItem[] = [];
     for (const t of trades) {
       if (t.trade_type === "missed") {
@@ -115,29 +115,7 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
     );
   }
 
-  // Empty state — no trades yet
-  if (!report.hasData) {
-    return (
-      <AppShell
-        title={userName ? `Edge · ${userName}` : "Seneca Edge"}
-        subtitle="What is my strategy capable of vs what am I actually doing?"
-        actions={headerActions}
-      >
-        <EmptyState
-          title="Start logging trades to see your execution patterns"
-          description="Every trade you log — executed or missed — sharpens the picture of your real edge versus your actual behavior."
-          action={
-            <Link
-              to="/hub/journal"
-              className="btn-gold rounded-lg px-5 py-2.5 text-sm font-semibold"
-            >
-              Log your first trade
-            </Link>
-          }
-        />
-      </AppShell>
-    );
-  }
+  // No early return for empty data — dashboard always renders with baseline values.
 
   // Spec: 3 strictly separated layers + the summary gap.
   // A. Actual Performance (executed only)
