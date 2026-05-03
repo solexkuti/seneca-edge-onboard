@@ -424,23 +424,30 @@ function Stat({
   tone?: "gold" | "loss" | "warn" | "muted";
   glow?: boolean;
 }) {
-  const toneClass =
+  const toneColor =
     tone === "gold"
-      ? "text-[#E7C98A]"
+      ? "#22C55E"   // healthy / controlled → solid profit green
       : tone === "loss"
-        ? "text-rose-300"
+        ? "#EF4444" // critical / inconsistent → solid loss red
         : tone === "warn"
-          ? "text-amber-300"
-          : "text-[#EDEDED]";
+          ? "#FACC15" // drift → solid warning yellow
+          : "var(--text-primary)";
+  const glowShadow =
+    glow && tone === "gold"
+      ? "0 0 18px rgba(34,197,94,0.35)"
+      : glow && tone === "loss"
+        ? "0 0 18px rgba(239,68,68,0.35)"
+        : glow && tone === "warn"
+          ? "0 0 18px rgba(250,204,21,0.35)"
+          : undefined;
   return (
     <div>
       <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80">
         {label}
       </p>
       <p
-        className={`mt-1 font-serif text-[28px] leading-none tabular-nums ${toneClass} ${
-          glow ? "drop-shadow-[0_0_18px_rgba(198,161,91,0.35)]" : ""
-        }`}
+        className="mt-1 font-serif text-[28px] leading-none tabular-nums"
+        style={{ color: toneColor, textShadow: glowShadow }}
       >
         {value}
         {suffix && <span className="text-[14px] text-[#9A9A9A]/70">{suffix}</span>}
