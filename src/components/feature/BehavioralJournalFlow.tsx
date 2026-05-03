@@ -741,6 +741,68 @@ export default function BehavioralJournalFlow({
         console.warn("[trade_logs] insert failed:", perfErr);
       }
 
+      // SSOT: also write to public.trades — the canonical table that the
+      // Edge engine, Dashboard, BehaviorStateProvider, and rule_violations
+      // sync trigger all read from. Without this, executed trades appear in
+      // legacy logs but the dashboard sees zero trades.
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const userId = auth.user?.id;
+        if (userId) {
+          const tradeDirection: "long" | "short" =
+            direction === "buy" ? "long" : "short";
+          const sessionEnum: "London" | "NY" | "Asia" | null =
+            session_tag === "London" || session_tag === "NY" || session_tag === "Asia"
+              ? session_tag
+              : null;
+          const marketType: "forex" | "crypto" | "synthetic" | null =
+            market === "forex" || market === "crypto"
+              ? market
+              : null;
+          const pair = asset.trim().toUpperCase();
+          const rulesBroken = mistakes.map((m) => String(m));
+          const tradePayload = {
+            user_id: userId,
+            source: "manual" as const,
+            market: pair,
+            market_type: marketType,
+            asset: pair,
+            direction: tradeDirection,
+            trade_type: "executed" as const,
+            entry_price: entry,
+            exit_price: exit,
+            stop_loss: sl,
+            take_profit: tp,
+            rr: Number.isFinite(finalR) ? finalR : null,
+            risk_r: risk,
+            pnl: pnlDollar,
+            result: finalOutcome,
+            session: sessionEnum,
+            executed_at: opened_at,
+            closed_at,
+            rules_broken: rulesBroken,
+            rules_followed: mistakes.length === 0 ? ["clean_execution"] : [],
+            screenshot_url,
+            notes: noteWithTags?.trim() || null,
+          };
+          const { data: insertedTrade, error: tradesErr } = await supabase
+            .from("trades")
+            .insert(tradePayload)
+            .select("id")
+            .maybeSingle();
+          if (tradesErr) {
+            console.warn("[trades] SSOT insert failed:", tradesErr);
+          } else {
+            console.log(
+              "[trades] SSOT insert ok — last_trade_id:",
+              insertedTrade?.id,
+            );
+          }
+        }
+      } catch (ssotErr) {
+        console.warn("[trades] SSOT insert threw:", ssotErr);
+      }
+
       setFeedback({
         classification: r.classification,
         reasonLabel: r.reasonLabel,
