@@ -931,6 +931,39 @@ export type Database = {
           },
         ]
       }
+      rule_violations: {
+        Row: {
+          created_at: string
+          id: string
+          impact_r: number
+          occurred_at: string
+          session: string | null
+          trade_id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          impact_r?: number
+          occurred_at?: string
+          session?: string | null
+          trade_id: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          impact_r?: number
+          occurred_at?: string
+          session?: string | null
+          trade_id?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       session_state: {
         Row: {
           block_reason: string | null
