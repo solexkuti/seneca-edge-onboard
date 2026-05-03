@@ -256,29 +256,38 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
                 View all →
               </Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {recentTrades.map((t) => (
-                <TradeCard
-                  key={t.id}
-                  onClick={() => setOpenTrade(t)}
-                  trade={{
-                    id: t.id,
-                    asset: t.asset ?? "—",
-                    direction: t.direction,
-                    rr:
-                      typeof t.rr === "number"
-                        ? t.rr
-                        : t.trade_type === "missed"
-                        ? t.missed_potential_r
-                        : null,
-                    result: t.result,
-                    trade_type: t.trade_type,
-                    rules_broken: t.rules_broken ?? [],
-                    occurred_at: t.executed_at,
-                  }}
-                />
-              ))}
-            </div>
+            {recentTrades.length === 0 ? (
+              <div className="card-premium p-6 text-center">
+                <p className="text-sm text-[#A1A1AA]">No trades logged yet</p>
+                <p className="text-xs text-[#6B7280] mt-1">
+                  Your latest trades will appear here as soon as you log one.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {recentTrades.map((t) => (
+                  <TradeCard
+                    key={t.id}
+                    onClick={() => setOpenTrade(t)}
+                    trade={{
+                      id: t.id,
+                      asset: t.asset ?? "—",
+                      direction: t.direction,
+                      rr:
+                        typeof t.rr === "number"
+                          ? t.rr
+                          : t.trade_type === "missed"
+                          ? t.missed_potential_r
+                          : null,
+                      result: t.result,
+                      trade_type: t.trade_type,
+                      rules_broken: t.rules_broken ?? [],
+                      occurred_at: t.executed_at,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         </div>
 
