@@ -488,7 +488,12 @@ function AssetCard({ asset, delay }: { asset: AssetBehavior; delay: number }) {
           <p className="text-[9.5px] uppercase tracking-wider text-[#9A9A9A]/70">
             Win rate
           </p>
-          <p className="text-[#EDEDED]">{Math.round(asset.winRate * 100)}%</p>
+          <p
+            className="tabular-nums"
+            style={metricColorStyle(asset.winRate * 100)}
+          >
+            {Math.round(asset.winRate * 100)}%
+          </p>
         </div>
         <div>
           <p className="text-[9.5px] uppercase tracking-wider text-[#9A9A9A]/70">
