@@ -256,14 +256,26 @@ export default function BehaviorBreakdown() {
                           label="Adherence"
                           value={`${Math.round(adherence.pct * 100)}`}
                           suffix="%"
-                          tone="muted"
+                          tone={
+                            adherence.pct >= 0.75
+                              ? "gold"
+                              : adherence.pct >= 0.5
+                                ? "warn"
+                                : "loss"
+                          }
                           sub={`${adherence.cleanTrades}/${adherence.totalTrades} clean`}
                         />
                         <Stat
                           label="Execution"
                           value={`${Math.round(split.controlledPct * 100)}`}
                           suffix="%"
-                          tone="muted"
+                          tone={
+                            split.controlledPct >= 0.75
+                              ? "gold"
+                              : split.controlledPct >= 0.5
+                                ? "warn"
+                                : "loss"
+                          }
                           sub="controlled"
                         />
                       </div>
