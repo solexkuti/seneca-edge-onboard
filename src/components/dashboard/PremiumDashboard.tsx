@@ -104,18 +104,19 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
           <CardEyebrow Icon={ShieldCheck}>Discipline score</CardEyebrow>
           <div className="mt-3 flex items-end gap-2">
             <span
-              className={`font-display text-[44px] font-semibold leading-none tabular-nums ${TONE_TEXT[ds.tone]}`}
-              style={
-                ds.tone === "ok"
-                  ? { textShadow: "0 0 28px rgba(198,161,91,0.40)" }
-                  : undefined
-              }
+              className="font-display text-[44px] font-semibold leading-none tabular-nums"
+              style={{
+                ...metricColorStyle(score),
+                textShadow: score == null ? undefined : metricGlowShadow(score),
+              }}
             >
               {score == null ? "—" : score}
             </span>
             <span className="mb-1.5 text-[13px] text-text-secondary">/100</span>
           </div>
-          <p className={`mt-1 text-[12.5px] font-medium ${TONE_TEXT[ds.tone]}`}>
+          <p
+            className={`mt-1 text-[12.5px] font-medium ${metricTextClass(score)}`}
+          >
             {ds.label}
           </p>
           <Divider />
