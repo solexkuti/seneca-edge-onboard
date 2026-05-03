@@ -164,6 +164,7 @@ const GLOW_STYLES: Record<GlowTone, string> = {
 function StatCard({
   label,
   value,
+  valueColor,
   suffix,
   icon,
   glow = "none",
@@ -171,6 +172,7 @@ function StatCard({
 }: {
   label: string;
   value: string;
+  valueColor?: string;
   suffix?: string;
   icon?: React.ReactNode;
   glow?: GlowTone;
@@ -187,7 +189,10 @@ function StatCard({
       <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
         {label}
       </p>
-      <p className="mt-1 flex items-baseline gap-1.5 text-[22px] font-bold leading-none text-text-primary tabular-nums">
+      <p
+        className="mt-1 flex items-baseline gap-1.5 text-[22px] font-bold leading-none tabular-nums"
+        style={{ color: valueColor ?? "var(--text-primary)" }}
+      >
         {icon}
         {value}
         {suffix && <span className="text-[10.5px] font-medium text-text-secondary">{suffix}</span>}
