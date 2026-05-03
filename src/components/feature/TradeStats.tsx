@@ -146,7 +146,19 @@ export default function TradeStats() {
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-2 gap-3">
-            <Card label="Win rate" value={fmtPct(m.winRate)} />
+            <Card
+              label="Win rate"
+              value={fmtPct(m.winRate)}
+              tone={
+                metricToneFromRatio(m.winRate) === "good"
+                  ? "ok"
+                  : metricToneFromRatio(m.winRate) === "warn"
+                    ? "warn"
+                    : metricToneFromRatio(m.winRate) === "bad"
+                      ? "risk"
+                      : undefined
+              }
+            />
             <Card label="Total trades" value={`${m.totalTrades}`} />
             <Card
               label="Net PnL"
