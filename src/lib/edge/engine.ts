@@ -174,6 +174,47 @@ function detectPatterns(
     }
   }
 
+  // 4) Hesitation / lack of execution — missed setups carry real opportunity cost.
+  //    Treated as a behavior signal, NOT folded into actual P&L.
+  const allChrono = [...trades].sort((a, b) =>
+    a.executed_at < b.executed_at ? -1 : 1,
+  );
+  const last20 = allChrono.slice(-20);
+  const missedRecent = last20.filter(isMissed);
+  const missedRecentR = missedRecent.reduce(
+    (acc, t) => acc + safeNum(t.missed_potential_r, 0),
+    0,
+  );
+  if (missedRecent.length >= 3) {
+    patterns.push({
+      id: "hesitation-cluster",
+      severity: missedRecent.length >= 5 ? "critical" : "warn",
+      title: "Hesitation cluster",
+      detail: `${missedRecent.length} valid setups skipped in the last 20 entries — ${missedRecentR.toFixed(2)}R left on the table.`,
+      evidenceTradeIds: missedRecent.map((t) => t.id),
+    });
+  }
+
+  // 5) Missed setup right after a loss — fear-driven non-execution.
+  for (let i = 1; i < allChrono.length; i++) {
+    const prev = allChrono[i - 1];
+    const cur = allChrono[i];
+    if (!isMissed(cur)) continue;
+    if (!isExecuted(prev) || prev.result !== "loss") continue;
+    const dt =
+      new Date(cur.executed_at).getTime() - new Date(prev.executed_at).getTime();
+    if (dt > 0 && dt <= 4 * 60 * 60 * 1000) {
+      patterns.push({
+        id: `fear-skip-${cur.id}`,
+        severity: "warn",
+        title: "Hesitation after loss",
+        detail: `Skipped a valid setup within 4h of a loss (${safeNum(cur.missed_potential_r, 0).toFixed(2)}R potential).`,
+        evidenceTradeIds: [prev.id, cur.id],
+      });
+      if (patterns.filter((p) => p.id.startsWith("fear-skip-")).length >= 3) break;
+    }
+  }
+
   return patterns.slice(0, 8);
 }
 
