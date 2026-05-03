@@ -23,6 +23,10 @@ import {
   type Tone,
 } from "./primitives";
 import { EdgeVsExecutionChart } from "./EdgeVsExecutionChart";
+import { PerformanceSnapshot } from "./PerformanceSnapshot";
+import { EquityCurveChart } from "./EquityCurveChart";
+import { BehaviorBreakdownPanel } from "./BehaviorBreakdownPanel";
+import { buildDerivedMetrics } from "@/lib/edge/metricsEngine";
 import type { TradeRow } from "@/lib/edge/types";
 
 function fmtR(n: number, sign = true): string {
