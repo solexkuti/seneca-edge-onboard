@@ -174,6 +174,47 @@ function detectPatterns(
     }
   }
 
+  // 4) Hesitation / lack of execution — missed setups carry real opportunity cost.
+  //    Treated as a behavior signal, NOT folded into actual P&L.
+  const allChrono = [...trades].sort((a, b) =>
+    a.executed_at < b.executed_at ? -1 : 1,
+  );
+  const last20 = allChrono.slice(-20);
+  const missedRecent = last20.filter(isMissed);
+  const missedRecentR = missedRecent.reduce(
+    (acc, t) => acc + safeNum(t.missed_potential_r, 0),
+    0,
+  );
+  if (missedRecent.length >= 3) {
+    patterns.push({
+      id: "hesitation-cluster",
+      severity: missedRecent.length >= 5 ? "critical" : "warn",
+      title: "Hesitation cluster",
+      detail: `${missedRecent.length} valid setups skipped in the last 20 entries — ${missedRecentR.toFixed(2)}R left on the table.`,
+      evidenceTradeIds: missedRecent.map((t) => t.id),
+    });
+  }
+
+  // 5) Missed setup right after a loss — fear-driven non-execution.
+  for (let i = 1; i < allChrono.length; i++) {
+    const prev = allChrono[i - 1];
+    const cur = allChrono[i];
+    if (!isMissed(cur)) continue;
+    if (!isExecuted(prev) || prev.result !== "loss") continue;
+    const dt =
+      new Date(cur.executed_at).getTime() - new Date(prev.executed_at).getTime();
+    if (dt > 0 && dt <= 4 * 60 * 60 * 1000) {
+      patterns.push({
+        id: `fear-skip-${cur.id}`,
+        severity: "warn",
+        title: "Hesitation after loss",
+        detail: `Skipped a valid setup within 4h of a loss (${safeNum(cur.missed_potential_r, 0).toFixed(2)}R potential).`,
+        evidenceTradeIds: [prev.id, cur.id],
+      });
+      if (patterns.filter((p) => p.id.startsWith("fear-skip-")).length >= 3) break;
+    }
+  }
+
   return patterns.slice(0, 8);
 }
 
@@ -189,6 +230,7 @@ export function buildEdgeReport(
       systemEdge: { sample: 0, winRate: 0, avgR: 0, totalR: 0 },
       actualEdge: { sample: 0, winRate: 0, avgR: 0, totalR: 0 },
       missedR: 0,
+      missedCount: 0,
       executionGapR: 0,
       disciplineScore: 0,
       ruleAdherencePct: 0,
@@ -201,12 +243,18 @@ export function buildEdgeReport(
 
   const executed = trades.filter(isExecuted);
   const systemTrades = executed.filter(isSystemTrade);
+  const missedTrades = trades.filter(isMissed);
 
   const systemEdge = buildEdge(systemTrades);
   const actualEdge = buildEdge(executed);
-  const missedR = trades
-    .filter(isMissed)
-    .reduce((acc, t) => acc + safeNum(t.missed_potential_r, 0), 0);
+  const missedR = missedTrades.reduce(
+    (acc, t) => acc + safeNum(t.missed_potential_r, 0),
+    0,
+  );
+
+  // Spec: Execution Gap = (System Edge + Missed Opportunity) − Actual Performance.
+  // Bad execution shrinks Actual; missed setups inflate Missed. Both are reflected.
+  const executionGapR = systemEdge.totalR + missedR - actualEdge.totalR;
 
   const ruleBreakTrades = executed.filter(
     (t) => (t.rules_broken ?? []).length > 0,
@@ -229,7 +277,8 @@ export function buildEdgeReport(
     systemEdge,
     actualEdge,
     missedR,
-    executionGapR: systemEdge.totalR - actualEdge.totalR,
+    missedCount: missedTrades.length,
+    executionGapR,
     disciplineScore,
     ruleAdherencePct,
     violations: rankViolations(violations),
