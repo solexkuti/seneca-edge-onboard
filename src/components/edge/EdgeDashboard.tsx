@@ -307,29 +307,8 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
         </div>
 
         <div className="space-y-6">
-          <section>
-            <h3 className="text-sm font-semibold text-white mb-3">
-              Behavior by impact
-            </h3>
-            {topViolations.length === 0 ? (
-              <EmptyState
-                title="No rule breaks yet"
-                description="Clean execution — keep it up."
-              />
-            ) : (
-              <div className="space-y-2">
-                {topViolations.map((v) => (
-                  <BehaviorCard
-                    key={v.type}
-                    type={v.type}
-                    count={v.count}
-                    totalImpactR={v.totalImpactR}
-                    lastOccurredAt={v.lastOccurredAt}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+          {/* Layer 2 → Layer 3: behavior_metrics */}
+          <BehaviorBreakdownPanel metrics={derived.behavior_metrics} />
 
           <section>
             <h3 className="text-sm font-semibold text-white mb-3">
