@@ -7,7 +7,6 @@ import { useEdgeData } from "@/lib/edge/useEdgeData";
 import {
   ActionPanel,
   AppShell,
-  BehaviorCard,
   ChartContainer,
   EmptyState,
   InsightCard,
@@ -23,6 +22,10 @@ import {
   type Tone,
 } from "./primitives";
 import { EdgeVsExecutionChart } from "./EdgeVsExecutionChart";
+import { PerformanceSnapshot } from "./PerformanceSnapshot";
+import { EquityCurveChart } from "./EquityCurveChart";
+import { BehaviorBreakdownPanel } from "./BehaviorBreakdownPanel";
+import { buildDerivedMetrics } from "@/lib/edge/metricsEngine";
 import type { TradeRow } from "@/lib/edge/types";
 
 function fmtR(n: number, sign = true): string {
@@ -43,8 +46,14 @@ function toneForScore(score: number): Tone {
 }
 
 export function EdgeDashboard({ userName }: { userName?: string }) {
-  const { status, report, error, trades, refresh } = useEdgeData();
+  const { status, report, error, trades, violations, refresh } = useEdgeData();
   const [openTrade, setOpenTrade] = useState<TradeRow | null>(null);
+
+  // Layer 2 — derived intelligence (always computed, even with 0 trades)
+  const derived = useMemo(
+    () => buildDerivedMetrics(trades, violations),
+    [trades, violations],
+  );
 
   // Pre-compute timeline (newest first): rule violations + missed trades
   const timeline = useMemo<TimelineItem[]>(() => {
@@ -162,7 +171,6 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
   ];
 
   const recentTrades = trades.slice(0, 8);
-  const topViolations = report.violations.slice(0, 5);
   const topPatterns = report.patterns.slice(0, 4);
 
   return (
@@ -245,6 +253,13 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
         ))}
       </div>
 
+      {/* Layer 2 → Layer 3: performance_metrics */}
+      <PerformanceSnapshot metrics={derived.performance_metrics} />
+
+      <ChartContainer title="Performance trend">
+        <EquityCurveChart points={derived.trend_data.equity_curve} />
+      </ChartContainer>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <ChartContainer title="Edge vs Execution">
@@ -297,29 +312,8 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
         </div>
 
         <div className="space-y-6">
-          <section>
-            <h3 className="text-sm font-semibold text-white mb-3">
-              Behavior by impact
-            </h3>
-            {topViolations.length === 0 ? (
-              <EmptyState
-                title="No rule breaks yet"
-                description="Clean execution — keep it up."
-              />
-            ) : (
-              <div className="space-y-2">
-                {topViolations.map((v) => (
-                  <BehaviorCard
-                    key={v.type}
-                    type={v.type}
-                    count={v.count}
-                    totalImpactR={v.totalImpactR}
-                    lastOccurredAt={v.lastOccurredAt}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+          {/* Layer 2 → Layer 3: behavior_metrics */}
+          <BehaviorBreakdownPanel metrics={derived.behavior_metrics} />
 
           <section>
             <h3 className="text-sm font-semibold text-white mb-3">
