@@ -138,6 +138,11 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
     );
   }
 
+  // Spec: 3 strictly separated layers + the summary gap.
+  // A. Actual Performance (executed only)
+  // B. System Edge (followed plan)
+  // C. Missed Opportunity (never folded into A or B)
+  // Gap = (System + Missed) − Actual
   const metrics: Metric[] = [
     {
       label: "System edge",
@@ -146,21 +151,29 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
       tone: toneForRValue(report.systemEdge.totalR),
     },
     {
-      label: "Actual result",
+      label: "Actual performance",
       value: fmtR(report.actualEdge.totalR),
       hint: `${report.actualEdge.sample} executed · ${report.actualEdge.winRate.toFixed(0)}% win`,
       tone: toneForRValue(report.actualEdge.totalR),
     },
     {
-      label: "Execution gap",
-      value: fmtR(report.executionGapR + Math.abs(report.missedR)),
+      label: "Missed R",
+      value: `${report.missedR >= 0 ? "+" : ""}${report.missedR.toFixed(2)}R`,
       hint:
-        report.missedR > 0
-          ? `incl. ${report.missedR.toFixed(2)}R missed`
-          : "system minus actual",
-      tone:
-        report.executionGapR > 0 || report.missedR > 0 ? "warn" : "neutral",
+        report.missedCount > 0
+          ? `${report.missedCount} setup${report.missedCount === 1 ? "" : "s"} skipped`
+          : "no missed setups logged",
+      tone: report.missedR > 0 ? "warn" : "neutral",
     },
+    {
+      label: "Execution gap",
+      value: fmtR(report.executionGapR),
+      hint: "(System + Missed) − Actual",
+      tone: report.executionGapR > 0 ? "warn" : "neutral",
+    },
+  ];
+
+  const secondaryMetrics: Metric[] = [
     {
       label: "Discipline",
       value: `${report.disciplineScore}%`,
@@ -180,6 +193,49 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
       actions={headerActions}
     >
       <TopMetricsBar metrics={metrics} />
+
+      {/* "Left on the table" headline — only when there's something to say */}
+      {report.missedR > 0 && (
+        <div
+          className="card-premium p-4 flex items-center gap-3"
+          style={{ borderColor: "#FACC1533" }}
+        >
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{ background: "#FACC15" }}
+          />
+          <p className="text-sm text-white">
+            You left{" "}
+            <span
+              className="font-extrabold tabular-nums"
+              style={{ color: "#FACC15" }}
+            >
+              {report.missedR.toFixed(2)}R
+            </span>{" "}
+            on the table across {report.missedCount} missed setup
+            {report.missedCount === 1 ? "" : "s"}.
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {secondaryMetrics.map((m, i) => (
+          <div key={i} className="card-premium p-5">
+            <div className="text-xs uppercase tracking-wider text-[#6B7280]">
+              {m.label}
+            </div>
+            <div
+              className="text-2xl font-extrabold tracking-tight mt-1"
+              style={{ color: m.tone ? "#22C55E" : "#FFFFFF" }}
+            >
+              {m.value}
+            </div>
+            {m.hint && (
+              <div className="text-xs text-[#A1A1AA] mt-1">{m.hint}</div>
+            )}
+          </div>
+        ))}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
