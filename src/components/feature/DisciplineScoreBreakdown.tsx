@@ -22,6 +22,7 @@ import {
   type DisciplineState,
   type ScoreContribution,
 } from "@/lib/disciplineScore";
+import { metricColorStyle, metricGlowShadow } from "@/lib/metricColor";
 
 const STATE_COPY: Record<
   DisciplineState,
