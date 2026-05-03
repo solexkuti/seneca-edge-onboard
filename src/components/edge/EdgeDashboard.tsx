@@ -173,6 +173,30 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
     >
       <TopMetricsBar metrics={metrics} />
 
+      {/* Baseline state — no trades yet. Dashboard is live, just empty. */}
+      {!report.hasData && (
+        <div
+          className="card-premium p-4 flex items-center gap-3"
+          style={{ borderColor: "#FF8A1F33" }}
+        >
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{ background: "#FF8A1F" }}
+          />
+          <p className="text-sm text-white">
+            Start logging trades to activate your edge tracking. Discipline
+            holds at{" "}
+            <span
+              className="font-extrabold tabular-nums"
+              style={{ color: "#22C55E" }}
+            >
+              100%
+            </span>{" "}
+            until your first rule break.
+          </p>
+        </div>
+      )}
+
       {/* "Left on the table" headline — only when there's something to say */}
       {report.missedR > 0 && (
         <div
