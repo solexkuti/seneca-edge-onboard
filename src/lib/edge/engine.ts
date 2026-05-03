@@ -224,6 +224,8 @@ export function buildEdgeReport(
 ): EdgeReport {
   const totalTrades = trades.length;
   if (totalTrades === 0) {
+    // Baseline state — no trades yet. Discipline starts at 100 (no violations
+    // logged), every other metric at 0. Dashboard still renders fully.
     return {
       hasData: false,
       totalTrades: 0,
@@ -232,8 +234,8 @@ export function buildEdgeReport(
       missedR: 0,
       missedCount: 0,
       executionGapR: 0,
-      disciplineScore: 0,
-      ruleAdherencePct: 0,
+      disciplineScore: 100,
+      ruleAdherencePct: 100,
       violations: [],
       sessions: [],
       patterns: [],

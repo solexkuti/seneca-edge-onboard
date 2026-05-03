@@ -48,7 +48,7 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
 
   // Pre-compute timeline (newest first): rule violations + missed trades
   const timeline = useMemo<TimelineItem[]>(() => {
-    if (!report || !report.hasData) return [];
+    if (!report) return [];
     const items: TimelineItem[] = [];
     for (const t of trades) {
       if (t.trade_type === "missed") {
@@ -115,29 +115,7 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
     );
   }
 
-  // Empty state — no trades yet
-  if (!report.hasData) {
-    return (
-      <AppShell
-        title={userName ? `Edge · ${userName}` : "Seneca Edge"}
-        subtitle="What is my strategy capable of vs what am I actually doing?"
-        actions={headerActions}
-      >
-        <EmptyState
-          title="Start logging trades to see your execution patterns"
-          description="Every trade you log — executed or missed — sharpens the picture of your real edge versus your actual behavior."
-          action={
-            <Link
-              to="/hub/journal"
-              className="btn-gold rounded-lg px-5 py-2.5 text-sm font-semibold"
-            >
-              Log your first trade
-            </Link>
-          }
-        />
-      </AppShell>
-    );
-  }
+  // No early return for empty data — dashboard always renders with baseline values.
 
   // Spec: 3 strictly separated layers + the summary gap.
   // A. Actual Performance (executed only)
@@ -194,6 +172,30 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
       actions={headerActions}
     >
       <TopMetricsBar metrics={metrics} />
+
+      {/* Baseline state — no trades yet. Dashboard is live, just empty. */}
+      {!report.hasData && (
+        <div
+          className="card-premium p-4 flex items-center gap-3"
+          style={{ borderColor: "#FF8A1F33" }}
+        >
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{ background: "#FF8A1F" }}
+          />
+          <p className="text-sm text-white">
+            Start logging trades to activate your edge tracking. Discipline
+            holds at{" "}
+            <span
+              className="font-extrabold tabular-nums"
+              style={{ color: "#22C55E" }}
+            >
+              100%
+            </span>{" "}
+            until your first rule break.
+          </p>
+        </div>
+      )}
 
       {/* "Left on the table" headline — only when there's something to say */}
       {report.missedR > 0 && (
@@ -254,29 +256,38 @@ export function EdgeDashboard({ userName }: { userName?: string }) {
                 View all →
               </Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {recentTrades.map((t) => (
-                <TradeCard
-                  key={t.id}
-                  onClick={() => setOpenTrade(t)}
-                  trade={{
-                    id: t.id,
-                    asset: t.asset ?? "—",
-                    direction: t.direction,
-                    rr:
-                      typeof t.rr === "number"
-                        ? t.rr
-                        : t.trade_type === "missed"
-                        ? t.missed_potential_r
-                        : null,
-                    result: t.result,
-                    trade_type: t.trade_type,
-                    rules_broken: t.rules_broken ?? [],
-                    occurred_at: t.executed_at,
-                  }}
-                />
-              ))}
-            </div>
+            {recentTrades.length === 0 ? (
+              <div className="card-premium p-6 text-center">
+                <p className="text-sm text-[#A1A1AA]">No trades logged yet</p>
+                <p className="text-xs text-[#6B7280] mt-1">
+                  Your latest trades will appear here as soon as you log one.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {recentTrades.map((t) => (
+                  <TradeCard
+                    key={t.id}
+                    onClick={() => setOpenTrade(t)}
+                    trade={{
+                      id: t.id,
+                      asset: t.asset ?? "—",
+                      direction: t.direction,
+                      rr:
+                        typeof t.rr === "number"
+                          ? t.rr
+                          : t.trade_type === "missed"
+                          ? t.missed_potential_r
+                          : null,
+                      result: t.result,
+                      trade_type: t.trade_type,
+                      rules_broken: t.rules_broken ?? [],
+                      occurred_at: t.executed_at,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         </div>
 
