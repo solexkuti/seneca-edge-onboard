@@ -230,6 +230,7 @@ export function buildEdgeReport(
       systemEdge: { sample: 0, winRate: 0, avgR: 0, totalR: 0 },
       actualEdge: { sample: 0, winRate: 0, avgR: 0, totalR: 0 },
       missedR: 0,
+      missedCount: 0,
       executionGapR: 0,
       disciplineScore: 0,
       ruleAdherencePct: 0,
@@ -242,12 +243,18 @@ export function buildEdgeReport(
 
   const executed = trades.filter(isExecuted);
   const systemTrades = executed.filter(isSystemTrade);
+  const missedTrades = trades.filter(isMissed);
 
   const systemEdge = buildEdge(systemTrades);
   const actualEdge = buildEdge(executed);
-  const missedR = trades
-    .filter(isMissed)
-    .reduce((acc, t) => acc + safeNum(t.missed_potential_r, 0), 0);
+  const missedR = missedTrades.reduce(
+    (acc, t) => acc + safeNum(t.missed_potential_r, 0),
+    0,
+  );
+
+  // Spec: Execution Gap = (System Edge + Missed Opportunity) − Actual Performance.
+  // Bad execution shrinks Actual; missed setups inflate Missed. Both are reflected.
+  const executionGapR = systemEdge.totalR + missedR - actualEdge.totalR;
 
   const ruleBreakTrades = executed.filter(
     (t) => (t.rules_broken ?? []).length > 0,
