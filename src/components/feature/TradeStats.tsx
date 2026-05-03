@@ -12,6 +12,7 @@ import {
   type TimeRange,
   type TradeLog,
 } from "@/lib/tradeLogs";
+import { metricColorStyle, metricToneFromRatio } from "@/lib/metricColor";
 
 const RANGES: { id: TimeRange; label: string }[] = [
   { id: "today", label: "Today" },
