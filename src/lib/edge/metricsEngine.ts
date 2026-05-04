@@ -300,21 +300,20 @@ export function computeBehaviorMetrics(
   const ruleAdherence =
     executed.length === 0 ? 1 : cleanCount / executed.length;
 
-  // Discipline score: start at 100, weight adherence + recent execution.
-  // Mirrors engine.ts so the two stay aligned.
+  // Discipline score: average per-trade discipline over the last 20 executed
+  // trades. Each trade starts at 100 and loses fixed penalties per rule break
+  // (see DISCIPLINE_PENALTIES). Transparent and reproducible.
   const sortedDesc = [...executed].sort((a, b) =>
     a.executed_at < b.executed_at ? 1 : -1,
   );
-  const recent = sortedDesc.slice(0, 10);
-  const recentClean = recent.filter(
-    (t) => (t.rules_broken ?? []).length === 0,
-  ).length;
-  const recentScore =
-    recent.length === 0 ? 100 : (recentClean / recent.length) * 100;
+  const window = sortedDesc.slice(0, 20);
   const disciplineScore =
-    executed.length === 0
+    window.length === 0
       ? 100
-      : Math.round(0.6 * ruleAdherence * 100 + 0.4 * recentScore);
+      : Math.round(
+          window.reduce((s, t) => s + computePerTradeDiscipline(t), 0) /
+            window.length,
+        );
 
   const missedR = missed.reduce(
     (s, t) => s + safeNum(t.missed_potential_r, 0),
