@@ -40,6 +40,7 @@ import { Route as HubJournalBreakdownRouteImport } from './routes/hub.journal.br
 import { Route as HubConnectionsMt5RouteImport } from './routes/hub.connections.mt5'
 import { Route as HubConnectionsDerivRouteImport } from './routes/hub.connections.deriv'
 import { Route as HubConnectionsAutomateRouteImport } from './routes/hub.connections.automate'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicHooksDerivSyncRouteImport } from './routes/api/public/hooks/deriv-sync'
 
 const HubRoute = HubRouteImport.update({
@@ -197,6 +198,12 @@ const HubConnectionsAutomateRoute = HubConnectionsAutomateRouteImport.update({
   path: '/automate',
   getParentRoute: () => HubConnectionsRoute,
 } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDerivSyncRoute = ApiPublicHooksDerivSyncRouteImport.update({
   id: '/api/public/hooks/deriv-sync',
   path: '/api/public/hooks/deriv-sync',
@@ -236,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/hub/journal/': typeof HubJournalIndexRoute
   '/hub/strategy/': typeof HubStrategyIndexRoute
   '/api/public/hooks/deriv-sync': typeof ApiPublicHooksDerivSyncRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -267,6 +275,7 @@ export interface FileRoutesByTo {
   '/hub/journal': typeof HubJournalIndexRoute
   '/hub/strategy': typeof HubStrategyIndexRoute
   '/api/public/hooks/deriv-sync': typeof ApiPublicHooksDerivSyncRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -302,6 +311,7 @@ export interface FileRoutesById {
   '/hub/journal/': typeof HubJournalIndexRoute
   '/hub/strategy/': typeof HubStrategyIndexRoute
   '/api/public/hooks/deriv-sync': typeof ApiPublicHooksDerivSyncRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -338,6 +348,7 @@ export interface FileRouteTypes {
     | '/hub/journal/'
     | '/hub/strategy/'
     | '/api/public/hooks/deriv-sync'
+    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -369,6 +380,7 @@ export interface FileRouteTypes {
     | '/hub/journal'
     | '/hub/strategy'
     | '/api/public/hooks/deriv-sync'
+    | '/lovable/email/queue/process'
   id:
     | '__root__'
     | '/'
@@ -403,6 +415,7 @@ export interface FileRouteTypes {
     | '/hub/journal/'
     | '/hub/strategy/'
     | '/api/public/hooks/deriv-sync'
+    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -412,6 +425,7 @@ export interface RootRouteChildren {
   AuthSignUpRoute: typeof AuthSignUpRoute
   DevResetRoute: typeof DevResetRoute
   ApiPublicHooksDerivSyncRoute: typeof ApiPublicHooksDerivSyncRoute
+  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -633,6 +647,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HubConnectionsAutomateRouteImport
       parentRoute: typeof HubConnectionsRoute
     }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/deriv-sync': {
       id: '/api/public/hooks/deriv-sync'
       path: '/api/public/hooks/deriv-sync'
@@ -740,16 +761,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthSignUpRoute: AuthSignUpRoute,
   DevResetRoute: DevResetRoute,
   ApiPublicHooksDerivSyncRoute: ApiPublicHooksDerivSyncRoute,
+  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
