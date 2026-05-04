@@ -219,6 +219,46 @@ export function computeTrendData(trades: TradeRow[]): TrendData {
 
 // ---------------- Behavior ----------------
 
+/**
+ * Per-trade discipline penalties. Transparent, fixed values so users always
+ * know why their score is what it is. Same map used by Dashboard, Mentor and
+ * Alerts — single source of truth.
+ */
+export const DISCIPLINE_PENALTIES: Record<string, number> = {
+  entered_without_confirmation: 25,
+  no_stop_loss: 25,
+  ignored_stop_loss: 25,
+  moved_stop_loss: 10,
+  fomo_entry: 10,
+  early_entry: 10,
+  early_exit: 10,
+  overtrading: 10,
+  revenge_trade: 15,
+  counter_trend_entry: 10,
+  counter_trend: 10,
+};
+const DEFAULT_PENALTY = 10;
+
+function normalizeRule(rule: string): string {
+  return rule.toLowerCase().trim().replace(/[\s-]+/g, "_");
+}
+
+export function penaltyFor(rule: string): number {
+  return DISCIPLINE_PENALTIES[normalizeRule(rule)] ?? DEFAULT_PENALTY;
+}
+
+/**
+ * Per-trade discipline score. Starts at 100 and subtracts the documented
+ * penalty for every rule broken on the trade. Clamped to 0..100.
+ */
+export function computePerTradeDiscipline(trade: TradeRow): number {
+  const broken = trade.rules_broken ?? [];
+  if (broken.length === 0) return 100;
+  let score = 100;
+  for (const r of broken) score -= penaltyFor(r);
+  return Math.max(0, Math.min(100, score));
+}
+
 export function computeBehaviorMetrics(
   trades: TradeRow[],
   violations: RuleViolationRow[],
@@ -260,21 +300,20 @@ export function computeBehaviorMetrics(
   const ruleAdherence =
     executed.length === 0 ? 1 : cleanCount / executed.length;
 
-  // Discipline score: start at 100, weight adherence + recent execution.
-  // Mirrors engine.ts so the two stay aligned.
+  // Discipline score: average per-trade discipline over the last 20 executed
+  // trades. Each trade starts at 100 and loses fixed penalties per rule break
+  // (see DISCIPLINE_PENALTIES). Transparent and reproducible.
   const sortedDesc = [...executed].sort((a, b) =>
     a.executed_at < b.executed_at ? 1 : -1,
   );
-  const recent = sortedDesc.slice(0, 10);
-  const recentClean = recent.filter(
-    (t) => (t.rules_broken ?? []).length === 0,
-  ).length;
-  const recentScore =
-    recent.length === 0 ? 100 : (recentClean / recent.length) * 100;
+  const window = sortedDesc.slice(0, 20);
   const disciplineScore =
-    executed.length === 0
+    window.length === 0
       ? 100
-      : Math.round(0.6 * ruleAdherence * 100 + 0.4 * recentScore);
+      : Math.round(
+          window.reduce((s, t) => s + computePerTradeDiscipline(t), 0) /
+            window.length,
+        );
 
   const missedR = missed.reduce(
     (s, t) => s + safeNum(t.missed_potential_r, 0),
