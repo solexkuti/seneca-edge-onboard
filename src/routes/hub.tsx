@@ -1,19 +1,13 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import HubLayout from "@/components/layout/HubLayout";
-import { BehaviorStateProvider } from "@/lib/edge/BehaviorStateProvider";
 
-// Layout route for all /hub/* pages. Provides:
-//   1. The desktop-first sidebar + top bar chrome (HubLayout).
-//   2. The unified BehaviorState SSOT — every hub feature (Dashboard, Mentor,
-//      Alerts, Analyzer, Insights) reads from the same provider so state
-//      cannot drift between surfaces.
+// Layout route for all /hub/* pages. Provides the new desktop-first
+// sidebar + top bar chrome without touching individual page logic.
 function HubLayoutRoute() {
   return (
-    <BehaviorStateProvider>
-      <HubLayout>
-        <Outlet />
-      </HubLayout>
-    </BehaviorStateProvider>
+    <HubLayout>
+      <Outlet />
+    </HubLayout>
   );
 }
 
