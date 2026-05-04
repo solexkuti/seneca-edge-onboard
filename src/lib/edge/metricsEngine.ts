@@ -219,6 +219,46 @@ export function computeTrendData(trades: TradeRow[]): TrendData {
 
 // ---------------- Behavior ----------------
 
+/**
+ * Per-trade discipline penalties. Transparent, fixed values so users always
+ * know why their score is what it is. Same map used by Dashboard, Mentor and
+ * Alerts — single source of truth.
+ */
+export const DISCIPLINE_PENALTIES: Record<string, number> = {
+  entered_without_confirmation: 25,
+  no_stop_loss: 25,
+  ignored_stop_loss: 25,
+  moved_stop_loss: 10,
+  fomo_entry: 10,
+  early_entry: 10,
+  early_exit: 10,
+  overtrading: 10,
+  revenge_trade: 15,
+  counter_trend_entry: 10,
+  counter_trend: 10,
+};
+const DEFAULT_PENALTY = 10;
+
+function normalizeRule(rule: string): string {
+  return rule.toLowerCase().trim().replace(/[\s-]+/g, "_");
+}
+
+export function penaltyFor(rule: string): number {
+  return DISCIPLINE_PENALTIES[normalizeRule(rule)] ?? DEFAULT_PENALTY;
+}
+
+/**
+ * Per-trade discipline score. Starts at 100 and subtracts the documented
+ * penalty for every rule broken on the trade. Clamped to 0..100.
+ */
+export function computePerTradeDiscipline(trade: TradeRow): number {
+  const broken = trade.rules_broken ?? [];
+  if (broken.length === 0) return 100;
+  let score = 100;
+  for (const r of broken) score -= penaltyFor(r);
+  return Math.max(0, Math.min(100, score));
+}
+
 export function computeBehaviorMetrics(
   trades: TradeRow[],
   violations: RuleViolationRow[],
