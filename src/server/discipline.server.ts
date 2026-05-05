@@ -1,63 +1,36 @@
-// SenecaEdge — server-only discipline + enforcement helpers.
+// SenecaEdge — server-only discipline helpers.
 //
-// Pure scoring logic, intentionally duplicated from src/lib/disciplineScore.ts
-// so the server bundle does NOT pull in the browser supabase client. The
-// formula MUST stay in sync with the client one.
+// SINGLE FORMULA, identical to src/lib/disciplineScore.ts:
+//   start 100, +10 clean trade, -10 per rule break, clamp [0, 100].
+//
+// `events` are no longer used in the score formula; the parameter is kept
+// for back-compat with older call sites.
 
-export const DECISION_WEIGHT = 0.4;
-export const EXECUTION_WEIGHT = 0.6;
+export const STARTING_SCORE = 100;
+export const CLEAN_TRADE_DELTA = +10;
+export const VIOLATION_DELTA = -10;
+export const SCORE_MIN = 0;
+export const SCORE_MAX = 100;
+
+// Legacy constants — referenced by older imports.
+export const DECISION_WEIGHT = 1;
+export const EXECUTION_WEIGHT = 1;
 export const WINDOW_SIZE = 10;
-export const RECENCY_WEIGHTS = [
-  1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2,
-];
-export const EVENT_SCORE_MAX = 2;
-export const EVENT_SCORE_MIN = -10;
-export const SPAM_THRESHOLD = 5;
-export const SPAM_PENALTY = -10;
-
-const CRITICAL_VIOLATIONS = [
-  "htf_bias", "against htf", "against trend", "no_entry", "no entry",
-  "no clear entry", "random_entry", "random entry", "forced",
-  "forced trade", "critical",
-];
+export const RECENCY_WEIGHTS = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+export const EVENT_SCORE_MAX = 0;
+export const EVENT_SCORE_MIN = 0;
+export const SPAM_THRESHOLD = 999;
+export const SPAM_PENALTY = 0;
 
 export type DisciplineStateName = "in_control" | "slipping" | "at_risk" | "locked";
 export type AnalyzerVerdict = "valid" | "weak" | "invalid";
 export type EventClass = "valid_clean" | "valid_weak" | "invalid" | "critical_invalid";
 
-function isCritical(violations: unknown): boolean {
-  if (!Array.isArray(violations)) return false;
-  for (const v of violations) {
-    if (typeof v !== "string") continue;
-    const s = v.toLowerCase();
-    if (CRITICAL_VIOLATIONS.some((c) => s.includes(c))) return true;
-  }
-  return false;
+export function classifyEvent(_v: AnalyzerVerdict, _x: unknown): EventClass {
+  return "valid_weak";
 }
-
-function violationCount(violations: unknown): number {
-  if (Array.isArray(violations)) return violations.length;
-  if (violations && typeof violations === "object") {
-    return Object.keys(violations as Record<string, unknown>).length;
-  }
+export function scoreForClass(_k: EventClass): number {
   return 0;
-}
-
-export function classifyEvent(verdict: AnalyzerVerdict, violations: unknown): EventClass {
-  if (verdict === "valid") return "valid_clean";
-  if (verdict === "weak") return "valid_weak";
-  if (isCritical(violations)) return "critical_invalid";
-  if (violationCount(violations) >= 3) return "critical_invalid";
-  return "invalid";
-}
-
-export function scoreForClass(klass: EventClass): number {
-  switch (klass) {
-    case "valid_clean": return 2;
-    case "valid_weak": return 0;
-    case "invalid": return -5;
-    case "critical_invalid": return -10;
-  }
 }
 
 export function stateForScore(score: number): DisciplineStateName {
@@ -67,29 +40,8 @@ export function stateForScore(score: number): DisciplineStateName {
   return "locked";
 }
 
-function normalizeDecision(rawValues: number[], weights: number[]): number {
-  if (rawValues.length === 0) return 50;
-  let weightedSum = 0, maxPossible = 0, minPossible = 0;
-  for (let i = 0; i < rawValues.length; i++) {
-    const w = weights[i] ?? 0;
-    weightedSum += rawValues[i] * w;
-    maxPossible += EVENT_SCORE_MAX * w;
-    minPossible += EVENT_SCORE_MIN * w;
-  }
-  const range = maxPossible - minPossible;
-  if (range === 0) return 50;
-  const norm = ((weightedSum - minPossible) / range) * 100;
-  return Math.max(0, Math.min(100, norm));
-}
-
-function weightedAverage(values: number[], weights: number[]): number {
-  let sum = 0, wsum = 0;
-  for (let i = 0; i < values.length; i++) {
-    const w = weights[i] ?? 0;
-    sum += values[i] * w;
-    wsum += w;
-  }
-  return wsum > 0 ? sum / wsum : 0;
+function clamp(n: number): number {
+  return Math.max(SCORE_MIN, Math.min(SCORE_MAX, n));
 }
 
 export type ComputedDiscipline = {
@@ -101,46 +53,53 @@ export type ComputedDiscipline = {
   execution_sample: number;
 };
 
-export type EventInput = { verdict: AnalyzerVerdict; violations: unknown; created_at: string };
-export type TradeInput = { discipline_score: number; created_at: string };
+export type EventInput = {
+  verdict: AnalyzerVerdict;
+  violations: unknown;
+  created_at: string;
+};
+
+export type TradeInput = {
+  followed_entry?: boolean;
+  followed_exit?: boolean;
+  followed_risk?: boolean;
+  followed_behavior?: boolean;
+  discipline_score?: number;
+  created_at: string;
+};
+
+function violationsOn(t: TradeInput): number {
+  let n = 0;
+  if (t.followed_entry === false) n++;
+  if (t.followed_exit === false) n++;
+  if (t.followed_risk === false) n++;
+  if (t.followed_behavior === false) n++;
+  return n;
+}
 
 export function computeDisciplineFromRows(
-  events: EventInput[],
+  _events: EventInput[],
   trades: TradeInput[],
 ): ComputedDiscipline {
-  const evWindow = events.slice(0, WINDOW_SIZE);
-  const rawScores = evWindow.map((e) =>
-    scoreForClass(classifyEvent(e.verdict, e.violations)),
+  // Replay chronologically (oldest first).
+  const chrono = [...trades].sort(
+    (a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
   );
-  const evWeights = evWindow.map((_, i) => RECENCY_WEIGHTS[i] ?? 0);
-  let decisionScore = normalizeDecision(rawScores, evWeights);
 
-  // Anti-spam streak penalty
-  let streak = 0;
-  for (const e of evWindow) {
-    const k = classifyEvent(e.verdict, e.violations);
-    if (k === "invalid" || k === "critical_invalid") streak += 1;
-    else break;
-  }
-  if (streak >= SPAM_THRESHOLD) {
-    decisionScore = Math.max(0, decisionScore + SPAM_PENALTY);
+  let score = STARTING_SCORE;
+  for (const t of chrono) {
+    const v = violationsOn(t);
+    score = clamp(score + (v === 0 ? CLEAN_TRADE_DELTA : VIOLATION_DELTA * v));
   }
 
-  const trWindow = trades.slice(0, WINDOW_SIZE);
-  const tradeValues = trWindow.map((t) => Math.max(0, Math.min(100, t.discipline_score)));
-  const trWeights = trWindow.map((_, i) => RECENCY_WEIGHTS[i] ?? 0);
-  const executionScore = trWindow.length === 0 ? 50 : weightedAverage(tradeValues, trWeights);
-
-  const dr = Math.max(0, Math.min(100, Math.round(decisionScore)));
-  const er = Math.max(0, Math.min(100, Math.round(executionScore)));
-  const score = Math.round(dr * DECISION_WEIGHT + er * EXECUTION_WEIGHT);
-
+  const total = trades.length;
   return {
     score,
     state: stateForScore(score),
-    decision_score: dr,
-    execution_score: er,
-    decision_sample: evWindow.length,
-    execution_sample: trWindow.length,
+    decision_score: score,
+    execution_score: score,
+    decision_sample: total,
+    execution_sample: total,
   };
 }

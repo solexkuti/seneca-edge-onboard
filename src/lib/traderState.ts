@@ -76,22 +76,27 @@ export type TraderState = {
 };
 
 const EMPTY_BREAKDOWN: DisciplineBreakdown = {
-  score: 50,
-  state: "at_risk",
-  decision_score: 50,
+  score: 100,
+  state: "in_control",
+  decision_score: 100,
   decision_sample: 0,
   decision_contributions: [],
-  execution_score: 50,
+  execution_score: 100,
   execution_sample: 0,
   execution_contributions: [],
   penalties: [],
   execution_neutral: true,
   decision_neutral: true,
+  total_trades: 0,
+  clean_trades: 0,
+  violation_count: 0,
+  rule_adherence: 1,
+  recent_contributions: [],
 };
 
 export const EMPTY_DISCIPLINE: DisciplineSummary = {
-  score: 50,
-  state: "at_risk",
+  score: 100,
+  state: "in_control",
   consecutive_breaks: 0,
   recent: [],
   breakdown: EMPTY_BREAKDOWN,
