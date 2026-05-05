@@ -775,6 +775,10 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_balance: number | null
+          account_equity: number | null
+          balance_source: string
+          balance_updated_at: string | null
           challenge: string | null
           created_at: string
           discipline_score: number
@@ -789,6 +793,10 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          account_balance?: number | null
+          account_equity?: number | null
+          balance_source?: string
+          balance_updated_at?: string | null
           challenge?: string | null
           created_at?: string
           discipline_score?: number
@@ -803,6 +811,10 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          account_balance?: number | null
+          account_equity?: number | null
+          balance_source?: string
+          balance_updated_at?: string | null
           challenge?: string | null
           created_at?: string
           discipline_score?: number
