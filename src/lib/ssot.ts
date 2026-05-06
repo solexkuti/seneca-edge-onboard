@@ -45,6 +45,32 @@ export type SsotTrade = {
   session: "London" | "NY" | "Asia" | null;
   executed_at: string;
   closed_at: string | null;
+  trade_type: "executed" | "missed";
+  missed_reason: string | null;
+  missed_potential_r: number | null;
+  rules_broken: string[];
+  notes: string | null;
+};
+
+export type SsotViolation = {
+  id: string;
+  trade_id: string;
+  type: string;
+  impact_r: number;
+  session: string | null;
+  occurred_at: string;
+};
+
+export type SsotSessionStat = {
+  session: "London" | "NY" | "Asia";
+  total_trades: number;
+  wins: number;
+  losses: number;
+  win_rate: number;
+  total_r: number;
+  assets: string[];
+  violations: number;
+  missed: number;
 };
 
 export type SsotMetrics = {
