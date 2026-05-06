@@ -653,7 +653,11 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
                           : "—"}
                     </span>
                     <span className="flex flex-wrap gap-1">
-                      {clean ? (
+                      {isMissed ? (
+                        <span className="inline-flex items-center rounded-md border border-amber-300/25 bg-amber-300/[0.07] px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-amber-300">
+                          {t.missed_reason ? t.missed_reason.replace(/_/g, " ") : "Missed"}
+                        </span>
+                      ) : clean ? (
                         <span className="inline-flex items-center rounded-md border border-emerald-400/25 bg-emerald-400/[0.07] px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-emerald-400">
                           Clean
                         </span>
