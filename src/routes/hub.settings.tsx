@@ -6,7 +6,8 @@ import RequireAuth from "@/components/auth/RequireAuth";
 import { signOut } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { SUPPORTED_CURRENCIES, type CurrencyCode } from "@/lib/ssot";
-import { useSsot, JOURNAL_EVENT } from "@/hooks/useSsot";
+import { useSsot } from "@/hooks/useSsot";
+import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 
 export const Route = createFileRoute("/hub/settings")({
   head: () => ({
@@ -97,10 +98,13 @@ function AccountSettingsCard() {
       }
 
       // Keep profile in sync (acts as fallback + global preference).
-      const profUpdate: Record<string, unknown> = {
-        currency,
-        risk_per_trade: riskNum,
-      };
+      const profUpdate: {
+        currency: string;
+        risk_per_trade: number | null;
+        account_balance?: number;
+        balance_source?: string;
+        balance_updated_at?: string;
+      } = { currency, risk_per_trade: riskNum };
       if (balNum != null) {
         profUpdate.account_balance = balNum;
         profUpdate.balance_source = "manual";
