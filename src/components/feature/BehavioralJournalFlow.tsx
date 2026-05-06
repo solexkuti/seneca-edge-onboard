@@ -1168,12 +1168,12 @@ export default function BehavioralJournalFlow({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Risk %">
+                  <Field label="Execution Risk %">
                     <input
                       value={riskStr}
                       onChange={(e) => setRiskStr(e.target.value)}
                       inputMode="decimal"
-                      placeholder="—"
+                      placeholder={preferredRiskPercent != null ? preferredRiskPercent.toFixed(2) : "—"}
                       className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
