@@ -415,8 +415,6 @@ function Stat({
   }, [flashKey, value]);
   const glowShadow = useMetric && glow ? metricGlowShadow(metricValue) : undefined;
   const fallbackGlow = !useMetric && glow ? "drop-shadow-[0_0_18px_rgba(198,161,91,0.35)]" : "";
-  const hidden = metricValue == null && useMetric ? metricTone(null) : null;
-  void hidden;
   return (
     <motion.div
       animate={
