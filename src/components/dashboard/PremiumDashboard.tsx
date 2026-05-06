@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { type Ssot, type SsotTrade, type SsotViolation, formatCurrency, rToCurrency } from "@/lib/ssot";
+import { formatMetric, formatRr } from "@/lib/fxService";
 import { MISSED_REASON_LABELS, type MissedReason } from "@/lib/trade/types";
 
 function missedReasonLabel(reason: string | null): string {
