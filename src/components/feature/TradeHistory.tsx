@@ -32,6 +32,9 @@ import {
 } from "@/lib/trade";
 import { getScreenshotUrl } from "@/lib/behavioralJournal";
 import { JOURNAL_EVENT } from "@/lib/tradingJournal";
+import { useSsot } from "@/hooks/useSsot";
+import { formatMetric } from "@/lib/fxService";
+import type { MetricDisplayMode } from "@/lib/ssot";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -50,9 +53,12 @@ const RANGE_TABS: { id: RangeFilter; label: string }[] = [
   { id: "all", label: "All time" },
 ];
 
-function fmtR(n: number | null): string {
+type FmtCtx = { mode: MetricDisplayMode; cur: string; rate: number; risk: number | null };
+
+function fmtMetricRow(n: number | null, ctx: FmtCtx): string {
   if (n == null || !Number.isFinite(n)) return "—";
-  return `${n > 0 ? "+" : ""}${n.toFixed(2)}R`;
+  const amt = ctx.risk != null && ctx.risk > 0 ? n * ctx.risk * ctx.rate : null;
+  return formatMetric({ r: n, amountInDisplayCurrency: amt, displayCurrency: ctx.cur, mode: ctx.mode });
 }
 
 function fmtDay(iso: string): string {
@@ -77,6 +83,14 @@ function fmtTime(iso: string): string {
 }
 
 export default function TradeHistory() {
+  const { ssot } = useSsot();
+  const fmtCtx: FmtCtx = {
+    mode: ssot.account.metric_display_mode,
+    cur: ssot.analytics.display_currency,
+    rate: ssot.analytics.exchange_rate,
+    risk: ssot.account.risk_per_trade,
+  };
+  const fmtR = (n: number | null) => fmtMetricRow(n, fmtCtx);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -296,6 +310,7 @@ export default function TradeHistory() {
                         const url = await getScreenshotUrl(path);
                         if (url) setPreviewUrl(url);
                       }}
+                      fmtR={fmtR}
                     />
                   ))}
                 </div>
@@ -337,12 +352,14 @@ function TradeCard({
   expanded,
   onToggle,
   onPreview,
+  fmtR,
 }: {
   trade: Trade;
   delay: number;
   expanded: boolean;
   onToggle: () => void;
   onPreview: (path: string) => void;
+  fmtR: (n: number | null) => string;
 }) {
   const [thumb, setThumb] = useState<string | null>(null);
 

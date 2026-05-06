@@ -456,6 +456,14 @@ function PerformanceTrendCard({ ssot }: { ssot: Ssot }) {
     `L ${xFor(0).toFixed(2)} ${(H - PAD_Y).toFixed(2)} Z`;
 
   const end = curve[curve.length - 1].value;
+  const a = ssot.analytics;
+  const mode = ssot.account.metric_display_mode;
+  const endLabel = formatMetric({
+    r: end,
+    amountInDisplayCurrency: a.total_pnl_converted,
+    displayCurrency: a.display_currency,
+    mode,
+  });
 
   return (
     <Card>
@@ -463,8 +471,7 @@ function PerformanceTrendCard({ ssot }: { ssot: Ssot }) {
         <div>
           <CardEyebrow Icon={TrendingUp}>Performance trend</CardEyebrow>
           <p className="mt-3 font-display text-[26px] font-semibold tracking-tight text-text-primary tabular-nums">
-            {end >= 0 ? "+" : ""}
-            {end.toFixed(2)}R
+            {endLabel}
           </p>
           <p className="mt-1 text-[12.5px] text-text-secondary">
             {curve.length} trade{curve.length === 1 ? "" : "s"} · cumulative R
@@ -626,6 +633,20 @@ function fmtR(r: number) {
 function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
   const [expanded, setExpanded] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const a = ssot.analytics;
+  const mode = ssot.account.metric_display_mode;
+  const cur = a.display_currency;
+  const risk = ssot.account.risk_per_trade;
+
+  const fmtRow = (rr: number | null, t?: SsotTrade): string => {
+    if (rr == null) return "—";
+    const amt = t
+      ? tradeMonetaryConverted(t, a, risk)
+      : risk != null && risk > 0
+        ? rr * risk * a.exchange_rate
+        : null;
+    return formatMetric({ r: rr, amountInDisplayCurrency: amt, displayCurrency: cur, mode });
+  };
 
   // Combined: executed + missed, newest-first.
   const all = useMemo(() => {
@@ -669,6 +690,19 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
     );
   }
 
+  const avgRLabel = formatMetric({
+    r: stats.avgR,
+    amountInDisplayCurrency: a.avg_r_currency,
+    displayCurrency: cur,
+    mode,
+  });
+  const totalRLabel = formatMetric({
+    r: stats.totalR,
+    amountInDisplayCurrency: a.total_pnl_converted,
+    displayCurrency: cur,
+    mode,
+  });
+
   return (
     <Card>
       <div className="flex items-center justify-between">
@@ -685,10 +719,10 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
           value={`${stats.winRate}%`}
           accent="gold"
         />
-        <SummaryCell label="Avg R" value={stats.avgR.toFixed(2)} />
+        <SummaryCell label="Avg R" value={avgRLabel} />
         <SummaryCell
           label="Total R"
-          value={fmtR(stats.totalR)}
+          value={totalRLabel}
           accent={stats.totalR >= 0 ? "gold" : "loss"}
         />
       </div>
@@ -756,10 +790,10 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
                     >
                       {isMissed
                         ? t.missed_potential_r != null
-                          ? `missed ${fmtR(t.missed_potential_r)}`
+                          ? `missed ${fmtRow(t.missed_potential_r)}`
                           : "missed"
                         : r != null
-                          ? fmtR(r)
+                          ? fmtRow(r, t)
                           : "—"}
                     </span>
                     <span className="flex flex-wrap gap-1">
