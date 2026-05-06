@@ -25,6 +25,12 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { type Ssot, type SsotTrade, type SsotViolation, formatCurrency, rToCurrency } from "@/lib/ssot";
+import { MISSED_REASON_LABELS, type MissedReason } from "@/lib/trade/types";
+
+function missedReasonLabel(reason: string | null): string {
+  if (!reason) return "Missed";
+  return MISSED_REASON_LABELS[reason as MissedReason] ?? reason.replace(/_/g, " ");
+}
 import { useTraderState } from "@/hooks/useTraderState";
 import { useSsot } from "@/hooks/useSsot";
 import {
@@ -712,7 +718,7 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
                     <span className="flex flex-wrap gap-1">
                       {isMissed ? (
                         <span className="inline-flex items-center rounded-md border border-amber-300/25 bg-amber-300/[0.07] px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-amber-300">
-                          {t.missed_reason ? t.missed_reason.replace(/_/g, " ") : "Missed"}
+                          {missedReasonLabel(t.missed_reason)}
                         </span>
                       ) : clean ? (
                         <span className="inline-flex items-center rounded-md border border-emerald-400/25 bg-emerald-400/[0.07] px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-emerald-400">
@@ -757,7 +763,7 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
                           </p>
                           <p className="mt-1.5 text-[13px] leading-relaxed text-text-primary/90">
                             {isMissed
-                              ? t.missed_reason || "No reason recorded."
+                              ? missedReasonLabel(t.missed_reason)
                               : t.notes || "No notes."}
                           </p>
                         </div>
@@ -927,7 +933,7 @@ function buildTimeline(
         : "missed";
     (buckets[key] = buckets[key] || []).push({
       asset: (m.asset || m.market || "—").toString(),
-      rule: m.missed_reason || "Missed setup",
+      rule: missedReasonLabel(m.missed_reason),
       impact: r,
     });
   }
