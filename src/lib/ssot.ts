@@ -624,9 +624,9 @@ export async function loadSsot(): Promise<Ssot> {
           let delta: number;
           let reason: string;
           if (broken === 0) {
-            delta = 10;
+            delta = 5;
             s = Math.min(100, s + delta);
-            reason = `Clean trade — ${t.asset || t.market || "trade"} (+10 → ${s}/100).`;
+            reason = `Clean trade — ${t.asset || t.market || "trade"} (+5 → ${s}/100).`;
           } else {
             delta = -10 * broken;
             s = Math.max(0, s + delta);
