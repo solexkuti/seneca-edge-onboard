@@ -135,16 +135,16 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
             label="Total PnL"
             value={
               hasTrades
-                ? (() => {
-                    const cur = rToCurrency(ssot.metrics.total_r, ssot.account.risk_per_trade);
-                    return cur != null
-                      ? formatCurrency(cur, ssot.account.currency, { showSign: true })
-                      : "—";
-                  })()
+                ? formatMetric({
+                    r: ssot.metrics.total_r,
+                    amountInDisplayCurrency: rToCurrency(ssot.metrics.total_r, ssot.account.risk_per_trade),
+                    displayCurrency: ssot.account.display_currency,
+                    mode: ssot.account.metric_display_mode,
+                  })
                 : "—"
             }
           />
-          <Row label="Total R" value={hasTrades ? `${ssot.metrics.total_r >= 0 ? "+" : ""}${ssot.metrics.total_r.toFixed(2)}R` : "—"} />
+          <Row label="Total R" value={hasTrades ? formatRr(ssot.metrics.total_r) : "—"} />
         </Card>
 
         <Card highlight>
@@ -487,9 +487,11 @@ function PerformanceTrendCard({ ssot }: { ssot: Ssot }) {
 function FullStatsPanel({ ssot }: { ssot: Ssot }) {
   const m = ssot.metrics;
   const has = m.total_trades > 0;
-  const cur = ssot.account.currency;
+  const cur = ssot.account.display_currency;
   const risk = ssot.account.risk_per_trade;
+  const mode = ssot.account.metric_display_mode;
   const fmtRMoney = (rVal: number, signed = true): string => {
+    if (mode === "rr_only") return "";
     const c = rToCurrency(rVal, risk);
     if (c == null) return "";
     return ` · ${formatCurrency(c, cur, { showSign: signed })}`;
