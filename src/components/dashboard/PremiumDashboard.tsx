@@ -51,19 +51,17 @@ const TONE_TEXT: Record<string, string> = {
 };
 
 export default function PremiumDashboard({ userName }: { userName?: string }) {
-  const { entries, score } = useBehavioralJournal(20);
   const { state } = useTraderState();
-  const performance = usePerformance(20);
-
-  const ds = disciplineState(score);
+  const { ssot } = useSsot();
+  const score = ssot.behavior.discipline_score;
+  const dsLabel = disciplineLabel(score);
   const bp = state.strategy?.blueprint ?? null;
-  const wr = performance.metrics?.winRate ?? 0;
-  const winRatePct = Math.round(wr * 100);
-  const recent = useMemo(() => performance.trades.slice(0, 5), [performance.trades]);
+  const winRatePct = Math.round((ssot.metrics.win_rate ?? 0) * 100);
+  const recent = useMemo(() => ssot.trades.slice(0, 5), [ssot.trades]);
+  const hasTrades = ssot.trades.length > 0;
 
   return (
     <div className="mx-auto w-full max-w-[1320px] px-5 py-8 md:px-8 md:py-10">
-      {/* Header */}
       <motion.header
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -91,24 +89,26 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
         </Link>
       </motion.header>
 
-      {/* SSOT-derived alerts (read-only, no hard blocks) */}
       <div className="mb-6">
         <SsotAlerts />
       </div>
 
-      {/* Top row: account / discipline / strategy */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         <Card>
           <CardEyebrow Icon={Wallet}>Account</CardEyebrow>
           <p className="mt-3 font-display text-[28px] font-semibold tracking-tight text-text-primary">
-            $10,000.00
+            {ssot.account.balance != null
+              ? `$${ssot.account.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+              : "—"}
           </p>
           <p className="mt-1 text-[12.5px] text-text-secondary">
-            Demo balance · placeholder
+            {ssot.account.balance != null
+              ? `${ssot.account.source === "synced" ? "Synced" : "Manual"} balance`
+              : "No account balance set"}
           </p>
           <Divider />
-          <Row label="Today" value="—" />
-          <Row label="This week" value="—" />
+          <Row label="Equity" value={ssot.account.equity != null ? `$${ssot.account.equity.toLocaleString()}` : "—"} />
+          <Row label="Total R" value={hasTrades ? `${ssot.metrics.total_r >= 0 ? "+" : ""}${ssot.metrics.total_r.toFixed(2)}R` : "—"} />
         </Card>
 
         <Card highlight>
@@ -118,24 +118,20 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
               className="font-display text-[44px] font-semibold leading-none tabular-nums"
               style={{
                 ...metricColorStyle(score),
-                textShadow: score == null ? undefined : metricGlowShadow(score),
+                textShadow: metricGlowShadow(score),
               }}
             >
-              {score == null ? "—" : score}
+              {score}
             </span>
             <span className="mb-1.5 text-[13px] text-text-secondary">/100</span>
           </div>
-          <p
-            className={`mt-1 text-[12.5px] font-medium ${metricTextClass(score)}`}
-          >
-            {ds.label}
+          <p className={`mt-1 text-[12.5px] font-medium ${metricTextClass(score)}`}>
+            {dsLabel}
           </p>
           <Divider />
-          <Row label="Trades reviewed" value={String(entries.length)} />
-          <Row
-            label="Last classification"
-            value={entries[0]?.classification ?? "—"}
-          />
+          <Row label="Trades logged" value={String(ssot.behavior.total_trades)} />
+          <Row label="Clean trades" value={String(ssot.behavior.clean_trades)} />
+          <Row label="Violations" value={String(ssot.behavior.violation_count)} />
         </Card>
 
         <Card>
@@ -158,30 +154,17 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
         </Card>
       </div>
 
-      {/* Mid row: performance snapshot + quick actions */}
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
         <Card>
           <CardEyebrow Icon={LineChart}>Performance snapshot</CardEyebrow>
           <div className="mt-4 grid grid-cols-3 gap-4">
-            <Stat
-              label="Win rate"
-              value={performance.hasTrades ? `${winRatePct}%` : "—"}
-            />
-            <Stat
-              label="Avg R"
-              value={
-                performance.metrics?.avgRR != null && performance.hasTrades
-                  ? performance.metrics.avgRR.toFixed(2)
-                  : "—"
-              }
-            />
+            <Stat label="Win rate" value={hasTrades ? `${winRatePct}%` : "—"} />
+            <Stat label="Avg R" value={hasTrades ? ssot.metrics.avg_r.toFixed(2) : "—"} />
             <Stat
               label="Profit factor"
-              value={
-                performance.metrics?.profitFactor != null && performance.hasTrades
-                  ? performance.metrics.profitFactor.toFixed(2)
-                  : "—"
-              }
+              value={hasTrades && Number.isFinite(ssot.metrics.profit_factor)
+                ? ssot.metrics.profit_factor.toFixed(2)
+                : hasTrades ? "∞" : "—"}
             />
           </div>
           <Divider />
@@ -191,7 +174,7 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
             </p>
             {recent.length === 0 ? (
               <p className="text-[13px] text-text-secondary">
-                No trades logged yet. Start by analyzing a chart or logging from the Journal.
+                No trade data yet. Metrics will appear once trades are logged.
               </p>
             ) : (
               <ul className="divide-y divide-white/[0.05]">
@@ -200,23 +183,14 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
                   const positive = r != null && r > 0;
                   const negative = r != null && r < 0;
                   return (
-                    <li
-                      key={t.id}
-                      className="flex items-center justify-between py-2.5 text-[13px]"
-                    >
-                      <span className="truncate text-text-primary">
-                        {t.pair || "—"}
-                      </span>
-                      <span className="text-text-secondary">
-                        {t.direction || "—"}
-                      </span>
+                    <li key={t.id} className="flex items-center justify-between py-2.5 text-[13px]">
+                      <span className="truncate text-text-primary">{t.asset || t.market || "—"}</span>
+                      <span className="text-text-secondary">{t.direction === "long" ? "Buy" : "Sell"}</span>
                       <span
                         className={
-                          positive
-                            ? "font-semibold text-gold"
-                            : negative
-                            ? "font-semibold text-rose-300"
-                            : "text-text-secondary"
+                          positive ? "font-semibold text-gold"
+                          : negative ? "font-semibold text-rose-300"
+                          : "text-text-secondary"
                         }
                       >
                         {r != null ? `${r > 0 ? "+" : ""}${r.toFixed(2)}R` : "—"}
@@ -232,47 +206,17 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
         <Card>
           <CardEyebrow Icon={Sparkles}>Quick actions</CardEyebrow>
           <div className="mt-4 space-y-2.5">
-            <ActionRow
-              to="/hub/chart"
-              title="Chart Analyzer"
-              subtitle="Run a trade against your rules"
-              Icon={LineChart}
-            />
-            <ActionRow
-              to="/hub/journal"
-              title="Trading Journal"
-              subtitle="Log behavior and patterns"
-              Icon={BookOpenCheck}
-            />
-            <ActionRow
-              to="/hub/mentor"
-              title="AI Mentor"
-              subtitle="Reflect with Seneca"
-              Icon={Sparkles}
-            />
+            <ActionRow to="/hub/chart" title="Chart Analyzer" subtitle="Run a trade against your rules" Icon={LineChart} />
+            <ActionRow to="/hub/journal" title="Trading Journal" subtitle="Log behavior and patterns" Icon={BookOpenCheck} />
+            <ActionRow to="/hub/mentor" title="AI Mentor" subtitle="Reflect with Seneca" Icon={Sparkles} />
           </div>
         </Card>
       </div>
 
-      {/* ── 1. Performance Trend (equity curve) ─────────────── */}
-      <div className="mt-5">
-        <PerformanceTrendCard />
-      </div>
-
-      {/* ── 2. Full Stats Panel ─────────────────────────────── */}
-      <div className="mt-5">
-        <FullStatsPanel />
-      </div>
-
-      {/* ── 3. Trade History (full rebuild) ─────────────────── */}
-      <div className="mt-5">
-        <TradeHistoryPanel />
-      </div>
-
-      {/* ── 4. Behavior Breakdown (full rebuild) ────────────── */}
-      <div className="mt-5">
-        <BehaviorBreakdownCard />
-      </div>
+      <div className="mt-5"><PerformanceTrendCard trades={ssot.trades} /></div>
+      <div className="mt-5"><FullStatsPanel ssot={ssot} /></div>
+      <div className="mt-5"><TradeHistoryPanel ssot={ssot} /></div>
+      <div className="mt-5"><BehaviorBreakdownCard ssot={ssot} /></div>
     </div>
   );
 }
