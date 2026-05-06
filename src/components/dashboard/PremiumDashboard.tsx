@@ -600,7 +600,7 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
               const isOpen = openId === t.id;
               const isMissed = t.trade_type === "missed";
               const r = typeof t.rr === "number" ? t.rr : null;
-              const dispScore = clean ? 100 : Math.max(0, 100 - t.rules_broken.length * 10);
+              const dispScore = isMissed ? null : clean ? 100 : Math.max(0, 100 - t.rules_broken.length * 10);
               return (
                 <motion.li
                   key={t.id}
