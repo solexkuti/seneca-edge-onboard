@@ -27,6 +27,8 @@ export type SsotAccount = {
   equity: number | null;
   source: BalanceSource;
   updated_at: string | null;
+  currency: string;
+  risk_per_trade: number | null;
 };
 
 export type SsotTrade = {
@@ -143,6 +145,8 @@ export const EMPTY_ACCOUNT: SsotAccount = {
   equity: null,
   source: "manual",
   updated_at: null,
+  currency: "USD",
+  risk_per_trade: null,
 };
 
 // ── Pure computations ──────────────────────────────────────────────────
@@ -230,36 +234,92 @@ export function computeMetrics(trades: SsotTrade[]): SsotMetrics {
   };
 }
 
+// ── Currency / monetary helpers ────────────────────────────────────────
+
+export const SUPPORTED_CURRENCIES = [
+  "USD",
+  "EUR",
+  "GBP",
+  "NGN",
+  "JPY",
+  "CAD",
+  "AUD",
+  "CHF",
+] as const;
+export type CurrencyCode = (typeof SUPPORTED_CURRENCIES)[number];
+
+const CURRENCY_SYMBOL: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  NGN: "₦",
+  JPY: "¥",
+  CAD: "$",
+  AUD: "$",
+  CHF: "CHF ",
+};
+
+/** Format a number as currency using the SSOT account currency. */
+export function formatCurrency(
+  amount: number | null | undefined,
+  currency: string = "USD",
+  opts: { showSign?: boolean } = {},
+): string {
+  if (amount == null || !Number.isFinite(amount)) return "—";
+  const sym = CURRENCY_SYMBOL[currency] ?? "";
+  const sign = amount > 0 && opts.showSign ? "+" : amount < 0 ? "-" : "";
+  const abs = Math.abs(amount);
+  const digits = currency === "JPY" ? 0 : 2;
+  return `${sign}${sym}${abs.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+}
+
+/** Convert an R value to monetary using risk_per_trade. Returns null when risk basis is missing. */
+export function rToCurrency(r: number | null, riskPerTrade: number | null): number | null {
+  if (r == null || !Number.isFinite(r)) return null;
+  if (riskPerTrade == null || !Number.isFinite(riskPerTrade) || riskPerTrade <= 0) return null;
+  return r * riskPerTrade;
+}
+
+
 // ── I/O ────────────────────────────────────────────────────────────────
 
 async function loadAccount(userId: string): Promise<SsotAccount> {
-  // Active account row in the new accounts table is authoritative.
+  // Profile-level currency / default risk (acts as fallback when account row lacks them).
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select(
+      "account_balance,account_equity,balance_source,balance_updated_at,currency,risk_per_trade",
+    )
+    .eq("id", userId)
+    .maybeSingle();
+  const profileCurrency = ((prof as { currency?: string } | null)?.currency ?? "USD") as string;
+  const profileRisk = (prof as { risk_per_trade?: number | null } | null)?.risk_per_trade ?? null;
+
   const { data: acct } = await supabase
     .from("accounts")
-    .select("balance,equity,source,updated_at")
+    .select("balance,equity,source,updated_at,currency,risk_per_trade")
     .eq("user_id", userId)
     .eq("is_active", true)
     .maybeSingle();
   if (acct) {
+    const a = acct as Record<string, unknown>;
     return {
-      balance: acct.balance ?? null,
-      equity: acct.equity ?? null,
-      source: (acct.source as BalanceSource) ?? "manual",
-      updated_at: acct.updated_at ?? null,
+      balance: (a.balance as number | null) ?? null,
+      equity: (a.equity as number | null) ?? null,
+      source: ((a.source as BalanceSource) ?? "manual") as BalanceSource,
+      updated_at: (a.updated_at as string | null) ?? null,
+      currency: ((a.currency as string | null) ?? profileCurrency) || "USD",
+      risk_per_trade: (a.risk_per_trade as number | null) ?? profileRisk,
     };
   }
-  // Legacy fallback for profiles still on the old columns.
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("account_balance,account_equity,balance_source,balance_updated_at")
-    .eq("id", userId)
-    .maybeSingle();
-  if (error || !data) return EMPTY_ACCOUNT;
+  if (!prof) return { ...EMPTY_ACCOUNT, currency: profileCurrency, risk_per_trade: profileRisk };
   return {
-    balance: data.account_balance ?? null,
-    equity: data.account_equity ?? null,
-    source: (data.balance_source as BalanceSource) ?? "manual",
-    updated_at: data.balance_updated_at ?? null,
+    balance: prof.account_balance ?? null,
+    equity: prof.account_equity ?? null,
+    source: (prof.balance_source as BalanceSource) ?? "manual",
+    updated_at: prof.balance_updated_at ?? null,
+    currency: profileCurrency,
+    risk_per_trade: profileRisk,
   };
 }
 
@@ -537,11 +597,13 @@ export async function loadSsot(): Promise<Ssot> {
   // Prefer derived (always coherent with trades). Fallback to DB rows if no trades have rules_broken.
   const ssotViolations = derivedViolations.length > 0 ? derivedViolations : violations;
 
-  // ── Discipline / behavior — computed DIRECTLY from trades.rules_broken.
-  // Single source of truth: the trades table. We replay every executed
-  // trade chronologically: clean (zero rules_broken) → +10, otherwise
-  // -10 per broken rule. Start 100, clamp [0, 100]. Missed trades are
-  // behavioral signals but do NOT contribute to the discipline ledger.
+  // ── Discipline engine — gradual recovery model.
+  // Source of truth: trades.rules_broken, replayed chronologically.
+  //   - Clean executed trade (zero rules_broken): +5
+  //   - Each broken rule on an executed trade:   -10
+  //   - Missed trades: 0 impact (psychology only).
+  // Start 100, clamp [0, 100]. Damage > recovery by design — discipline is
+  // earned slowly and cannot be gamed by selective clean logging.
   const chrono = [...executed].sort(
     (a, b) => new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime(),
   );
@@ -551,7 +613,7 @@ export async function loadSsot(): Promise<Ssot> {
   for (const t of chrono) {
     const broken = t.rules_broken?.length ?? 0;
     if (broken === 0) {
-      _score = Math.min(100, _score + 10);
+      _score = Math.min(100, _score + 5);
       cleanTrades += 1;
     } else {
       _score = Math.max(0, _score - 10 * broken);
@@ -609,9 +671,9 @@ export async function loadSsot(): Promise<Ssot> {
           let delta: number;
           let reason: string;
           if (broken === 0) {
-            delta = 10;
+            delta = 5;
             s = Math.min(100, s + delta);
-            reason = `Clean trade — ${t.asset || t.market || "trade"} (+10 → ${s}/100).`;
+            reason = `Clean trade — ${t.asset || t.market || "trade"} (+5 → ${s}/100).`;
           } else {
             delta = -10 * broken;
             s = Math.max(0, s + delta);

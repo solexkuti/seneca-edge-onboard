@@ -18,10 +18,12 @@ export type Database = {
         Row: {
           balance: number
           created_at: string
+          currency: string
           equity: number
           id: string
           is_active: boolean
           label: string | null
+          risk_per_trade: number | null
           source: string
           updated_at: string
           user_id: string
@@ -29,10 +31,12 @@ export type Database = {
         Insert: {
           balance?: number
           created_at?: string
+          currency?: string
           equity?: number
           id?: string
           is_active?: boolean
           label?: string | null
+          risk_per_trade?: number | null
           source?: string
           updated_at?: string
           user_id: string
@@ -40,10 +44,12 @@ export type Database = {
         Update: {
           balance?: number
           created_at?: string
+          currency?: string
           equity?: number
           id?: string
           is_active?: boolean
           label?: string | null
+          risk_per_trade?: number | null
           source?: string
           updated_at?: string
           user_id?: string
@@ -832,6 +838,7 @@ export type Database = {
           balance_updated_at: string | null
           challenge: string | null
           created_at: string
+          currency: string
           discipline_score: number
           experience: string | null
           goal: string | null
@@ -839,6 +846,7 @@ export type Database = {
           market: string | null
           onboarded_at: string | null
           onboarding_completed: boolean
+          risk_per_trade: number | null
           subscription_tier: Database["public"]["Enums"]["subscription_tier"]
           updated_at: string
           username: string | null
@@ -850,6 +858,7 @@ export type Database = {
           balance_updated_at?: string | null
           challenge?: string | null
           created_at?: string
+          currency?: string
           discipline_score?: number
           experience?: string | null
           goal?: string | null
@@ -857,6 +866,7 @@ export type Database = {
           market?: string | null
           onboarded_at?: string | null
           onboarding_completed?: boolean
+          risk_per_trade?: number | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           updated_at?: string
           username?: string | null
@@ -868,6 +878,7 @@ export type Database = {
           balance_updated_at?: string | null
           challenge?: string | null
           created_at?: string
+          currency?: string
           discipline_score?: number
           experience?: string | null
           goal?: string | null
@@ -875,6 +886,7 @@ export type Database = {
           market?: string | null
           onboarded_at?: string | null
           onboarding_completed?: boolean
+          risk_per_trade?: number | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           updated_at?: string
           username?: string | null

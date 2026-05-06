@@ -24,7 +24,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Ssot, SsotTrade, SsotViolation } from "@/lib/ssot";
+import { type Ssot, type SsotTrade, type SsotViolation, formatCurrency, rToCurrency } from "@/lib/ssot";
 import { useTraderState } from "@/hooks/useTraderState";
 import { useSsot } from "@/hooks/useSsot";
 import {
@@ -97,18 +97,46 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         <Card>
           <CardEyebrow Icon={Wallet}>Account</CardEyebrow>
-          <p className="mt-3 font-display text-[28px] font-semibold tracking-tight text-text-primary">
-            {ssot.account.balance != null
-              ? `$${ssot.account.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-              : "—"}
-          </p>
-          <p className="mt-1 text-[12.5px] text-text-secondary">
-            {ssot.account.balance != null
-              ? `${ssot.account.source === "synced" ? "Synced" : "Manual"} balance`
-              : "No account balance set"}
-          </p>
+          {ssot.account.balance != null ? (
+            <>
+              <p className="mt-3 font-display text-[28px] font-semibold tracking-tight text-text-primary">
+                {formatCurrency(ssot.account.balance, ssot.account.currency)}
+              </p>
+              <p className="mt-1 text-[12.5px] text-text-secondary">
+                {ssot.account.source === "synced" ? "Synced" : "Manual"} balance · {ssot.account.currency}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-3 font-display text-[20px] font-semibold tracking-tight text-text-primary">
+                Set your balance
+              </p>
+              <p className="mt-1 text-[12.5px] text-text-secondary">
+                Discipline and risk math need a real balance.
+              </p>
+              <Link
+                to="/hub/settings"
+                preload="intent"
+                className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-gold hover:text-gold-soft"
+              >
+                Set balance <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.2} />
+              </Link>
+            </>
+          )}
           <Divider />
-          <Row label="Equity" value={ssot.account.equity != null ? `$${ssot.account.equity.toLocaleString()}` : "—"} />
+          <Row
+            label="Total PnL"
+            value={
+              hasTrades
+                ? (() => {
+                    const cur = rToCurrency(ssot.metrics.total_r, ssot.account.risk_per_trade);
+                    return cur != null
+                      ? formatCurrency(cur, ssot.account.currency, { showSign: true })
+                      : "—";
+                  })()
+                : "—"
+            }
+          />
           <Row label="Total R" value={hasTrades ? `${ssot.metrics.total_r >= 0 ? "+" : ""}${ssot.metrics.total_r.toFixed(2)}R` : "—"} />
         </Card>
 
@@ -452,7 +480,14 @@ function PerformanceTrendCard({ ssot }: { ssot: Ssot }) {
 function FullStatsPanel({ ssot }: { ssot: Ssot }) {
   const m = ssot.metrics;
   const has = m.total_trades > 0;
-  const stats: { label: string; value: string; tone?: "ok" | "risk" }[] = [
+  const cur = ssot.account.currency;
+  const risk = ssot.account.risk_per_trade;
+  const fmtRMoney = (rVal: number, signed = true): string => {
+    const c = rToCurrency(rVal, risk);
+    if (c == null) return "";
+    return ` · ${formatCurrency(c, cur, { showSign: signed })}`;
+  };
+  const stats: { label: string; value: string; sub?: string; tone?: "ok" | "risk" }[] = [
     {
       label: "Win rate",
       value: has ? `${Math.round(m.win_rate * 100)}%` : "—",
@@ -465,22 +500,34 @@ function FullStatsPanel({ ssot }: { ssot: Ssot }) {
           : "∞"
         : "—",
     },
-    { label: "Avg R", value: has ? `${m.avg_r >= 0 ? "+" : ""}${m.avg_r.toFixed(2)}R` : "—" },
+    {
+      label: "Avg R",
+      value: has ? `${m.avg_r >= 0 ? "+" : ""}${m.avg_r.toFixed(2)}R` : "—",
+      sub: has ? fmtRMoney(m.avg_r) : "",
+    },
     {
       label: "Max drawdown",
       value: has ? `−${m.max_drawdown_r.toFixed(2)}R` : "—",
+      sub: has ? fmtRMoney(-m.max_drawdown_r, false) : "",
       tone: m.max_drawdown_r > 0 ? "risk" : undefined,
     },
     {
       label: "Expectancy",
       value: has ? `${m.expectancy_r >= 0 ? "+" : ""}${m.expectancy_r.toFixed(2)}R` : "—",
+      sub: has ? fmtRMoney(m.expectancy_r) : "",
+    },
+    {
+      label: "Total PnL",
+      value: has ? `${m.total_r >= 0 ? "+" : ""}${m.total_r.toFixed(2)}R` : "—",
+      sub: has ? fmtRMoney(m.total_r) : "",
+      tone: m.total_r < 0 ? "risk" : undefined,
     },
   ];
 
   return (
     <Card>
       <CardEyebrow Icon={Activity}>Full statistics</CardEyebrow>
-      <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-5">
+      <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-3 lg:grid-cols-6">
         {stats.map((s) => (
           <div key={s.label}>
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/70">
@@ -488,18 +535,28 @@ function FullStatsPanel({ ssot }: { ssot: Ssot }) {
             </p>
             <p
               className={[
-                "mt-1.5 font-display text-[24px] font-semibold tracking-tight tabular-nums",
+                "mt-1.5 font-display text-[22px] font-semibold tracking-tight tabular-nums",
                 s.tone === "risk" ? "text-rose-300" : "text-text-primary",
               ].join(" ")}
             >
               {s.value}
             </p>
+            {s.sub && (
+              <p className="mt-0.5 text-[11px] text-text-secondary/80 tabular-nums">
+                {s.sub.replace(/^ · /, "")}
+              </p>
+            )}
           </div>
         ))}
       </div>
       {!has && (
         <p className="mt-5 text-[11.5px] text-text-secondary/80">
           Metrics will populate as you log trades.
+        </p>
+      )}
+      {has && risk == null && (
+        <p className="mt-3 text-[11px] text-text-secondary/70">
+          Set a risk-per-trade value in <Link to="/hub/settings" className="text-gold hover:text-gold-soft">settings</Link> to also see PnL in {cur}.
         </p>
       )}
     </Card>

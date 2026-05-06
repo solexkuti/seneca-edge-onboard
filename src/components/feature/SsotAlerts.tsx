@@ -37,7 +37,7 @@ export default function SsotAlerts() {
 
   const alerts: Alert[] = [];
 
-  // Critical: discipline collapse
+  // Discipline state — gradual-recovery vocabulary, no gameable language.
   const ds = ssot.behavior.discipline_score;
   if (metricTone(ds) === "bad") {
     alerts.push({
@@ -45,7 +45,7 @@ export default function SsotAlerts() {
       severity: "critical",
       icon: ShieldAlert,
       title: `Discipline at ${ds}`,
-      body: "Your process is breaking down. Step back, review your last violations before the next entry.",
+      body: "Recent trades show impulsive execution. Slow down — discipline recovers gradually, not in one trade.",
       cta: { label: "Review breakdown", to: "/hub/journal/breakdown" },
     });
   } else if (metricTone(ds) === "warn") {
@@ -53,9 +53,9 @@ export default function SsotAlerts() {
       id: "discipline-warn",
       severity: "warn",
       icon: ShieldAlert,
-      title: `Discipline drifting (${ds})`,
-      body: "You're slipping into yellow. One more clean trade resets the streak.",
-      cta: { label: "Log a clean trade", to: "/hub/journal" },
+      title: `Consistency unstable (${ds})`,
+      body: "Execution quality slipping. Stay patient — the score rebuilds slowly with consistent clean trades.",
+      cta: { label: "Open insights", to: "/hub/insights" },
     });
   }
 
