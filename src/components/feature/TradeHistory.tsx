@@ -533,7 +533,7 @@ function TradeCard({
         </div>
       </div>
 
-      {/* Expanded — Behavioral Replay */}
+      {/* Expanded — Behavioral Replay (case-file layout) */}
       <AnimatePresence initial={false}>
         {expanded && hasDetails && (
           <motion.div
@@ -543,69 +543,81 @@ function TradeCard({
             transition={{ duration: 0.25, ease }}
             className="overflow-hidden border-t border-white/5"
           >
-            <div className="px-4 py-4 space-y-4">
-              {/* Screenshot — behavioral replay anchor */}
-              {thumb && (
+            <div className="px-4 py-5 space-y-5">
+              {/* SECTION 1 — Visual replay (large, click-to-zoom) */}
+              {thumb ? (
                 <button
                   type="button"
                   onClick={() => trade.screenshotUrl && onPreview(trade.screenshotUrl)}
-                  className="block w-full overflow-hidden rounded-lg ring-1 ring-white/10 bg-[#0B0B0D]"
+                  className="group block w-full overflow-hidden rounded-xl ring-1 ring-white/10 bg-[#0B0B0D] relative"
                 >
                   <img
                     src={thumb}
                     alt="Trade replay"
-                    className="w-full max-h-[280px] object-contain"
+                    loading="lazy"
+                    className="w-full max-h-[420px] object-contain transition-transform group-hover:scale-[1.01]"
                   />
+                  <span className="absolute bottom-2 right-2 rounded-md bg-black/60 px-2 py-1 text-[9.5px] uppercase tracking-wider text-white/80 backdrop-blur-sm">
+                    Click to zoom
+                  </span>
                 </button>
-              )}
-
-              {/* Missed-trade context — note replaces redundant reason chip */}
-              {isMissed && (
-                <div className="rounded-lg bg-[#0B0B0D] ring-1 ring-[#C6A15B]/15 p-3">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#C6A15B]/80 mb-1.5">
-                    Missed-trade context
+              ) : (
+                <div className="rounded-xl ring-1 ring-white/5 bg-[#0B0B0D] p-6 text-center">
+                  <ImageOff className="mx-auto h-5 w-5 text-[#9A9A9A]/50 mb-2" />
+                  <p className="text-[11.5px] text-[#9A9A9A]/80 italic">
+                    No chart evidence attached.
                   </p>
-                  {trade.notes ? (
-                    <p className="text-[12px] leading-relaxed text-[#EDEDED]/85 italic">
-                      "{trade.notes}"
-                    </p>
-                  ) : (
-                    <p className="text-[11.5px] text-[#9A9A9A]/80 italic">
-                      No reflection captured. Next time, write down what stopped you — that's the data that matters.
-                    </p>
-                  )}
-                  {trade.missedReason && (
-                    <p className="mt-2 text-[10.5px] text-[#9A9A9A]/70">
-                      Surface trigger: {MISSED_REASON_LABELS[trade.missedReason].toLowerCase()}
-                    </p>
-                  )}
                 </div>
               )}
 
-              {/* Violations — humanized + severity-tinted */}
+              {/* SECTION 2 — Behavioral breakdown (humanized + R-impact) */}
               {!isMissed && trade.rulesBroken.length > 0 && (
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80 mb-1.5">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80 mb-2">
                     Behavioral breakdown
                   </p>
                   <ul className="space-y-1.5">
                     {trade.rulesBroken.map((r) => {
                       const sev = violationSeverity(r);
                       const tone = severityTone(sev);
+                      // R impact spread evenly across violations on a losing trade.
+                      const impact =
+                        (trade.resultR ?? 0) < 0
+                          ? (trade.resultR ?? 0) / trade.rulesBroken.length
+                          : 0;
                       return (
                         <li
                           key={r}
-                          className={`flex items-start gap-2 rounded-md px-2.5 py-1.5 ${tone.bg} ring-1 ${tone.ring}`}
+                          className={`flex items-center gap-2.5 rounded-lg px-3 py-2 ${tone.bg} ring-1 ${tone.ring}`}
                         >
-                          <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: tone.dot }} />
-                          <span className={`text-[12px] ${tone.text}`}>{humanizeViolation(r)}</span>
-                          <span className="ml-auto text-[9.5px] uppercase tracking-wider text-[#9A9A9A]/70">
-                            {sev}
-                          </span>
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: tone.dot }} />
+                          <div className="min-w-0 flex-1">
+                            <p className={`text-[12.5px] ${tone.text}`}>{humanizeViolation(r)}</p>
+                            <p className="text-[9.5px] uppercase tracking-wider text-[#9A9A9A]/70 mt-0.5">
+                              {sev} severity
+                            </p>
+                          </div>
+                          {impact !== 0 && (
+                            <span className="text-[11px] font-semibold tabular-nums text-rose-300 shrink-0">
+                              {fmtR(impact)}
+                            </span>
+                          )}
                         </li>
                       );
                     })}
                   </ul>
+                </div>
+              )}
+
+              {/* Behavior loop callout */}
+              {!isMissed && trade.rulesBroken.length >= 2 && (
+                <div className="rounded-lg bg-rose-500/5 ring-1 ring-rose-500/20 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-rose-300/80 mb-1">
+                    Behavior loop detected
+                  </p>
+                  <p className="text-[12px] text-[#EDEDED]/85 leading-relaxed">
+                    Multiple violations stacked on a single trade — execution discipline collapsed mid-decision.
+                  </p>
                 </div>
               )}
 
@@ -628,31 +640,67 @@ function TradeCard({
                 </div>
               )}
 
-              {/* Reflection */}
-              {!isMissed && trade.notes && (
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80 mb-1.5">
-                    Reflection
+              {/* SECTION 3 — Execution context pills */}
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80 mb-2">
+                  Execution context
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    ["Session", trade.session],
+                    ["Market", trade.marketType],
+                    ["Direction", trade.direction === "buy" ? "Long" : "Short"],
+                    ["Quality", trade.executionType],
+                    ["Planned RR", trade.riskR != null ? `${trade.riskR.toFixed(2)}R` : null],
+                    ["Result", trade.resultR != null ? fmtR(trade.resultR) : null],
+                  ]
+                    .filter(([, v]) => v != null && v !== "")
+                    .map(([k, v]) => (
+                      <span
+                        key={k as string}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-[#0B0B0D] ring-1 ring-white/10 px-2.5 py-1 text-[10.5px]"
+                      >
+                        <span className="text-[#9A9A9A]/70 uppercase tracking-wider text-[9px]">
+                          {k as string}
+                        </span>
+                        <span className="text-[#EDEDED]/85">{String(v)}</span>
+                      </span>
+                    ))}
+                </div>
+              </div>
+
+              {/* SECTION 4 — Trader reflection (prominent, quote-styled) */}
+              {(trade.notes || isMissed) && (
+                <div className={`rounded-xl ${isMissed ? "ring-[#C6A15B]/20 bg-[#C6A15B]/[0.04]" : "ring-white/10 bg-[#0B0B0D]"} ring-1 p-4`}>
+                  <p className={`text-[10px] uppercase tracking-[0.18em] mb-2 ${isMissed ? "text-[#C6A15B]/80" : "text-[#9A9A9A]/80"}`}>
+                    {isMissed ? "Missed opportunity analysis" : "Trader reflection"}
                   </p>
-                  <p className="text-[12px] italic leading-relaxed text-[#EDEDED]/80">
-                    "{trade.notes}"
-                  </p>
+                  {trade.notes ? (
+                    <blockquote className="border-l-2 border-[#C6A15B]/40 pl-3 text-[13px] leading-relaxed italic text-[#EDEDED]/90">
+                      "{trade.notes}"
+                    </blockquote>
+                  ) : (
+                    <p className="text-[11.5px] text-[#9A9A9A]/80 italic">
+                      No reflection captured. Next time, write down what stopped you — that's the data that matters.
+                    </p>
+                  )}
+                  {isMissed && trade.missedReason && (
+                    <p className="mt-2.5 text-[10.5px] text-[#9A9A9A]/70">
+                      Emotional trigger · <span className="text-[#EDEDED]/80">{MISSED_REASON_LABELS[trade.missedReason]}</span>
+                      {trade.missedPotentialR != null && (
+                        <> · estimated <span className="text-[#E7C98A]">{trade.missedPotentialR.toFixed(1)}R</span> missed</>
+                      )}
+                    </p>
+                  )}
                 </div>
               )}
-
-              {/* Execution context */}
-              <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[10.5px] text-[#9A9A9A]/80">
-                {trade.session && <span>Session · <span className="text-[#EDEDED]/80">{trade.session}</span></span>}
-                {trade.executionType && <span>Quality · <span className="text-[#EDEDED]/80">{trade.executionType}</span></span>}
-                {trade.marketType && <span>Market · <span className="text-[#EDEDED]/80">{trade.marketType}</span></span>}
-              </div>
 
               {/* Prices */}
               {!isMissed && (trade.entryPrice != null ||
                 trade.exitPrice != null ||
                 trade.stopLoss != null ||
                 trade.takeProfit != null) && (
-                <div className="grid grid-cols-4 gap-2 pt-1 border-t border-white/5">
+                <div className="grid grid-cols-4 gap-2 pt-3 border-t border-white/5">
                   {[
                     ["Entry", trade.entryPrice],
                     ["Exit", trade.exitPrice],
