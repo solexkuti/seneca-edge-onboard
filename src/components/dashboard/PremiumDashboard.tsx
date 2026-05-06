@@ -163,7 +163,7 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
         </Card>
 
         <Card highlight>
-          <CardEyebrow Icon={ShieldCheck}>Discipline score</CardEyebrow>
+          <CardEyebrow Icon={ShieldCheck}>Behavior score</CardEyebrow>
           <div className="mt-3 flex items-end gap-2">
             <span
               className="font-display text-[44px] font-semibold leading-none tabular-nums"
