@@ -70,8 +70,9 @@ const SESSION_ID =
 export default function AiMentorChat() {
   const { state: traderState } = useTraderState();
   const { rows, entries: journal } = useDbJournal();
-  const { entries: behavioralEntries, score: behavioralScore } = useBehavioralJournal(20);
+  const { entries: behavioralEntries } = useBehavioralJournal(20);
   const { mentorPayload: performancePayload } = usePerformance(20);
+  const { ssot } = useSsot();
   const intelligence = useMemo(() => computeIntelligence(rows), [rows]);
 
   // Dynamic, state-driven quick prompts. Rotation key updates whenever the
