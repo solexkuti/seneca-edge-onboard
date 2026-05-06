@@ -763,7 +763,7 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
                           </p>
                           <p className="mt-1.5 text-[13px] leading-relaxed text-text-primary/90">
                             {isMissed
-                              ? t.missed_reason || "No reason recorded."
+                              ? missedReasonLabel(t.missed_reason)
                               : t.notes || "No notes."}
                           </p>
                         </div>
