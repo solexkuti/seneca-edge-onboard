@@ -14,7 +14,6 @@ import {
   tradeFromRow,
   generateInsights,
   generateRecommendations,
-  executionSplit,
   sessionPerformance,
   type Trade,
   type TradeRow,
@@ -26,7 +25,6 @@ import { useSsot } from "@/hooks/useSsot";
 import {
   metricColorStyle,
   metricGlowShadow,
-  metricTone,
 } from "@/lib/metricColor";
 
 export const Route = createFileRoute("/hub/insights")({
