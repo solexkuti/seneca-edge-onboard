@@ -1038,7 +1038,10 @@ Deno.serve(async (req) => {
       (context?.relapseLoops?.relapses?.length ?? 0) > 0 ||
       (context?.relapseLoops?.loops?.length ?? 0) > 0
     );
-    const tradeCount = context?.performance?.windowSize ?? null;
+    const tradeCount =
+      context?.ssot?.metrics?.total_trades ??
+      context?.performance?.windowSize ??
+      null;
     const zeroData = tradeCount === 0;
     const lowData = tradeCount !== null && tradeCount > 0 && tradeCount < 20;
     const hasTraderState = !!context?.traderState;
