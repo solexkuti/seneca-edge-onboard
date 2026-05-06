@@ -35,32 +35,30 @@ export type MistakeId =
   | "fomo"
   | "broke_risk_rule";
 
-export type Classification = "clean" | "minor" | "bad" | "severe";
+export type Classification = "clean" | "violation";
 export type DisciplineState = "controlled" | "drift" | "unstable" | "out_of_control" | "inactive";
 
 export type MistakeDef = {
   id: MistakeId;
   label: string;
-  severe: boolean;
-  /** Penalty subtracted from the per-trade base of 100. Always positive. */
-  penalty: number;
+  /** Penalty subtracted from the per-trade base of 100. ALWAYS 10 (strict ±10 engine). */
+  penalty: 10;
 };
 
+/** Strict ±10 engine — every violation has the same weight. */
+export const PENALTY_PER_VIOLATION = 10 as const;
+
 export const MISTAKES: MistakeDef[] = [
-  // Severe (-25)
-  { id: "overleveraged",   label: "Overleveraged",          severe: true,  penalty: 25 },
-  { id: "revenge_trade",   label: "Revenge trade",          severe: true,  penalty: 25 },
-  { id: "no_setup",        label: "Entered without confirmation",  severe: true,  penalty: 25 },
-  { id: "ignored_sl",      label: "Ignored stop loss",      severe: true,  penalty: 25 },
-  // Moderate (-15)
-  { id: "broke_risk_rule", label: "Broke risk rule",        severe: false, penalty: 15 },
-  { id: "oversized",       label: "Oversized position",     severe: false, penalty: 15 },
-  // Moderate (-10)
-  { id: "moved_sl",        label: "Moved stop loss",        severe: false, penalty: 10 },
-  { id: "fomo",            label: "FOMO entry",             severe: false, penalty: 10 },
-  // Minor (-5)
-  { id: "early_entry",     label: "Early entry",            severe: false, penalty: 5  },
-  { id: "late_entry",      label: "Late entry",             severe: false, penalty: 5  },
+  { id: "overleveraged",   label: "Overleveraged",                  penalty: 10 },
+  { id: "revenge_trade",   label: "Revenge trade",                  penalty: 10 },
+  { id: "no_setup",        label: "Entered without confirmation",   penalty: 10 },
+  { id: "ignored_sl",      label: "Ignored stop loss",              penalty: 10 },
+  { id: "broke_risk_rule", label: "Broke risk rule",                penalty: 10 },
+  { id: "oversized",       label: "Oversized position",             penalty: 10 },
+  { id: "moved_sl",        label: "Moved stop loss",                penalty: 10 },
+  { id: "fomo",            label: "FOMO entry",                     penalty: 10 },
+  { id: "early_entry",     label: "Early entry",                    penalty: 10 },
+  { id: "late_entry",      label: "Late entry",                     penalty: 10 },
 ];
 
 export const MISTAKE_LABEL: Record<MistakeId, string> = MISTAKES.reduce(
@@ -71,68 +69,49 @@ export const MISTAKE_LABEL: Record<MistakeId, string> = MISTAKES.reduce(
   {} as Record<MistakeId, string>,
 );
 
-export const MISTAKE_PENALTY: Record<MistakeId, number> = MISTAKES.reduce(
+export const MISTAKE_PENALTY: Record<MistakeId, 10> = MISTAKES.reduce(
   (acc, m) => {
-    acc[m.id] = m.penalty;
+    acc[m.id] = 10;
     return acc;
   },
-  {} as Record<MistakeId, number>,
-);
-
-export const SEVERE_IDS: Set<MistakeId> = new Set(
-  MISTAKES.filter((m) => m.severe).map((m) => m.id),
+  {} as Record<MistakeId, 10>,
 );
 
 export const PER_TRADE_BASE = 100;
-export const MAX_PENALTY = 80;
-export const MIN_TRADE_SCORE = 20;
 export const SCORE_MIN = 0;
 export const SCORE_MAX = 100;
 
 export type ClassifyResult = {
   classification: Classification;
-  /** Raw sum of penalties before capping. */
+  /** Raw sum of penalties (10 × number of violations). */
   rawPenalty: number;
-  /** Penalty actually applied (rawPenalty capped at MAX_PENALTY). */
+  /** Same as rawPenalty — kept for back-compat. No capping in ±10 engine. */
   appliedPenalty: number;
   /** Final per-trade score (0..100). */
   perTradeScore: number;
-  /** Negative or zero — perTradeScore - 100. Kept for storage compatibility. */
+  /** perTradeScore - 100 (≤ 0). */
   scoreDelta: number;
   /** Short human label used in feedback cards. */
   reasonLabel: string;
-  /** Per-mistake breakdown for transparent feedback. */
-  breakdown: { id: MistakeId; label: string; penalty: number }[];
+  /** Per-violation breakdown — every entry is −10. */
+  breakdown: { id: MistakeId; label: string; penalty: 10 }[];
 };
 
 export function classify(mistakes: MistakeId[]): ClassifyResult {
   const breakdown = mistakes.map((id) => ({
     id,
-    label: MISTAKE_LABEL[id],
-    penalty: MISTAKE_PENALTY[id] ?? 0,
+    label: MISTAKE_LABEL[id] ?? id,
+    penalty: 10 as const,
   }));
-  const rawPenalty = breakdown.reduce((sum, b) => sum + b.penalty, 0);
-  const appliedPenalty = Math.min(MAX_PENALTY, rawPenalty);
-  const perTradeScore = Math.max(MIN_TRADE_SCORE, PER_TRADE_BASE - appliedPenalty);
+  const rawPenalty = breakdown.length * PENALTY_PER_VIOLATION;
+  const appliedPenalty = rawPenalty;
+  const perTradeScore = Math.max(SCORE_MIN, Math.min(SCORE_MAX, PER_TRADE_BASE - appliedPenalty));
   const scoreDelta = perTradeScore - PER_TRADE_BASE;
 
-  let classification: Classification;
-  let reasonLabel: string;
-
-  if (mistakes.length === 0) {
-    classification = "clean";
-    reasonLabel = "Clean execution";
-  } else {
-    const hasSevere = mistakes.some((m) => SEVERE_IDS.has(m));
-    if (hasSevere || rawPenalty > 40) {
-      classification = "severe";
-    } else if (rawPenalty <= 10) {
-      classification = "minor";
-    } else {
-      classification = "bad";
-    }
-    reasonLabel = breakdown.map((b) => b.label).join(", ");
-  }
+  const classification: Classification = mistakes.length === 0 ? "clean" : "violation";
+  const reasonLabel = mistakes.length === 0
+    ? "Clean execution"
+    : breakdown.map((b) => b.label).join(", ");
 
   return {
     classification,
