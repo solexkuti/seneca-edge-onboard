@@ -238,28 +238,30 @@ function InsightsPage() {
           >
             <Stat
               label="Behavior"
-              value={`${score.score}`}
+              value={`${behaviorScoreVal}`}
               suffix="/100"
-              tone="gold"
+              metricValue={behaviorScoreVal}
               glow
               flashKey={pulseKey}
             />
             <Stat
               label="Adherence"
-              value={`${Math.round(adherence.pct * 100)}`}
+              value={`${adherencePct}`}
               suffix="%"
+              metricValue={adherencePct}
               flashKey={pulseKey}
             />
             <Stat
-              label="Controlled"
-              value={`${Math.round(split.controlledPct * 100)}`}
+              label="Win rate"
+              value={`${winRatePct}`}
               suffix="%"
+              metricValue={winRatePct}
               flashKey={pulseKey}
             />
             <Stat
               label="Total R"
-              value={fmtR(summary.totalR)}
-              tone={summary.totalR > 0 ? "gold" : summary.totalR < 0 ? "loss" : "muted"}
+              value={fmtR(totalR)}
+              tone={totalR > 0 ? "gold" : totalR < 0 ? "loss" : "muted"}
               flashKey={pulseKey}
             />
           </motion.div>
