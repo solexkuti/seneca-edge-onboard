@@ -88,14 +88,17 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
             Control the process. Ignore the outcome. Your edge in one glance.
           </p>
         </div>
-        <Link
-          to="/hub/chart"
-          preload="intent"
-          className="btn-gold inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold"
-        >
-          Open Analyzer
-          <ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />
-        </Link>
+        <div className="flex items-center gap-3">
+          <CurrencySelector />
+          <Link
+            to="/hub/chart"
+            preload="intent"
+            className="btn-gold inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold"
+          >
+            Open Analyzer
+            <ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />
+          </Link>
+        </div>
       </motion.header>
 
       <div className="mb-6">
