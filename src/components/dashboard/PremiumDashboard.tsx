@@ -633,6 +633,20 @@ function fmtR(r: number) {
 function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
   const [expanded, setExpanded] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const a = ssot.analytics;
+  const mode = ssot.account.metric_display_mode;
+  const cur = a.display_currency;
+  const risk = ssot.account.risk_per_trade;
+
+  const fmtRow = (rr: number | null, t?: SsotTrade): string => {
+    if (rr == null) return "—";
+    const amt = t
+      ? tradeMonetaryConverted(t, a, risk)
+      : risk != null && risk > 0
+        ? rr * risk * a.exchange_rate
+        : null;
+    return formatMetric({ r: rr, amountInDisplayCurrency: amt, displayCurrency: cur, mode });
+  };
 
   // Combined: executed + missed, newest-first.
   const all = useMemo(() => {
@@ -676,6 +690,19 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
     );
   }
 
+  const avgRLabel = formatMetric({
+    r: stats.avgR,
+    amountInDisplayCurrency: a.avg_r_currency,
+    displayCurrency: cur,
+    mode,
+  });
+  const totalRLabel = formatMetric({
+    r: stats.totalR,
+    amountInDisplayCurrency: a.total_pnl_converted,
+    displayCurrency: cur,
+    mode,
+  });
+
   return (
     <Card>
       <div className="flex items-center justify-between">
@@ -692,10 +719,10 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
           value={`${stats.winRate}%`}
           accent="gold"
         />
-        <SummaryCell label="Avg R" value={stats.avgR.toFixed(2)} />
+        <SummaryCell label="Avg R" value={avgRLabel} />
         <SummaryCell
           label="Total R"
-          value={fmtR(stats.totalR)}
+          value={totalRLabel}
           accent={stats.totalR >= 0 ? "gold" : "loss"}
         />
       </div>
