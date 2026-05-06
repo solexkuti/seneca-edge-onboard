@@ -152,7 +152,7 @@ export function disciplineState(score: number | null): {
 } {
   if (score == null) return { state: "inactive", label: "Inactive", tone: "inactive" };
   if (score >= 80) return { state: "controlled", label: "Controlled", tone: "ok" };
-  if (score >= 60) return { state: "drift", label: "Slight drift", tone: "drift" };
+  if (score >= 60) return { state: "drift", label: "Drifting", tone: "drift" };
   if (score >= 40) return { state: "unstable", label: "Unstable", tone: "warn" };
   return { state: "out_of_control", label: "Out of control", tone: "risk" };
 }
