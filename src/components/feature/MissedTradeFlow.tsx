@@ -8,17 +8,19 @@
 // Calm dark-gold UI. Single-screen, deliberately minimal — the cost of
 // missing a trade is friction, so logging it must be effortless.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   AlertCircle,
   ArrowRight,
   Clock,
   Eye,
+  ImagePlus,
   Loader2,
   Target,
   TrendingDown,
   TrendingUp,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,6 +54,8 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [screenshot, setScreenshot] = useState<{ file: File; preview: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const potentialR = useMemo(() => {
     const t = potentialRStr.replace(/[+rR\s]/g, "");
