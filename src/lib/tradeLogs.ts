@@ -6,6 +6,7 @@
 // "Log your first trade" copy instead of zero values.
 
 import { supabase } from "@/integrations/supabase/client";
+import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 
 export type Market = "forex" | "crypto" | "indices" | "stocks" | "metals" | "other";
 export type Direction = "buy" | "sell";
