@@ -97,18 +97,46 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         <Card>
           <CardEyebrow Icon={Wallet}>Account</CardEyebrow>
-          <p className="mt-3 font-display text-[28px] font-semibold tracking-tight text-text-primary">
-            {ssot.account.balance != null
-              ? `$${ssot.account.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-              : "—"}
-          </p>
-          <p className="mt-1 text-[12.5px] text-text-secondary">
-            {ssot.account.balance != null
-              ? `${ssot.account.source === "synced" ? "Synced" : "Manual"} balance`
-              : "No account balance set"}
-          </p>
+          {ssot.account.balance != null ? (
+            <>
+              <p className="mt-3 font-display text-[28px] font-semibold tracking-tight text-text-primary">
+                {formatCurrency(ssot.account.balance, ssot.account.currency)}
+              </p>
+              <p className="mt-1 text-[12.5px] text-text-secondary">
+                {ssot.account.source === "synced" ? "Synced" : "Manual"} balance · {ssot.account.currency}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-3 font-display text-[20px] font-semibold tracking-tight text-text-primary">
+                Set your balance
+              </p>
+              <p className="mt-1 text-[12.5px] text-text-secondary">
+                Discipline and risk math need a real balance.
+              </p>
+              <Link
+                to="/hub/settings"
+                preload="intent"
+                className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-gold hover:text-gold-soft"
+              >
+                Set balance <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.2} />
+              </Link>
+            </>
+          )}
           <Divider />
-          <Row label="Equity" value={ssot.account.equity != null ? `$${ssot.account.equity.toLocaleString()}` : "—"} />
+          <Row
+            label="Total PnL"
+            value={
+              hasTrades
+                ? (() => {
+                    const cur = rToCurrency(ssot.metrics.total_r, ssot.account.risk_per_trade);
+                    return cur != null
+                      ? formatCurrency(cur, ssot.account.currency, { showSign: true })
+                      : "—";
+                  })()
+                : "—"
+            }
+          />
           <Row label="Total R" value={hasTrades ? `${ssot.metrics.total_r >= 0 ? "+" : ""}${ssot.metrics.total_r.toFixed(2)}R` : "—"} />
         </Card>
 
