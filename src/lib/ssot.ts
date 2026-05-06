@@ -698,8 +698,8 @@ export async function loadSsot(): Promise<Ssot> {
     id: t.id,
     executed_at: t.executed_at,
     rulesBroken: t.rules_broken ?? [],
-    actualRisk: null,
-    preferredRisk: account.risk_per_trade,
+    actualRisk: t.actual_risk_pct,
+    preferredRisk: t.preferred_risk_pct ?? account.risk_per_trade,
   }));
   const behaviorReplay = replayBehavior(replayInputs);
   const disciplineScore = behaviorReplay.overall;
