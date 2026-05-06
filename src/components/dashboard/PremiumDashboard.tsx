@@ -24,6 +24,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import type { Ssot, SsotTrade, SsotViolation } from "@/lib/ssot";
 import { useTraderState } from "@/hooks/useTraderState";
 import { useSsot } from "@/hooks/useSsot";
 import {
@@ -213,10 +214,10 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
         </Card>
       </div>
 
-      <div className="mt-5"><PerformanceTrendCard /></div>
-      <div className="mt-5"><FullStatsPanel /></div>
-      <div className="mt-5"><TradeHistoryPanel /></div>
-      <div className="mt-5"><BehaviorBreakdownCard /></div>
+      <div className="mt-5"><PerformanceTrendCard ssot={ssot} /></div>
+      <div className="mt-5"><FullStatsPanel ssot={ssot} /></div>
+      <div className="mt-5"><TradeHistoryPanel ssot={ssot} /></div>
+      <div className="mt-5"><BehaviorBreakdownCard ssot={ssot} /></div>
     </div>
   );
 }
@@ -326,58 +327,65 @@ function ActionRow({
   );
 }
 
-// ─── 1. Performance Trend (equity curve, placeholder) ──────────
+// ─── 1. Performance Trend — real equity progression ────────────
 
-const EQUITY_CURVE: { day: number; value: number }[] = [
-  { day: 1, value: 10000 },
-  { day: 2, value: 10120 },
-  { day: 3, value: 10080 },
-  { day: 4, value: 10240 },
-  { day: 5, value: 10310 },
-  { day: 6, value: 10220 },
-  { day: 7, value: 10410 },
-  { day: 8, value: 10580 },
-  { day: 9, value: 10495 },
-  { day: 10, value: 10630 },
-  { day: 11, value: 10770 },
-  { day: 12, value: 10720 },
-  { day: 13, value: 10880 },
-  { day: 14, value: 11040 },
-  { day: 15, value: 10985 },
-  { day: 16, value: 11150 },
-  { day: 17, value: 11320 },
-  { day: 18, value: 11260 },
-  { day: 19, value: 11440 },
-  { day: 20, value: 11605 },
-];
+function shortDate(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "2-digit" });
+}
 
-function PerformanceTrendCard() {
+function PerformanceTrendCard({ ssot }: { ssot: Ssot }) {
   const W = 1100;
   const H = 260;
   const PAD_X = 24;
   const PAD_Y = 24;
 
-  const values = EQUITY_CURVE.map((d) => d.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = Math.max(1, max - min);
+  // Real equity curve = chronological cumulative R from executed trades only.
+  const curve = useMemo(() => {
+    const chrono = [...ssot.trades]
+      .filter((t) => typeof t.rr === "number")
+      .sort(
+        (a, b) =>
+          new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime(),
+      );
+    let cum = 0;
+    return chrono.map((t) => {
+      cum += t.rr ?? 0;
+      return { date: t.executed_at, value: cum };
+    });
+  }, [ssot.trades]);
+
+  if (curve.length < 2) {
+    return (
+      <Card>
+        <CardEyebrow Icon={TrendingUp}>Performance trend</CardEyebrow>
+        <p className="mt-4 text-[13px] text-text-secondary">
+          Log at least two trades to see your equity progression.
+        </p>
+      </Card>
+    );
+  }
+
+  const values = curve.map((d) => d.value);
+  const min = Math.min(0, ...values);
+  const max = Math.max(0, ...values);
+  const range = Math.max(0.0001, max - min);
 
   const xFor = (i: number) =>
-    PAD_X + (i / (EQUITY_CURVE.length - 1)) * (W - PAD_X * 2);
-  const yFor = (v: number) =>
-    PAD_Y + (1 - (v - min) / range) * (H - PAD_Y * 2);
+    PAD_X + (i / (curve.length - 1)) * (W - PAD_X * 2);
+  const yFor = (v: number) => PAD_Y + (1 - (v - min) / range) * (H - PAD_Y * 2);
 
-  const linePath = EQUITY_CURVE.map(
-    (d, i) => `${i === 0 ? "M" : "L"} ${xFor(i).toFixed(2)} ${yFor(d.value).toFixed(2)}`,
-  ).join(" ");
-
+  const linePath = curve
+    .map(
+      (d, i) =>
+        `${i === 0 ? "M" : "L"} ${xFor(i).toFixed(2)} ${yFor(d.value).toFixed(2)}`,
+    )
+    .join(" ");
   const areaPath =
-    `${linePath} L ${xFor(EQUITY_CURVE.length - 1).toFixed(2)} ${(H - PAD_Y).toFixed(2)} ` +
+    `${linePath} L ${xFor(curve.length - 1).toFixed(2)} ${(H - PAD_Y).toFixed(2)} ` +
     `L ${xFor(0).toFixed(2)} ${(H - PAD_Y).toFixed(2)} Z`;
 
-  const start = EQUITY_CURVE[0].value;
-  const end = EQUITY_CURVE[EQUITY_CURVE.length - 1].value;
-  const pct = ((end - start) / start) * 100;
+  const end = curve[curve.length - 1].value;
 
   return (
     <Card>
@@ -385,30 +393,12 @@ function PerformanceTrendCard() {
         <div>
           <CardEyebrow Icon={TrendingUp}>Performance trend</CardEyebrow>
           <p className="mt-3 font-display text-[26px] font-semibold tracking-tight text-text-primary tabular-nums">
-            ${end.toLocaleString()}
+            {end >= 0 ? "+" : ""}
+            {end.toFixed(2)}R
           </p>
           <p className="mt-1 text-[12.5px] text-text-secondary">
-            Last 20 sessions ·{" "}
-            <span className={pct >= 0 ? "text-gold" : "text-rose-300"}>
-              {pct >= 0 ? "+" : ""}
-              {pct.toFixed(2)}%
-            </span>
+            {curve.length} trade{curve.length === 1 ? "" : "s"} · cumulative R
           </p>
-        </div>
-        <div className="flex gap-1.5">
-          {["1W", "1M", "3M", "All"].map((l, i) => (
-            <span
-              key={l}
-              className={[
-                "rounded-md px-2.5 py-1 text-[11.5px] font-semibold",
-                i === 1
-                  ? "bg-gold/15 text-gold ring-1 ring-gold/25"
-                  : "text-text-secondary ring-1 ring-white/[0.06]",
-              ].join(" ")}
-            >
-              {l}
-            </span>
-          ))}
         </div>
       </div>
 
@@ -421,15 +411,10 @@ function PerformanceTrendCard() {
         >
           <defs>
             <linearGradient id="equityArea" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#C6A15B" stopOpacity="0.32" />
-              <stop offset="100%" stopColor="#C6A15B" stopOpacity="0" />
-            </linearGradient>
-            <linearGradient id="equityLine" x1="0" x2="1" y1="0" y2="0">
-              <stop offset="0%" stopColor="#C6A15B" />
-              <stop offset="100%" stopColor="#E7C98A" />
+              <stop offset="0%" stopColor="#22C55E" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="#22C55E" stopOpacity="0" />
             </linearGradient>
           </defs>
-          {/* gridlines */}
           {[0.25, 0.5, 0.75].map((t) => (
             <line
               key={t}
@@ -445,24 +430,16 @@ function PerformanceTrendCard() {
           <path
             d={linePath}
             fill="none"
-            stroke="url(#equityLine)"
+            stroke={end >= 0 ? "#22C55E" : "#EF4444"}
             strokeWidth="2"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
-          {/* end point */}
           <circle
-            cx={xFor(EQUITY_CURVE.length - 1)}
+            cx={xFor(curve.length - 1)}
             cy={yFor(end)}
             r="4"
-            fill="#E7C98A"
-          />
-          <circle
-            cx={xFor(EQUITY_CURVE.length - 1)}
-            cy={yFor(end)}
-            r="9"
-            fill="#E7C98A"
-            opacity="0.18"
+            fill={end >= 0 ? "#22C55E" : "#EF4444"}
           />
         </svg>
       </div>
@@ -470,15 +447,34 @@ function PerformanceTrendCard() {
   );
 }
 
-// ─── 2. Full Stats Panel ───────────────────────────────────────
+// ─── 2. Full Stats Panel — SSOT only ───────────────────────────
 
-function FullStatsPanel() {
+function FullStatsPanel({ ssot }: { ssot: Ssot }) {
+  const m = ssot.metrics;
+  const has = m.total_trades > 0;
   const stats: { label: string; value: string; tone?: "ok" | "risk" }[] = [
-    { label: "Win rate", value: "58%", tone: "ok" },
-    { label: "Profit factor", value: "1.82", tone: "ok" },
-    { label: "Avg R", value: "+0.74R", tone: "ok" },
-    { label: "Max drawdown", value: "−6.4%", tone: "risk" },
-    { label: "Expectancy", value: "+0.42R" },
+    {
+      label: "Win rate",
+      value: has ? `${Math.round(m.win_rate * 100)}%` : "—",
+    },
+    {
+      label: "Profit factor",
+      value: has
+        ? Number.isFinite(m.profit_factor)
+          ? m.profit_factor.toFixed(2)
+          : "∞"
+        : "—",
+    },
+    { label: "Avg R", value: has ? `${m.avg_r >= 0 ? "+" : ""}${m.avg_r.toFixed(2)}R` : "—" },
+    {
+      label: "Max drawdown",
+      value: has ? `−${m.max_drawdown_r.toFixed(2)}R` : "—",
+      tone: m.max_drawdown_r > 0 ? "risk" : undefined,
+    },
+    {
+      label: "Expectancy",
+      value: has ? `${m.expectancy_r >= 0 ? "+" : ""}${m.expectancy_r.toFixed(2)}R` : "—",
+    },
   ];
 
   return (
@@ -493,11 +489,7 @@ function FullStatsPanel() {
             <p
               className={[
                 "mt-1.5 font-display text-[24px] font-semibold tracking-tight tabular-nums",
-                s.tone === "risk"
-                  ? "text-rose-300"
-                  : s.tone === "ok"
-                    ? "text-gold"
-                    : "text-text-primary",
+                s.tone === "risk" ? "text-rose-300" : "text-text-primary",
               ].join(" ")}
             >
               {s.value}
@@ -505,75 +497,84 @@ function FullStatsPanel() {
           </div>
         ))}
       </div>
-      <p className="mt-5 text-[11.5px] text-text-secondary/80">
-        Demo metrics · live values populate as you log trades.
-      </p>
+      {!has && (
+        <p className="mt-5 text-[11.5px] text-text-secondary/80">
+          Metrics will populate as you log trades.
+        </p>
+      )}
     </Card>
   );
 }
 
-// ─── 3. Trade History — institutional rebuild ──────────────────
-
-type DemoTrade = {
-  id: string;
-  date: string;
-  asset: string;
-  direction: "Buy" | "Sell";
-  resultR: number; // signed R
-  rulesBroken: string[]; // empty = clean
-  disciplineScore: number; // 0..100
-  notes: string;
-};
-
-const DEMO_TRADES: DemoTrade[] = [
-  { id: "t1", date: "Apr 29", asset: "EUR/USD", direction: "Buy", resultR: 1.8, rulesBroken: [], disciplineScore: 96, notes: "London open continuation, clean structure." },
-  { id: "t2", date: "Apr 28", asset: "GBP/USD", direction: "Sell", resultR: -1.0, rulesBroken: ["No Stop Loss", "Early Entry"], disciplineScore: 42, notes: "Lost patience — entered before confirmation." },
-  { id: "t3", date: "Apr 28", asset: "XAU/USD", direction: "Buy", resultR: 2.4, rulesBroken: [], disciplineScore: 98, notes: "Textbook breakout, full plan executed." },
-  { id: "t4", date: "Apr 26", asset: "BTC/USD", direction: "Sell", resultR: 0.9, rulesBroken: ["Early Exit"], disciplineScore: 64, notes: "Took partials early, slight FOMO exit." },
-  { id: "t5", date: "Apr 25", asset: "US100", direction: "Buy", resultR: -0.8, rulesBroken: ["Overtrading", "Counter-trend Entry"], disciplineScore: 38, notes: "Counter-trend trade — outside strategy." },
-  { id: "t6", date: "Apr 24", asset: "EUR/USD", direction: "Sell", resultR: 1.1, rulesBroken: [], disciplineScore: 91, notes: "NY session reversal, well-timed." },
-  { id: "t7", date: "Apr 23", asset: "ETH/USD", direction: "Buy", resultR: 0.6, rulesBroken: ["Hesitated Add"], disciplineScore: 70, notes: "Small win, hesitated on add." },
-  { id: "t8", date: "Apr 22", asset: "GBP/USD", direction: "Buy", resultR: -1.0, rulesBroken: ["Revenge Trade", "No Stop Loss"], disciplineScore: 30, notes: "Revenge trade after morning loss." },
-  { id: "t9", date: "Apr 21", asset: "XAU/USD", direction: "Sell", resultR: 1.5, rulesBroken: [], disciplineScore: 94, notes: "Disciplined entry on retest." },
-  { id: "t10", date: "Apr 20", asset: "BTC/USD", direction: "Buy", resultR: 2.1, rulesBroken: [], disciplineScore: 97, notes: "High-conviction setup, full size." },
-];
+// ─── 3. Trade History — SSOT only ──────────────────────────────
 
 function fmtR(r: number) {
   const sign = r > 0 ? "+" : r < 0 ? "−" : "";
   return `${sign}${Math.abs(r).toFixed(2)}R`;
 }
 
-function TradeHistoryPanel() {
+function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
   const [expanded, setExpanded] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const visible = expanded ? DEMO_TRADES : DEMO_TRADES.slice(0, 6);
+
+  // Combined: executed + missed, newest-first.
+  const all = useMemo(() => {
+    const merged = [...ssot.trades, ...ssot.missed];
+    merged.sort(
+      (a, b) =>
+        new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime(),
+    );
+    return merged;
+  }, [ssot.trades, ssot.missed]);
+
+  const visible = expanded ? all : all.slice(0, 6);
 
   const stats = useMemo(() => {
-    const total = DEMO_TRADES.length;
-    const wins = DEMO_TRADES.filter((t) => t.resultR > 0).length;
-    const totalR = DEMO_TRADES.reduce((a, t) => a + t.resultR, 0);
-    const absSum = DEMO_TRADES.reduce((a, t) => a + Math.abs(t.resultR), 0);
+    const exec = ssot.trades;
+    const total = exec.length;
+    const wins = exec.filter((t) => t.result === "win").length;
+    const losses = exec.filter((t) => t.result === "loss").length;
+    const decided = wins + losses;
+    const sumR = exec.reduce(
+      (a, t) => a + (typeof t.rr === "number" ? t.rr : 0),
+      0,
+    );
+    const sampled = exec.filter((t) => typeof t.rr === "number").length;
     return {
       total,
-      winRate: Math.round((wins / total) * 100),
-      avgR: absSum / total,
-      totalR,
+      winRate: decided > 0 ? Math.round((wins / decided) * 100) : 0,
+      avgR: sampled > 0 ? sumR / sampled : 0,
+      totalR: sumR,
     };
-  }, []);
+  }, [ssot.trades]);
+
+  if (all.length === 0) {
+    return (
+      <Card>
+        <CardEyebrow Icon={BookOpenCheck}>Trade history</CardEyebrow>
+        <p className="mt-4 text-[13px] text-text-secondary">
+          No trades logged yet. Your history will appear here.
+        </p>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <div className="flex items-center justify-between">
         <CardEyebrow Icon={BookOpenCheck}>Trade history</CardEyebrow>
         <span className="text-[11.5px] text-text-secondary">
-          Last {DEMO_TRADES.length} trades
+          {all.length} record{all.length === 1 ? "" : "s"}
         </span>
       </div>
 
-      {/* Summary bar */}
       <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/[0.05] bg-white/[0.04] sm:grid-cols-4">
-        <SummaryCell label="Total Trades" value={String(stats.total)} />
-        <SummaryCell label="Win Rate" value={`${stats.winRate}%`} accent="gold" />
+        <SummaryCell label="Executed" value={String(stats.total)} />
+        <SummaryCell
+          label="Win Rate"
+          value={`${stats.winRate}%`}
+          accent="gold"
+        />
         <SummaryCell label="Avg R" value={stats.avgR.toFixed(2)} />
         <SummaryCell
           label="Total R"
@@ -582,7 +583,6 @@ function TradeHistoryPanel() {
         />
       </div>
 
-      {/* Table */}
       <div className="mt-5 overflow-hidden rounded-xl border border-white/[0.05]">
         <div className="grid grid-cols-[88px_1fr_72px_88px_1.4fr_120px_44px] items-center gap-3 border-b border-white/[0.05] bg-white/[0.02] px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/70">
           <span>Date</span>
@@ -596,8 +596,11 @@ function TradeHistoryPanel() {
         <ul>
           <AnimatePresence initial={false}>
             {visible.map((t) => {
-              const clean = t.rulesBroken.length === 0;
+              const clean = t.rules_broken.length === 0;
               const isOpen = openId === t.id;
+              const isMissed = t.trade_type === "missed";
+              const r = typeof t.rr === "number" ? t.rr : null;
+              const dispScore = clean ? 100 : Math.max(0, 100 - t.rules_broken.length * 10);
               return (
                 <motion.li
                   key={t.id}
@@ -612,45 +615,60 @@ function TradeHistoryPanel() {
                     onClick={() => setOpenId(isOpen ? null : t.id)}
                     className="grid w-full grid-cols-[88px_1fr_72px_88px_1.4fr_120px_44px] items-center gap-3 px-4 py-3 text-left text-[13px] transition-all hover:-translate-y-[1px] hover:bg-white/[0.025]"
                   >
-                    <span className="tabular-nums text-text-secondary">{t.date}</span>
-                    <span className="font-medium text-text-primary">{t.asset}</span>
+                    <span className="tabular-nums text-text-secondary">
+                      {shortDate(t.executed_at)}
+                    </span>
+                    <span className="font-medium text-text-primary">
+                      {t.asset || t.market || "—"}
+                    </span>
                     <span
                       className={
-                        t.direction === "Buy" ? "text-gold" : "text-rose-300"
+                        isMissed
+                          ? "text-amber-300"
+                          : t.direction === "long"
+                            ? "text-emerald-400"
+                            : "text-rose-300"
                       }
                     >
-                      {t.direction}
+                      {isMissed ? "Missed" : t.direction === "long" ? "Buy" : "Sell"}
                     </span>
                     <span
                       className={[
                         "font-semibold tabular-nums",
-                        t.resultR >= 0 ? "text-gold" : "text-rose-300",
+                        isMissed
+                          ? "text-amber-300"
+                          : r != null && r > 0
+                            ? "text-emerald-400"
+                            : r != null && r < 0
+                              ? "text-rose-300"
+                              : "text-text-secondary",
                       ].join(" ")}
-                      style={
-                        t.resultR >= 0
-                          ? { textShadow: "0 0 14px rgba(198,161,91,0.25)" }
-                          : undefined
-                      }
                     >
-                      {fmtR(t.resultR)}
+                      {isMissed
+                        ? t.missed_potential_r != null
+                          ? `missed ${fmtR(t.missed_potential_r)}`
+                          : "missed"
+                        : r != null
+                          ? fmtR(r)
+                          : "—"}
                     </span>
                     <span className="flex flex-wrap gap-1">
                       {clean ? (
-                        <span className="inline-flex items-center rounded-md border border-gold/20 bg-gold/[0.06] px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-gold">
+                        <span className="inline-flex items-center rounded-md border border-emerald-400/25 bg-emerald-400/[0.07] px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-emerald-400">
                           Clean
                         </span>
                       ) : (
-                        t.rulesBroken.map((r) => (
+                        t.rules_broken.map((rule) => (
                           <span
-                            key={r}
+                            key={rule}
                             className="inline-flex items-center rounded-md border border-rose-400/20 bg-rose-400/[0.07] px-1.5 py-0.5 text-[10.5px] font-medium text-rose-200"
                           >
-                            {r}
+                            {rule}
                           </span>
                         ))
                       )}
                     </span>
-                    <DisciplineBar value={t.disciplineScore} />
+                    <DisciplineBar value={dispScore} />
                     <span className="flex justify-end">
                       <StickyNote
                         className="h-[14px] w-[14px] text-text-secondary/70"
@@ -670,25 +688,13 @@ function TradeHistoryPanel() {
                       >
                         <div className="px-4 py-4">
                           <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/70">
-                            Notes
+                            {isMissed ? "Reason missed" : "Notes"}
                           </p>
                           <p className="mt-1.5 text-[13px] leading-relaxed text-text-primary/90">
-                            {t.notes}
+                            {isMissed
+                              ? t.missed_reason || "No reason recorded."
+                              : t.notes || "No notes."}
                           </p>
-                          {!clean && (
-                            <div className="mt-3 rounded-lg border border-rose-400/15 bg-rose-400/[0.04] p-3">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-200/80">
-                                Behavioral note
-                              </p>
-                              <p className="mt-1 text-[12.5px] text-text-secondary">
-                                Plan deviation cost ≈{" "}
-                                <span className="font-semibold text-rose-200">
-                                  {fmtR(Math.min(t.resultR, -0.4))}
-                                </span>{" "}
-                                vs. expected execution.
-                              </p>
-                            </div>
-                          )}
                         </div>
                       </motion.div>
                     )}
@@ -700,18 +706,20 @@ function TradeHistoryPanel() {
         </ul>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[12.5px] font-semibold text-text-primary transition-colors hover:border-gold/25 hover:bg-white/[0.04]"
-      >
-        {expanded ? "Show less" : "Show all trades"}
-        {expanded ? (
-          <ChevronUp className="h-4 w-4" strokeWidth={2} />
-        ) : (
-          <ChevronDown className="h-4 w-4" strokeWidth={2} />
-        )}
-      </button>
+      {all.length > 6 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[12.5px] font-semibold text-text-primary transition-colors hover:border-gold/25 hover:bg-white/[0.04]"
+        >
+          {expanded ? "Show less" : "Show all trades"}
+          {expanded ? (
+            <ChevronUp className="h-4 w-4" strokeWidth={2} />
+          ) : (
+            <ChevronDown className="h-4 w-4" strokeWidth={2} />
+          )}
+        </button>
+      )}
     </Card>
   );
 }
@@ -734,7 +742,7 @@ function SummaryCell({
         className={[
           "mt-1 font-display text-[18px] font-semibold tabular-nums",
           accent === "gold"
-            ? "text-gold"
+            ? "text-emerald-400"
             : accent === "loss"
               ? "text-rose-300"
               : "text-text-primary",
@@ -749,17 +757,21 @@ function SummaryCell({
 function DisciplineBar({ value }: { value: number }) {
   const tone =
     value >= 80
-      ? "from-gold to-gold-soft"
+      ? "bg-emerald-500"
       : value >= 55
-        ? "from-amber-300 to-gold"
-        : "from-rose-400/80 to-rose-300";
+        ? "bg-amber-300"
+        : "bg-rose-400";
   const text =
-    value >= 80 ? "text-gold" : value >= 55 ? "text-amber-200" : "text-rose-300";
+    value >= 80
+      ? "text-emerald-400"
+      : value >= 55
+        ? "text-amber-200"
+        : "text-rose-300";
   return (
     <span className="flex items-center gap-2">
       <span className="relative h-1 w-14 overflow-hidden rounded-full bg-white/[0.06]">
         <span
-          className={`absolute inset-y-0 left-0 rounded-full bg-gradient-to-r ${tone}`}
+          className={`absolute inset-y-0 left-0 rounded-full ${tone}`}
           style={{ width: `${value}%` }}
         />
       </span>
@@ -770,149 +782,149 @@ function DisciplineBar({ value }: { value: number }) {
   );
 }
 
-// ─── 4. Behavior Breakdown — full rebuild ──────────────────────
+// ─── 4. Behavior Breakdown — SSOT only ─────────────────────────
 
 type ViolationRow = {
   rule: string;
   times: number;
   lastBroken: string;
-  impactR: number; // negative
+  impactR: number;
   occurrences: { date: string; result: string }[];
-  insight: string;
 };
-
-const VIOLATIONS: ViolationRow[] = [
-  {
-    rule: "No Stop Loss",
-    times: 8,
-    lastBroken: "Apr 28",
-    impactR: -4.2,
-    occurrences: [
-      { date: "Apr 28", result: "−1.0R" },
-      { date: "Apr 22", result: "−1.0R" },
-      { date: "Apr 18", result: "−0.8R" },
-      { date: "Apr 14", result: "−0.6R" },
-      { date: "Apr 10", result: "−0.4R" },
-      { date: "Apr 06", result: "−0.2R" },
-      { date: "Apr 03", result: "−0.1R" },
-      { date: "Mar 29", result: "−0.1R" },
-    ],
-    insight:
-      "Skipping stops correlates with your largest single-trade losses. This is the highest-impact rule break in your sample.",
-  },
-  {
-    rule: "Early Exit",
-    times: 5,
-    lastBroken: "Apr 27",
-    impactR: -2.1,
-    occurrences: [
-      { date: "Apr 27", result: "+0.3R (missed +1.2R)" },
-      { date: "Apr 23", result: "+0.6R (missed +0.9R)" },
-      { date: "Apr 19", result: "+0.4R" },
-      { date: "Apr 15", result: "+0.2R" },
-      { date: "Apr 11", result: "+0.1R" },
-    ],
-    insight:
-      "Most early exits happen after a 0.5R move. You leave roughly 0.4R on the table per occurrence.",
-  },
-  {
-    rule: "Overtrading",
-    times: 3,
-    lastBroken: "Apr 25",
-    impactR: -1.5,
-    occurrences: [
-      { date: "Apr 25", result: "−0.8R" },
-      { date: "Apr 17", result: "−0.4R" },
-      { date: "Apr 09", result: "−0.3R" },
-    ],
-    insight:
-      "Overtrading shows up after a winning trade — momentum bias rather than fresh setups.",
-  },
-  {
-    rule: "Revenge Trade",
-    times: 2,
-    lastBroken: "Apr 22",
-    impactR: -1.1,
-    occurrences: [
-      { date: "Apr 22", result: "−1.0R" },
-      { date: "Apr 08", result: "−0.1R" },
-    ],
-    insight:
-      "Both revenge trades occurred within 30 minutes of a stop-out. Pattern is emotional, not structural.",
-  },
-  {
-    rule: "Counter-trend Entry",
-    times: 1,
-    lastBroken: "Apr 25",
-    impactR: -0.0,
-    occurrences: [{ date: "Apr 25", result: "−0.8R" }],
-    insight: "Single occurrence — monitor before treating as a trend.",
-  },
-];
-
-const TIMELINE: {
-  date: string;
-  items: { asset: string; rule: string; impact: string; screenshot: string | null }[];
-}[] = [
-  {
-    date: "Apr 28",
-    items: [
-      { asset: "EUR/USD", rule: "No Stop Loss", impact: "−1.0R", screenshot: null },
-      { asset: "BTC/USD", rule: "Revenge Trade", impact: "−0.5R", screenshot: null },
-    ],
-  },
-  {
-    date: "Apr 25",
-    items: [
-      { asset: "GBP/JPY", rule: "Overtrading", impact: "−0.8R", screenshot: null },
-      { asset: "XAU/USD", rule: "Counter-trend Entry", impact: "−0.8R", screenshot: null },
-    ],
-  },
-  {
-    date: "Apr 23",
-    items: [
-      { asset: "NAS100", rule: "Early Exit", impact: "missed +0.9R", screenshot: null },
-    ],
-  },
-  {
-    date: "Apr 22",
-    items: [
-      { asset: "EUR/USD", rule: "No Stop Loss", impact: "−1.0R", screenshot: null },
-      { asset: "ETH/USD", rule: "Revenge Trade", impact: "−0.5R", screenshot: null },
-    ],
-  },
-];
 
 type Timeframe = "7D" | "30D" | "90D" | "ALL";
 
-function BehaviorBreakdownCard() {
+function tfDays(tf: Timeframe): number | null {
+  if (tf === "ALL") return null;
+  return tf === "7D" ? 7 : tf === "30D" ? 30 : 90;
+}
+
+function aggregateViolations(
+  violations: SsotViolation[],
+  trades: SsotTrade[],
+): ViolationRow[] {
+  const tradeById = new Map(trades.map((t) => [t.id, t]));
+  const byRule: Record<string, SsotViolation[]> = {};
+  for (const v of violations) {
+    (byRule[v.type] = byRule[v.type] || []).push(v);
+  }
+  const rows: ViolationRow[] = Object.entries(byRule).map(([rule, list]) => {
+    const sorted = [...list].sort(
+      (a, b) =>
+        new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime(),
+    );
+    const occurrences = sorted.slice(0, 8).map((v) => {
+      const t = tradeById.get(v.trade_id);
+      const r = t && typeof t.rr === "number" ? fmtR(t.rr) : fmtR(v.impact_r);
+      return { date: shortDate(v.occurred_at), result: r };
+    });
+    return {
+      rule,
+      times: list.length,
+      lastBroken: shortDate(sorted[0].occurred_at),
+      impactR: list.reduce((a, v) => a + (v.impact_r ?? 0), 0),
+      occurrences,
+    };
+  });
+  rows.sort((a, b) => a.impactR - b.impactR);
+  return rows;
+}
+
+function buildTimeline(
+  violations: SsotViolation[],
+  trades: SsotTrade[],
+  missed: SsotTrade[],
+): {
+  date: string;
+  items: { asset: string; rule: string; impact: string }[];
+}[] {
+  const tradeById = new Map(trades.map((t) => [t.id, t]));
+  const buckets: Record<
+    string,
+    { asset: string; rule: string; impact: string }[]
+  > = {};
+
+  for (const v of violations) {
+    const key = shortDate(v.occurred_at);
+    const t = tradeById.get(v.trade_id);
+    const r = t && typeof t.rr === "number" ? fmtR(t.rr) : fmtR(v.impact_r);
+    (buckets[key] = buckets[key] || []).push({
+      asset: (t?.asset || t?.market || "—").toString(),
+      rule: v.type,
+      impact: r,
+    });
+  }
+  for (const m of missed) {
+    const key = shortDate(m.executed_at);
+    const r =
+      m.missed_potential_r != null
+        ? `missed ${fmtR(m.missed_potential_r)}`
+        : "missed";
+    (buckets[key] = buckets[key] || []).push({
+      asset: (m.asset || m.market || "—").toString(),
+      rule: m.missed_reason || "Missed setup",
+      impact: r,
+    });
+  }
+  const ordered = Object.entries(buckets).map(([date, items]) => ({
+    date,
+    items,
+  }));
+  return ordered.slice(0, 6);
+}
+
+function BehaviorBreakdownCard({ ssot }: { ssot: Ssot }) {
   const [tf, setTf] = useState<Timeframe>("30D");
   const [openRule, setOpenRule] = useState<string | null>(null);
 
-  const behaviorScore = 74;
-  const adherence = 78;
-  const systemRatio = 72;
+  const filtered = useMemo(() => {
+    const days = tfDays(tf);
+    if (days == null) return ssot.violations;
+    const cutoff = Date.now() - days * 86400_000;
+    return ssot.violations.filter(
+      (v) => new Date(v.occurred_at).getTime() >= cutoff,
+    );
+  }, [ssot.violations, tf]);
 
-  const totalViolations = VIOLATIONS.reduce((a, v) => a + v.times, 0);
-  const totalImpact = VIOLATIONS.reduce((a, v) => a + v.impactR, 0);
+  const filteredMissed = useMemo(() => {
+    const days = tfDays(tf);
+    if (days == null) return ssot.missed;
+    const cutoff = Date.now() - days * 86400_000;
+    return ssot.missed.filter(
+      (t) => new Date(t.executed_at).getTime() >= cutoff,
+    );
+  }, [ssot.missed, tf]);
 
-  const sorted = useMemo(
-    () => [...VIOLATIONS].sort((a, b) => a.impactR - b.impactR),
-    [],
+  const rows = useMemo(
+    () => aggregateViolations(filtered, ssot.trades),
+    [filtered, ssot.trades],
   );
 
-  const behaviorMessage =
-    behaviorScore >= 85
+  const timeline = useMemo(
+    () => buildTimeline(filtered, ssot.trades, filteredMissed),
+    [filtered, ssot.trades, filteredMissed],
+  );
+
+  const behaviorScore = ssot.behavior.discipline_score;
+  const adherence = Math.round((ssot.behavior.rule_adherence ?? 0) * 100);
+  const totalViolations = filtered.length;
+  const totalImpact = filtered.reduce((a, v) => a + (v.impact_r ?? 0), 0);
+
+  const has = ssot.behavior.total_trades > 0;
+  const behaviorMessage = !has
+    ? "No trades logged yet"
+    : behaviorScore >= 85
       ? "Controlled execution"
       : behaviorScore >= 65
         ? "Slight discipline drift"
         : "High inconsistency detected";
 
+  const exec = ssot.execution_type;
+
   return (
     <Card highlight>
       <CardEyebrow Icon={Brain}>Behavior breakdown</CardEyebrow>
 
-      {/* PART 1 — Behavior Score */}
       <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]">
         <div className="rounded-xl border border-white/[0.05] bg-white/[0.015] p-5">
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/70">
@@ -935,7 +947,6 @@ function BehaviorBreakdownCard() {
           </p>
         </div>
 
-        {/* PART 2 — Rule Adherence */}
         <div className="rounded-xl border border-white/[0.05] bg-white/[0.015] p-5">
           <div className="flex items-end justify-between">
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/70">
@@ -945,7 +956,7 @@ function BehaviorBreakdownCard() {
               className="font-display text-[20px] font-semibold tabular-nums"
               style={metricColorStyle(adherence)}
             >
-              {adherence}%
+              {has ? `${adherence}%` : "—"}
             </p>
           </div>
           <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.05]">
@@ -959,24 +970,38 @@ function BehaviorBreakdownCard() {
             />
           </div>
           <p className="mt-3 text-[12.5px] text-text-secondary">
-            You broke rules in{" "}
-            <span className="font-semibold text-text-primary">6 of your last 20</span>{" "}
-            trades.
+            {has ? (
+              <>
+                Clean in{" "}
+                <span className="font-semibold text-text-primary">
+                  {ssot.behavior.clean_trades} of {ssot.behavior.total_trades}
+                </span>{" "}
+                trades.
+              </>
+            ) : (
+              "Adherence will appear once trades are logged."
+            )}
           </p>
         </div>
       </div>
 
       <Divider />
 
-      {/* PART 3 — Rule Violations Summary */}
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-[15px] w-[15px] text-rose-300" strokeWidth={2} />
+            <AlertTriangle
+              className="h-[15px] w-[15px] text-rose-300"
+              strokeWidth={2}
+            />
             <p className="text-[13.5px] font-semibold text-text-primary">
               Rule Violations{" "}
               <span className="text-text-secondary">
-                ({tf === "ALL" ? "All time" : `Last ${tf === "7D" ? "7 days" : tf === "30D" ? "30 days" : "90 days"}`})
+                (
+                {tf === "ALL"
+                  ? "All time"
+                  : `Last ${tf === "7D" ? "7 days" : tf === "30D" ? "30 days" : "90 days"}`}
+                )
               </span>
             </p>
           </div>
@@ -984,62 +1009,74 @@ function BehaviorBreakdownCard() {
         </div>
 
         <p className="mt-2 text-[12.5px] text-text-secondary">
-          <span className="font-semibold text-text-primary">{totalViolations} violations</span>{" "}
-          — costing{" "}
-          <span className="font-semibold text-rose-300 tabular-nums">
-            {fmtR(totalImpact)}
-          </span>
+          <span className="font-semibold text-text-primary">
+            {totalViolations} violation{totalViolations === 1 ? "" : "s"}
+          </span>{" "}
+          {totalViolations > 0 && (
+            <>
+              — costing{" "}
+              <span className="font-semibold text-rose-300 tabular-nums">
+                {fmtR(totalImpact)}
+              </span>
+            </>
+          )}
         </p>
 
-        <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.05]">
-          <div className="grid grid-cols-[1.6fr_88px_120px_100px_36px] items-center gap-3 border-b border-white/[0.05] bg-white/[0.02] px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/70">
-            <span>Rule</span>
-            <span className="text-right">Times</span>
-            <span>Last broken</span>
-            <span className="text-right">Impact</span>
-            <span />
-          </div>
-          <ul>
-            {sorted.map((v) => {
-              const isOpen = openRule === v.rule;
-              return (
-                <li
-                  key={v.rule}
-                  className="border-b border-white/[0.04] last:border-b-0"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setOpenRule(isOpen ? null : v.rule)}
-                    className="grid w-full grid-cols-[1.6fr_88px_120px_100px_36px] items-center gap-3 px-4 py-3 text-left text-[13px] transition-colors hover:bg-white/[0.025]"
+        {rows.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-6 text-center text-[13px] text-text-secondary">
+            No rule violations in this window.
+          </p>
+        ) : (
+          <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.05]">
+            <div className="grid grid-cols-[1.6fr_88px_120px_100px_36px] items-center gap-3 border-b border-white/[0.05] bg-white/[0.02] px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/70">
+              <span>Rule</span>
+              <span className="text-right">Times</span>
+              <span>Last broken</span>
+              <span className="text-right">Impact</span>
+              <span />
+            </div>
+            <ul>
+              {rows.map((v) => {
+                const isOpen = openRule === v.rule;
+                return (
+                  <li
+                    key={v.rule}
+                    className="border-b border-white/[0.04] last:border-b-0"
                   >
-                    <span className="font-medium text-text-primary">{v.rule}</span>
-                    <span className="text-right tabular-nums text-text-secondary">
-                      {v.times}
-                    </span>
-                    <span className="tabular-nums text-text-secondary">
-                      {v.lastBroken}
-                    </span>
-                    <span className="text-right font-semibold tabular-nums text-rose-300">
-                      {fmtR(v.impactR)}
-                    </span>
-                    <span className="flex justify-end">
-                      <ChevronRight
-                        className={`h-4 w-4 text-text-secondary/70 transition-transform ${isOpen ? "rotate-90" : ""}`}
-                        strokeWidth={2}
-                      />
-                    </span>
-                  </button>
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.25, ease }}
-                        className="overflow-hidden bg-white/[0.015]"
-                      >
-                        <div className="grid gap-4 px-4 py-4 md:grid-cols-[1fr_1fr]">
-                          <div>
+                    <button
+                      type="button"
+                      onClick={() => setOpenRule(isOpen ? null : v.rule)}
+                      className="grid w-full grid-cols-[1.6fr_88px_120px_100px_36px] items-center gap-3 px-4 py-3 text-left text-[13px] transition-colors hover:bg-white/[0.025]"
+                    >
+                      <span className="font-medium text-text-primary">
+                        {v.rule}
+                      </span>
+                      <span className="text-right tabular-nums text-text-secondary">
+                        {v.times}
+                      </span>
+                      <span className="tabular-nums text-text-secondary">
+                        {v.lastBroken}
+                      </span>
+                      <span className="text-right font-semibold tabular-nums text-rose-300">
+                        {fmtR(v.impactR)}
+                      </span>
+                      <span className="flex justify-end">
+                        <ChevronRight
+                          className={`h-4 w-4 text-text-secondary/70 transition-transform ${isOpen ? "rotate-90" : ""}`}
+                          strokeWidth={2}
+                        />
+                      </span>
+                    </button>
+                    <AnimatePresence initial={false}>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25, ease }}
+                          className="overflow-hidden bg-white/[0.015]"
+                        >
+                          <div className="px-4 py-4">
                             <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/70">
                               Occurrences
                             </p>
@@ -1059,28 +1096,19 @@ function BehaviorBreakdownCard() {
                               ))}
                             </ul>
                           </div>
-                          <div>
-                            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/70">
-                              Insight
-                            </p>
-                            <p className="mt-2 text-[12.5px] leading-relaxed text-text-primary/85">
-                              {v.insight}
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </div>
 
       <Divider />
 
-      {/* PART 4 — Rule Violation Timeline */}
       <div>
         <div className="flex items-center gap-2">
           <Clock className="h-[15px] w-[15px] text-gold" strokeWidth={1.9} />
@@ -1088,35 +1116,28 @@ function BehaviorBreakdownCard() {
             Violation timeline
           </p>
         </div>
-        <ul className="mt-3 space-y-2.5">
-          {TIMELINE.map((d) => (
-            <li
-              key={d.date}
-              className="rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[12px] font-semibold uppercase tracking-[0.18em] text-text-secondary/70 tabular-nums">
-                  {d.date}
-                </span>
-                <span className="text-[11.5px] tabular-nums text-text-secondary">
-                  {d.items.length} event{d.items.length === 1 ? "" : "s"}
-                </span>
-              </div>
-              <ul className="mt-2 space-y-2">
-                {d.items.map((it, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center gap-3 text-[12.5px]"
-                  >
-                    {/* Screenshot thumbnail */}
-                    {it.screenshot ? (
-                      <img
-                        src={it.screenshot}
-                        alt={`${it.asset} ${it.rule} screenshot`}
-                        loading="lazy"
-                        className="h-10 w-14 shrink-0 rounded-md object-cover ring-1 ring-white/[0.06]"
-                      />
-                    ) : (
+        {timeline.length === 0 ? (
+          <p className="mt-3 text-[12.5px] text-text-secondary">
+            No events in this window.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-2.5">
+            {timeline.map((d) => (
+              <li
+                key={d.date}
+                className="rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-semibold uppercase tracking-[0.18em] text-text-secondary/70 tabular-nums">
+                    {d.date}
+                  </span>
+                  <span className="text-[11.5px] tabular-nums text-text-secondary">
+                    {d.items.length} event{d.items.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <ul className="mt-2 space-y-2">
+                  {d.items.map((it, i) => (
+                    <li key={i} className="flex items-center gap-3 text-[12.5px]">
                       <div
                         className="flex h-10 w-14 shrink-0 items-center justify-center rounded-md bg-white/[0.03] ring-1 ring-white/[0.06]"
                         aria-label="No screenshot"
@@ -1126,73 +1147,73 @@ function BehaviorBreakdownCard() {
                           strokeWidth={1.7}
                         />
                       </div>
-                    )}
-
-                    {/* Asset + rule */}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary/70 tabular-nums">
-                        {it.asset}
-                      </p>
-                      <p className="truncate text-[12.5px] text-text-primary/90">
-                        {it.rule}
-                      </p>
-                    </div>
-
-                    {/* Result (R) */}
-                    <span
-                      className={`shrink-0 tabular-nums font-semibold ${it.impact.startsWith("missed") ? "text-amber-200" : "text-rose-300"}`}
-                    >
-                      {it.impact}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary/70 tabular-nums">
+                          {it.asset}
+                        </p>
+                        <p className="truncate text-[12.5px] text-text-primary/90">
+                          {it.rule}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 tabular-nums font-semibold ${it.impact.startsWith("missed") ? "text-amber-300" : "text-rose-300"}`}
+                      >
+                        {it.impact}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <Divider />
 
-      {/* PART 5 — Execution Type */}
       <div>
         <div className="flex items-end justify-between">
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/70">
             Execution type
           </p>
-          <p className="text-[12.5px] tabular-nums">
-            <span className="font-semibold text-gold">{systemRatio}%</span>
-            <span className="text-text-secondary"> · {100 - systemRatio}%</span>
-          </p>
+          {has ? (
+            <p className="text-[12.5px] tabular-nums">
+              <span className="font-semibold text-emerald-400">
+                {exec.controlled_pct}%
+              </span>
+              <span className="text-text-secondary">
+                {" "}
+                · {exec.impulsive_pct}%
+              </span>
+            </p>
+          ) : (
+            <p className="text-[12.5px] text-text-secondary">—</p>
+          )}
         </div>
         <div className="mt-2 flex h-2 w-full overflow-hidden rounded-full bg-white/[0.05]">
           <div
-            className="h-full bg-gradient-to-r from-gold to-gold-soft"
-            style={{
-              width: `${systemRatio}%`,
-              boxShadow: "0 0 14px rgba(198,161,91,0.3)",
-            }}
+            className="h-full bg-emerald-500"
+            style={{ width: `${exec.controlled_pct}%` }}
           />
           <div
-            className="h-full bg-rose-400/60"
-            style={{ width: `${100 - systemRatio}%` }}
+            className="h-full bg-rose-400/70"
+            style={{ width: `${exec.impulsive_pct}%` }}
           />
         </div>
         <div className="mt-2 flex items-center justify-between text-[11.5px] text-text-secondary">
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold" />
-            Controlled (system)
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Controlled (clean)
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-rose-400/70" />
-            Impulsive (emotional)
+            Impulsive (rule break)
           </span>
         </div>
       </div>
 
       <Divider />
 
-      {/* PART 6 — Session Performance */}
       <div>
         <div className="flex items-center gap-2">
           <Globe2 className="h-[15px] w-[15px] text-gold" strokeWidth={1.9} />
@@ -1201,9 +1222,15 @@ function BehaviorBreakdownCard() {
           </p>
         </div>
         <div className="mt-3 space-y-3">
-          <SessionRow label="London" winRate={64} behavior="Controlled" />
-          <SessionRow label="New York" winRate={51} behavior="Overtrading" />
-          <SessionRow label="Asia" winRate={42} behavior="Random" />
+          {ssot.session_performance.map((s) => (
+            <SessionRow
+              key={s.session}
+              label={s.session === "NY" ? "New York" : s.session}
+              winRatePct={Math.round(s.win_rate * 100)}
+              total={s.total_trades}
+              violations={s.violations}
+            />
+          ))}
         </div>
       </div>
     </Card>
@@ -1244,19 +1271,31 @@ function TimeframePicker({
 
 function SessionRow({
   label,
-  winRate,
-  behavior,
+  winRatePct,
+  total,
+  violations,
 }: {
   label: string;
-  winRate: number;
-  behavior: "Controlled" | "Overtrading" | "Random";
+  winRatePct: number;
+  total: number;
+  violations: number;
 }) {
+  const behavior =
+    total === 0
+      ? "No data"
+      : violations === 0
+        ? "Controlled"
+        : violations / Math.max(1, total) >= 0.4
+          ? "High break"
+          : "Drifting";
   const tone =
     behavior === "Controlled"
-      ? "border-gold/25 bg-gold/[0.08] text-gold"
-      : behavior === "Overtrading"
-        ? "border-amber-300/25 bg-amber-300/[0.08] text-amber-200"
-        : "border-rose-400/25 bg-rose-400/[0.08] text-rose-200";
+      ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-400"
+      : behavior === "High break"
+        ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-200"
+        : behavior === "Drifting"
+          ? "border-amber-300/25 bg-amber-300/[0.08] text-amber-200"
+          : "border-white/[0.06] bg-white/[0.02] text-text-secondary";
   return (
     <div>
       <div className="flex items-center justify-between text-[12.5px]">
@@ -1268,15 +1307,23 @@ function SessionRow({
             {behavior}
           </span>
           <span className="tabular-nums text-text-secondary">
-            Win rate{" "}
-            <span className="font-semibold text-gold">{winRate}%</span>
+            {total > 0 ? (
+              <>
+                Win rate{" "}
+                <span className="font-semibold text-emerald-400">
+                  {winRatePct}%
+                </span>
+              </>
+            ) : (
+              "—"
+            )}
           </span>
         </div>
       </div>
       <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.05]">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-gold/70 to-gold-soft"
-          style={{ width: `${winRate}%` }}
+          className="h-full rounded-full bg-emerald-500"
+          style={{ width: `${total > 0 ? winRatePct : 0}%` }}
         />
       </div>
     </div>
