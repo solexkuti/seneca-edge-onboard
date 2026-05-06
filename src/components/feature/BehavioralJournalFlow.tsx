@@ -149,8 +149,8 @@ function outcomeFeedback(outcome: Outcome, hadMistakes: boolean): {
   }
   if (outcome === "win" && hadMistakes) {
     return {
-      title: "Unstable win",
-      body: "You profited, but behavior broke rules.",
+      title: "Win with violations",
+      body: "You profited, but rules were broken.",
       tone: "warn",
     };
   }
