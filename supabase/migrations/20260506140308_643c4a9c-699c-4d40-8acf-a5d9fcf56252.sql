@@ -1,0 +1,2 @@
+ALTER TABLE public.journal_entries DROP CONSTRAINT IF EXISTS journal_entries_classification_check;
+ALTER TABLE public.journal_entries ADD CONSTRAINT journal_entries_classification_check CHECK (classification = ANY (ARRAY['clean'::text, 'violation'::text, 'minor'::text, 'bad'::text, 'severe'::text]));
