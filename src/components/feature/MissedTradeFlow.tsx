@@ -67,6 +67,26 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
   const canSubmit =
     asset.trim().length > 0 && reason !== null && !submitting;
 
+  function pickScreenshot(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Screenshot must be an image.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Screenshot must be under 8MB.");
+      return;
+    }
+    if (screenshot) URL.revokeObjectURL(screenshot.preview);
+    setScreenshot({ file, preview: URL.createObjectURL(file) });
+  }
+
+  function clearScreenshot() {
+    if (screenshot) URL.revokeObjectURL(screenshot.preview);
+    setScreenshot(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   async function handleSubmit() {
     if (!canSubmit) return;
     setSubmitting(true);
@@ -82,6 +102,25 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
       const marketType: MarketType = inferMarketType(asset);
       const session = sessionFromTimestamp(now.getTime());
 
+      // Optional screenshot upload to trade-screenshots bucket.
+      let screenshot_url: string | null = null;
+      if (screenshot) {
+        const ext = screenshot.file.name.split(".").pop()?.toLowerCase() || "png";
+        const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("trade-screenshots")
+          .upload(path, screenshot.file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: screenshot.file.type || undefined,
+          });
+        if (upErr) throw upErr;
+        const { data: signed } = await supabase.storage
+          .from("trade-screenshots")
+          .createSignedUrl(path, 60 * 60 * 24 * 365);
+        screenshot_url = signed?.signedUrl ?? path;
+      }
+
       const { error } = await supabase.from("trades").insert({
         user_id: userId,
         source: "manual",
@@ -96,6 +135,7 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
         notes: notes.trim() || null,
         rules_followed: [],
         rules_broken: [],
+        screenshot_url,
         executed_at: now.toISOString(),
       });
 
