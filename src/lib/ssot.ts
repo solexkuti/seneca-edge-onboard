@@ -446,6 +446,7 @@ export async function loadSsot(): Promise<Ssot> {
       user_id: null,
       account: EMPTY_ACCOUNT,
       trades: [],
+      missed: [],
       metrics: EMPTY_METRICS,
       behavior: {
         discipline_score: empty.score,
@@ -455,23 +456,29 @@ export async function loadSsot(): Promise<Ssot> {
         violation_count: 0,
         recent_violations: [],
       },
+      violations: [],
+      session_performance: buildSessionPerformance([], [], []),
+      execution_type: buildExecutionType([]),
       discipline: empty,
     };
   }
 
-  const [account, trades, breakdown, worstBreak, views] = await Promise.all([
+  const [account, allTrades, breakdown, worstBreak, views, violations] = await Promise.all([
     loadAccount(uid),
-    loadTrades(uid),
-    loadDisciplineBreakdown(), // still needed for the breakdown UI (per-trade contributions)
+    loadAllTrades(uid),
+    loadDisciplineBreakdown(),
     loadWorstRuleBreak(uid),
     loadComputedViews(uid),
+    loadViolations(uid),
   ]);
 
-  const bestSession = bestSessionFromTrades(trades);
+  const executed = allTrades.filter((t) => t.trade_type === "executed");
+  const missed = allTrades.filter((t) => t.trade_type === "missed");
+
+  const bestSession = bestSessionFromTrades(executed);
   const metrics = metricsFromViews(views, bestSession);
   metrics.worst_rule_break = worstBreak;
 
-  // Behavior numbers come from the discipline + rule_adherence views (SSOT).
   const disciplineScore = Number(views.discipline?.discipline_score ?? breakdown.score);
   const cleanTrades = Number(views.discipline?.clean_trades ?? breakdown.clean_trades);
   const totalLogs = Number(views.discipline?.total_trades ?? breakdown.total_trades);
@@ -480,11 +487,22 @@ export async function loadSsot(): Promise<Ssot> {
     views.adherence?.adherence ?? breakdown.rule_adherence ?? 1,
   );
 
+  // Top recent violations grouped by type
+  const recentCounts: Record<string, number> = {};
+  for (const v of violations.slice(0, 50)) {
+    recentCounts[v.type] = (recentCounts[v.type] ?? 0) + 1;
+  }
+  const recent_violations = Object.entries(recentCounts)
+    .map(([type, count]) => ({ type, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
   return {
     loading: false,
     user_id: uid,
     account,
-    trades,
+    trades: executed,
+    missed,
     metrics,
     behavior: {
       discipline_score: disciplineScore,
@@ -492,9 +510,11 @@ export async function loadSsot(): Promise<Ssot> {
       clean_trades: cleanTrades,
       total_trades: totalLogs,
       violation_count: violationCount,
-      recent_violations: [],
+      recent_violations,
     },
-    // Keep authoritative score from view, retain breakdown contributions for the trace UI.
+    violations,
+    session_performance: buildSessionPerformance(executed, missed, violations),
+    execution_type: buildExecutionType(executed),
     discipline: { ...breakdown, score: disciplineScore, rule_adherence: adherence },
   };
 }
