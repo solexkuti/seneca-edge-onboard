@@ -86,6 +86,11 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
         </Link>
       </motion.header>
 
+      {/* SSOT-derived alerts (read-only, no hard blocks) */}
+      <div className="mb-6">
+        <SsotAlerts />
+      </div>
+
       {/* Top row: account / discipline / strategy */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         <Card>
