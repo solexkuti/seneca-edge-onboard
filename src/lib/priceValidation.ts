@@ -23,6 +23,7 @@ export type ValidationIssue = {
     | "missing_direction"
     | "denominator_zero"
     | "sl_invalid_placement"
+    | "tp_invalid_placement"
     | "price_scale_mismatch"
     | "extreme_distance"
     | "rr_out_of_range"
