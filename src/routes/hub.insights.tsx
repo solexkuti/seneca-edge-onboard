@@ -382,6 +382,7 @@ function Stat({
   tone = "muted",
   glow,
   flashKey,
+  metricValue,
 }: {
   label: string;
   value: string;
@@ -389,9 +390,14 @@ function Stat({
   tone?: "gold" | "loss" | "muted";
   glow?: boolean;
   flashKey?: number;
+  /** When provided, color of the value reflects discipline/perf state. */
+  metricValue?: number | null;
 }) {
-  const toneClass =
-    tone === "gold"
+  const useMetric = metricValue !== undefined;
+  const valueStyle = useMetric ? metricColorStyle(metricValue) : undefined;
+  const toneClass = useMetric
+    ? ""
+    : tone === "gold"
       ? "text-[#E7C98A]"
       : tone === "loss"
         ? "text-rose-300"
@@ -407,6 +413,10 @@ function Stat({
       return () => clearTimeout(t);
     }
   }, [flashKey, value]);
+  const glowShadow = useMetric && glow ? metricGlowShadow(metricValue) : undefined;
+  const fallbackGlow = !useMetric && glow ? "drop-shadow-[0_0_18px_rgba(198,161,91,0.35)]" : "";
+  const hidden = metricValue == null && useMetric ? metricTone(null) : null;
+  void hidden;
   return (
     <motion.div
       animate={
@@ -432,9 +442,8 @@ function Stat({
         initial={{ opacity: 0.4, y: -4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease }}
-        className={`mt-1 font-serif text-[26px] leading-none tabular-nums ${toneClass} ${
-          glow ? "drop-shadow-[0_0_18px_rgba(198,161,91,0.35)]" : ""
-        }`}
+        style={{ ...(valueStyle ?? {}), ...(glowShadow ? { textShadow: glowShadow } : {}) }}
+        className={`mt-1 font-serif text-[26px] leading-none tabular-nums ${toneClass} ${fallbackGlow}`}
       >
         {value}
         {suffix && (
