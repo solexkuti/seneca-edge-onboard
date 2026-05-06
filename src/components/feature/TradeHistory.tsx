@@ -310,6 +310,7 @@ export default function TradeHistory() {
                         const url = await getScreenshotUrl(path);
                         if (url) setPreviewUrl(url);
                       }}
+                      fmtR={fmtR}
                     />
                   ))}
                 </div>
