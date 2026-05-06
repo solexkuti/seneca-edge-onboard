@@ -66,6 +66,10 @@ export type SsotTrade = {
   monetary_pnl_converted_snapshot: number | null;
   exchange_rate_at_close: number | null;
   display_currency_at_close: string | null;
+  /** Actual % risk used on this execution. */
+  actual_risk_pct: number | null;
+  /** Preferred % risk per the user's strategy/account policy at the time. */
+  preferred_risk_pct: number | null;
 };
 
 export function tradeMonetaryConverted(
