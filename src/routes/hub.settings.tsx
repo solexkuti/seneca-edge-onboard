@@ -230,6 +230,41 @@ function AccountSettingsCard() {
         it, the dashboard only shows R.
       </p>
 
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Field label="Display currency">
+          <select
+            value={displayCurrency}
+            onChange={(e) => setDisplayCurrency(e.target.value as CurrencyCode)}
+            className="w-full rounded-lg border border-white/[0.08] bg-[#0F1115] px-3 py-2 text-[13.5px] text-text-primary outline-none focus:border-gold/40"
+          >
+            {SUPPORTED_CURRENCIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-[11px] text-text-secondary/70">
+            What currency the app converts monetary PnL to. Historical trades keep their snapshot.
+          </p>
+        </Field>
+        <Field label="Metric display mode">
+          <select
+            value={metricMode}
+            onChange={(e) => setMetricMode(e.target.value as MetricDisplayMode)}
+            className="w-full rounded-lg border border-white/[0.08] bg-[#0F1115] px-3 py-2 text-[13.5px] text-text-primary outline-none focus:border-gold/40"
+          >
+            {METRIC_MODES.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-[11px] text-text-secondary/70">
+            {METRIC_MODES.find((m) => m.value === metricMode)?.hint}
+          </p>
+        </Field>
+      </div>
+
       <div className="mt-4 flex items-center gap-3">
         <button
           type="button"
