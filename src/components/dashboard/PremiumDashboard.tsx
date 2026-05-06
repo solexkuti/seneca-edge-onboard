@@ -24,7 +24,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { type Ssot, type SsotTrade, type SsotViolation } from "@/lib/ssot";
+import { type Ssot, type SsotTrade, type SsotViolation, tradeMonetaryConverted } from "@/lib/ssot";
 import { formatMetric, formatRr, formatCurrencyAmount } from "@/lib/fxService";
 import CurrencySelector from "@/components/feature/CurrencySelector";
 import { MISSED_REASON_LABELS, type MissedReason } from "@/lib/trade/types";
