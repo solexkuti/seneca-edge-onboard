@@ -67,21 +67,6 @@ export type SsotTrade = {
   display_currency_at_close: string | null;
 };
 
-/**
- * Convert an R value to the user's display currency using stored snapshot
- * first, then falling back to live analytics rate × risk_per_trade.
- * Returns null when conversion isn't derivable.
- */
-export function tradeMonetaryConverted(
-  trade: Pick<SsotTrade, "rr" | "monetary_pnl_converted_snapshot" | "monetary_pnl_base">,
-  analytics: SsotAnalytics,
-  riskPerTrade: number | null,
-): number | null {
-  if (trade.monetary_pnl_converted_snapshot != null) return trade.monetary_pnl_converted_snapshot;
-  if (trade.monetary_pnl_base != null) return trade.monetary_pnl_base * analytics.exchange_rate;
-  if (trade.rr == null || riskPerTrade == null || !Number.isFinite(riskPerTrade) || riskPerTrade <= 0) return null;
-  return trade.rr * riskPerTrade * analytics.exchange_rate;
-}
 
 export type SsotViolation = {
   id: string;
