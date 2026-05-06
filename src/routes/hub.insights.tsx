@@ -147,15 +147,18 @@ function InsightsPage() {
     };
   }, []);
 
+  const { ssot } = useSsot();
   const insights = useMemo(() => generateInsights(trades), [trades]);
   const recommendations = useMemo(
     () => generateRecommendations(trades),
     [trades],
   );
-  const score = useMemo(() => behaviorScore(trades), [trades]);
-  const adherence = useMemo(() => ruleAdherence(trades), [trades]);
+  // SSOT-derived headline metrics — never recompute locally.
+  const behaviorScoreVal = ssot.behavior.discipline_score;
+  const adherencePct = Math.round(ssot.behavior.rule_adherence * 100);
+  const winRatePct = Math.round(ssot.metrics.win_rate * 100);
+  const totalR = ssot.metrics.total_r;
   const split = useMemo(() => executionSplit(trades), [trades]);
-  const summary = useMemo(() => summarize(trades), [trades]);
   const sessions = useMemo(() => sessionPerformance(trades), [trades]);
 
   return (
