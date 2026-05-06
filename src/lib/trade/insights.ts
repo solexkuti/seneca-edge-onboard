@@ -71,7 +71,7 @@ export function generateInsights(trades: Trade[]): Insight[] {
   if (worst && worst.timesBroken >= 2) {
     out.push({
       id: `rule-${worst.rule}`,
-      message: `“${worst.rule}” broken ${worst.timesBroken} times — costing ${formatR(worst.totalImpactR)}.`,
+      message: `"${humanizeViolation(worst.rule)}" appeared ${worst.timesBroken} times — costing ${formatR(worst.totalImpactR)}.`,
       severity: worst.totalImpactR < 0 ? "critical" : "warning",
       evidenceTradeIds: worst.trades.map((t) => t.id),
     });
