@@ -1474,6 +1474,7 @@ export type Database = {
       }
       trades: {
         Row: {
+          actual_risk_pct: number | null
           analysis_id: string | null
           asset: string | null
           base_currency: string | null
@@ -1497,6 +1498,7 @@ export type Database = {
           monetary_pnl_converted_snapshot: number | null
           notes: string | null
           pnl: number | null
+          preferred_risk_pct: number | null
           result: Database["public"]["Enums"]["trade_result"] | null
           risk_per_trade_at_open: number | null
           risk_r: number | null
@@ -1514,6 +1516,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          actual_risk_pct?: number | null
           analysis_id?: string | null
           asset?: string | null
           base_currency?: string | null
@@ -1537,6 +1540,7 @@ export type Database = {
           monetary_pnl_converted_snapshot?: number | null
           notes?: string | null
           pnl?: number | null
+          preferred_risk_pct?: number | null
           result?: Database["public"]["Enums"]["trade_result"] | null
           risk_per_trade_at_open?: number | null
           risk_r?: number | null
@@ -1554,6 +1558,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          actual_risk_pct?: number | null
           analysis_id?: string | null
           asset?: string | null
           base_currency?: string | null
@@ -1577,6 +1582,7 @@ export type Database = {
           monetary_pnl_converted_snapshot?: number | null
           notes?: string | null
           pnl?: number | null
+          preferred_risk_pct?: number | null
           result?: Database["public"]["Enums"]["trade_result"] | null
           risk_per_trade_at_open?: number | null
           risk_r?: number | null
