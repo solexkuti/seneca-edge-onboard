@@ -20,6 +20,7 @@ import {
   type DisciplineBreakdown,
 } from "@/lib/disciplineScore";
 import { getRate } from "@/lib/fxService";
+import { replay as replayBehavior, type ReplayTradeInput } from "@/lib/behaviorEngine";
 
 export type BalanceSource = "manual" | "synced";
 
@@ -684,32 +685,22 @@ export async function loadSsot(): Promise<Ssot> {
   // Prefer derived (always coherent with trades). Fallback to DB rows if no trades have rules_broken.
   const ssotViolations = derivedViolations.length > 0 ? derivedViolations : violations;
 
-  // ── Discipline engine — gradual recovery model.
-  // Source of truth: trades.rules_broken, replayed chronologically.
-  //   - Clean executed trade (zero rules_broken): +5
-  //   - Each broken rule on an executed trade:   -10
-  //   - Missed trades: 0 impact (psychology only).
-  // Start 100, clamp [0, 100]. Damage > recovery by design — discipline is
-  // earned slowly and cannot be gamed by selective clean logging.
-  const chrono = [...executed].sort(
-    (a, b) => new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime(),
-  );
-  let _score = 100;
-  let cleanTrades = 0;
-  let violationCount = 0;
-  for (const t of chrono) {
-    const broken = t.rules_broken?.length ?? 0;
-    if (broken === 0) {
-      _score = Math.min(100, _score + 5);
-      cleanTrades += 1;
-    } else {
-      _score = Math.max(0, _score - 10 * broken);
-      violationCount += broken;
-    }
-  }
-  const disciplineScore = _score;
+  // ── Behavior engine — weighted per-trade + EMA overall.
+  // Source: src/lib/behaviorEngine.ts (single source of truth for ALL scoring).
+  // NOTE: actualRisk per trade is wired in Phase 2 (journal flow capture).
+  const replayInputs: ReplayTradeInput[] = executed.map((t) => ({
+    id: t.id,
+    executed_at: t.executed_at,
+    rulesBroken: t.rules_broken ?? [],
+    actualRisk: null,
+    preferredRisk: account.risk_per_trade,
+  }));
+  const behaviorReplay = replayBehavior(replayInputs);
+  const disciplineScore = behaviorReplay.overall;
+  const cleanTrades = behaviorReplay.cleanTrades;
+  const violationCount = behaviorReplay.violationCount;
   const totalLogs = executed.length;
-  const adherence = totalLogs === 0 ? 1 : cleanTrades / totalLogs;
+  const adherence = behaviorReplay.ruleAdherence;
 
   // Top recent violations grouped by type
   const recentCounts: Record<string, number> = {};
@@ -790,34 +781,15 @@ export async function loadSsot(): Promise<Ssot> {
       violation_count: violationCount,
       decision_neutral: totalLogs === 0,
       execution_neutral: totalLogs === 0,
-      recent_contributions: (() => {
-        let s = 100;
-        const ledger: typeof breakdown.recent_contributions = [];
-        for (const t of chrono) {
-          const broken = t.rules_broken?.length ?? 0;
-          let delta: number;
-          let reason: string;
-          if (broken === 0) {
-            delta = 5;
-            s = Math.min(100, s + delta);
-            reason = `Clean trade — ${t.asset || t.market || "trade"} (+5 → ${s}/100).`;
-          } else {
-            delta = -10 * broken;
-            s = Math.max(0, s + delta);
-            reason = `${broken} rule break${broken === 1 ? "" : "s"} — ${(t.rules_broken || []).join(", ")} (${delta} → ${s}/100).`;
-          }
-          ledger.push({
-            source: "execution",
-            id: t.id,
-            raw: delta,
-            value: s,
-            weight: 1,
-            reason,
-            timestamp: t.executed_at,
-          });
-        }
-        return ledger.reverse().slice(0, 20);
-      })(),
+      recent_contributions: behaviorReplay.contributions.map((c) => ({
+        source: "execution" as const,
+        id: c.id,
+        raw: c.delta,
+        value: c.overallAfter,
+        weight: 1,
+        reason: c.reason,
+        timestamp: c.timestamp,
+      })).slice(0, 20),
     },
   };
 }
