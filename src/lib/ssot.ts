@@ -781,34 +781,15 @@ export async function loadSsot(): Promise<Ssot> {
       violation_count: violationCount,
       decision_neutral: totalLogs === 0,
       execution_neutral: totalLogs === 0,
-      recent_contributions: (() => {
-        let s = 100;
-        const ledger: typeof breakdown.recent_contributions = [];
-        for (const t of chrono) {
-          const broken = t.rules_broken?.length ?? 0;
-          let delta: number;
-          let reason: string;
-          if (broken === 0) {
-            delta = 5;
-            s = Math.min(100, s + delta);
-            reason = `Clean trade — ${t.asset || t.market || "trade"} (+5 → ${s}/100).`;
-          } else {
-            delta = -10 * broken;
-            s = Math.max(0, s + delta);
-            reason = `${broken} rule break${broken === 1 ? "" : "s"} — ${(t.rules_broken || []).join(", ")} (${delta} → ${s}/100).`;
-          }
-          ledger.push({
-            source: "execution",
-            id: t.id,
-            raw: delta,
-            value: s,
-            weight: 1,
-            reason,
-            timestamp: t.executed_at,
-          });
-        }
-        return ledger.reverse().slice(0, 20);
-      })(),
+      recent_contributions: behaviorReplay.contributions.map((c) => ({
+        source: "execution" as const,
+        id: c.id,
+        raw: c.delta,
+        value: c.overallAfter,
+        weight: 1,
+        reason: c.reason,
+        timestamp: c.timestamp,
+      })).slice(0, 20),
     },
   };
 }
