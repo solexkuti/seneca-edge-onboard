@@ -254,18 +254,100 @@ async function loadAccount(userId: string): Promise<SsotAccount> {
   };
 }
 
-async function loadTrades(userId: string): Promise<SsotTrade[]> {
+async function loadAllTrades(userId: string): Promise<SsotTrade[]> {
   const { data, error } = await supabase
     .from("trades")
     .select(
-      "id,asset,market,direction,entry_price,exit_price,stop_loss,take_profit,rr,risk_r,pnl,result,session,executed_at,closed_at",
+      "id,asset,market,direction,entry_price,exit_price,stop_loss,take_profit,rr,risk_r,pnl,result,session,executed_at,closed_at,trade_type,missed_reason,missed_potential_r,rules_broken,notes",
     )
     .eq("user_id", userId)
-    .eq("trade_type", "executed")
     .order("executed_at", { ascending: false })
     .limit(500);
   if (error || !data) return [];
-  return data as unknown as SsotTrade[];
+  return (data as unknown as Array<Record<string, unknown>>).map((r) => ({
+    id: String(r.id),
+    asset: (r.asset as string | null) ?? null,
+    market: String(r.market ?? ""),
+    direction: r.direction as "long" | "short",
+    entry_price: r.entry_price as number | null,
+    exit_price: r.exit_price as number | null,
+    stop_loss: r.stop_loss as number | null,
+    take_profit: r.take_profit as number | null,
+    rr: r.rr as number | null,
+    risk_r: r.risk_r as number | null,
+    pnl: r.pnl as number | null,
+    result: r.result as SsotTrade["result"],
+    session: r.session as SsotTrade["session"],
+    executed_at: String(r.executed_at),
+    closed_at: r.closed_at as string | null,
+    trade_type: (r.trade_type as "executed" | "missed") ?? "executed",
+    missed_reason: (r.missed_reason as string | null) ?? null,
+    missed_potential_r: (r.missed_potential_r as number | null) ?? null,
+    rules_broken: Array.isArray(r.rules_broken) ? (r.rules_broken as string[]) : [],
+    notes: (r.notes as string | null) ?? null,
+  }));
+}
+
+async function loadViolations(userId: string): Promise<SsotViolation[]> {
+  const { data, error } = await supabase
+    .from("rule_violations")
+    .select("id,trade_id,type,impact_r,session,occurred_at")
+    .eq("user_id", userId)
+    .order("occurred_at", { ascending: false })
+    .limit(500);
+  if (error || !data) return [];
+  return data.map((r) => ({
+    id: String(r.id),
+    trade_id: String(r.trade_id),
+    type: String(r.type),
+    impact_r: Number(r.impact_r ?? 0),
+    session: (r.session as string | null) ?? null,
+    occurred_at: String(r.occurred_at),
+  }));
+}
+
+function buildSessionPerformance(
+  executed: SsotTrade[],
+  missed: SsotTrade[],
+  violations: SsotViolation[],
+): SsotSessionStat[] {
+  const sessions: Array<"London" | "NY" | "Asia"> = ["London", "NY", "Asia"];
+  return sessions.map((s) => {
+    const sx = executed.filter((t) => t.session === s);
+    const wins = sx.filter((t) => t.result === "win").length;
+    const losses = sx.filter((t) => t.result === "loss").length;
+    const decided = wins + losses;
+    const totalR = sx.reduce((a, t) => a + (typeof t.rr === "number" ? t.rr : 0), 0);
+    const assets = Array.from(
+      new Set(sx.map((t) => t.asset || t.market).filter(Boolean) as string[]),
+    ).slice(0, 6);
+    return {
+      session: s,
+      total_trades: sx.length,
+      wins,
+      losses,
+      win_rate: decided > 0 ? wins / decided : 0,
+      total_r: totalR,
+      assets,
+      violations: violations.filter((v) => v.session === s).length,
+      missed: missed.filter((t) => t.session === s).length,
+    };
+  });
+}
+
+function buildExecutionType(
+  executed: SsotTrade[],
+): { controlled_pct: number; impulsive_pct: number; clean: number; with_violations: number } {
+  const total = executed.length;
+  if (total === 0) return { controlled_pct: 0, impulsive_pct: 0, clean: 0, with_violations: 0 };
+  const withViolations = executed.filter((t) => (t.rules_broken?.length ?? 0) > 0).length;
+  const clean = total - withViolations;
+  return {
+    controlled_pct: Math.round((clean / total) * 100),
+    impulsive_pct: Math.round((withViolations / total) * 100),
+    clean,
+    with_violations: withViolations,
+  };
 }
 
 async function loadWorstRuleBreak(userId: string): Promise<string | null> {
