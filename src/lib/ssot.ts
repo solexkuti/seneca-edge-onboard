@@ -414,7 +414,7 @@ async function loadAllTrades(userId: string): Promise<SsotTrade[]> {
   const { data, error } = await supabase
     .from("trades")
     .select(
-      "id,asset,market,direction,entry_price,exit_price,stop_loss,take_profit,rr,risk_r,pnl,result,session,executed_at,closed_at,trade_type,missed_reason,missed_potential_r,rules_broken,notes,monetary_pnl_base,monetary_pnl_converted_snapshot,exchange_rate_at_close,display_currency_at_close",
+      "id,asset,market,direction,entry_price,exit_price,stop_loss,take_profit,rr,risk_r,pnl,result,session,executed_at,closed_at,trade_type,missed_reason,missed_potential_r,rules_broken,notes,monetary_pnl_base,monetary_pnl_converted_snapshot,exchange_rate_at_close,display_currency_at_close,actual_risk_pct,preferred_risk_pct",
     )
     .eq("user_id", userId)
     .order("executed_at", { ascending: false })
