@@ -111,10 +111,21 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
           {ssot.account.balance != null ? (
             <>
               <p className="mt-3 font-display text-[28px] font-semibold tracking-tight text-text-primary">
-                {formatCurrency(ssot.account.balance, ssot.account.currency)}
+                {formatCurrencyAmount(
+                  ssot.analytics.equity_converted ?? ssot.analytics.starting_balance_base,
+                  ssot.analytics.display_currency,
+                )}
               </p>
               <p className="mt-1 text-[12.5px] text-text-secondary">
-                {ssot.account.source === "synced" ? "Synced" : "Manual"} balance · {ssot.account.currency}
+                Starting {formatCurrencyAmount(ssot.analytics.starting_balance_base, ssot.account.currency)}
+                {ssot.analytics.total_pnl_base != null && (
+                  <>
+                    {" · "}
+                    <span className={ssot.analytics.total_pnl_base >= 0 ? "text-emerald-400" : "text-rose-300"}>
+                      Realized {formatCurrencyAmount(ssot.analytics.total_pnl_base, ssot.account.currency, { showSign: true })}
+                    </span>
+                  </>
+                )}
               </p>
             </>
           ) : (
@@ -141,8 +152,8 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
               hasTrades
                 ? formatMetric({
                     r: ssot.metrics.total_r,
-                    amountInDisplayCurrency: rToCurrency(ssot.metrics.total_r, ssot.account.risk_per_trade),
-                    displayCurrency: ssot.account.display_currency,
+                    amountInDisplayCurrency: ssot.analytics.total_pnl_converted,
+                    displayCurrency: ssot.analytics.display_currency,
                     mode: ssot.account.metric_display_mode,
                   })
                 : "—"
