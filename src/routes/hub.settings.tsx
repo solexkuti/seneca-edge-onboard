@@ -117,11 +117,18 @@ function AccountSettingsCard() {
       // Keep profile in sync (acts as fallback + global preference).
       const profUpdate: {
         currency: string;
+        display_currency: string;
+        metric_display_mode: MetricDisplayMode;
         risk_per_trade: number | null;
         account_balance?: number;
         balance_source?: string;
         balance_updated_at?: string;
-      } = { currency, risk_per_trade: riskNum };
+      } = {
+        currency,
+        display_currency: displayCurrency,
+        metric_display_mode: metricMode,
+        risk_per_trade: riskNum,
+      };
       if (balNum != null) {
         profUpdate.account_balance = balNum;
         profUpdate.balance_source = "manual";
