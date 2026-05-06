@@ -24,16 +24,21 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useBehavioralJournal } from "@/hooks/useBehavioralJournal";
-import { usePerformance } from "@/hooks/usePerformance";
 import { useTraderState } from "@/hooks/useTraderState";
-import { disciplineState } from "@/lib/behavioralJournal";
+import { useSsot } from "@/hooks/useSsot";
 import {
   metricColorStyle,
   metricGlowShadow,
   metricTextClass,
 } from "@/lib/metricColor";
 import SsotAlerts from "@/components/feature/SsotAlerts";
+
+function disciplineLabel(score: number): string {
+  if (score >= 80) return "In control";
+  if (score >= 60) return "Slipping";
+  if (score >= 40) return "At risk";
+  return "Locked";
+}
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
