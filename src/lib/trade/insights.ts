@@ -141,6 +141,67 @@ export function generateInsights(trades: Trade[]): Insight[] {
     });
   }
 
+  // 9. Behavioral loop — oversize after losses
+  const chrono = [...executed].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+  let lossThenOversize = 0;
+  for (let i = 1; i < chrono.length; i++) {
+    const prev = chrono[i - 1];
+    const cur = chrono[i];
+    const wasLoss = (prev.resultR ?? 0) < 0;
+    const oversized = cur.rulesBroken.some((r) => /oversiz|over[_\s-]?lever/i.test(r));
+    if (wasLoss && oversized) lossThenOversize++;
+  }
+  if (lossThenOversize >= 2) {
+    out.push({
+      id: "loop-oversize-after-loss",
+      message: `Pattern detected — you tend to oversize after losses (${lossThenOversize}× recently). The loss is leading the next entry.`,
+      severity: "critical",
+    });
+  }
+
+  // 10. Behavioral loop — hesitation clustering after losses (missed trades)
+  const allChrono = [...trades].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+  let hesitationAfterLoss = 0;
+  for (let i = 1; i < allChrono.length; i++) {
+    const prev = allChrono[i - 1];
+    const cur = allChrono[i];
+    if (prev.tradeType === "executed" && (prev.resultR ?? 0) < 0) {
+      if (cur.tradeType === "missed" && (cur.missedReason === "hesitation" || cur.missedReason === "fear")) {
+        hesitationAfterLoss++;
+      }
+    }
+  }
+  if (hesitationAfterLoss >= 2) {
+    out.push({
+      id: "loop-hesitation-after-loss",
+      message: `Hesitation frequently appears after losses (${hesitationAfterLoss}×). Fear is shaping your next decision.`,
+      severity: "warning",
+    });
+  }
+
+  // 11. Session concentration of violations
+  const violationsBySession = new Map<string, number>();
+  for (const t of executed) {
+    if (t.rulesBroken.length > 0 && t.session) {
+      violationsBySession.set(t.session, (violationsBySession.get(t.session) ?? 0) + t.rulesBroken.length);
+    }
+  }
+  const totalViolations = Array.from(violationsBySession.values()).reduce((s, n) => s + n, 0);
+  if (totalViolations >= 4) {
+    const [topSession, topCount] = Array.from(violationsBySession.entries()).sort((a, b) => b[1] - a[1])[0];
+    if (topCount / totalViolations >= 0.5) {
+      out.push({
+        id: `loop-session-${topSession}`,
+        message: `Most violations occur during the ${topSession} session (${topCount} of ${totalViolations}). Discipline weakens there.`,
+        severity: "warning",
+      });
+    }
+  }
+
   return out;
 }
 
