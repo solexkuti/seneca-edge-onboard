@@ -575,16 +575,17 @@ export default function BehavioralJournalFlow({
   // Required: asset, direction (always set), entry, stop loss,
   // (exit OR manual R), and outcome. Hard validation blocks must be
   // cleared. Warnings require explicit preview confirmation.
-  const hasExitOrR = exit !== null || Number.isFinite(manualR as number);
+  // STRICT: entry, SL, TP, exit, risk%, outcome are ALL required.
+  // Manual R / manual $ PnL are no longer supported — every metric is derived.
   const canNextFromStep0 =
     asset.trim().length > 0 &&
     entry !== null &&
     sl !== null &&
-    hasExitOrR &&
-    Number.isFinite(resultR) &&
+    tp !== null &&
+    exit !== null &&
+    risk !== null && risk > 0 &&
+    Number.isFinite(autoRealizedR ?? NaN) &&
     outcome !== null &&
-    !accountSizeInvalid &&
-    !pnlDollarInvalid &&
     !validation.hasBlock &&
     (!validation.hasWarn || previewConfirmed);
 
