@@ -408,13 +408,6 @@ export function nextActionFromBehavior(args: {
       tone: "inactive",
     };
   }
-  if (last.classification === "severe") {
-    return {
-      title: "Reduce risk. Pause trading.",
-      sub: "Severe mistake on your last trade. No new trade until one clean setup is followed.",
-      tone: "risk",
-    };
-  }
   if (last.break_streak_after >= 2) {
     return {
       title: "Pause before next entry",
