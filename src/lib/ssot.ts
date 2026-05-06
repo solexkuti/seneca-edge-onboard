@@ -191,11 +191,25 @@ export function computeMetrics(trades: SsotTrade[]): SsotMetrics {
 // ── I/O ────────────────────────────────────────────────────────────────
 
 async function loadAccount(userId: string): Promise<SsotAccount> {
+  // Active account row in the new accounts table is authoritative.
+  const { data: acct } = await supabase
+    .from("accounts")
+    .select("balance,equity,source,updated_at")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (acct) {
+    return {
+      balance: acct.balance ?? null,
+      equity: acct.equity ?? null,
+      source: (acct.source as BalanceSource) ?? "manual",
+      updated_at: acct.updated_at ?? null,
+    };
+  }
+  // Legacy fallback for profiles still on the old columns.
   const { data, error } = await supabase
     .from("profiles")
-    .select(
-      "account_balance,account_equity,balance_source,balance_updated_at",
-    )
+    .select("account_balance,account_equity,balance_source,balance_updated_at")
     .eq("id", userId)
     .maybeSingle();
   if (error || !data) return EMPTY_ACCOUNT;
