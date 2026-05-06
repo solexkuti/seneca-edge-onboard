@@ -3,7 +3,7 @@
 // (journal updates, analyzer events, lock changes).
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { EMPTY_ACCOUNT, EMPTY_METRICS, loadSsot, type Ssot } from "@/lib/ssot";
+import { EMPTY_ACCOUNT, EMPTY_ANALYTICS, EMPTY_METRICS, loadSsot, type Ssot } from "@/lib/ssot";
 import { onAuthChange, onTraderStateChange } from "@/lib/traderState";
 import { loadDisciplineBreakdown } from "@/lib/disciplineScore";
 import { JOURNAL_EVENT } from "@/lib/tradingJournal";
@@ -30,6 +30,7 @@ const EMPTY_SSOT: Ssot = {
     { session: "Asia", total_trades: 0, wins: 0, losses: 0, win_rate: 0, total_r: 0, assets: [], violations: 0, missed: 0 },
   ],
   execution_type: { controlled_pct: 0, semi_controlled_pct: 0, impulsive_pct: 0, controlled: 0, semi_controlled: 0, impulsive: 0, missed: 0, executed_total: 0 },
+  analytics: EMPTY_ANALYTICS,
   discipline: {
     score: 100,
     state: "in_control",

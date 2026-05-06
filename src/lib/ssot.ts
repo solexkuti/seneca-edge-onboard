@@ -19,6 +19,7 @@ import {
   loadDisciplineBreakdown,
   type DisciplineBreakdown,
 } from "@/lib/disciplineScore";
+import { getRate } from "@/lib/fxService";
 
 export type BalanceSource = "manual" | "synced";
 
@@ -106,6 +107,27 @@ export type SsotBehavior = {
   recent_violations: { type: string; count: number }[];
 };
 
+export type SsotAnalytics = {
+  base_currency: string;
+  display_currency: string;
+  exchange_rate: number;            // base → display
+  total_r: number;
+  expectancy_r: number;
+  avg_r: number;
+  max_drawdown_r: number;
+  /** R × risk_per_trade in BASE currency. Null when risk basis missing. */
+  total_pnl_base: number | null;
+  total_pnl_converted: number | null;
+  expectancy_currency: number | null;
+  avg_r_currency: number | null;
+  max_drawdown_currency: number | null;
+  /** Immutable starting capital from profiles.account_balance (base ccy). */
+  starting_balance_base: number | null;
+  /** starting_balance + total_pnl_base. Live equity, base ccy. */
+  equity_base: number | null;
+  equity_converted: number | null;
+};
+
 export type Ssot = {
   loading: boolean;
   user_id: string | null;
@@ -128,8 +150,28 @@ export type Ssot = {
     missed: number;
     executed_total: number;
   };
+  /** Centralized monetary analytics. Single source for all live currency renders. */
+  analytics: SsotAnalytics;
   /** Underlying discipline breakdown — kept for legacy UI consumers. */
   discipline: DisciplineBreakdown;
+};
+
+export const EMPTY_ANALYTICS: SsotAnalytics = {
+  base_currency: "USD",
+  display_currency: "USD",
+  exchange_rate: 1,
+  total_r: 0,
+  expectancy_r: 0,
+  avg_r: 0,
+  max_drawdown_r: 0,
+  total_pnl_base: null,
+  total_pnl_converted: null,
+  expectancy_currency: null,
+  avg_r_currency: null,
+  max_drawdown_currency: null,
+  starting_balance_base: null,
+  equity_base: null,
+  equity_converted: null,
 };
 
 export const EMPTY_METRICS: SsotMetrics = {
@@ -574,6 +616,7 @@ export async function loadSsot(): Promise<Ssot> {
       violations: [],
       session_performance: buildSessionPerformance([], [], []),
       execution_type: buildExecutionType([], []),
+      analytics: EMPTY_ANALYTICS,
       discipline: empty,
     };
   }
@@ -657,6 +700,45 @@ export async function loadSsot(): Promise<Ssot> {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
+  // ── Centralized monetary analytics (live, base→display conversion).
+  const baseCcy = account.currency || "USD";
+  const dispCcy = account.display_currency || baseCcy;
+  let exchangeRate = 1;
+  if (baseCcy !== dispCcy) {
+    const r = await getRate(baseCcy, dispCcy);
+    if (r != null && Number.isFinite(r)) exchangeRate = r;
+  }
+  const risk = account.risk_per_trade;
+  const hasRisk = risk != null && Number.isFinite(risk) && risk > 0;
+  const totalPnlBase = hasRisk ? metrics.total_r * (risk as number) : null;
+  const expectancyBase = hasRisk ? metrics.expectancy_r * (risk as number) : null;
+  const avgRBase = hasRisk ? metrics.avg_r * (risk as number) : null;
+  const ddBase = hasRisk ? -Math.abs(metrics.max_drawdown_r) * (risk as number) : null;
+  const startingBalanceBase = account.balance;
+  const equityBase =
+    startingBalanceBase != null && totalPnlBase != null
+      ? startingBalanceBase + totalPnlBase
+      : startingBalanceBase;
+  const conv = (n: number | null): number | null =>
+    n == null ? null : n * exchangeRate;
+  const analytics: SsotAnalytics = {
+    base_currency: baseCcy,
+    display_currency: dispCcy,
+    exchange_rate: exchangeRate,
+    total_r: metrics.total_r,
+    expectancy_r: metrics.expectancy_r,
+    avg_r: metrics.avg_r,
+    max_drawdown_r: metrics.max_drawdown_r,
+    total_pnl_base: totalPnlBase,
+    total_pnl_converted: conv(totalPnlBase),
+    expectancy_currency: conv(expectancyBase),
+    avg_r_currency: conv(avgRBase),
+    max_drawdown_currency: conv(ddBase),
+    starting_balance_base: startingBalanceBase,
+    equity_base: equityBase,
+    equity_converted: conv(equityBase),
+  };
+
   return {
     loading: false,
     user_id: uid,
@@ -675,6 +757,7 @@ export async function loadSsot(): Promise<Ssot> {
     violations: ssotViolations,
     session_performance: buildSessionPerformance(executed, missed, ssotViolations),
     execution_type: buildExecutionType(executed, missed),
+    analytics,
     discipline: {
       ...breakdown,
       score: disciplineScore,

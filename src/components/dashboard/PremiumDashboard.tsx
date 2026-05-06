@@ -24,8 +24,9 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { type Ssot, type SsotTrade, type SsotViolation, formatCurrency, rToCurrency } from "@/lib/ssot";
-import { formatMetric, formatRr } from "@/lib/fxService";
+import { type Ssot, type SsotTrade, type SsotViolation } from "@/lib/ssot";
+import { formatMetric, formatRr, formatCurrencyAmount } from "@/lib/fxService";
+import CurrencySelector from "@/components/feature/CurrencySelector";
 import { MISSED_REASON_LABELS, type MissedReason } from "@/lib/trade/types";
 
 function missedReasonLabel(reason: string | null): string {
@@ -87,14 +88,17 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
             Control the process. Ignore the outcome. Your edge in one glance.
           </p>
         </div>
-        <Link
-          to="/hub/chart"
-          preload="intent"
-          className="btn-gold inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold"
-        >
-          Open Analyzer
-          <ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />
-        </Link>
+        <div className="flex items-center gap-3">
+          <CurrencySelector />
+          <Link
+            to="/hub/chart"
+            preload="intent"
+            className="btn-gold inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold"
+          >
+            Open Analyzer
+            <ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />
+          </Link>
+        </div>
       </motion.header>
 
       <div className="mb-6">
@@ -107,10 +111,21 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
           {ssot.account.balance != null ? (
             <>
               <p className="mt-3 font-display text-[28px] font-semibold tracking-tight text-text-primary">
-                {formatCurrency(ssot.account.balance, ssot.account.currency)}
+                {formatCurrencyAmount(
+                  ssot.analytics.equity_converted ?? ssot.analytics.starting_balance_base,
+                  ssot.analytics.display_currency,
+                )}
               </p>
               <p className="mt-1 text-[12.5px] text-text-secondary">
-                {ssot.account.source === "synced" ? "Synced" : "Manual"} balance · {ssot.account.currency}
+                Starting {formatCurrencyAmount(ssot.analytics.starting_balance_base, ssot.account.currency)}
+                {ssot.analytics.total_pnl_base != null && (
+                  <>
+                    {" · "}
+                    <span className={ssot.analytics.total_pnl_base >= 0 ? "text-emerald-400" : "text-rose-300"}>
+                      Realized {formatCurrencyAmount(ssot.analytics.total_pnl_base, ssot.account.currency, { showSign: true })}
+                    </span>
+                  </>
+                )}
               </p>
             </>
           ) : (
@@ -137,8 +152,8 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
               hasTrades
                 ? formatMetric({
                     r: ssot.metrics.total_r,
-                    amountInDisplayCurrency: rToCurrency(ssot.metrics.total_r, ssot.account.risk_per_trade),
-                    displayCurrency: ssot.account.display_currency,
+                    amountInDisplayCurrency: ssot.analytics.total_pnl_converted,
+                    displayCurrency: ssot.analytics.display_currency,
                     mode: ssot.account.metric_display_mode,
                   })
                 : "—"
@@ -486,15 +501,13 @@ function PerformanceTrendCard({ ssot }: { ssot: Ssot }) {
 
 function FullStatsPanel({ ssot }: { ssot: Ssot }) {
   const m = ssot.metrics;
+  const a = ssot.analytics;
   const has = m.total_trades > 0;
-  const cur = ssot.account.display_currency;
-  const risk = ssot.account.risk_per_trade;
+  const cur = a.display_currency;
   const mode = ssot.account.metric_display_mode;
-  const fmtRMoney = (rVal: number, signed = true): string => {
-    if (mode === "rr_only") return "";
-    const c = rToCurrency(rVal, risk);
-    if (c == null) return "";
-    return ` · ${formatCurrency(c, cur, { showSign: signed })}`;
+  const fmtMoney = (amount: number | null, signed = true): string => {
+    if (mode === "rr_only" || amount == null) return "";
+    return ` · ${formatCurrencyAmount(amount, cur, { showSign: signed })}`;
   };
   const stats: { label: string; value: string; sub?: string; tone?: "ok" | "risk" }[] = [
     {
@@ -512,26 +525,37 @@ function FullStatsPanel({ ssot }: { ssot: Ssot }) {
     {
       label: "Avg R",
       value: has ? `${m.avg_r >= 0 ? "+" : ""}${m.avg_r.toFixed(2)}R` : "—",
-      sub: has ? fmtRMoney(m.avg_r) : "",
+      sub: has ? fmtMoney(a.avg_r_currency) : "",
     },
     {
       label: "Max drawdown",
       value: has ? `−${m.max_drawdown_r.toFixed(2)}R` : "—",
-      sub: has ? fmtRMoney(-m.max_drawdown_r, false) : "",
+      sub: has ? fmtMoney(a.max_drawdown_currency, false) : "",
       tone: m.max_drawdown_r > 0 ? "risk" : undefined,
     },
     {
       label: "Expectancy",
       value: has ? `${m.expectancy_r >= 0 ? "+" : ""}${m.expectancy_r.toFixed(2)}R` : "—",
-      sub: has ? fmtRMoney(m.expectancy_r) : "",
+      sub: has ? fmtMoney(a.expectancy_currency) : "",
     },
     {
       label: "Total PnL",
       value: has ? `${m.total_r >= 0 ? "+" : ""}${m.total_r.toFixed(2)}R` : "—",
-      sub: has ? fmtRMoney(m.total_r) : "",
+      sub: has ? fmtMoney(a.total_pnl_converted) : "",
       tone: m.total_r < 0 ? "risk" : undefined,
     },
   ];
+
+  // currency_only mode: replace R values with money strings entirely
+  if (mode === "currency_only") {
+    const moneyOnly = (amount: number | null) =>
+      amount == null ? "—" : formatCurrencyAmount(amount, cur, { showSign: true });
+    stats[2].value = has && a.avg_r_currency != null ? moneyOnly(a.avg_r_currency) : stats[2].value;
+    stats[3].value = has && a.max_drawdown_currency != null ? moneyOnly(a.max_drawdown_currency) : stats[3].value;
+    stats[4].value = has && a.expectancy_currency != null ? moneyOnly(a.expectancy_currency) : stats[4].value;
+    stats[5].value = has && a.total_pnl_converted != null ? moneyOnly(a.total_pnl_converted) : stats[5].value;
+    stats.forEach((s) => { s.sub = ""; });
+  }
 
   return (
     <Card>
@@ -563,7 +587,7 @@ function FullStatsPanel({ ssot }: { ssot: Ssot }) {
           Metrics will populate as you log trades.
         </p>
       )}
-      {has && risk == null && (
+      {has && ssot.account.risk_per_trade == null && mode !== "rr_only" && (
         <p className="mt-3 text-[11px] text-text-secondary/70">
           Set a risk-per-trade value in <Link to="/hub/settings" className="text-gold hover:text-gold-soft">settings</Link> to also see PnL in {cur}.
         </p>
