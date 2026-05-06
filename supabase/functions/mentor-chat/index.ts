@@ -810,6 +810,7 @@ Deno.serve(async (req) => {
       (context.journalSummary ||
         context.systemRules ||
         context.profileSummary ||
+        context.ssot ||
         context.intelligence ||
         (context.recentPatterns && context.recentPatterns.length > 0) ||
         (context.lastTwoTrades && context.lastTwoTrades.length > 0) ||
