@@ -859,7 +859,24 @@ Deno.serve(async (req) => {
         contextBlock += `\n\n[TRADER_STATE — system source of truth, read-only]\nUse this to answer ANY question about the system: why a feature is locked, why the score moved, what's allowed today, what to do next. Cite numbers verbatim. Never override.\n- Strategy: ${strategyLine}\n- Discipline: score=${t.discipline.score}/100 · state=${stateLabel} · consecutive_breaks=${t.discipline.consecutive_breaks}\n- Last score move: ${lastMove}\n- Session: checklist ${checklist} · trading_allowed=${tradingAllowed}\n- Last analyzer event: ${lastEv}\n- Active blocks: ${blockLine}\n- Recovery: ${recoveryLine}`;
       }
 
-      if (context!.dailyChecklist) {
+      // [SSOT] — single source of truth. Mentor MUST cite these numbers
+      // verbatim and never recompute. Rendered right after TRADER_STATE.
+      if (context!.ssot) {
+        const s = context!.ssot;
+        const pct = (v: number) => `${Math.round(v * 100)}%`;
+        const r = (v: number, d = 2) => `${v >= 0 ? "+" : ""}${v.toFixed(d)}R`;
+        const pf = !Number.isFinite(s.metrics.profit_factor)
+          ? "∞ (no losses)"
+          : s.metrics.profit_factor === 0
+            ? "n/a"
+            : s.metrics.profit_factor.toFixed(2);
+        const bal = s.account.balance == null
+          ? "not set"
+          : `${s.account.balance.toLocaleString()} (${s.account.source})`;
+        contextBlock += `\n\n[SSOT — single source of truth, cite verbatim]\nThese numbers are the only authority on performance and behavior. Never recompute. Never invent. If a metric is 0 or n/a, say so plainly.\n- Account: balance=${bal}\n- Trades: ${s.metrics.total_trades} (W ${s.metrics.wins} / L ${s.metrics.losses} / BE ${s.metrics.breakevens})\n- Win rate: ${pct(s.metrics.win_rate)} · Avg R: ${r(s.metrics.avg_r)} · Profit factor: ${pf}\n- Expectancy: ${r(s.metrics.expectancy_r)} · Total: ${r(s.metrics.total_r)} · Max drawdown: ${s.metrics.max_drawdown_r.toFixed(2)}R\n- Best session: ${s.metrics.best_session ?? "n/a"} · Most-broken rule: ${s.metrics.worst_rule_break ?? "none"}\n- Discipline score: ${s.behavior.discipline_score}/100 · Rule adherence: ${pct(s.behavior.rule_adherence)} (${s.behavior.clean_trades}/${s.behavior.total_trades} clean) · Violations: ${s.behavior.violation_count}`;
+      }
+
+
         const d = context!.dailyChecklist;
         const stateLabel =
           d.control_state === "in_control"
