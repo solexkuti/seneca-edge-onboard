@@ -456,6 +456,14 @@ function PerformanceTrendCard({ ssot }: { ssot: Ssot }) {
     `L ${xFor(0).toFixed(2)} ${(H - PAD_Y).toFixed(2)} Z`;
 
   const end = curve[curve.length - 1].value;
+  const a = ssot.analytics;
+  const mode = ssot.account.metric_display_mode;
+  const endLabel = formatMetric({
+    r: end,
+    amountInDisplayCurrency: a.total_pnl_converted,
+    displayCurrency: a.display_currency,
+    mode,
+  });
 
   return (
     <Card>
@@ -463,8 +471,7 @@ function PerformanceTrendCard({ ssot }: { ssot: Ssot }) {
         <div>
           <CardEyebrow Icon={TrendingUp}>Performance trend</CardEyebrow>
           <p className="mt-3 font-display text-[26px] font-semibold tracking-tight text-text-primary tabular-nums">
-            {end >= 0 ? "+" : ""}
-            {end.toFixed(2)}R
+            {endLabel}
           </p>
           <p className="mt-1 text-[12.5px] text-text-secondary">
             {curve.length} trade{curve.length === 1 ? "" : "s"} · cumulative R
