@@ -634,7 +634,7 @@ export default function AiMentorChat() {
     // Behavioral journal payload — new fixed-delta system.
     const behavioralPayload = behavioralEntries.length > 0
       ? {
-          disciplineScore: behavioralScore,
+          disciplineScore: ssot.behavior.discipline_score,
           recentTrades: behavioralEntries.slice(0, 20).map((e) => ({
             when: new Date(e.created_at).toLocaleString(undefined, {
               month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
