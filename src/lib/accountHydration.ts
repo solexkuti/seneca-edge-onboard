@@ -21,7 +21,12 @@ export async function hydrateAccountFromTrade(input: {
     .eq("id", uid)
     .maybeSingle();
 
-  const patch: Record<string, unknown> = {};
+  const patch: {
+    account_balance?: number;
+    balance_source?: string;
+    balance_updated_at?: string;
+    risk_per_trade?: number;
+  } = {};
   // Compute risk in BASE currency: account_size * (risk_percent / 100).
   if (input.accountSize != null && Number.isFinite(input.accountSize) && input.accountSize > 0) {
     if (prof?.account_balance == null) {
