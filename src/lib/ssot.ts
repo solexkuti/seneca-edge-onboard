@@ -67,6 +67,17 @@ export type SsotTrade = {
   display_currency_at_close: string | null;
 };
 
+export function tradeMonetaryConverted(
+  trade: { rr: number | null; monetary_pnl_converted_snapshot: number | null; monetary_pnl_base: number | null },
+  analytics: { exchange_rate: number },
+  riskPerTrade: number | null,
+): number | null {
+  if (trade.monetary_pnl_converted_snapshot != null) return trade.monetary_pnl_converted_snapshot;
+  if (trade.monetary_pnl_base != null) return trade.monetary_pnl_base * analytics.exchange_rate;
+  if (trade.rr == null || riskPerTrade == null || !Number.isFinite(riskPerTrade) || riskPerTrade <= 0) return null;
+  return trade.rr * riskPerTrade * analytics.exchange_rate;
+}
+
 
 export type SsotViolation = {
   id: string;
