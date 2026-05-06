@@ -258,6 +258,69 @@ async function loadWorstRuleBreak(userId: string): Promise<string | null> {
   return worst;
 }
 
+type ViewBundle = {
+  metrics: Database["public"]["Views"]["metrics"]["Row"] | null;
+  expectancy: Database["public"]["Views"]["expectancy"]["Row"] | null;
+  drawdown: Database["public"]["Views"]["drawdown"]["Row"] | null;
+  adherence: Database["public"]["Views"]["rule_adherence"]["Row"] | null;
+  discipline: Database["public"]["Views"]["discipline"]["Row"] | null;
+};
+
+async function loadComputedViews(userId: string): Promise<ViewBundle> {
+  const [m, e, d, a, disc] = await Promise.all([
+    supabase.from("metrics").select("*").eq("user_id", userId).maybeSingle(),
+    supabase.from("expectancy").select("*").eq("user_id", userId).maybeSingle(),
+    supabase.from("drawdown").select("*").eq("user_id", userId).maybeSingle(),
+    supabase.from("rule_adherence").select("*").eq("user_id", userId).maybeSingle(),
+    supabase.from("discipline").select("*").eq("user_id", userId).maybeSingle(),
+  ]);
+  return {
+    metrics: m.data ?? null,
+    expectancy: e.data ?? null,
+    drawdown: d.data ?? null,
+    adherence: a.data ?? null,
+    discipline: disc.data ?? null,
+  };
+}
+
+function metricsFromViews(v: ViewBundle, bestSession: SsotTrade["session"] | null): SsotMetrics {
+  const m = v.metrics;
+  if (!m || !m.total_trades) return { ...EMPTY_METRICS, best_session: bestSession };
+  const pf = Number(m.profit_factor ?? 0);
+  return {
+    total_trades: Number(m.total_trades ?? 0),
+    wins: Number(m.wins ?? 0),
+    losses: Number(m.losses ?? 0),
+    breakevens: Number(m.breakevens ?? 0),
+    win_rate: Number(m.win_rate ?? 0),
+    avg_r: Number(m.avg_r ?? 0),
+    profit_factor: pf >= 999999 ? Infinity : pf,
+    expectancy_r: Number(v.expectancy?.expectancy_r ?? 0),
+    max_drawdown_r: Number(v.drawdown?.max_drawdown_r ?? 0),
+    total_r: Number(m.total_r ?? 0),
+    best_session: bestSession,
+    worst_rule_break: null,
+  };
+}
+
+function bestSessionFromTrades(trades: SsotTrade[]): SsotTrade["session"] | null {
+  const sessionR: Record<string, number> = {};
+  for (const t of trades) {
+    if (t.session && t.rr != null) {
+      sessionR[t.session] = (sessionR[t.session] ?? 0) + t.rr;
+    }
+  }
+  let best: SsotTrade["session"] | null = null;
+  let bestVal = -Infinity;
+  for (const [k, v] of Object.entries(sessionR)) {
+    if (v > bestVal) {
+      bestVal = v;
+      best = k as SsotTrade["session"];
+    }
+  }
+  return best;
+}
+
 export async function loadSsot(): Promise<Ssot> {
   const { data: auth } = await supabase.auth.getUser();
   const uid = auth?.user?.id ?? null;
@@ -281,15 +344,26 @@ export async function loadSsot(): Promise<Ssot> {
     };
   }
 
-  const [account, trades, breakdown, worstBreak] = await Promise.all([
+  const [account, trades, breakdown, worstBreak, views] = await Promise.all([
     loadAccount(uid),
     loadTrades(uid),
-    loadDisciplineBreakdown(),
+    loadDisciplineBreakdown(), // still needed for the breakdown UI (per-trade contributions)
     loadWorstRuleBreak(uid),
+    loadComputedViews(uid),
   ]);
 
-  const metrics = computeMetrics(trades);
+  const bestSession = bestSessionFromTrades(trades);
+  const metrics = metricsFromViews(views, bestSession);
   metrics.worst_rule_break = worstBreak;
+
+  // Behavior numbers come from the discipline + rule_adherence views (SSOT).
+  const disciplineScore = Number(views.discipline?.discipline_score ?? breakdown.score);
+  const cleanTrades = Number(views.discipline?.clean_trades ?? breakdown.clean_trades);
+  const totalLogs = Number(views.discipline?.total_trades ?? breakdown.total_trades);
+  const violationCount = Number(views.discipline?.violation_count ?? breakdown.violation_count);
+  const adherence = Number(
+    views.adherence?.adherence ?? breakdown.rule_adherence ?? 1,
+  );
 
   return {
     loading: false,
@@ -298,13 +372,14 @@ export async function loadSsot(): Promise<Ssot> {
     trades,
     metrics,
     behavior: {
-      discipline_score: breakdown.score,
-      rule_adherence: breakdown.rule_adherence,
-      clean_trades: breakdown.clean_trades,
-      total_trades: breakdown.total_trades,
-      violation_count: breakdown.violation_count,
+      discipline_score: disciplineScore,
+      rule_adherence: adherence,
+      clean_trades: cleanTrades,
+      total_trades: totalLogs,
+      violation_count: violationCount,
       recent_violations: [],
     },
-    discipline: breakdown,
+    // Keep authoritative score from view, retain breakdown contributions for the trace UI.
+    discipline: { ...breakdown, score: disciplineScore, rule_adherence: adherence },
   };
 }
