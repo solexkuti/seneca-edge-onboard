@@ -351,12 +351,14 @@ function TradeCard({
   expanded,
   onToggle,
   onPreview,
+  fmtR,
 }: {
   trade: Trade;
   delay: number;
   expanded: boolean;
   onToggle: () => void;
   onPreview: (path: string) => void;
+  fmtR: (n: number | null) => string;
 }) {
   const [thumb, setThumb] = useState<string | null>(null);
 
