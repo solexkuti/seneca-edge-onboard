@@ -141,6 +141,15 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
 
       if (error) throw error;
 
+      // Persist immutable FX snapshot (missed trades have null R impact, but
+      // we still pin base/display currency so analytics stay coherent).
+      try {
+        const { attachFxSnapshotToTrade } = await import("@/lib/fxSnapshot");
+        await attachFxSnapshotToTrade({ userId });
+      } catch (e) {
+        console.warn("[missed] FX snapshot failed:", e);
+      }
+
       toast.success("Missed trade logged. Honesty compounds.");
       window.dispatchEvent(new CustomEvent(JOURNAL_EVENT));
       setDone(true);

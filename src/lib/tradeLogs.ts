@@ -77,6 +77,13 @@ export async function insertTradeLog(input: NewTradeLog): Promise<TradeLog> {
     .select("*")
     .single();
   if (error) throw error;
+  // Mirror trigger has just created a `trades` row — capture FX snapshot.
+  try {
+    const { attachFxSnapshotToTrade } = await import("@/lib/fxSnapshot");
+    await attachFxSnapshotToTrade({ userId: uid });
+  } catch (e) {
+    console.warn("[trade_logs] FX snapshot failed:", e);
+  }
   // Notify every consumer (dashboard SSOT, behavior, history, mentor) that a
   // new trade exists. Without this, useSsot stays on stale data after a save.
   if (typeof window !== "undefined") {
