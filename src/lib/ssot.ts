@@ -109,7 +109,16 @@ export type Ssot = {
   behavior: SsotBehavior;
   violations: SsotViolation[];
   session_performance: SsotSessionStat[];
-  execution_type: { controlled_pct: number; impulsive_pct: number; clean: number; with_violations: number };
+  execution_type: {
+    controlled_pct: number;
+    semi_controlled_pct: number;
+    impulsive_pct: number;
+    controlled: number;
+    semi_controlled: number;
+    impulsive: number;
+    missed: number;
+    executed_total: number;
+  };
   /** Underlying discipline breakdown — kept for legacy UI consumers. */
   discipline: DisciplineBreakdown;
 };
