@@ -14,10 +14,7 @@ import {
   tradeFromRow,
   generateInsights,
   generateRecommendations,
-  behaviorScore,
-  ruleAdherence,
   executionSplit,
-  summarize,
   sessionPerformance,
   type Trade,
   type TradeRow,
@@ -25,6 +22,12 @@ import {
 } from "@/lib/trade";
 import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 import { Recommendations } from "@/components/feature/Recommendations";
+import { useSsot } from "@/hooks/useSsot";
+import {
+  metricColorStyle,
+  metricGlowShadow,
+  metricTone,
+} from "@/lib/metricColor";
 
 export const Route = createFileRoute("/hub/insights")({
   head: () => ({
