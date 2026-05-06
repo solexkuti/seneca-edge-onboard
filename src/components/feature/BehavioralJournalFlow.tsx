@@ -26,7 +26,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { validateTradePrices } from "@/lib/priceValidation";
+import { validateTradePrices, validateTradeStructure } from "@/lib/priceValidation";
 import {
   analyzeForCorrection,
   fieldLabel,
