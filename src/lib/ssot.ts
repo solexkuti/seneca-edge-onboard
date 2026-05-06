@@ -495,14 +495,18 @@ export async function loadSsot(): Promise<Ssot> {
     };
   }
 
-  const [account, allTrades, breakdown, worstBreak, views, violations] = await Promise.all([
+  const [account, allTrades, breakdown, worstBreak, violations] = await Promise.all([
     loadAccount(uid),
     loadAllTrades(uid),
     loadDisciplineBreakdown(),
     loadWorstRuleBreak(uid),
-    loadComputedViews(uid),
     loadViolations(uid),
   ]);
+  // metricsFromViews / loadComputedViews kept available but unused — metrics
+  // are now computed directly from trades to keep collapsed and expanded
+  // numbers identical and to avoid stale view-driven drawdown.
+  void metricsFromViews;
+  void loadComputedViews;
 
   const executed = allTrades.filter((t) => t.trade_type === "executed");
   const missed = allTrades.filter((t) => t.trade_type === "missed");
