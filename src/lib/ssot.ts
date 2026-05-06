@@ -153,6 +153,8 @@ export const EMPTY_ACCOUNT: SsotAccount = {
   source: "manual",
   updated_at: null,
   currency: "USD",
+  display_currency: "USD",
+  metric_display_mode: "rr_plus_currency",
   risk_per_trade: null,
 };
 
