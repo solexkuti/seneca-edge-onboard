@@ -29,7 +29,7 @@ const EMPTY_SSOT: Ssot = {
     { session: "NY", total_trades: 0, wins: 0, losses: 0, win_rate: 0, total_r: 0, assets: [], violations: 0, missed: 0 },
     { session: "Asia", total_trades: 0, wins: 0, losses: 0, win_rate: 0, total_r: 0, assets: [], violations: 0, missed: 0 },
   ],
-  execution_type: { controlled_pct: 0, impulsive_pct: 0, clean: 0, with_violations: 0 },
+  execution_type: { controlled_pct: 0, semi_controlled_pct: 0, impulsive_pct: 0, controlled: 0, semi_controlled: 0, impulsive: 0, missed: 0, executed_total: 0 },
   discipline: {
     score: 100,
     state: "in_control",

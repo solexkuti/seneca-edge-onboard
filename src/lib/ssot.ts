@@ -490,7 +490,7 @@ export async function loadSsot(): Promise<Ssot> {
       },
       violations: [],
       session_performance: buildSessionPerformance([], [], []),
-      execution_type: buildExecutionType([]),
+      execution_type: buildExecutionType([], []),
       discipline: empty,
     };
   }
@@ -563,7 +563,7 @@ export async function loadSsot(): Promise<Ssot> {
     },
     violations,
     session_performance: buildSessionPerformance(executed, missed, violations),
-    execution_type: buildExecutionType(executed),
+    execution_type: buildExecutionType(executed, missed),
     discipline: {
       ...breakdown,
       score: disciplineScore,
