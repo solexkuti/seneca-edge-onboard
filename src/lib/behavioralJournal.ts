@@ -81,6 +81,19 @@ export const PER_TRADE_BASE = 100;
 export const SCORE_MIN = 0;
 export const SCORE_MAX = 100;
 
+/**
+ * @deprecated Legacy severity tiers were removed by the strict ±10 engine.
+ * Kept as an empty set so old callers compile and behave as if no mistake
+ * is "severe". Do NOT add new ids here.
+ */
+export const SEVERE_IDS: ReadonlySet<MistakeId> = new Set<MistakeId>();
+
+/** @deprecated Legacy cap from the weighted engine. No longer enforced — kept for back-compat. */
+export const MAX_PENALTY = 100;
+
+/** @deprecated Legacy floor from the weighted engine. The strict engine clamps to 0. */
+export const MIN_TRADE_SCORE = 0;
+
 export type ClassifyResult = {
   classification: Classification;
   /** Raw sum of penalties (10 × number of violations). */
