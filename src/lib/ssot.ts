@@ -20,6 +20,7 @@ import {
   type DisciplineBreakdown,
 } from "@/lib/disciplineScore";
 import { getRate } from "@/lib/fxService";
+import { replay as replayBehavior, type ReplayTradeInput } from "@/lib/behaviorEngine";
 
 export type BalanceSource = "manual" | "synced";
 
