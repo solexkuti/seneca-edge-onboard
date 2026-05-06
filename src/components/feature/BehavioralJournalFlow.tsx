@@ -92,10 +92,8 @@ const SCREENSHOT_TAGS: { id: ScreenshotTag; label: string }[] = [
 const MAX_SCREENSHOTS = 5;
 
 const CLASS_TONE: Record<Classification, { label: string; tone: string; chip: string }> = {
-  clean:  { label: "Clean execution", tone: "text-emerald-300", chip: "bg-emerald-500/10 ring-emerald-500/20 text-emerald-300" },
-  minor:  { label: "Minor slip",      tone: "text-amber-300",   chip: "bg-amber-500/10 ring-amber-500/20 text-amber-300" },
-  bad:    { label: "Mistake",         tone: "text-orange-300",  chip: "bg-orange-500/10 ring-orange-500/20 text-orange-300" },
-  severe: { label: "Major slip",      tone: "text-rose-300",    chip: "bg-rose-500/10 ring-rose-500/20 text-rose-300" },
+  clean:     { label: "Clean execution", tone: "text-emerald-300", chip: "bg-emerald-500/10 ring-emerald-500/20 text-emerald-300" },
+  violation: { label: "Violation",       tone: "text-rose-300",    chip: "bg-rose-500/10 ring-rose-500/20 text-rose-300" },
 };
 
 const MARKET_OPTIONS: { id: Market; label: string }[] = [
