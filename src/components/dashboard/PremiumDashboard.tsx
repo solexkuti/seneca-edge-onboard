@@ -672,7 +672,11 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
                         ))
                       )}
                     </span>
-                    <DisciplineBar value={dispScore} />
+                    {dispScore != null ? (
+                      <DisciplineBar value={dispScore} />
+                    ) : (
+                      <span className="text-[11px] text-text-secondary/60">—</span>
+                    )}
                     <span className="flex justify-end">
                       <StickyNote
                         className="h-[14px] w-[14px] text-text-secondary/70"
