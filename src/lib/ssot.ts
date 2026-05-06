@@ -445,6 +445,8 @@ async function loadAllTrades(userId: string): Promise<SsotTrade[]> {
     monetary_pnl_converted_snapshot: (r.monetary_pnl_converted_snapshot as number | null) ?? null,
     exchange_rate_at_close: (r.exchange_rate_at_close as number | null) ?? null,
     display_currency_at_close: (r.display_currency_at_close as string | null) ?? null,
+    actual_risk_pct: (r.actual_risk_pct as number | null) ?? null,
+    preferred_risk_pct: (r.preferred_risk_pct as number | null) ?? null,
   }));
 }
 
