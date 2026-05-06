@@ -27,6 +27,8 @@ export type SsotAccount = {
   equity: number | null;
   source: BalanceSource;
   updated_at: string | null;
+  currency: string;
+  risk_per_trade: number | null;
 };
 
 export type SsotTrade = {
