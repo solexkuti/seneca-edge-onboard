@@ -24,7 +24,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Ssot, SsotTrade, SsotViolation } from "@/lib/ssot";
+import { type Ssot, type SsotTrade, type SsotViolation, formatCurrency, rToCurrency } from "@/lib/ssot";
 import { useTraderState } from "@/hooks/useTraderState";
 import { useSsot } from "@/hooks/useSsot";
 import {
