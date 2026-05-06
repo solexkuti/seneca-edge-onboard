@@ -25,6 +25,12 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { type Ssot, type SsotTrade, type SsotViolation, formatCurrency, rToCurrency } from "@/lib/ssot";
+import { MISSED_REASON_LABELS, type MissedReason } from "@/lib/trade/types";
+
+function missedReasonLabel(reason: string | null): string {
+  if (!reason) return "Missed";
+  return MISSED_REASON_LABELS[reason as MissedReason] ?? reason.replace(/_/g, " ");
+}
 import { useTraderState } from "@/hooks/useTraderState";
 import { useSsot } from "@/hooks/useSsot";
 import {
