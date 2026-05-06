@@ -1287,11 +1287,15 @@ function SessionRow({
   winRatePct,
   total,
   violations,
+  totalR,
+  missed,
 }: {
   label: string;
   winRatePct: number;
   total: number;
   violations: number;
+  totalR: number;
+  missed: number;
 }) {
   const behavior =
     total === 0
@@ -1309,6 +1313,7 @@ function SessionRow({
         : behavior === "Drifting"
           ? "border-amber-300/25 bg-amber-300/[0.08] text-amber-200"
           : "border-white/[0.06] bg-white/[0.02] text-text-secondary";
+  const rText = `${totalR >= 0 ? "+" : ""}${totalR.toFixed(2)}R`;
   return (
     <div>
       <div className="flex items-center justify-between text-[12.5px]">
@@ -1322,9 +1327,10 @@ function SessionRow({
           <span className="tabular-nums text-text-secondary">
             {total > 0 ? (
               <>
-                Win rate{" "}
-                <span className="font-semibold text-emerald-400">
-                  {winRatePct}%
+                <span className="font-semibold text-emerald-400">{winRatePct}%</span>
+                <span className="mx-1 text-text-secondary/50">·</span>
+                <span className={`font-semibold ${totalR >= 0 ? "text-emerald-400" : "text-rose-300"}`}>
+                  {rText}
                 </span>
               </>
             ) : (
@@ -1339,6 +1345,18 @@ function SessionRow({
           style={{ width: `${total > 0 ? winRatePct : 0}%` }}
         />
       </div>
+      <p className="mt-1 text-[11px] text-text-secondary/80 tabular-nums">
+        {total > 0 ? (
+          <>
+            {total} executed · {violations} violation{violations === 1 ? "" : "s"}
+            {missed > 0 ? ` · ${missed} missed` : ""}
+          </>
+        ) : missed > 0 ? (
+          `${missed} missed observation${missed === 1 ? "" : "s"}`
+        ) : (
+          "No data"
+        )}
+      </p>
     </div>
   );
 }
