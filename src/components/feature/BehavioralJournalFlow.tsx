@@ -1199,17 +1199,52 @@ export default function BehavioralJournalFlow({
                   </Field>
                 </div>
 
+                {/* Account Policy — READ-ONLY. Managed in Settings. */}
+                <div className="rounded-xl bg-card-elevated/60 ring-1 ring-border px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary/70">
+                      Account Policy
+                    </span>
+                    <Link to="/hub/settings" className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/85 hover:text-primary">
+                      Manage in Settings
+                    </Link>
+                  </div>
+                  <div className="mt-2 grid grid-cols-3 gap-3 text-[12px] text-text-primary tabular-nums">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-text-secondary/60">Balance</p>
+                      <p className="mt-0.5 font-semibold">{policyBalance != null ? fmtMoney(policyBalance, policyCurrency) : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-text-secondary/60">Preferred Risk</p>
+                      <p className="mt-0.5 font-semibold">{preferredRiskPercent != null ? `${preferredRiskPercent.toFixed(2)}%` : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-text-secondary/60">Risk Amount</p>
+                      <p className="mt-0.5 font-semibold">{policyRiskAmount != null ? fmtMoney(policyRiskAmount, policyCurrency) : "—"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Risk Deviation — behavioral insight only when both sides known. */}
+                {risk != null && preferredRiskPercent != null && preferredRiskPercent > 0 && (() => {
+                  const dev = ((risk - preferredRiskPercent) / preferredRiskPercent) * 100;
+                  const oversized = dev >= 50;
+                  const aggressive = dev >= 100;
+                  const undersized = dev <= -25;
+                  const tone = aggressive ? "rose" : oversized ? "amber" : undersized ? "yellow" : "emerald";
+                  const label = aggressive ? "Aggressive — revenge risk" : oversized ? "Oversized" : undersized ? "Undersized — fearful" : "Controlled sizing";
+                  const ring = tone === "rose" ? "ring-rose-500/30 text-rose-300" : tone === "amber" ? "ring-amber-500/30 text-amber-300" : tone === "yellow" ? "ring-yellow-500/30 text-yellow-300" : "ring-emerald-500/30 text-emerald-300";
+                  return (
+                    <div className={`rounded-xl bg-card-elevated/60 ring-1 px-4 py-2.5 text-[12px] ${ring}`}>
+                      <span className="font-semibold">{label}</span>
+                      <span className="ml-2 tabular-nums text-text-secondary/80">
+                        actual {risk.toFixed(2)}% vs preferred {preferredRiskPercent.toFixed(2)}% ({dev > 0 ? "+" : ""}{dev.toFixed(0)}%)
+                      </span>
+                    </div>
+                  );
+                })()}
+
                 <div className="space-y-3 opacity-75">
-                  {/* Account size ($) — optional, persisted across trades. */}
-                  <Field subtle label="Account size ($)">
-                    <input
-                      value={accountSizeStr}
-                      onChange={(e) => setAccountSizeStr(e.target.value)}
-                      placeholder="—"
-                      inputMode="decimal"
-                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/30"
-                    />
-                  </Field>
 
                   {/* Profit / Loss ($) — optional, auto-fills from R × Risk % × Account size. */}
                   <Field subtle label="Profit / Loss ($)">
