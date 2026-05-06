@@ -465,29 +465,36 @@ function TradeCard({
             {trade.marketType && ` · ${trade.marketType}`}
           </p>
 
-          {/* Quick rule summary */}
+          {/* Quick rule summary — humanized + severity-colored */}
           {!isMissed && (broken > 0 || followed > 0) && (
-            <div className="mt-1.5 flex items-center gap-3 text-[10.5px]">
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10.5px]">
               {followed > 0 && (
-                <span className="text-emerald-400/90">
-                  ✓ {followed} followed
+                <span className="inline-flex items-center gap-1 text-emerald-400/90">
+                  ✓ {followed} clean
                 </span>
               )}
-              {broken > 0 && (
-                <span className="text-rose-400/90">✗ {broken} broken</span>
+              {trade.rulesBroken.slice(0, 2).map((r) => {
+                const tone = severityTone(violationSeverity(r));
+                return (
+                  <span
+                    key={r}
+                    className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] ring-1 ${tone.ring} ${tone.bg} ${tone.text}`}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone.dot }} />
+                    {humanizeViolation(r)}
+                  </span>
+                );
+              })}
+              {trade.rulesBroken.length > 2 && (
+                <span className="text-[#9A9A9A]/70">+{trade.rulesBroken.length - 2} more</span>
               )}
             </div>
           )}
 
-          {isMissed && trade.missedReason && (
-            <p className="mt-1.5 text-[11.5px] text-[#9A9A9A]">
-              {MISSED_REASON_LABELS[trade.missedReason]}
-              {trade.missedPotentialR != null && (
-                <span className="ml-2 inline-flex items-center gap-1 text-[#E7C98A]">
-                  <Target className="h-3 w-3" /> {trade.missedPotentialR.toFixed(1)}
-                  R missed
-                </span>
-              )}
+          {/* Missed-trade row: minimal reason chip only — full context in expanded view */}
+          {isMissed && trade.missedPotentialR != null && (
+            <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-[#E7C98A]">
+              <Target className="h-3 w-3" /> {trade.missedPotentialR.toFixed(1)}R missed
             </p>
           )}
         </div>
