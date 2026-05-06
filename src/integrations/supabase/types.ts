@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounts: {
+        Row: {
+          balance: number
+          created_at: string
+          equity: number
+          id: string
+          is_active: boolean
+          label: string | null
+          source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          equity?: number
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          source?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          equity?: number
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          source?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "discipline"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analyzer_events: {
         Row: {
           analysis_id: string | null
@@ -1482,6 +1533,45 @@ export type Database = {
       }
     }
     Views: {
+      discipline: {
+        Row: {
+          clean_trades: number | null
+          discipline_score: number | null
+          state: string | null
+          total_trades: number | null
+          user_id: string | null
+          violation_count: number | null
+        }
+        Relationships: []
+      }
+      drawdown: {
+        Row: {
+          max_drawdown_r: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      expectancy: {
+        Row: {
+          expectancy_r: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      metrics: {
+        Row: {
+          avg_r: number | null
+          breakevens: number | null
+          losses: number | null
+          profit_factor: number | null
+          total_r: number | null
+          total_trades: number | null
+          user_id: string | null
+          win_rate: number | null
+          wins: number | null
+        }
+        Relationships: []
+      }
       recent_decisions: {
         Row: {
           analysis_id: string | null
@@ -1493,6 +1583,15 @@ export type Database = {
           user_id: string | null
           verdict: string | null
           violations: Json | null
+        }
+        Relationships: []
+      }
+      rule_adherence: {
+        Row: {
+          adherence: number | null
+          clean_trades: number | null
+          total_logs: number | null
+          user_id: string | null
         }
         Relationships: []
       }
@@ -1511,6 +1610,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      hard_reset_all_users: { Args: never; Returns: undefined }
       is_trade_unlocked: { Args: { p_user_id: string }; Returns: boolean }
       move_to_dlq: {
         Args: {
