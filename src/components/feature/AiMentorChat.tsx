@@ -28,6 +28,7 @@ import { mistakeFrequency, MISTAKE_LABEL } from "@/lib/behavioralJournal";
 import { analyzeBehaviorPatterns } from "@/lib/behaviorPatternAnalysis";
 import { detectRelapseAndLoops } from "@/lib/relapseAndLoopDetection";
 import { usePerformance } from "@/hooks/usePerformance";
+import { useSsot } from "@/hooks/useSsot";
 import { buildQuickPrompts } from "@/lib/mentorQuickPrompts";
 import {
   INITIAL_STATE,
@@ -69,8 +70,9 @@ const SESSION_ID =
 export default function AiMentorChat() {
   const { state: traderState } = useTraderState();
   const { rows, entries: journal } = useDbJournal();
-  const { entries: behavioralEntries, score: behavioralScore } = useBehavioralJournal(20);
+  const { entries: behavioralEntries } = useBehavioralJournal(20);
   const { mentorPayload: performancePayload } = usePerformance(20);
+  const { ssot } = useSsot();
   const intelligence = useMemo(() => computeIntelligence(rows), [rows]);
 
   // Dynamic, state-driven quick prompts. Rotation key updates whenever the
@@ -632,7 +634,7 @@ export default function AiMentorChat() {
     // Behavioral journal payload — new fixed-delta system.
     const behavioralPayload = behavioralEntries.length > 0
       ? {
-          disciplineScore: behavioralScore,
+          disciplineScore: ssot.behavior.discipline_score,
           recentTrades: behavioralEntries.slice(0, 20).map((e) => ({
             when: new Date(e.created_at).toLocaleString(undefined, {
               month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
@@ -753,19 +755,37 @@ export default function AiMentorChat() {
         "Answer confidently. Be direct. Avoid generic motivational language. Clearly explain how Seneca is different from a normal trading journal. Focus on behavior tracking, pattern recognition, and decision enforcement. Keep it sharp and persuasive. Keep it under 6 short sentences.";
     }
 
+    // SSOT payload — single source of truth for every metric the mentor
+    // is allowed to cite. Sent on every turn that has any user data.
+    const ssotPayload = ssot.metrics.total_trades > 0 || ssot.account.balance != null
+      ? {
+          account: {
+            balance: ssot.account.balance,
+            equity: ssot.account.equity,
+            source: ssot.account.source,
+          },
+          metrics: ssot.metrics,
+          behavior: {
+            discipline_score: ssot.behavior.discipline_score,
+            rule_adherence: ssot.behavior.rule_adherence,
+            clean_trades: ssot.behavior.clean_trades,
+            total_trades: ssot.behavior.total_trades,
+            violation_count: ssot.behavior.violation_count,
+          },
+        }
+      : undefined;
+
     const ctx = {
       ...(journalSummary ? { journalSummary } : {}),
       ...(profileSummary ? { profileSummary } : {}),
-      ...(intelligencePayload ? { intelligence: intelligencePayload } : {}),
+      ...(ssotPayload ? { ssot: ssotPayload } : {}),
       ...(recentPatternsPayload ? { recentPatterns: recentPatternsPayload } : {}),
       ...(lastTwoPayload ? { lastTwoTrades: lastTwoPayload } : {}),
       ...(strategyPayload ? { activeStrategy: strategyPayload } : {}),
       ...(dailyChecklistPayload ? { dailyChecklist: dailyChecklistPayload } : {}),
       ...(traderStatePayload ? { traderState: traderStatePayload } : {}),
-      ...(behavioralPayload ? { behavioralJournal: behavioralPayload } : {}),
       ...(behaviorPatternsPayload ? { behaviorPatterns: behaviorPatternsPayload } : {}),
       ...(relapseLoopPayload ? { relapseLoops: relapseLoopPayload } : {}),
-      ...(performancePayload ? { performance: performancePayload } : {}),
       turnHint: intentHint,
     };
 
