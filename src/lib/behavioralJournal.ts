@@ -1,27 +1,18 @@
-// Behavioral Journal — deterministic per-trade discipline scoring engine.
+// Behavioral Journal — STRICT ±10 SSOT engine.
 //
-// SCORING MODEL (strict, no inflation, hard-capped):
+// SCORING MODEL (canonical, no severity weighting):
 //   • Each trade starts at 100.
-//   • Each selected mistake subtracts a fixed penalty.
-//   • Penalties stack across multiple mistakes BUT total penalty is capped
-//     at MAX_PENALTY (80). So a trade can never score below MIN_TRADE_SCORE (20).
-//   • A clean trade (no mistakes) = 100.
-//   • Per-trade score = max(MIN_TRADE_SCORE, 100 - capped_penalty).
+//   • Every violation subtracts EXACTLY 10. No severity tiers, no weights.
+//   • Clean trade (no mistakes) = 100.
+//   • Per-trade score = clamp(0..100, 100 - 10 * violations).
 //
-//   Overall discipline score = simple average of per-trade scores across all
-//   logged trades. NEVER exceeds 100. With 0 trades → null ("inactive").
+//   Overall discipline score is owned by SSOT (src/lib/ssot.ts) which
+//   replays a +10 / -10 ledger over trades.rules_broken. This file no
+//   longer computes or persists an "average" score on profiles.
 //
-// Penalty weights:
-//   Severe (-25):   overleveraged, revenge_trade, no_setup, ignored_sl
-//   Moderate(-15):  broke_risk_rule, oversized
-//   Moderate(-10):  moved_sl, fomo
-//   Minor (-5):     early_entry, late_entry
-//
-// Classification (drives feedback tone, not scoring):
-//   • clean   — 0 mistakes
-//   • minor   — total raw penalty ≤ 10
-//   • bad     — total raw penalty 11..40 and no severe-tier mistake
-//   • severe  — any severe-tier mistake OR total raw penalty > 40
+// Classification (drives feedback tone only — never scoring):
+//   • clean      — 0 violations
+//   • violation  — 1+ violations
 //
 // Storage mapping (keeps existing journal_entries columns):
 //   • score_before = 100 (per-trade base — kept for back-compat)
