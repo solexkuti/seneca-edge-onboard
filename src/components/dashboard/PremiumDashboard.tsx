@@ -734,7 +734,7 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
           <span>Dir</span>
           <span>Result</span>
           <span>Rules broken</span>
-          <span>Discipline</span>
+          <span>Trade quality</span>
           <span className="text-right">Notes</span>
         </div>
         <ul>
@@ -744,7 +744,7 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
               const isOpen = openId === t.id;
               const isMissed = t.trade_type === "missed";
               const r = typeof t.rr === "number" ? t.rr : null;
-              const dispScore = isMissed ? null : clean ? 100 : Math.max(0, 100 - t.rules_broken.length * 10);
+              const dispScore = isMissed ? null : clean ? 100 : Math.max(0, 100 - tradeQualityPenalty(t.rules_broken));
               return (
                 <motion.li
                   key={t.id}
@@ -906,21 +906,47 @@ function SummaryCell({
   );
 }
 
+// Per-trade execution quality penalties (NOT global discipline).
+// Weighted by severity so an oversized + SL-ignored trade can't read "green".
+const TRADE_QUALITY_PENALTIES: Array<{ match: RegExp; weight: number }> = [
+  { match: /revenge/i, weight: 20 },
+  { match: /no\s*setup|setup\s*missing|invalid\s*setup/i, weight: 15 },
+  { match: /emotional|fomo|tilt|impulse/i, weight: 15 },
+  { match: /oversiz|over\s*size|over-?lever|size/i, weight: 10 },
+  { match: /stop\s*loss|sl|no\s*sl|moved\s*sl/i, weight: 10 },
+];
+
+function tradeQualityPenalty(rulesBroken: string[]): number {
+  let total = 0;
+  for (const r of rulesBroken) {
+    const hit = TRADE_QUALITY_PENALTIES.find((p) => p.match.test(r));
+    total += hit ? hit.weight : 10;
+  }
+  return total;
+}
+
+function tradeQualityLabel(value: number): string {
+  if (value >= 90) return "Elite";
+  if (value >= 70) return "Acceptable";
+  return "Flawed";
+}
+
 function DisciplineBar({ value }: { value: number }) {
+  // 90+ green, 70–89 amber, <70 red. 80 must NEVER read deep green.
   const tone =
-    value >= 80
+    value >= 90
       ? "bg-emerald-500"
-      : value >= 55
+      : value >= 70
         ? "bg-amber-300"
         : "bg-rose-400";
   const text =
-    value >= 80
+    value >= 90
       ? "text-emerald-400"
-      : value >= 55
+      : value >= 70
         ? "text-amber-200"
         : "text-rose-300";
   return (
-    <span className="flex items-center gap-2">
+    <span className="flex items-center gap-2" title={`${tradeQualityLabel(value)} — per-trade execution quality (not account behavior)`}>
       <span className="relative h-1 w-14 overflow-hidden rounded-full bg-white/[0.06]">
         <span
           className={`absolute inset-y-0 left-0 rounded-full ${tone}`}
@@ -928,7 +954,7 @@ function DisciplineBar({ value }: { value: number }) {
         />
       </span>
       <span className={`text-[11.5px] font-semibold tabular-nums ${text}`}>
-        {value}%
+        {value}
       </span>
     </span>
   );
