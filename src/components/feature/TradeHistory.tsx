@@ -35,6 +35,12 @@ import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 import { useSsot } from "@/hooks/useSsot";
 import { formatMetric } from "@/lib/fxService";
 import type { MetricDisplayMode } from "@/lib/ssot";
+import {
+  humanizeViolation,
+  violationSeverity,
+  severityTone,
+  severityRank,
+} from "@/lib/violationLabels";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
