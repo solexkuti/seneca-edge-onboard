@@ -22,12 +22,19 @@ import {
 
 export type BalanceSource = "manual" | "synced";
 
+export type MetricDisplayMode = "rr_only" | "rr_plus_currency" | "currency_only";
+
 export type SsotAccount = {
   balance: number | null;
   equity: number | null;
   source: BalanceSource;
   updated_at: string | null;
+  /** Canonical BASE currency for this account (used for monetary_pnl_base). */
   currency: string;
+  /** User's chosen DISPLAY currency. May differ from base. */
+  display_currency: string;
+  /** RR / RR+currency / currency-only metric rendering preference. */
+  metric_display_mode: MetricDisplayMode;
   risk_per_trade: number | null;
 };
 
