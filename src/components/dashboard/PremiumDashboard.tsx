@@ -213,10 +213,10 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
         </Card>
       </div>
 
-      <div className="mt-5"><PerformanceTrendCard trades={ssot.trades} /></div>
-      <div className="mt-5"><FullStatsPanel ssot={ssot} /></div>
-      <div className="mt-5"><TradeHistoryPanel ssot={ssot} /></div>
-      <div className="mt-5"><BehaviorBreakdownCard ssot={ssot} /></div>
+      <div className="mt-5"><PerformanceTrendCard /></div>
+      <div className="mt-5"><FullStatsPanel /></div>
+      <div className="mt-5"><TradeHistoryPanel /></div>
+      <div className="mt-5"><BehaviorBreakdownCard /></div>
     </div>
   );
 }
