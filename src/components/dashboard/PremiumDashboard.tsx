@@ -790,10 +790,10 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
                     >
                       {isMissed
                         ? t.missed_potential_r != null
-                          ? `missed ${fmtR(t.missed_potential_r)}`
+                          ? `missed ${fmtRow(t.missed_potential_r)}`
                           : "missed"
                         : r != null
-                          ? fmtR(r)
+                          ? fmtRow(r, t)
                           : "—"}
                     </span>
                     <span className="flex flex-wrap gap-1">
