@@ -75,6 +75,7 @@ const POST_TRADE_REFLECTIONS = [
 ] as const;
 import { userKey } from "@/lib/userScopedStorage";
 import { useSsot } from "@/hooks/useSsot";
+import { loadActiveStrategyContext } from "@/lib/activeStrategy";
 
 const ACCOUNT_SIZE_STORAGE_SUFFIX = "journal:account_size";
 
