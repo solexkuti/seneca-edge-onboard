@@ -107,6 +107,27 @@ export type SsotBehavior = {
   recent_violations: { type: string; count: number }[];
 };
 
+export type SsotAnalytics = {
+  base_currency: string;
+  display_currency: string;
+  exchange_rate: number;            // base → display
+  total_r: number;
+  expectancy_r: number;
+  avg_r: number;
+  max_drawdown_r: number;
+  /** R × risk_per_trade in BASE currency. Null when risk basis missing. */
+  total_pnl_base: number | null;
+  total_pnl_converted: number | null;
+  expectancy_currency: number | null;
+  avg_r_currency: number | null;
+  max_drawdown_currency: number | null;
+  /** Immutable starting capital from profiles.account_balance (base ccy). */
+  starting_balance_base: number | null;
+  /** starting_balance + total_pnl_base. Live equity, base ccy. */
+  equity_base: number | null;
+  equity_converted: number | null;
+};
+
 export type Ssot = {
   loading: boolean;
   user_id: string | null;
@@ -129,8 +150,28 @@ export type Ssot = {
     missed: number;
     executed_total: number;
   };
+  /** Centralized monetary analytics. Single source for all live currency renders. */
+  analytics: SsotAnalytics;
   /** Underlying discipline breakdown — kept for legacy UI consumers. */
   discipline: DisciplineBreakdown;
+};
+
+export const EMPTY_ANALYTICS: SsotAnalytics = {
+  base_currency: "USD",
+  display_currency: "USD",
+  exchange_rate: 1,
+  total_r: 0,
+  expectancy_r: 0,
+  avg_r: 0,
+  max_drawdown_r: 0,
+  total_pnl_base: null,
+  total_pnl_converted: null,
+  expectancy_currency: null,
+  avg_r_currency: null,
+  max_drawdown_currency: null,
+  starting_balance_base: null,
+  equity_base: null,
+  equity_converted: null,
 };
 
 export const EMPTY_METRICS: SsotMetrics = {
