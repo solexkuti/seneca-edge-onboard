@@ -23,6 +23,7 @@ export type ValidationIssue = {
     | "missing_direction"
     | "denominator_zero"
     | "sl_invalid_placement"
+    | "tp_invalid_placement"
     | "price_scale_mismatch"
     | "extreme_distance"
     | "rr_out_of_range"
@@ -140,6 +141,32 @@ export function validateTradePrices(args: {
       });
     } else {
       structurallyValid = true;
+    }
+  }
+
+  // ── Take-profit placement (only when TP provided) ─────────────────────
+  if (
+    direction &&
+    entry != null &&
+    Number.isFinite(entry) &&
+    exit != null &&
+    Number.isFinite(exit)
+  ) {
+    // Treat `exit` as TP for forward validation. If TP equals entry, RR is 0.
+    if (direction === "buy" && exit < entry) {
+      issues.push({
+        level: "block",
+        code: "tp_invalid_placement",
+        message: "Invalid Buy setup: take profit must be above entry.",
+      });
+      structurallyValid = false;
+    } else if (direction === "sell" && exit > entry) {
+      issues.push({
+        level: "block",
+        code: "tp_invalid_placement",
+        message: "Invalid Sell setup: take profit must be below entry.",
+      });
+      structurallyValid = false;
     }
   }
 
