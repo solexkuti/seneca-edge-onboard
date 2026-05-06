@@ -74,8 +74,21 @@ const POST_TRADE_REFLECTIONS = [
   "The market rewards honesty before it rewards skill.",
 ] as const;
 import { userKey } from "@/lib/userScopedStorage";
+import { useSsot } from "@/hooks/useSsot";
 
-const ACCOUNT_SIZE_STORAGE_SUFFIX = "journal:account_size";
+// Currency formatter — uses the user's display currency from SSOT.
+function fmtMoney(amount: number, ccy: string): string {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: ccy,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    const sign = amount < 0 ? "-" : "";
+    return `${sign}${ccy} ${Math.abs(amount).toFixed(2)}`;
+  }
+}
 /** Per-user repeat-mistake counters for the price-correction engine. */
 const CORRECTION_REPEAT_STORAGE_SUFFIX = "journal:correction_repeats";
 const REPEAT_HINT_THRESHOLD = 3;
