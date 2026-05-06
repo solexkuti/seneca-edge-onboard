@@ -159,6 +159,7 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
     setPotentialRStr("");
     setReason(null);
     setNotes("");
+    clearScreenshot();
     setDone(false);
   }
 
