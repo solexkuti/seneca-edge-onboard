@@ -5,9 +5,15 @@ import { HubPageContainer } from "@/components/layout/HubLayout";
 import RequireAuth from "@/components/auth/RequireAuth";
 import { signOut } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { SUPPORTED_CURRENCIES, type CurrencyCode } from "@/lib/ssot";
+import { SUPPORTED_CURRENCIES, type CurrencyCode, type MetricDisplayMode } from "@/lib/ssot";
 import { useSsot } from "@/hooks/useSsot";
 import { JOURNAL_EVENT } from "@/lib/tradingJournal";
+
+const METRIC_MODES: { value: MetricDisplayMode; label: string; hint: string }[] = [
+  { value: "rr_only", label: "R only", hint: "Pure trader truth — no currency noise." },
+  { value: "rr_plus_currency", label: "R + currency", hint: "Show R with monetary equivalent." },
+  { value: "currency_only", label: "Currency only", hint: "Hide R, show money." },
+];
 
 export const Route = createFileRoute("/hub/settings")({
   head: () => ({
@@ -70,6 +76,8 @@ function AccountSettingsCard() {
   const [balance, setBalance] = useState<string>("");
   const [risk, setRisk] = useState<string>("");
   const [currency, setCurrency] = useState<CurrencyCode>("USD");
+  const [displayCurrency, setDisplayCurrency] = useState<CurrencyCode>("USD");
+  const [metricMode, setMetricMode] = useState<MetricDisplayMode>("rr_plus_currency");
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +87,16 @@ function AccountSettingsCard() {
     setBalance(ssot.account.balance != null ? String(ssot.account.balance) : "");
     setRisk(ssot.account.risk_per_trade != null ? String(ssot.account.risk_per_trade) : "");
     setCurrency((ssot.account.currency as CurrencyCode) ?? "USD");
-  }, [ssot.loading, ssot.account.balance, ssot.account.risk_per_trade, ssot.account.currency]);
+    setDisplayCurrency((ssot.account.display_currency as CurrencyCode) ?? "USD");
+    setMetricMode(ssot.account.metric_display_mode ?? "rr_plus_currency");
+  }, [
+    ssot.loading,
+    ssot.account.balance,
+    ssot.account.risk_per_trade,
+    ssot.account.currency,
+    ssot.account.display_currency,
+    ssot.account.metric_display_mode,
+  ]);
 
   async function save() {
     setSaving(true);
