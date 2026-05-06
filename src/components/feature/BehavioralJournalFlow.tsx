@@ -774,6 +774,15 @@ export default function BehavioralJournalFlow({
         console.warn("[trade_logs] insert failed:", perfErr);
       }
 
+      // Hydrate profile baseline (starting_balance + risk_per_trade) from
+      // first manual trade input. Never overwrites existing values.
+      try {
+        const { hydrateAccountFromTrade } = await import("@/lib/accountHydration");
+        await hydrateAccountFromTrade({ accountSize, riskPercent: risk });
+      } catch (hydrErr) {
+        console.warn("[account] hydration failed:", hydrErr);
+      }
+
       setFeedback({
         classification: r.classification,
         reasonLabel: r.reasonLabel,
