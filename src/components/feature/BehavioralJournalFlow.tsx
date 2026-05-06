@@ -406,17 +406,52 @@ export default function BehavioralJournalFlow({
 
   // Price + RR validation. Surfaces hard blocks (impossible structure) and
   // warnings (suspicious but possible). Warnings require explicit confirm.
-  const validation = useMemo(
-    () =>
-      validateTradePrices({
-        direction,
-        entry,
-        exit,
-        stop: sl,
-        manualR,
-      }),
-    [direction, entry, exit, sl, manualR],
-  );
+  const validation = useMemo(() => {
+    const base = validateTradePrices({
+      direction,
+      entry,
+      exit,
+      stop: sl,
+      manualR,
+    });
+    // Centralized directional structure check (entry/SL/TP only — never
+    // exit/outcome/RR). Merges into the existing issue list so blocks/
+    // warnings remain a single source of truth for the UI.
+    const struct = validateTradeStructure({
+      direction,
+      entry,
+      stop_loss: sl,
+      take_profit: tp,
+    });
+    const structIssues = struct.issues
+      .filter((i) =>
+        i.code === "buy_sl_invalid" ||
+        i.code === "buy_tp_invalid" ||
+        i.code === "sell_sl_invalid" ||
+        i.code === "sell_tp_invalid",
+      )
+      .map((i) => ({
+        level: "block" as const,
+        code: (i.code === "buy_sl_invalid" || i.code === "sell_sl_invalid"
+          ? "sl_invalid_placement"
+          : "tp_invalid_placement") as
+          | "sl_invalid_placement"
+          | "tp_invalid_placement",
+        message: i.message,
+      }));
+    // De-dupe by code so we never show the same block twice.
+    const seen = new Set(base.issues.map((i) => i.code));
+    const merged = [
+      ...base.issues,
+      ...structIssues.filter((i) => !seen.has(i.code)),
+    ];
+    return {
+      ...base,
+      issues: merged,
+      hasBlock: merged.some((i) => i.level === "block"),
+      hasWarn: merged.some((i) => i.level === "warn"),
+    };
+  }, [direction, entry, exit, sl, tp, manualR]);
 
   // Confirmation flag for the Trade Preview card. Resets automatically
   // whenever any input that affects validation changes.
