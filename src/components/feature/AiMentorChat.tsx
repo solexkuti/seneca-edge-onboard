@@ -755,19 +755,37 @@ export default function AiMentorChat() {
         "Answer confidently. Be direct. Avoid generic motivational language. Clearly explain how Seneca is different from a normal trading journal. Focus on behavior tracking, pattern recognition, and decision enforcement. Keep it sharp and persuasive. Keep it under 6 short sentences.";
     }
 
+    // SSOT payload — single source of truth for every metric the mentor
+    // is allowed to cite. Sent on every turn that has any user data.
+    const ssotPayload = ssot.metrics.total_trades > 0 || ssot.account.balance != null
+      ? {
+          account: {
+            balance: ssot.account.balance,
+            equity: ssot.account.equity,
+            source: ssot.account.source,
+          },
+          metrics: ssot.metrics,
+          behavior: {
+            discipline_score: ssot.behavior.discipline_score,
+            rule_adherence: ssot.behavior.rule_adherence,
+            clean_trades: ssot.behavior.clean_trades,
+            total_trades: ssot.behavior.total_trades,
+            violation_count: ssot.behavior.violation_count,
+          },
+        }
+      : undefined;
+
     const ctx = {
       ...(journalSummary ? { journalSummary } : {}),
       ...(profileSummary ? { profileSummary } : {}),
-      ...(intelligencePayload ? { intelligence: intelligencePayload } : {}),
+      ...(ssotPayload ? { ssot: ssotPayload } : {}),
       ...(recentPatternsPayload ? { recentPatterns: recentPatternsPayload } : {}),
       ...(lastTwoPayload ? { lastTwoTrades: lastTwoPayload } : {}),
       ...(strategyPayload ? { activeStrategy: strategyPayload } : {}),
       ...(dailyChecklistPayload ? { dailyChecklist: dailyChecklistPayload } : {}),
       ...(traderStatePayload ? { traderState: traderStatePayload } : {}),
-      ...(behavioralPayload ? { behavioralJournal: behavioralPayload } : {}),
       ...(behaviorPatternsPayload ? { behaviorPatterns: behaviorPatternsPayload } : {}),
       ...(relapseLoopPayload ? { relapseLoops: relapseLoopPayload } : {}),
-      ...(performancePayload ? { performance: performancePayload } : {}),
       turnHint: intentHint,
     };
 
