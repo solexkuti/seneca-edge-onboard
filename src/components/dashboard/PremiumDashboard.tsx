@@ -933,7 +933,7 @@ function buildTimeline(
         : "missed";
     (buckets[key] = buckets[key] || []).push({
       asset: (m.asset || m.market || "—").toString(),
-      rule: m.missed_reason || "Missed setup",
+      rule: missedReasonLabel(m.missed_reason),
       impact: r,
     });
   }
