@@ -156,7 +156,7 @@ function InsightsPage() {
   const adherencePct = Math.round(ssot.behavior.rule_adherence * 100);
   const winRatePct = Math.round(ssot.metrics.win_rate * 100);
   const totalR = ssot.metrics.total_r;
-  const split = useMemo(() => executionSplit(trades), [trades]);
+  // executionSplit no longer used — controlled% replaced by win-rate from SSOT
   const sessions = useMemo(() => sessionPerformance(trades), [trades]);
 
   return (
