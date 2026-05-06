@@ -24,7 +24,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { type Ssot, type SsotTrade, type SsotViolation } from "@/lib/ssot";
+import { type Ssot, type SsotTrade, type SsotViolation, tradeMonetaryConverted } from "@/lib/ssot";
 import { formatMetric, formatRr, formatCurrencyAmount } from "@/lib/fxService";
 import CurrencySelector from "@/components/feature/CurrencySelector";
 import { MISSED_REASON_LABELS, type MissedReason } from "@/lib/trade/types";
@@ -210,7 +210,19 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
           <CardEyebrow Icon={LineChart}>Performance snapshot</CardEyebrow>
           <div className="mt-4 grid grid-cols-3 gap-4">
             <Stat label="Win rate" value={hasTrades ? `${winRatePct}%` : "—"} />
-            <Stat label="Avg R" value={hasTrades ? ssot.metrics.avg_r.toFixed(2) : "—"} />
+            <Stat
+              label="Avg R"
+              value={
+                hasTrades
+                  ? formatMetric({
+                      r: ssot.metrics.avg_r,
+                      amountInDisplayCurrency: ssot.analytics.avg_r_currency,
+                      displayCurrency: ssot.analytics.display_currency,
+                      mode: ssot.account.metric_display_mode,
+                    })
+                  : "—"
+              }
+            />
             <Stat
               label="Profit factor"
               value={hasTrades && Number.isFinite(ssot.metrics.profit_factor)
@@ -233,18 +245,26 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
                   const r = typeof t.rr === "number" ? t.rr : null;
                   const positive = r != null && r > 0;
                   const negative = r != null && r < 0;
+                  const money = tradeMonetaryConverted(t, ssot.analytics, ssot.account.risk_per_trade);
                   return (
                     <li key={t.id} className="flex items-center justify-between py-2.5 text-[13px]">
                       <span className="truncate text-text-primary">{t.asset || t.market || "—"}</span>
                       <span className="text-text-secondary">{t.direction === "long" ? "Buy" : "Sell"}</span>
                       <span
                         className={
-                          positive ? "font-semibold text-gold"
+                          positive ? "font-semibold text-emerald-400"
                           : negative ? "font-semibold text-rose-300"
                           : "text-text-secondary"
                         }
                       >
-                        {r != null ? `${r > 0 ? "+" : ""}${r.toFixed(2)}R` : "—"}
+                        {r != null
+                          ? formatMetric({
+                              r,
+                              amountInDisplayCurrency: money,
+                              displayCurrency: ssot.analytics.display_currency,
+                              mode: ssot.account.metric_display_mode,
+                            })
+                          : "—"}
                       </span>
                     </li>
                   );

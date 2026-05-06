@@ -60,7 +60,24 @@ export type SsotTrade = {
   missed_potential_r: number | null;
   rules_broken: string[];
   notes: string | null;
+  /** Immutable FX snapshot — frozen at trade close. */
+  monetary_pnl_base: number | null;
+  monetary_pnl_converted_snapshot: number | null;
+  exchange_rate_at_close: number | null;
+  display_currency_at_close: string | null;
 };
+
+export function tradeMonetaryConverted(
+  trade: { rr: number | null; monetary_pnl_converted_snapshot: number | null; monetary_pnl_base: number | null },
+  analytics: { exchange_rate: number },
+  riskPerTrade: number | null,
+): number | null {
+  if (trade.monetary_pnl_converted_snapshot != null) return trade.monetary_pnl_converted_snapshot;
+  if (trade.monetary_pnl_base != null) return trade.monetary_pnl_base * analytics.exchange_rate;
+  if (trade.rr == null || riskPerTrade == null || !Number.isFinite(riskPerTrade) || riskPerTrade <= 0) return null;
+  return trade.rr * riskPerTrade * analytics.exchange_rate;
+}
+
 
 export type SsotViolation = {
   id: string;
@@ -392,7 +409,7 @@ async function loadAllTrades(userId: string): Promise<SsotTrade[]> {
   const { data, error } = await supabase
     .from("trades")
     .select(
-      "id,asset,market,direction,entry_price,exit_price,stop_loss,take_profit,rr,risk_r,pnl,result,session,executed_at,closed_at,trade_type,missed_reason,missed_potential_r,rules_broken,notes",
+      "id,asset,market,direction,entry_price,exit_price,stop_loss,take_profit,rr,risk_r,pnl,result,session,executed_at,closed_at,trade_type,missed_reason,missed_potential_r,rules_broken,notes,monetary_pnl_base,monetary_pnl_converted_snapshot,exchange_rate_at_close,display_currency_at_close",
     )
     .eq("user_id", userId)
     .order("executed_at", { ascending: false })
@@ -419,6 +436,10 @@ async function loadAllTrades(userId: string): Promise<SsotTrade[]> {
     missed_potential_r: (r.missed_potential_r as number | null) ?? null,
     rules_broken: Array.isArray(r.rules_broken) ? (r.rules_broken as string[]) : [],
     notes: (r.notes as string | null) ?? null,
+    monetary_pnl_base: (r.monetary_pnl_base as number | null) ?? null,
+    monetary_pnl_converted_snapshot: (r.monetary_pnl_converted_snapshot as number | null) ?? null,
+    exchange_rate_at_close: (r.exchange_rate_at_close as number | null) ?? null,
+    display_currency_at_close: (r.display_currency_at_close as string | null) ?? null,
   }));
 }
 
