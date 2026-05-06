@@ -293,16 +293,18 @@ export function rToCurrency(r: number | null, riskPerTrade: number | null): numb
 // ── I/O ────────────────────────────────────────────────────────────────
 
 async function loadAccount(userId: string): Promise<SsotAccount> {
-  // Profile-level currency / default risk (acts as fallback when account row lacks them).
   const { data: prof } = await supabase
     .from("profiles")
     .select(
-      "account_balance,account_equity,balance_source,balance_updated_at,currency,risk_per_trade",
+      "account_balance,account_equity,balance_source,balance_updated_at,currency,risk_per_trade,display_currency,metric_display_mode",
     )
     .eq("id", userId)
     .maybeSingle();
-  const profileCurrency = ((prof as { currency?: string } | null)?.currency ?? "USD") as string;
-  const profileRisk = (prof as { risk_per_trade?: number | null } | null)?.risk_per_trade ?? null;
+  const p = (prof as Record<string, unknown> | null) ?? {};
+  const profileCurrency = ((p.currency as string | null) ?? "USD") || "USD";
+  const profileRisk = (p.risk_per_trade as number | null) ?? null;
+  const displayCurrency = ((p.display_currency as string | null) ?? profileCurrency) || profileCurrency;
+  const metricMode = ((p.metric_display_mode as MetricDisplayMode | null) ?? "rr_plus_currency");
 
   const { data: acct } = await supabase
     .from("accounts")
@@ -318,16 +320,28 @@ async function loadAccount(userId: string): Promise<SsotAccount> {
       source: ((a.source as BalanceSource) ?? "manual") as BalanceSource,
       updated_at: (a.updated_at as string | null) ?? null,
       currency: ((a.currency as string | null) ?? profileCurrency) || "USD",
+      display_currency: displayCurrency,
+      metric_display_mode: metricMode,
       risk_per_trade: (a.risk_per_trade as number | null) ?? profileRisk,
     };
   }
-  if (!prof) return { ...EMPTY_ACCOUNT, currency: profileCurrency, risk_per_trade: profileRisk };
+  if (!prof) {
+    return {
+      ...EMPTY_ACCOUNT,
+      currency: profileCurrency,
+      display_currency: displayCurrency,
+      metric_display_mode: metricMode,
+      risk_per_trade: profileRisk,
+    };
+  }
   return {
-    balance: prof.account_balance ?? null,
-    equity: prof.account_equity ?? null,
-    source: (prof.balance_source as BalanceSource) ?? "manual",
-    updated_at: prof.balance_updated_at ?? null,
+    balance: (p.account_balance as number | null) ?? null,
+    equity: (p.account_equity as number | null) ?? null,
+    source: ((p.balance_source as BalanceSource) ?? "manual"),
+    updated_at: (p.balance_updated_at as string | null) ?? null,
     currency: profileCurrency,
+    display_currency: displayCurrency,
+    metric_display_mode: metricMode,
     risk_per_trade: profileRisk,
   };
 }
