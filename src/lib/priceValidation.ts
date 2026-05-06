@@ -223,3 +223,75 @@ export function validateTradePrices(args: {
     structurallyValid,
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// validateTradeStructure — SINGLE SOURCE OF TRUTH for directional trade
+// structure. Pure, stateless, deterministic. NEVER inspects exit/outcome/
+// realized PnL/RR/discipline. Only direction + entry + stop_loss +
+// take_profit. Recomputes on every call from live form values.
+// ─────────────────────────────────────────────────────────────────────────
+
+export type TradeStructureIssue = {
+  code:
+    | "missing_direction"
+    | "missing_entry"
+    | "missing_stop_loss"
+    | "missing_take_profit"
+    | "buy_sl_invalid"
+    | "buy_tp_invalid"
+    | "sell_sl_invalid"
+    | "sell_tp_invalid";
+  message: string;
+};
+
+export type TradeStructureResult = {
+  valid: boolean;
+  issues: TradeStructureIssue[];
+};
+
+export function validateTradeStructure(input: {
+  direction: Direction | null | undefined;
+  entry: number | null | undefined;
+  stop_loss: number | null | undefined;
+  take_profit: number | null | undefined;
+}): TradeStructureResult {
+  const issues: TradeStructureIssue[] = [];
+  const { direction, entry, stop_loss, take_profit } = input;
+
+  if (!direction) {
+    issues.push({ code: "missing_direction", message: "Select a trade direction (Buy or Sell)." });
+  }
+  if (entry == null || !Number.isFinite(entry)) {
+    issues.push({ code: "missing_entry", message: "Entry price is required." });
+  }
+  if (stop_loss == null || !Number.isFinite(stop_loss)) {
+    issues.push({ code: "missing_stop_loss", message: "Stop loss is required." });
+  }
+  if (take_profit == null || !Number.isFinite(take_profit)) {
+    issues.push({ code: "missing_take_profit", message: "Take profit is required." });
+  }
+
+  if (issues.length > 0) return { valid: false, issues };
+
+  const e = entry as number;
+  const sl = stop_loss as number;
+  const tp = take_profit as number;
+
+  if (direction === "buy") {
+    if (sl >= e) {
+      issues.push({ code: "buy_sl_invalid", message: "Invalid Buy setup: stop loss must be below entry." });
+    }
+    if (tp <= e) {
+      issues.push({ code: "buy_tp_invalid", message: "Invalid Buy setup: take profit must be above entry." });
+    }
+  } else if (direction === "sell") {
+    if (sl <= e) {
+      issues.push({ code: "sell_sl_invalid", message: "Invalid Sell setup: stop loss must be above entry." });
+    }
+    if (tp >= e) {
+      issues.push({ code: "sell_tp_invalid", message: "Invalid Sell setup: take profit must be below entry." });
+    }
+  }
+
+  return { valid: issues.length === 0, issues };
+}
