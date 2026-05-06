@@ -83,6 +83,14 @@ function fmtTime(iso: string): string {
 }
 
 export default function TradeHistory() {
+  const { ssot } = useSsot();
+  const fmtCtx: FmtCtx = {
+    mode: ssot.account.metric_display_mode,
+    cur: ssot.analytics.display_currency,
+    rate: ssot.analytics.exchange_rate,
+    risk: ssot.account.risk_per_trade,
+  };
+  const fmtR = (n: number | null) => fmtMetricRow(n, fmtCtx);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
