@@ -700,6 +700,45 @@ export async function loadSsot(): Promise<Ssot> {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
+  // ── Centralized monetary analytics (live, base→display conversion).
+  const baseCcy = account.currency || "USD";
+  const dispCcy = account.display_currency || baseCcy;
+  let exchangeRate = 1;
+  if (baseCcy !== dispCcy) {
+    const r = await getRate(baseCcy, dispCcy);
+    if (r != null && Number.isFinite(r)) exchangeRate = r;
+  }
+  const risk = account.risk_per_trade;
+  const hasRisk = risk != null && Number.isFinite(risk) && risk > 0;
+  const totalPnlBase = hasRisk ? metrics.total_r * (risk as number) : null;
+  const expectancyBase = hasRisk ? metrics.expectancy_r * (risk as number) : null;
+  const avgRBase = hasRisk ? metrics.avg_r * (risk as number) : null;
+  const ddBase = hasRisk ? -Math.abs(metrics.max_drawdown_r) * (risk as number) : null;
+  const startingBalanceBase = account.balance;
+  const equityBase =
+    startingBalanceBase != null && totalPnlBase != null
+      ? startingBalanceBase + totalPnlBase
+      : startingBalanceBase;
+  const conv = (n: number | null): number | null =>
+    n == null ? null : n * exchangeRate;
+  const analytics: SsotAnalytics = {
+    base_currency: baseCcy,
+    display_currency: dispCcy,
+    exchange_rate: exchangeRate,
+    total_r: metrics.total_r,
+    expectancy_r: metrics.expectancy_r,
+    avg_r: metrics.avg_r,
+    max_drawdown_r: metrics.max_drawdown_r,
+    total_pnl_base: totalPnlBase,
+    total_pnl_converted: conv(totalPnlBase),
+    expectancy_currency: conv(expectancyBase),
+    avg_r_currency: conv(avgRBase),
+    max_drawdown_currency: conv(ddBase),
+    starting_balance_base: startingBalanceBase,
+    equity_base: equityBase,
+    equity_converted: conv(equityBase),
+  };
+
   return {
     loading: false,
     user_id: uid,
@@ -718,6 +757,7 @@ export async function loadSsot(): Promise<Ssot> {
     violations: ssotViolations,
     session_performance: buildSessionPerformance(executed, missed, ssotViolations),
     execution_type: buildExecutionType(executed, missed),
+    analytics,
     discipline: {
       ...breakdown,
       score: disciplineScore,
