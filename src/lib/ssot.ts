@@ -560,7 +560,7 @@ export async function loadSsot(): Promise<Ssot> {
 
   // Top recent violations grouped by type
   const recentCounts: Record<string, number> = {};
-  for (const v of violations.slice(0, 50)) {
+  for (const v of ssotViolations.slice(0, 50)) {
     recentCounts[v.type] = (recentCounts[v.type] ?? 0) + 1;
   }
   const recent_violations = Object.entries(recentCounts)
@@ -583,8 +583,8 @@ export async function loadSsot(): Promise<Ssot> {
       violation_count: violationCount,
       recent_violations,
     },
-    violations,
-    session_performance: buildSessionPerformance(executed, missed, violations),
+    violations: ssotViolations,
+    session_performance: buildSessionPerformance(executed, missed, ssotViolations),
     execution_type: buildExecutionType(executed, missed),
     discipline: {
       ...breakdown,
