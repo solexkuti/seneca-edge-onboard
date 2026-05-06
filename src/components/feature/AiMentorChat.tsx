@@ -28,6 +28,7 @@ import { mistakeFrequency, MISTAKE_LABEL } from "@/lib/behavioralJournal";
 import { analyzeBehaviorPatterns } from "@/lib/behaviorPatternAnalysis";
 import { detectRelapseAndLoops } from "@/lib/relapseAndLoopDetection";
 import { usePerformance } from "@/hooks/usePerformance";
+import { useSsot } from "@/hooks/useSsot";
 import { buildQuickPrompts } from "@/lib/mentorQuickPrompts";
 import {
   INITIAL_STATE,
