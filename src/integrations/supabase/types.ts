@@ -1378,6 +1378,7 @@ export type Database = {
       }
       trade_logs: {
         Row: {
+          account_balance_at_open: number | null
           closed_at: string | null
           confidence_rating: number | null
           created_at: string
@@ -1395,6 +1396,7 @@ export type Database = {
           pair: string
           pnl: number | null
           pnl_percent: number | null
+          preferred_risk_percent_at_open: number | null
           risk_percent: number | null
           rr: number | null
           rules_followed: boolean
@@ -1407,6 +1409,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_balance_at_open?: number | null
           closed_at?: string | null
           confidence_rating?: number | null
           created_at?: string
@@ -1424,6 +1427,7 @@ export type Database = {
           pair: string
           pnl?: number | null
           pnl_percent?: number | null
+          preferred_risk_percent_at_open?: number | null
           risk_percent?: number | null
           rr?: number | null
           rules_followed?: boolean
@@ -1436,6 +1440,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_balance_at_open?: number | null
           closed_at?: string | null
           confidence_rating?: number | null
           created_at?: string
@@ -1453,6 +1458,7 @@ export type Database = {
           pair?: string
           pnl?: number | null
           pnl_percent?: number | null
+          preferred_risk_percent_at_open?: number | null
           risk_percent?: number | null
           rr?: number | null
           rules_followed?: boolean
