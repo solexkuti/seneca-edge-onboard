@@ -66,6 +66,10 @@ export type SsotTrade = {
   monetary_pnl_converted_snapshot: number | null;
   exchange_rate_at_close: number | null;
   display_currency_at_close: string | null;
+  /** Actual % risk used on this execution. */
+  actual_risk_pct: number | null;
+  /** Preferred % risk per the user's strategy/account policy at the time. */
+  preferred_risk_pct: number | null;
 };
 
 export function tradeMonetaryConverted(
@@ -410,7 +414,7 @@ async function loadAllTrades(userId: string): Promise<SsotTrade[]> {
   const { data, error } = await supabase
     .from("trades")
     .select(
-      "id,asset,market,direction,entry_price,exit_price,stop_loss,take_profit,rr,risk_r,pnl,result,session,executed_at,closed_at,trade_type,missed_reason,missed_potential_r,rules_broken,notes,monetary_pnl_base,monetary_pnl_converted_snapshot,exchange_rate_at_close,display_currency_at_close",
+      "id,asset,market,direction,entry_price,exit_price,stop_loss,take_profit,rr,risk_r,pnl,result,session,executed_at,closed_at,trade_type,missed_reason,missed_potential_r,rules_broken,notes,monetary_pnl_base,monetary_pnl_converted_snapshot,exchange_rate_at_close,display_currency_at_close,actual_risk_pct,preferred_risk_pct",
     )
     .eq("user_id", userId)
     .order("executed_at", { ascending: false })
@@ -441,6 +445,8 @@ async function loadAllTrades(userId: string): Promise<SsotTrade[]> {
     monetary_pnl_converted_snapshot: (r.monetary_pnl_converted_snapshot as number | null) ?? null,
     exchange_rate_at_close: (r.exchange_rate_at_close as number | null) ?? null,
     display_currency_at_close: (r.display_currency_at_close as string | null) ?? null,
+    actual_risk_pct: (r.actual_risk_pct as number | null) ?? null,
+    preferred_risk_pct: (r.preferred_risk_pct as number | null) ?? null,
   }));
 }
 
@@ -692,8 +698,8 @@ export async function loadSsot(): Promise<Ssot> {
     id: t.id,
     executed_at: t.executed_at,
     rulesBroken: t.rules_broken ?? [],
-    actualRisk: null,
-    preferredRisk: account.risk_per_trade,
+    actualRisk: t.actual_risk_pct,
+    preferredRisk: t.preferred_risk_pct ?? account.risk_per_trade,
   }));
   const behaviorReplay = replayBehavior(replayInputs);
   const disciplineScore = behaviorReplay.overall;

@@ -75,6 +75,7 @@ const POST_TRADE_REFLECTIONS = [
 ] as const;
 import { userKey } from "@/lib/userScopedStorage";
 import { useSsot } from "@/hooks/useSsot";
+import { loadActiveStrategyContext } from "@/lib/activeStrategy";
 
 const ACCOUNT_SIZE_STORAGE_SUFFIX = "journal:account_size";
 
@@ -201,12 +202,29 @@ export default function BehavioralJournalFlow({
   const policyBalance = ssot.account.balance;
   const policyCurrency = ssot.account.display_currency || ssot.account.currency || "USD";
   const policyRiskAmount = ssot.account.risk_per_trade; // base ccy amount per trade
-  const preferredRiskPercent = useMemo(() => {
+  const accountFallbackRiskPct = useMemo(() => {
     if (policyBalance && policyBalance > 0 && policyRiskAmount && policyRiskAmount > 0) {
       return (policyRiskAmount / policyBalance) * 100;
     }
     return null;
   }, [policyBalance, policyRiskAmount]);
+
+  // Preferred risk % — strategy blueprint is the source of truth, with
+  // account-policy fallback. Loaded once on mount.
+  const [strategyRiskPct, setStrategyRiskPct] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const ctx = await loadActiveStrategyContext();
+        if (!cancelled) setStrategyRiskPct(ctx.blueprint?.risk_per_trade_pct ?? null);
+      } catch {
+        // non-fatal — fallback still works
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const preferredRiskPercent = strategyRiskPct ?? accountFallbackRiskPct;
 
   // Trade core
   const [asset, setAsset] = useState("");
@@ -557,16 +575,17 @@ export default function BehavioralJournalFlow({
   // Required: asset, direction (always set), entry, stop loss,
   // (exit OR manual R), and outcome. Hard validation blocks must be
   // cleared. Warnings require explicit preview confirmation.
-  const hasExitOrR = exit !== null || Number.isFinite(manualR as number);
+  // STRICT: entry, SL, TP, exit, risk%, outcome are ALL required.
+  // Manual R / manual $ PnL are no longer supported — every metric is derived.
   const canNextFromStep0 =
     asset.trim().length > 0 &&
     entry !== null &&
     sl !== null &&
-    hasExitOrR &&
-    Number.isFinite(resultR) &&
+    tp !== null &&
+    exit !== null &&
+    risk !== null && risk > 0 &&
+    Number.isFinite(autoRealizedR ?? NaN) &&
     outcome !== null &&
-    !accountSizeInvalid &&
-    !pnlDollarInvalid &&
     !validation.hasBlock &&
     (!validation.hasWarn || previewConfirmed);
 
@@ -755,10 +774,7 @@ export default function BehavioralJournalFlow({
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
       const session_tag = sessionTagFor(now);
 
-      const finalR = Number.isFinite(autoRealizedR ?? NaN)
-        ? (autoRealizedR as number)
-        : resultR;
-
+      const finalR = autoRealizedR as number;
       const pnl_percent = derivePnlPercent(finalR, risk);
 
       // Reuse the primary screenshot path saved by behavioralJournal as the
@@ -782,7 +798,9 @@ export default function BehavioralJournalFlow({
           take_profit: tp,
           risk_percent: risk,
           rr: Number.isFinite(finalR) ? finalR : null,
-          pnl: pnlDollar,
+          // Manual $ PnL is no longer accepted. The engine derives monetary
+          // PnL from R × risk_per_trade × balance via SSOT analytics.
+          pnl: null,
           pnl_percent,
           outcome: finalOutcome,
           opened_at,
@@ -796,7 +814,10 @@ export default function BehavioralJournalFlow({
           note: note?.trim() || null,
           screenshot_url,
           data_quality: lowDataQuality ? "low" : "normal",
-        });
+          // Persist the preferred-risk snapshot so the behavior engine can
+          // auto-classify risk-policy violations on this exact trade.
+          preferred_risk_percent_at_open: preferredRiskPercent,
+        } as Parameters<typeof insertTradeLog>[0]);
       } catch (perfErr) {
         console.warn("[trade_logs] insert failed:", perfErr);
       }
