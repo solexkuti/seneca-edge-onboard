@@ -293,6 +293,15 @@ export async function submitJournalEntry(
     };
   }
 
+  // Capture immutable FX snapshot for this trade BEFORE notifying SSOT
+  // consumers — guarantees dashboard reads stable monetary values.
+  try {
+    const { attachFxSnapshotToTrade } = await import("@/lib/fxSnapshot");
+    await attachFxSnapshotToTrade({ tradeId: trade.id, userId });
+  } catch (e) {
+    console.warn("[journal] FX snapshot failed (non-fatal):", e);
+  }
+
   // Notify any subscribers (Control Hub, Mentor, Trade Lock) to refresh.
   try {
     if (typeof window !== "undefined") {
