@@ -234,6 +234,53 @@ export function computeMetrics(trades: SsotTrade[]): SsotMetrics {
   };
 }
 
+// ── Currency / monetary helpers ────────────────────────────────────────
+
+export const SUPPORTED_CURRENCIES = [
+  "USD",
+  "EUR",
+  "GBP",
+  "NGN",
+  "JPY",
+  "CAD",
+  "AUD",
+  "CHF",
+] as const;
+export type CurrencyCode = (typeof SUPPORTED_CURRENCIES)[number];
+
+const CURRENCY_SYMBOL: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  NGN: "₦",
+  JPY: "¥",
+  CAD: "$",
+  AUD: "$",
+  CHF: "CHF ",
+};
+
+/** Format a number as currency using the SSOT account currency. */
+export function formatCurrency(
+  amount: number | null | undefined,
+  currency: string = "USD",
+  opts: { showSign?: boolean } = {},
+): string {
+  if (amount == null || !Number.isFinite(amount)) return "—";
+  const sym = CURRENCY_SYMBOL[currency] ?? "";
+  const sign = amount > 0 && opts.showSign ? "+" : amount < 0 ? "-" : "";
+  const abs = Math.abs(amount);
+  const digits = currency === "JPY" ? 0 : 2;
+  return `${sign}${sym}${abs.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+}
+
+/** Convert an R value to monetary using risk_per_trade. Returns null when risk basis is missing. */
+export function rToCurrency(r: number | null, riskPerTrade: number | null): number | null {
+  if (r == null || !Number.isFinite(r)) return null;
+  if (riskPerTrade == null || !Number.isFinite(riskPerTrade) || riskPerTrade <= 0) return null;
+  return r * riskPerTrade;
+}
+
+
 // ── I/O ────────────────────────────────────────────────────────────────
 
 async function loadAccount(userId: string): Promise<SsotAccount> {
