@@ -26,6 +26,8 @@ export type TradeLog = {
   stop_loss: number | null;
   take_profit: number | null;
   risk_percent: number | null;
+  /** Snapshot of the user's preferred risk % at the time of logging — drives risk-policy violation classification in behaviorEngine. */
+  preferred_risk_percent_at_open?: number | null;
 
   // Performance
   rr: number | null;
