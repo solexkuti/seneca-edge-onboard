@@ -797,8 +797,13 @@ export default function BehavioralJournalFlow({
       });
       onLogged?.();
     } catch (err) {
-      console.error(err);
-      toast.error(err instanceof Error ? err.message : "Failed to log trade");
+      // Surface the real Postgres / Supabase error so the user (and logs)
+      // see the actual failure reason instead of a generic toast.
+      console.error("[journal] save failed:", err);
+      const e = err as { message?: string; details?: string; hint?: string; code?: string };
+      const parts = [e?.message, e?.details, e?.hint, e?.code ? `(${e.code})` : null].filter(Boolean);
+      const msg = parts.length > 0 ? parts.join(" — ") : "Failed to log trade";
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
