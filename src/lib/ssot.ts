@@ -145,6 +145,8 @@ export const EMPTY_ACCOUNT: SsotAccount = {
   equity: null,
   source: "manual",
   updated_at: null,
+  currency: "USD",
+  risk_per_trade: null,
 };
 
 // ── Pure computations ──────────────────────────────────────────────────
@@ -235,33 +237,42 @@ export function computeMetrics(trades: SsotTrade[]): SsotMetrics {
 // ── I/O ────────────────────────────────────────────────────────────────
 
 async function loadAccount(userId: string): Promise<SsotAccount> {
-  // Active account row in the new accounts table is authoritative.
+  // Profile-level currency / default risk (acts as fallback when account row lacks them).
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select(
+      "account_balance,account_equity,balance_source,balance_updated_at,currency,risk_per_trade",
+    )
+    .eq("id", userId)
+    .maybeSingle();
+  const profileCurrency = ((prof as { currency?: string } | null)?.currency ?? "USD") as string;
+  const profileRisk = (prof as { risk_per_trade?: number | null } | null)?.risk_per_trade ?? null;
+
   const { data: acct } = await supabase
     .from("accounts")
-    .select("balance,equity,source,updated_at")
+    .select("balance,equity,source,updated_at,currency,risk_per_trade")
     .eq("user_id", userId)
     .eq("is_active", true)
     .maybeSingle();
   if (acct) {
+    const a = acct as Record<string, unknown>;
     return {
-      balance: acct.balance ?? null,
-      equity: acct.equity ?? null,
-      source: (acct.source as BalanceSource) ?? "manual",
-      updated_at: acct.updated_at ?? null,
+      balance: (a.balance as number | null) ?? null,
+      equity: (a.equity as number | null) ?? null,
+      source: ((a.source as BalanceSource) ?? "manual") as BalanceSource,
+      updated_at: (a.updated_at as string | null) ?? null,
+      currency: ((a.currency as string | null) ?? profileCurrency) || "USD",
+      risk_per_trade: (a.risk_per_trade as number | null) ?? profileRisk,
     };
   }
-  // Legacy fallback for profiles still on the old columns.
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("account_balance,account_equity,balance_source,balance_updated_at")
-    .eq("id", userId)
-    .maybeSingle();
-  if (error || !data) return EMPTY_ACCOUNT;
+  if (!prof) return { ...EMPTY_ACCOUNT, currency: profileCurrency, risk_per_trade: profileRisk };
   return {
-    balance: data.account_balance ?? null,
-    equity: data.account_equity ?? null,
-    source: (data.balance_source as BalanceSource) ?? "manual",
-    updated_at: data.balance_updated_at ?? null,
+    balance: prof.account_balance ?? null,
+    equity: prof.account_equity ?? null,
+    source: (prof.balance_source as BalanceSource) ?? "manual",
+    updated_at: prof.balance_updated_at ?? null,
+    currency: profileCurrency,
+    risk_per_trade: profileRisk,
   };
 }
 
