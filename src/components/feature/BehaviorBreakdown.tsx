@@ -43,6 +43,12 @@ import { SwipeablePanels } from "@/components/feature/SwipeablePanels";
 import { ExportMenu } from "@/components/feature/ExportMenu";
 import { BehaviorTrendsChart } from "@/components/feature/BehaviorTrendsChart";
 import { metricColorStyle } from "@/lib/metricColor";
+import {
+  humanizeViolation,
+  violationSeverity,
+  severityTone,
+  severityRank,
+} from "@/lib/violationLabels";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
