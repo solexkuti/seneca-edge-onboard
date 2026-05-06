@@ -33,6 +33,7 @@ import {
   metricGlowShadow,
   metricTextClass,
 } from "@/lib/metricColor";
+import SsotAlerts from "@/components/feature/SsotAlerts";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
