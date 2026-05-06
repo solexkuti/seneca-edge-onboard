@@ -346,16 +346,39 @@ function buildSessionPerformance(
 
 function buildExecutionType(
   executed: SsotTrade[],
-): { controlled_pct: number; impulsive_pct: number; clean: number; with_violations: number } {
+  missed: SsotTrade[],
+): Ssot["execution_type"] {
   const total = executed.length;
-  if (total === 0) return { controlled_pct: 0, impulsive_pct: 0, clean: 0, with_violations: 0 };
-  const withViolations = executed.filter((t) => (t.rules_broken?.length ?? 0) > 0).length;
-  const clean = total - withViolations;
+  if (total === 0) {
+    return {
+      controlled_pct: 0,
+      semi_controlled_pct: 0,
+      impulsive_pct: 0,
+      controlled: 0,
+      semi_controlled: 0,
+      impulsive: 0,
+      missed: missed.length,
+      executed_total: 0,
+    };
+  }
+  let controlled = 0;
+  let semi = 0;
+  let impulsive = 0;
+  for (const t of executed) {
+    const n = t.rules_broken?.length ?? 0;
+    if (n === 0) controlled += 1;
+    else if (n === 1) semi += 1;
+    else impulsive += 1;
+  }
   return {
-    controlled_pct: Math.round((clean / total) * 100),
-    impulsive_pct: Math.round((withViolations / total) * 100),
-    clean,
-    with_violations: withViolations,
+    controlled_pct: Math.round((controlled / total) * 100),
+    semi_controlled_pct: Math.round((semi / total) * 100),
+    impulsive_pct: Math.round((impulsive / total) * 100),
+    controlled,
+    semi_controlled: semi,
+    impulsive,
+    missed: missed.length,
+    executed_total: total,
   };
 }
 
