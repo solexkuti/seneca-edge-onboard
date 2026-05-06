@@ -140,7 +140,14 @@ export default function BehaviorBreakdown() {
   const score = useMemo(() => behaviorScore(scoped), [scoped]);
   const adherence = useMemo(() => ruleAdherence(scoped), [scoped]);
   const split = useMemo(() => executionSplit(scoped), [scoped]);
-  const violations = useMemo(() => ruleViolations(scoped), [scoped]);
+  const violations = useMemo(() => {
+    const list = ruleViolations(scoped);
+    return [...list].sort((a, b) => {
+      const s = severityRank(violationSeverity(b.rule)) - severityRank(violationSeverity(a.rule));
+      if (s !== 0) return s;
+      return a.totalImpactR - b.totalImpactR;
+    });
+  }, [scoped]);
   const assets = useMemo(() => assetBehavior(scoped), [scoped]);
   const insights = useMemo(() => generateInsights(scoped), [scoped]);
   const summary = useMemo(() => summarize(scoped), [scoped]);
