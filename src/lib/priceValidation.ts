@@ -144,31 +144,12 @@ export function validateTradePrices(args: {
     }
   }
 
-  // ── Take-profit placement (only when TP provided) ─────────────────────
-  if (
-    direction &&
-    entry != null &&
-    Number.isFinite(entry) &&
-    exit != null &&
-    Number.isFinite(exit)
-  ) {
-    // Treat `exit` as TP for forward validation. If TP equals entry, RR is 0.
-    if (direction === "buy" && exit < entry) {
-      issues.push({
-        level: "block",
-        code: "tp_invalid_placement",
-        message: "Invalid Buy setup: take profit must be above entry.",
-      });
-      structurallyValid = false;
-    } else if (direction === "sell" && exit > entry) {
-      issues.push({
-        level: "block",
-        code: "tp_invalid_placement",
-        message: "Invalid Sell setup: take profit must be below entry.",
-      });
-      structurallyValid = false;
-    }
-  }
+  // NOTE: `exit` here is the REALIZED exit price, not take profit. A losing
+  // trade legitimately exits below entry on a Buy (SL hit) or above entry on
+  // a Sell. Structural validation must therefore NOT treat `exit` as TP.
+  // True TP placement validation is performed by validateTradeStructure()
+  // below, which takes an explicit `takeProfit` argument and never inspects
+  // exit / outcome / pnl / RR.
 
   // ── Price scale check (entry/exit/SL integer-digit length should match) ─
   const prices: { value: number; }[] = [];
