@@ -1184,40 +1184,43 @@ function BehaviorBreakdownCard({ ssot }: { ssot: Ssot }) {
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/70">
             Execution type
           </p>
-          {has ? (
-            <p className="text-[12.5px] tabular-nums">
-              <span className="font-semibold text-emerald-400">
-                {exec.controlled_pct}%
-              </span>
-              <span className="text-text-secondary">
-                {" "}
-                · {exec.impulsive_pct}%
-              </span>
+          {exec.executed_total > 0 ? (
+            <p className="text-[12.5px] tabular-nums text-text-secondary">
+              <span className="font-semibold text-emerald-400">{exec.controlled_pct}%</span>
+              {" · "}
+              <span className="font-semibold text-amber-300">{exec.semi_controlled_pct}%</span>
+              {" · "}
+              <span className="font-semibold text-rose-300">{exec.impulsive_pct}%</span>
             </p>
           ) : (
             <p className="text-[12.5px] text-text-secondary">—</p>
           )}
         </div>
         <div className="mt-2 flex h-2 w-full overflow-hidden rounded-full bg-white/[0.05]">
-          <div
-            className="h-full bg-emerald-500"
-            style={{ width: `${exec.controlled_pct}%` }}
-          />
-          <div
-            className="h-full bg-rose-400/70"
-            style={{ width: `${exec.impulsive_pct}%` }}
-          />
+          <div className="h-full bg-emerald-500" style={{ width: `${exec.controlled_pct}%` }} />
+          <div className="h-full bg-amber-300" style={{ width: `${exec.semi_controlled_pct}%` }} />
+          <div className="h-full bg-rose-400/80" style={{ width: `${exec.impulsive_pct}%` }} />
         </div>
-        <div className="mt-2 flex items-center justify-between text-[11.5px] text-text-secondary">
+        <div className="mt-2 grid grid-cols-3 gap-2 text-[11.5px] text-text-secondary">
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Controlled (clean)
+            Controlled ({exec.controlled})
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-400/70" />
-            Impulsive (rule break)
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+            Semi-controlled ({exec.semi_controlled})
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-rose-400/80" />
+            Impulsive ({exec.impulsive})
           </span>
         </div>
+        {exec.missed > 0 && (
+          <p className="mt-2 text-[11.5px] text-text-secondary">
+            <span className="font-semibold text-amber-200">{exec.missed}</span> missed observation
+            {exec.missed === 1 ? "" : "s"} — behavioral only, excluded from execution mix.
+          </p>
+        )}
       </div>
 
       <Divider />
