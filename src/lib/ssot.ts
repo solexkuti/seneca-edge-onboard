@@ -479,13 +479,30 @@ export async function loadSsot(): Promise<Ssot> {
   const metrics = metricsFromViews(views, bestSession);
   metrics.worst_rule_break = worstBreak;
 
-  const disciplineScore = Number(views.discipline?.discipline_score ?? breakdown.score);
-  const cleanTrades = Number(views.discipline?.clean_trades ?? breakdown.clean_trades);
-  const totalLogs = Number(views.discipline?.total_trades ?? breakdown.total_trades);
-  const violationCount = Number(views.discipline?.violation_count ?? breakdown.violation_count);
-  const adherence = Number(
-    views.adherence?.adherence ?? breakdown.rule_adherence ?? 1,
+  // ── Discipline / behavior — computed DIRECTLY from trades.rules_broken.
+  // Single source of truth: the trades table. We replay every executed
+  // trade chronologically: clean (zero rules_broken) → +10, otherwise
+  // -10 per broken rule. Start 100, clamp [0, 100]. Missed trades are
+  // behavioral signals but do NOT contribute to the discipline ledger.
+  const chrono = [...executed].sort(
+    (a, b) => new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime(),
   );
+  let _score = 100;
+  let cleanTrades = 0;
+  let violationCount = 0;
+  for (const t of chrono) {
+    const broken = t.rules_broken?.length ?? 0;
+    if (broken === 0) {
+      _score = Math.min(100, _score + 10);
+      cleanTrades += 1;
+    } else {
+      _score = Math.max(0, _score - 10 * broken);
+      violationCount += broken;
+    }
+  }
+  const disciplineScore = _score;
+  const totalLogs = executed.length;
+  const adherence = totalLogs === 0 ? 1 : cleanTrades / totalLogs;
 
   // Top recent violations grouped by type
   const recentCounts: Record<string, number> = {};
@@ -515,6 +532,45 @@ export async function loadSsot(): Promise<Ssot> {
     violations,
     session_performance: buildSessionPerformance(executed, missed, violations),
     execution_type: buildExecutionType(executed),
-    discipline: { ...breakdown, score: disciplineScore, rule_adherence: adherence },
+    discipline: {
+      ...breakdown,
+      score: disciplineScore,
+      decision_score: disciplineScore,
+      execution_score: disciplineScore,
+      rule_adherence: adherence,
+      total_trades: totalLogs,
+      clean_trades: cleanTrades,
+      violation_count: violationCount,
+      decision_neutral: totalLogs === 0,
+      execution_neutral: totalLogs === 0,
+      recent_contributions: (() => {
+        let s = 100;
+        const ledger: typeof breakdown.recent_contributions = [];
+        for (const t of chrono) {
+          const broken = t.rules_broken?.length ?? 0;
+          let delta: number;
+          let reason: string;
+          if (broken === 0) {
+            delta = 10;
+            s = Math.min(100, s + delta);
+            reason = `Clean trade — ${t.asset || t.market || "trade"} (+10 → ${s}/100).`;
+          } else {
+            delta = -10 * broken;
+            s = Math.max(0, s + delta);
+            reason = `${broken} rule break${broken === 1 ? "" : "s"} — ${(t.rules_broken || []).join(", ")} (${delta} → ${s}/100).`;
+          }
+          ledger.push({
+            source: "execution",
+            id: t.id,
+            raw: delta,
+            value: s,
+            weight: 1,
+            reason,
+            timestamp: t.executed_at,
+          });
+        }
+        return ledger.reverse().slice(0, 20);
+      })(),
+    },
   };
 }

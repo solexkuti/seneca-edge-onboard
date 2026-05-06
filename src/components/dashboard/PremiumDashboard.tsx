@@ -600,7 +600,7 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
               const isOpen = openId === t.id;
               const isMissed = t.trade_type === "missed";
               const r = typeof t.rr === "number" ? t.rr : null;
-              const dispScore = clean ? 100 : Math.max(0, 100 - t.rules_broken.length * 10);
+              const dispScore = isMissed ? null : clean ? 100 : Math.max(0, 100 - t.rules_broken.length * 10);
               return (
                 <motion.li
                   key={t.id}
@@ -653,7 +653,11 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
                           : "—"}
                     </span>
                     <span className="flex flex-wrap gap-1">
-                      {clean ? (
+                      {isMissed ? (
+                        <span className="inline-flex items-center rounded-md border border-amber-300/25 bg-amber-300/[0.07] px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-amber-300">
+                          {t.missed_reason ? t.missed_reason.replace(/_/g, " ") : "Missed"}
+                        </span>
+                      ) : clean ? (
                         <span className="inline-flex items-center rounded-md border border-emerald-400/25 bg-emerald-400/[0.07] px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-emerald-400">
                           Clean
                         </span>
@@ -668,7 +672,11 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
                         ))
                       )}
                     </span>
-                    <DisciplineBar value={dispScore} />
+                    {dispScore != null ? (
+                      <DisciplineBar value={dispScore} />
+                    ) : (
+                      <span className="text-[11px] text-text-secondary/60">—</span>
+                    )}
                     <span className="flex justify-end">
                       <StickyNote
                         className="h-[14px] w-[14px] text-text-secondary/70"

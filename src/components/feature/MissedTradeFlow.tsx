@@ -8,17 +8,19 @@
 // Calm dark-gold UI. Single-screen, deliberately minimal — the cost of
 // missing a trade is friction, so logging it must be effortless.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   AlertCircle,
   ArrowRight,
   Clock,
   Eye,
+  ImagePlus,
   Loader2,
   Target,
   TrendingDown,
   TrendingUp,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,6 +54,8 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [screenshot, setScreenshot] = useState<{ file: File; preview: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const potentialR = useMemo(() => {
     const t = potentialRStr.replace(/[+rR\s]/g, "");
@@ -62,6 +66,26 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
 
   const canSubmit =
     asset.trim().length > 0 && reason !== null && !submitting;
+
+  function pickScreenshot(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Screenshot must be an image.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Screenshot must be under 8MB.");
+      return;
+    }
+    if (screenshot) URL.revokeObjectURL(screenshot.preview);
+    setScreenshot({ file, preview: URL.createObjectURL(file) });
+  }
+
+  function clearScreenshot() {
+    if (screenshot) URL.revokeObjectURL(screenshot.preview);
+    setScreenshot(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -78,6 +102,25 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
       const marketType: MarketType = inferMarketType(asset);
       const session = sessionFromTimestamp(now.getTime());
 
+      // Optional screenshot upload to trade-screenshots bucket.
+      let screenshot_url: string | null = null;
+      if (screenshot) {
+        const ext = screenshot.file.name.split(".").pop()?.toLowerCase() || "png";
+        const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("trade-screenshots")
+          .upload(path, screenshot.file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: screenshot.file.type || undefined,
+          });
+        if (upErr) throw upErr;
+        const { data: signed } = await supabase.storage
+          .from("trade-screenshots")
+          .createSignedUrl(path, 60 * 60 * 24 * 365);
+        screenshot_url = signed?.signedUrl ?? path;
+      }
+
       const { error } = await supabase.from("trades").insert({
         user_id: userId,
         source: "manual",
@@ -92,6 +135,7 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
         notes: notes.trim() || null,
         rules_followed: [],
         rules_broken: [],
+        screenshot_url,
         executed_at: now.toISOString(),
       });
 
@@ -115,6 +159,7 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
     setPotentialRStr("");
     setReason(null);
     setNotes("");
+    clearScreenshot();
     setDone(false);
   }
 
@@ -276,6 +321,52 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
             className="mt-2 w-full rounded-lg bg-[#0B0B0D] border border-white/10 px-3 py-2.5 text-sm text-[#EDEDED] placeholder:text-[#5A5A5A] focus:border-[#C6A15B]/50 focus:outline-none transition-colors resize-none"
           />
         </label>
+      </div>
+
+      {/* Screenshot */}
+      <div className="rounded-2xl border border-white/5 bg-[#18181A] p-5">
+        <div className="flex items-center gap-2">
+          <ImagePlus className="h-4 w-4 text-[#C6A15B]" />
+          <span className="text-xs uppercase tracking-[0.18em] text-[#9A9A9A]">
+            Screenshot <span className="text-[#5A5A5A] normal-case">(optional)</span>
+          </span>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => pickScreenshot(e.target.files?.[0] ?? null)}
+        />
+        {screenshot ? (
+          <div className="mt-3 flex items-start gap-3">
+            <img
+              src={screenshot.preview}
+              alt="Missed setup screenshot"
+              className="h-24 w-24 rounded-lg border border-white/10 object-cover"
+            />
+            <div className="flex flex-col gap-2">
+              <span className="text-[12px] text-[#EDEDED]">{screenshot.file.name}</span>
+              <button
+                type="button"
+                onClick={clearScreenshot}
+                className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-[#0B0B0D] px-2.5 py-1 text-[11px] text-[#9A9A9A] hover:border-rose-400/30 hover:text-rose-300 transition-colors w-fit"
+              >
+                <X className="h-3 w-3" />
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-white/15 bg-[#0B0B0D] px-3 py-6 text-sm text-[#9A9A9A] hover:border-[#C6A15B]/40 hover:text-[#E7C98A] transition-colors"
+          >
+            <ImagePlus className="h-4 w-4" />
+            Attach chart screenshot
+          </button>
+        )}
       </div>
 
       <button
