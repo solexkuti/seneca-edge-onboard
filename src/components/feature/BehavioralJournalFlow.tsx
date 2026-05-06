@@ -202,12 +202,29 @@ export default function BehavioralJournalFlow({
   const policyBalance = ssot.account.balance;
   const policyCurrency = ssot.account.display_currency || ssot.account.currency || "USD";
   const policyRiskAmount = ssot.account.risk_per_trade; // base ccy amount per trade
-  const preferredRiskPercent = useMemo(() => {
+  const accountFallbackRiskPct = useMemo(() => {
     if (policyBalance && policyBalance > 0 && policyRiskAmount && policyRiskAmount > 0) {
       return (policyRiskAmount / policyBalance) * 100;
     }
     return null;
   }, [policyBalance, policyRiskAmount]);
+
+  // Preferred risk % — strategy blueprint is the source of truth, with
+  // account-policy fallback. Loaded once on mount.
+  const [strategyRiskPct, setStrategyRiskPct] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const ctx = await loadActiveStrategyContext();
+        if (!cancelled) setStrategyRiskPct(ctx.blueprint?.risk_per_trade_pct ?? null);
+      } catch {
+        // non-fatal — fallback still works
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const preferredRiskPercent = strategyRiskPct ?? accountFallbackRiskPct;
 
   // Trade core
   const [asset, setAsset] = useState("");
