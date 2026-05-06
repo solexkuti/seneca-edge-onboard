@@ -45,6 +45,32 @@ export type SsotTrade = {
   session: "London" | "NY" | "Asia" | null;
   executed_at: string;
   closed_at: string | null;
+  trade_type: "executed" | "missed";
+  missed_reason: string | null;
+  missed_potential_r: number | null;
+  rules_broken: string[];
+  notes: string | null;
+};
+
+export type SsotViolation = {
+  id: string;
+  trade_id: string;
+  type: string;
+  impact_r: number;
+  session: string | null;
+  occurred_at: string;
+};
+
+export type SsotSessionStat = {
+  session: "London" | "NY" | "Asia";
+  total_trades: number;
+  wins: number;
+  losses: number;
+  win_rate: number;
+  total_r: number;
+  assets: string[];
+  violations: number;
+  missed: number;
 };
 
 export type SsotMetrics = {
@@ -75,9 +101,15 @@ export type Ssot = {
   loading: boolean;
   user_id: string | null;
   account: SsotAccount;
+  /** All executed trades, newest-first. */
   trades: SsotTrade[];
+  /** Missed setups (trade_type='missed'), newest-first. */
+  missed: SsotTrade[];
   metrics: SsotMetrics;
   behavior: SsotBehavior;
+  violations: SsotViolation[];
+  session_performance: SsotSessionStat[];
+  execution_type: { controlled_pct: number; impulsive_pct: number; clean: number; with_violations: number };
   /** Underlying discipline breakdown — kept for legacy UI consumers. */
   discipline: DisciplineBreakdown;
 };
@@ -222,18 +254,100 @@ async function loadAccount(userId: string): Promise<SsotAccount> {
   };
 }
 
-async function loadTrades(userId: string): Promise<SsotTrade[]> {
+async function loadAllTrades(userId: string): Promise<SsotTrade[]> {
   const { data, error } = await supabase
     .from("trades")
     .select(
-      "id,asset,market,direction,entry_price,exit_price,stop_loss,take_profit,rr,risk_r,pnl,result,session,executed_at,closed_at",
+      "id,asset,market,direction,entry_price,exit_price,stop_loss,take_profit,rr,risk_r,pnl,result,session,executed_at,closed_at,trade_type,missed_reason,missed_potential_r,rules_broken,notes",
     )
     .eq("user_id", userId)
-    .eq("trade_type", "executed")
     .order("executed_at", { ascending: false })
     .limit(500);
   if (error || !data) return [];
-  return data as unknown as SsotTrade[];
+  return (data as unknown as Array<Record<string, unknown>>).map((r) => ({
+    id: String(r.id),
+    asset: (r.asset as string | null) ?? null,
+    market: String(r.market ?? ""),
+    direction: r.direction as "long" | "short",
+    entry_price: r.entry_price as number | null,
+    exit_price: r.exit_price as number | null,
+    stop_loss: r.stop_loss as number | null,
+    take_profit: r.take_profit as number | null,
+    rr: r.rr as number | null,
+    risk_r: r.risk_r as number | null,
+    pnl: r.pnl as number | null,
+    result: r.result as SsotTrade["result"],
+    session: r.session as SsotTrade["session"],
+    executed_at: String(r.executed_at),
+    closed_at: r.closed_at as string | null,
+    trade_type: (r.trade_type as "executed" | "missed") ?? "executed",
+    missed_reason: (r.missed_reason as string | null) ?? null,
+    missed_potential_r: (r.missed_potential_r as number | null) ?? null,
+    rules_broken: Array.isArray(r.rules_broken) ? (r.rules_broken as string[]) : [],
+    notes: (r.notes as string | null) ?? null,
+  }));
+}
+
+async function loadViolations(userId: string): Promise<SsotViolation[]> {
+  const { data, error } = await supabase
+    .from("rule_violations")
+    .select("id,trade_id,type,impact_r,session,occurred_at")
+    .eq("user_id", userId)
+    .order("occurred_at", { ascending: false })
+    .limit(500);
+  if (error || !data) return [];
+  return data.map((r) => ({
+    id: String(r.id),
+    trade_id: String(r.trade_id),
+    type: String(r.type),
+    impact_r: Number(r.impact_r ?? 0),
+    session: (r.session as string | null) ?? null,
+    occurred_at: String(r.occurred_at),
+  }));
+}
+
+function buildSessionPerformance(
+  executed: SsotTrade[],
+  missed: SsotTrade[],
+  violations: SsotViolation[],
+): SsotSessionStat[] {
+  const sessions: Array<"London" | "NY" | "Asia"> = ["London", "NY", "Asia"];
+  return sessions.map((s) => {
+    const sx = executed.filter((t) => t.session === s);
+    const wins = sx.filter((t) => t.result === "win").length;
+    const losses = sx.filter((t) => t.result === "loss").length;
+    const decided = wins + losses;
+    const totalR = sx.reduce((a, t) => a + (typeof t.rr === "number" ? t.rr : 0), 0);
+    const assets = Array.from(
+      new Set(sx.map((t) => t.asset || t.market).filter(Boolean) as string[]),
+    ).slice(0, 6);
+    return {
+      session: s,
+      total_trades: sx.length,
+      wins,
+      losses,
+      win_rate: decided > 0 ? wins / decided : 0,
+      total_r: totalR,
+      assets,
+      violations: violations.filter((v) => v.session === s).length,
+      missed: missed.filter((t) => t.session === s).length,
+    };
+  });
+}
+
+function buildExecutionType(
+  executed: SsotTrade[],
+): { controlled_pct: number; impulsive_pct: number; clean: number; with_violations: number } {
+  const total = executed.length;
+  if (total === 0) return { controlled_pct: 0, impulsive_pct: 0, clean: 0, with_violations: 0 };
+  const withViolations = executed.filter((t) => (t.rules_broken?.length ?? 0) > 0).length;
+  const clean = total - withViolations;
+  return {
+    controlled_pct: Math.round((clean / total) * 100),
+    impulsive_pct: Math.round((withViolations / total) * 100),
+    clean,
+    with_violations: withViolations,
+  };
 }
 
 async function loadWorstRuleBreak(userId: string): Promise<string | null> {
@@ -332,6 +446,7 @@ export async function loadSsot(): Promise<Ssot> {
       user_id: null,
       account: EMPTY_ACCOUNT,
       trades: [],
+      missed: [],
       metrics: EMPTY_METRICS,
       behavior: {
         discipline_score: empty.score,
@@ -341,23 +456,29 @@ export async function loadSsot(): Promise<Ssot> {
         violation_count: 0,
         recent_violations: [],
       },
+      violations: [],
+      session_performance: buildSessionPerformance([], [], []),
+      execution_type: buildExecutionType([]),
       discipline: empty,
     };
   }
 
-  const [account, trades, breakdown, worstBreak, views] = await Promise.all([
+  const [account, allTrades, breakdown, worstBreak, views, violations] = await Promise.all([
     loadAccount(uid),
-    loadTrades(uid),
-    loadDisciplineBreakdown(), // still needed for the breakdown UI (per-trade contributions)
+    loadAllTrades(uid),
+    loadDisciplineBreakdown(),
     loadWorstRuleBreak(uid),
     loadComputedViews(uid),
+    loadViolations(uid),
   ]);
 
-  const bestSession = bestSessionFromTrades(trades);
+  const executed = allTrades.filter((t) => t.trade_type === "executed");
+  const missed = allTrades.filter((t) => t.trade_type === "missed");
+
+  const bestSession = bestSessionFromTrades(executed);
   const metrics = metricsFromViews(views, bestSession);
   metrics.worst_rule_break = worstBreak;
 
-  // Behavior numbers come from the discipline + rule_adherence views (SSOT).
   const disciplineScore = Number(views.discipline?.discipline_score ?? breakdown.score);
   const cleanTrades = Number(views.discipline?.clean_trades ?? breakdown.clean_trades);
   const totalLogs = Number(views.discipline?.total_trades ?? breakdown.total_trades);
@@ -366,11 +487,22 @@ export async function loadSsot(): Promise<Ssot> {
     views.adherence?.adherence ?? breakdown.rule_adherence ?? 1,
   );
 
+  // Top recent violations grouped by type
+  const recentCounts: Record<string, number> = {};
+  for (const v of violations.slice(0, 50)) {
+    recentCounts[v.type] = (recentCounts[v.type] ?? 0) + 1;
+  }
+  const recent_violations = Object.entries(recentCounts)
+    .map(([type, count]) => ({ type, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
   return {
     loading: false,
     user_id: uid,
     account,
-    trades,
+    trades: executed,
+    missed,
     metrics,
     behavior: {
       discipline_score: disciplineScore,
@@ -378,9 +510,11 @@ export async function loadSsot(): Promise<Ssot> {
       clean_trades: cleanTrades,
       total_trades: totalLogs,
       violation_count: violationCount,
-      recent_violations: [],
+      recent_violations,
     },
-    // Keep authoritative score from view, retain breakdown contributions for the trace UI.
+    violations,
+    session_performance: buildSessionPerformance(executed, missed, violations),
+    execution_type: buildExecutionType(executed),
     discipline: { ...breakdown, score: disciplineScore, rule_adherence: adherence },
   };
 }
