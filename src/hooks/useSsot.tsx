@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EMPTY_ACCOUNT, EMPTY_METRICS, loadSsot, type Ssot } from "@/lib/ssot";
 import { onAuthChange, onTraderStateChange } from "@/lib/traderState";
 import { loadDisciplineBreakdown } from "@/lib/disciplineScore";
+import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 
 const EMPTY_SSOT: Ssot = {
   loading: true,
