@@ -480,7 +480,14 @@ function PerformanceTrendCard({ ssot }: { ssot: Ssot }) {
 function FullStatsPanel({ ssot }: { ssot: Ssot }) {
   const m = ssot.metrics;
   const has = m.total_trades > 0;
-  const stats: { label: string; value: string; tone?: "ok" | "risk" }[] = [
+  const cur = ssot.account.currency;
+  const risk = ssot.account.risk_per_trade;
+  const fmtRMoney = (rVal: number, signed = true): string => {
+    const c = rToCurrency(rVal, risk);
+    if (c == null) return "";
+    return ` · ${formatCurrency(c, cur, { showSign: signed })}`;
+  };
+  const stats: { label: string; value: string; sub?: string; tone?: "ok" | "risk" }[] = [
     {
       label: "Win rate",
       value: has ? `${Math.round(m.win_rate * 100)}%` : "—",
@@ -493,22 +500,34 @@ function FullStatsPanel({ ssot }: { ssot: Ssot }) {
           : "∞"
         : "—",
     },
-    { label: "Avg R", value: has ? `${m.avg_r >= 0 ? "+" : ""}${m.avg_r.toFixed(2)}R` : "—" },
+    {
+      label: "Avg R",
+      value: has ? `${m.avg_r >= 0 ? "+" : ""}${m.avg_r.toFixed(2)}R` : "—",
+      sub: has ? fmtRMoney(m.avg_r) : "",
+    },
     {
       label: "Max drawdown",
       value: has ? `−${m.max_drawdown_r.toFixed(2)}R` : "—",
+      sub: has ? fmtRMoney(-m.max_drawdown_r, false) : "",
       tone: m.max_drawdown_r > 0 ? "risk" : undefined,
     },
     {
       label: "Expectancy",
       value: has ? `${m.expectancy_r >= 0 ? "+" : ""}${m.expectancy_r.toFixed(2)}R` : "—",
+      sub: has ? fmtRMoney(m.expectancy_r) : "",
+    },
+    {
+      label: "Total PnL",
+      value: has ? `${m.total_r >= 0 ? "+" : ""}${m.total_r.toFixed(2)}R` : "—",
+      sub: has ? fmtRMoney(m.total_r) : "",
+      tone: m.total_r < 0 ? "risk" : undefined,
     },
   ];
 
   return (
     <Card>
       <CardEyebrow Icon={Activity}>Full statistics</CardEyebrow>
-      <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-5">
+      <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-3 lg:grid-cols-6">
         {stats.map((s) => (
           <div key={s.label}>
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-secondary/70">
@@ -516,18 +535,28 @@ function FullStatsPanel({ ssot }: { ssot: Ssot }) {
             </p>
             <p
               className={[
-                "mt-1.5 font-display text-[24px] font-semibold tracking-tight tabular-nums",
+                "mt-1.5 font-display text-[22px] font-semibold tracking-tight tabular-nums",
                 s.tone === "risk" ? "text-rose-300" : "text-text-primary",
               ].join(" ")}
             >
               {s.value}
             </p>
+            {s.sub && (
+              <p className="mt-0.5 text-[11px] text-text-secondary/80 tabular-nums">
+                {s.sub.replace(/^ · /, "")}
+              </p>
+            )}
           </div>
         ))}
       </div>
       {!has && (
         <p className="mt-5 text-[11.5px] text-text-secondary/80">
           Metrics will populate as you log trades.
+        </p>
+      )}
+      {has && risk == null && (
+        <p className="mt-3 text-[11px] text-text-secondary/70">
+          Set a risk-per-trade value in <Link to="/hub/settings" className="text-gold hover:text-gold-soft">settings</Link> to also see PnL in {cur}.
         </p>
       )}
     </Card>
