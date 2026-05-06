@@ -366,7 +366,40 @@ type UserContext = {
   systemRules?: string;
   /** From the 4-step onboarding personalization (market, experience, challenge, goal). */
   profileSummary?: string;
-  /** Live intelligence snapshot derived from the last 20 trades. */
+  /**
+   * SSOT — single source of truth for every metric. Mentor MUST cite these
+   * numbers verbatim. Never recompute, never invent. Win rate, profit factor,
+   * drawdown, expectancy, discipline score, rule adherence — all live here.
+   */
+  ssot?: {
+    account: {
+      balance: number | null;
+      equity: number | null;
+      source: "manual" | "synced";
+    };
+    metrics: {
+      total_trades: number;
+      wins: number;
+      losses: number;
+      breakevens: number;
+      win_rate: number;
+      avg_r: number;
+      profit_factor: number;
+      expectancy_r: number;
+      max_drawdown_r: number;
+      total_r: number;
+      best_session: string | null;
+      worst_rule_break: string | null;
+    };
+    behavior: {
+      discipline_score: number;
+      rule_adherence: number;
+      clean_trades: number;
+      total_trades: number;
+      violation_count: number;
+    };
+  };
+  /** @deprecated kept for back-compat; prefer ssot. */
   intelligence?: {
     disciplineScore: number | null;
     disciplineClass: string | null;
