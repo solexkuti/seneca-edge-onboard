@@ -6,6 +6,7 @@
 // "Log your first trade" copy instead of zero values.
 
 import { supabase } from "@/integrations/supabase/client";
+import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 
 export type Market = "forex" | "crypto" | "indices" | "stocks" | "metals" | "other";
 export type Direction = "buy" | "sell";
@@ -76,6 +77,11 @@ export async function insertTradeLog(input: NewTradeLog): Promise<TradeLog> {
     .select("*")
     .single();
   if (error) throw error;
+  // Notify every consumer (dashboard SSOT, behavior, history, mentor) that a
+  // new trade exists. Without this, useSsot stays on stale data after a save.
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(JOURNAL_EVENT));
+  }
   return data as unknown as TradeLog;
 }
 

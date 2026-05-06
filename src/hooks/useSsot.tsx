@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EMPTY_ACCOUNT, EMPTY_METRICS, loadSsot, type Ssot } from "@/lib/ssot";
 import { onAuthChange, onTraderStateChange } from "@/lib/traderState";
 import { loadDisciplineBreakdown } from "@/lib/disciplineScore";
+import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 
 const EMPTY_SSOT: Ssot = {
   loading: true,
@@ -79,9 +80,19 @@ export function useSsot(): { ssot: Ssot; refresh: () => Promise<void> } {
     void refresh();
     const u1 = onTraderStateChange(() => void refresh());
     const u2 = onAuthChange(() => void refresh());
+    // The journal/trade-log/missed-trade flows dispatch JOURNAL_EVENT after
+    // every successful save, edit, or delete. Hook into it so the dashboard,
+    // behavior, violations, and history stay in lockstep with the trades table.
+    const onJournal = () => void refresh();
+    if (typeof window !== "undefined") {
+      window.addEventListener(JOURNAL_EVENT, onJournal);
+    }
     return () => {
       u1();
       u2();
+      if (typeof window !== "undefined") {
+        window.removeEventListener(JOURNAL_EVENT, onJournal);
+      }
     };
   }, [refresh]);
 
