@@ -616,6 +616,7 @@ export async function loadSsot(): Promise<Ssot> {
       violations: [],
       session_performance: buildSessionPerformance([], [], []),
       execution_type: buildExecutionType([], []),
+      analytics: EMPTY_ANALYTICS,
       discipline: empty,
     };
   }
