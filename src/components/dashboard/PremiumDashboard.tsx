@@ -1240,6 +1240,8 @@ function BehaviorBreakdownCard({ ssot }: { ssot: Ssot }) {
               winRatePct={Math.round(s.win_rate * 100)}
               total={s.total_trades}
               violations={s.violations}
+              totalR={s.total_r}
+              missed={s.missed}
             />
           ))}
         </div>
