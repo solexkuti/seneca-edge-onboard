@@ -196,6 +196,18 @@ export default function BehavioralJournalFlow({
 }) {
   const [step, setStep] = useState<Step>(0);
 
+  // SSOT — preferred risk policy is READ-ONLY in journal.
+  const { ssot } = useSsot();
+  const policyBalance = ssot.account.balance;
+  const policyCurrency = ssot.account.display_currency || ssot.account.currency || "USD";
+  const policyRiskAmount = ssot.account.risk_per_trade; // base ccy amount per trade
+  const preferredRiskPercent = useMemo(() => {
+    if (policyBalance && policyBalance > 0 && policyRiskAmount && policyRiskAmount > 0) {
+      return (policyRiskAmount / policyBalance) * 100;
+    }
+    return null;
+  }, [policyBalance, policyRiskAmount]);
+
   // Trade core
   const [asset, setAsset] = useState("");
   const [market, setMarket] = useState<Market>("forex");
