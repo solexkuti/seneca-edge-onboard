@@ -620,6 +620,36 @@ export type Database = {
         }
         Relationships: []
       }
+      fx_rates: {
+        Row: {
+          base: string
+          fetched_at: string
+          id: string
+          quote: string
+          rate: number
+          rate_date: string
+          source: string
+        }
+        Insert: {
+          base: string
+          fetched_at?: string
+          id?: string
+          quote: string
+          rate: number
+          rate_date: string
+          source?: string
+        }
+        Update: {
+          base?: string
+          fetched_at?: string
+          id?: string
+          quote?: string
+          rate?: number
+          rate_date?: string
+          source?: string
+        }
+        Relationships: []
+      }
       journal_entries: {
         Row: {
           asset: string
@@ -840,10 +870,12 @@ export type Database = {
           created_at: string
           currency: string
           discipline_score: number
+          display_currency: string
           experience: string | null
           goal: string | null
           id: string
           market: string | null
+          metric_display_mode: string
           onboarded_at: string | null
           onboarding_completed: boolean
           risk_per_trade: number | null
@@ -860,10 +892,12 @@ export type Database = {
           created_at?: string
           currency?: string
           discipline_score?: number
+          display_currency?: string
           experience?: string | null
           goal?: string | null
           id: string
           market?: string | null
+          metric_display_mode?: string
           onboarded_at?: string | null
           onboarding_completed?: boolean
           risk_per_trade?: number | null
@@ -880,10 +914,12 @@ export type Database = {
           created_at?: string
           currency?: string
           discipline_score?: number
+          display_currency?: string
           experience?: string | null
           goal?: string | null
           id?: string
           market?: string | null
+          metric_display_mode?: string
           onboarded_at?: string | null
           onboarding_completed?: boolean
           risk_per_trade?: number | null
@@ -1434,11 +1470,14 @@ export type Database = {
         Row: {
           analysis_id: string | null
           asset: string | null
+          base_currency: string | null
           broker_deal_id: string | null
           closed_at: string | null
           created_at: string
           direction: Database["public"]["Enums"]["trade_direction"]
+          display_currency_at_close: string | null
           entry_price: number | null
+          exchange_rate_at_close: number | null
           executed_at: string
           execution_type: Database["public"]["Enums"]["execution_type"] | null
           exit_price: number | null
@@ -1448,9 +1487,12 @@ export type Database = {
           market_type: Database["public"]["Enums"]["market_type"] | null
           missed_potential_r: number | null
           missed_reason: Database["public"]["Enums"]["missed_reason"] | null
+          monetary_pnl_base: number | null
+          monetary_pnl_converted_snapshot: number | null
           notes: string | null
           pnl: number | null
           result: Database["public"]["Enums"]["trade_result"] | null
+          risk_per_trade_at_open: number | null
           risk_r: number | null
           rr: number | null
           rules_broken: string[]
@@ -1468,11 +1510,14 @@ export type Database = {
         Insert: {
           analysis_id?: string | null
           asset?: string | null
+          base_currency?: string | null
           broker_deal_id?: string | null
           closed_at?: string | null
           created_at?: string
           direction: Database["public"]["Enums"]["trade_direction"]
+          display_currency_at_close?: string | null
           entry_price?: number | null
+          exchange_rate_at_close?: number | null
           executed_at?: string
           execution_type?: Database["public"]["Enums"]["execution_type"] | null
           exit_price?: number | null
@@ -1482,9 +1527,12 @@ export type Database = {
           market_type?: Database["public"]["Enums"]["market_type"] | null
           missed_potential_r?: number | null
           missed_reason?: Database["public"]["Enums"]["missed_reason"] | null
+          monetary_pnl_base?: number | null
+          monetary_pnl_converted_snapshot?: number | null
           notes?: string | null
           pnl?: number | null
           result?: Database["public"]["Enums"]["trade_result"] | null
+          risk_per_trade_at_open?: number | null
           risk_r?: number | null
           rr?: number | null
           rules_broken?: string[]
@@ -1502,11 +1550,14 @@ export type Database = {
         Update: {
           analysis_id?: string | null
           asset?: string | null
+          base_currency?: string | null
           broker_deal_id?: string | null
           closed_at?: string | null
           created_at?: string
           direction?: Database["public"]["Enums"]["trade_direction"]
+          display_currency_at_close?: string | null
           entry_price?: number | null
+          exchange_rate_at_close?: number | null
           executed_at?: string
           execution_type?: Database["public"]["Enums"]["execution_type"] | null
           exit_price?: number | null
@@ -1516,9 +1567,12 @@ export type Database = {
           market_type?: Database["public"]["Enums"]["market_type"] | null
           missed_potential_r?: number | null
           missed_reason?: Database["public"]["Enums"]["missed_reason"] | null
+          monetary_pnl_base?: number | null
+          monetary_pnl_converted_snapshot?: number | null
           notes?: string | null
           pnl?: number | null
           result?: Database["public"]["Enums"]["trade_result"] | null
+          risk_per_trade_at_open?: number | null
           risk_r?: number | null
           rr?: number | null
           rules_broken?: string[]
