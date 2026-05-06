@@ -550,11 +550,13 @@ export async function loadSsot(): Promise<Ssot> {
   // Prefer derived (always coherent with trades). Fallback to DB rows if no trades have rules_broken.
   const ssotViolations = derivedViolations.length > 0 ? derivedViolations : violations;
 
-  // ── Discipline / behavior — computed DIRECTLY from trades.rules_broken.
-  // Single source of truth: the trades table. We replay every executed
-  // trade chronologically: clean (zero rules_broken) → +10, otherwise
-  // -10 per broken rule. Start 100, clamp [0, 100]. Missed trades are
-  // behavioral signals but do NOT contribute to the discipline ledger.
+  // ── Discipline engine — gradual recovery model.
+  // Source of truth: trades.rules_broken, replayed chronologically.
+  //   - Clean executed trade (zero rules_broken): +5
+  //   - Each broken rule on an executed trade:   -10
+  //   - Missed trades: 0 impact (psychology only).
+  // Start 100, clamp [0, 100]. Damage > recovery by design — discipline is
+  // earned slowly and cannot be gamed by selective clean logging.
   const chrono = [...executed].sort(
     (a, b) => new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime(),
   );
@@ -564,7 +566,7 @@ export async function loadSsot(): Promise<Ssot> {
   for (const t of chrono) {
     const broken = t.rules_broken?.length ?? 0;
     if (broken === 0) {
-      _score = Math.min(100, _score + 10);
+      _score = Math.min(100, _score + 5);
       cleanTrades += 1;
     } else {
       _score = Math.max(0, _score - 10 * broken);
