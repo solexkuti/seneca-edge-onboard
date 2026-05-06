@@ -322,6 +322,52 @@ export default function MissedTradeFlow({ onLogged }: { onLogged?: () => void })
         </label>
       </div>
 
+      {/* Screenshot */}
+      <div className="rounded-2xl border border-white/5 bg-[#18181A] p-5">
+        <div className="flex items-center gap-2">
+          <ImagePlus className="h-4 w-4 text-[#C6A15B]" />
+          <span className="text-xs uppercase tracking-[0.18em] text-[#9A9A9A]">
+            Screenshot <span className="text-[#5A5A5A] normal-case">(optional)</span>
+          </span>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => pickScreenshot(e.target.files?.[0] ?? null)}
+        />
+        {screenshot ? (
+          <div className="mt-3 flex items-start gap-3">
+            <img
+              src={screenshot.preview}
+              alt="Missed setup screenshot"
+              className="h-24 w-24 rounded-lg border border-white/10 object-cover"
+            />
+            <div className="flex flex-col gap-2">
+              <span className="text-[12px] text-[#EDEDED]">{screenshot.file.name}</span>
+              <button
+                type="button"
+                onClick={clearScreenshot}
+                className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-[#0B0B0D] px-2.5 py-1 text-[11px] text-[#9A9A9A] hover:border-rose-400/30 hover:text-rose-300 transition-colors w-fit"
+              >
+                <X className="h-3 w-3" />
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-white/15 bg-[#0B0B0D] px-3 py-6 text-sm text-[#9A9A9A] hover:border-[#C6A15B]/40 hover:text-[#E7C98A] transition-colors"
+          >
+            <ImagePlus className="h-4 w-4" />
+            Attach chart screenshot
+          </button>
+        )}
+      </div>
+
       <button
         type="button"
         onClick={handleSubmit}
