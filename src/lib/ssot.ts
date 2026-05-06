@@ -19,6 +19,7 @@ import {
   loadDisciplineBreakdown,
   type DisciplineBreakdown,
 } from "@/lib/disciplineScore";
+import { getRate } from "@/lib/fxService";
 
 export type BalanceSource = "manual" | "synced";
 
