@@ -14,7 +14,7 @@ function tone(state: string) {
 
 function label(state: string) {
   if (state === "in_control") return "Controlled";
-  if (state === "slipping") return "Slight drift";
+  if (state === "slipping") return "Drifting";
   return "Undisciplined";
 }
 
