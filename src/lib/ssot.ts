@@ -109,7 +109,16 @@ export type Ssot = {
   behavior: SsotBehavior;
   violations: SsotViolation[];
   session_performance: SsotSessionStat[];
-  execution_type: { controlled_pct: number; impulsive_pct: number; clean: number; with_violations: number };
+  execution_type: {
+    controlled_pct: number;
+    semi_controlled_pct: number;
+    impulsive_pct: number;
+    controlled: number;
+    semi_controlled: number;
+    impulsive: number;
+    missed: number;
+    executed_total: number;
+  };
   /** Underlying discipline breakdown — kept for legacy UI consumers. */
   discipline: DisciplineBreakdown;
 };
@@ -337,16 +346,39 @@ function buildSessionPerformance(
 
 function buildExecutionType(
   executed: SsotTrade[],
-): { controlled_pct: number; impulsive_pct: number; clean: number; with_violations: number } {
+  missed: SsotTrade[],
+): Ssot["execution_type"] {
   const total = executed.length;
-  if (total === 0) return { controlled_pct: 0, impulsive_pct: 0, clean: 0, with_violations: 0 };
-  const withViolations = executed.filter((t) => (t.rules_broken?.length ?? 0) > 0).length;
-  const clean = total - withViolations;
+  if (total === 0) {
+    return {
+      controlled_pct: 0,
+      semi_controlled_pct: 0,
+      impulsive_pct: 0,
+      controlled: 0,
+      semi_controlled: 0,
+      impulsive: 0,
+      missed: missed.length,
+      executed_total: 0,
+    };
+  }
+  let controlled = 0;
+  let semi = 0;
+  let impulsive = 0;
+  for (const t of executed) {
+    const n = t.rules_broken?.length ?? 0;
+    if (n === 0) controlled += 1;
+    else if (n === 1) semi += 1;
+    else impulsive += 1;
+  }
   return {
-    controlled_pct: Math.round((clean / total) * 100),
-    impulsive_pct: Math.round((withViolations / total) * 100),
-    clean,
-    with_violations: withViolations,
+    controlled_pct: Math.round((controlled / total) * 100),
+    semi_controlled_pct: Math.round((semi / total) * 100),
+    impulsive_pct: Math.round((impulsive / total) * 100),
+    controlled,
+    semi_controlled: semi,
+    impulsive,
+    missed: missed.length,
+    executed_total: total,
   };
 }
 
@@ -458,26 +490,52 @@ export async function loadSsot(): Promise<Ssot> {
       },
       violations: [],
       session_performance: buildSessionPerformance([], [], []),
-      execution_type: buildExecutionType([]),
+      execution_type: buildExecutionType([], []),
       discipline: empty,
     };
   }
 
-  const [account, allTrades, breakdown, worstBreak, views, violations] = await Promise.all([
+  const [account, allTrades, breakdown, worstBreak, violations] = await Promise.all([
     loadAccount(uid),
     loadAllTrades(uid),
     loadDisciplineBreakdown(),
     loadWorstRuleBreak(uid),
-    loadComputedViews(uid),
     loadViolations(uid),
   ]);
+  // metricsFromViews / loadComputedViews kept available but unused — metrics
+  // are now computed directly from trades to keep collapsed and expanded
+  // numbers identical and to avoid stale view-driven drawdown.
+  void metricsFromViews;
+  void loadComputedViews;
 
   const executed = allTrades.filter((t) => t.trade_type === "executed");
   const missed = allTrades.filter((t) => t.trade_type === "missed");
 
   const bestSession = bestSessionFromTrades(executed);
-  const metrics = metricsFromViews(views, bestSession);
+  // Compute metrics directly from trades — no stale views.
+  const metrics: SsotMetrics = { ...computeMetrics(executed), best_session: bestSession };
   metrics.worst_rule_break = worstBreak;
+
+  // Derive violation rows from trades.rules_broken so impact = trade R for
+  // every (trade, rule) row, keeping aggregate and per-rule drilldowns identical.
+  const derivedViolations: SsotViolation[] = [];
+  for (const t of executed) {
+    const broken = t.rules_broken ?? [];
+    if (broken.length === 0) continue;
+    const tradeR = typeof t.rr === "number" ? t.rr : 0;
+    for (const type of broken) {
+      derivedViolations.push({
+        id: `${t.id}:${type}`,
+        trade_id: t.id,
+        type,
+        impact_r: tradeR,
+        session: t.session ?? null,
+        occurred_at: t.executed_at,
+      });
+    }
+  }
+  // Prefer derived (always coherent with trades). Fallback to DB rows if no trades have rules_broken.
+  const ssotViolations = derivedViolations.length > 0 ? derivedViolations : violations;
 
   // ── Discipline / behavior — computed DIRECTLY from trades.rules_broken.
   // Single source of truth: the trades table. We replay every executed
@@ -506,7 +564,7 @@ export async function loadSsot(): Promise<Ssot> {
 
   // Top recent violations grouped by type
   const recentCounts: Record<string, number> = {};
-  for (const v of violations.slice(0, 50)) {
+  for (const v of ssotViolations.slice(0, 50)) {
     recentCounts[v.type] = (recentCounts[v.type] ?? 0) + 1;
   }
   const recent_violations = Object.entries(recentCounts)
@@ -529,9 +587,9 @@ export async function loadSsot(): Promise<Ssot> {
       violation_count: violationCount,
       recent_violations,
     },
-    violations,
-    session_performance: buildSessionPerformance(executed, missed, violations),
-    execution_type: buildExecutionType(executed),
+    violations: ssotViolations,
+    session_performance: buildSessionPerformance(executed, missed, ssotViolations),
+    execution_type: buildExecutionType(executed, missed),
     discipline: {
       ...breakdown,
       score: disciplineScore,
