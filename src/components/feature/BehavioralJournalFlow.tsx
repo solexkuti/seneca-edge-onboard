@@ -76,6 +76,8 @@ const POST_TRADE_REFLECTIONS = [
 import { userKey } from "@/lib/userScopedStorage";
 import { useSsot } from "@/hooks/useSsot";
 
+const ACCOUNT_SIZE_STORAGE_SUFFIX = "journal:account_size";
+
 // Currency formatter — uses the user's display currency from SSOT.
 function fmtMoney(amount: number, ccy: string): string {
   try {
