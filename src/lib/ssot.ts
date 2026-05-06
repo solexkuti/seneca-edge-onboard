@@ -101,9 +101,15 @@ export type Ssot = {
   loading: boolean;
   user_id: string | null;
   account: SsotAccount;
+  /** All executed trades, newest-first. */
   trades: SsotTrade[];
+  /** Missed setups (trade_type='missed'), newest-first. */
+  missed: SsotTrade[];
   metrics: SsotMetrics;
   behavior: SsotBehavior;
+  violations: SsotViolation[];
+  session_performance: SsotSessionStat[];
+  execution_type: { controlled_pct: number; impulsive_pct: number; clean: number; with_violations: number };
   /** Underlying discipline breakdown — kept for legacy UI consumers. */
   discipline: DisciplineBreakdown;
 };
