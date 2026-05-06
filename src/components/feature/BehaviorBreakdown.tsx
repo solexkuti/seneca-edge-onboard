@@ -43,6 +43,12 @@ import { SwipeablePanels } from "@/components/feature/SwipeablePanels";
 import { ExportMenu } from "@/components/feature/ExportMenu";
 import { BehaviorTrendsChart } from "@/components/feature/BehaviorTrendsChart";
 import { metricColorStyle } from "@/lib/metricColor";
+import {
+  humanizeViolation,
+  violationSeverity,
+  severityTone,
+  severityRank,
+} from "@/lib/violationLabels";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -134,7 +140,14 @@ export default function BehaviorBreakdown() {
   const score = useMemo(() => behaviorScore(scoped), [scoped]);
   const adherence = useMemo(() => ruleAdherence(scoped), [scoped]);
   const split = useMemo(() => executionSplit(scoped), [scoped]);
-  const violations = useMemo(() => ruleViolations(scoped), [scoped]);
+  const violations = useMemo(() => {
+    const list = ruleViolations(scoped);
+    return [...list].sort((a, b) => {
+      const s = severityRank(violationSeverity(b.rule)) - severityRank(violationSeverity(a.rule));
+      if (s !== 0) return s;
+      return a.totalImpactR - b.totalImpactR;
+    });
+  }, [scoped]);
   const assets = useMemo(() => assetBehavior(scoped), [scoped]);
   const insights = useMemo(() => generateInsights(scoped), [scoped]);
   const summary = useMemo(() => summarize(scoped), [scoped]);
@@ -545,6 +558,8 @@ function ViolationRow({
   onOpen: () => void;
 }) {
   const negative = v.totalImpactR < 0;
+  const sev = violationSeverity(v.rule);
+  const tone = severityTone(sev);
   return (
     <tr
       onClick={onOpen}
@@ -552,9 +567,14 @@ function ViolationRow({
     >
       <td className="px-4 py-3 text-[12.5px] text-[#EDEDED]">
         <span className="inline-flex items-center gap-2">
-          {v.rule}
-          <span className="text-[10px] uppercase tracking-wider text-[#9A9A9A]/60">
-            open ›
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ background: tone.dot }}
+            title={`${sev} severity`}
+          />
+          {humanizeViolation(v.rule)}
+          <span className={`text-[9.5px] uppercase tracking-wider ${tone.text}`}>
+            {sev}
           </span>
         </span>
       </td>

@@ -35,6 +35,12 @@ import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 import { useSsot } from "@/hooks/useSsot";
 import { formatMetric } from "@/lib/fxService";
 import type { MetricDisplayMode } from "@/lib/ssot";
+import {
+  humanizeViolation,
+  violationSeverity,
+  severityTone,
+  severityRank,
+} from "@/lib/violationLabels";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -459,29 +465,36 @@ function TradeCard({
             {trade.marketType && ` · ${trade.marketType}`}
           </p>
 
-          {/* Quick rule summary */}
+          {/* Quick rule summary — humanized + severity-colored */}
           {!isMissed && (broken > 0 || followed > 0) && (
-            <div className="mt-1.5 flex items-center gap-3 text-[10.5px]">
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10.5px]">
               {followed > 0 && (
-                <span className="text-emerald-400/90">
-                  ✓ {followed} followed
+                <span className="inline-flex items-center gap-1 text-emerald-400/90">
+                  ✓ {followed} clean
                 </span>
               )}
-              {broken > 0 && (
-                <span className="text-rose-400/90">✗ {broken} broken</span>
+              {trade.rulesBroken.slice(0, 2).map((r) => {
+                const tone = severityTone(violationSeverity(r));
+                return (
+                  <span
+                    key={r}
+                    className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] ring-1 ${tone.ring} ${tone.bg} ${tone.text}`}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone.dot }} />
+                    {humanizeViolation(r)}
+                  </span>
+                );
+              })}
+              {trade.rulesBroken.length > 2 && (
+                <span className="text-[#9A9A9A]/70">+{trade.rulesBroken.length - 2} more</span>
               )}
             </div>
           )}
 
-          {isMissed && trade.missedReason && (
-            <p className="mt-1.5 text-[11.5px] text-[#9A9A9A]">
-              {MISSED_REASON_LABELS[trade.missedReason]}
-              {trade.missedPotentialR != null && (
-                <span className="ml-2 inline-flex items-center gap-1 text-[#E7C98A]">
-                  <Target className="h-3 w-3" /> {trade.missedPotentialR.toFixed(1)}
-                  R missed
-                </span>
-              )}
+          {/* Missed-trade row: minimal reason chip only — full context in expanded view */}
+          {isMissed && trade.missedPotentialR != null && (
+            <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-[#E7C98A]">
+              <Target className="h-3 w-3" /> {trade.missedPotentialR.toFixed(1)}R missed
             </p>
           )}
         </div>
@@ -520,7 +533,7 @@ function TradeCard({
         </div>
       </div>
 
-      {/* Expanded breakdown */}
+      {/* Expanded — Behavioral Replay */}
       <AnimatePresence initial={false}>
         {expanded && hasDetails && (
           <motion.div
@@ -530,58 +543,116 @@ function TradeCard({
             transition={{ duration: 0.25, ease }}
             className="overflow-hidden border-t border-white/5"
           >
-            <div className="px-4 py-3 space-y-3">
-              {trade.rulesFollowed.length > 0 && (
+            <div className="px-4 py-4 space-y-4">
+              {/* Screenshot — behavioral replay anchor */}
+              {thumb && (
+                <button
+                  type="button"
+                  onClick={() => trade.screenshotUrl && onPreview(trade.screenshotUrl)}
+                  className="block w-full overflow-hidden rounded-lg ring-1 ring-white/10 bg-[#0B0B0D]"
+                >
+                  <img
+                    src={thumb}
+                    alt="Trade replay"
+                    className="w-full max-h-[280px] object-contain"
+                  />
+                </button>
+              )}
+
+              {/* Missed-trade context — note replaces redundant reason chip */}
+              {isMissed && (
+                <div className="rounded-lg bg-[#0B0B0D] ring-1 ring-[#C6A15B]/15 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#C6A15B]/80 mb-1.5">
+                    Missed-trade context
+                  </p>
+                  {trade.notes ? (
+                    <p className="text-[12px] leading-relaxed text-[#EDEDED]/85 italic">
+                      "{trade.notes}"
+                    </p>
+                  ) : (
+                    <p className="text-[11.5px] text-[#9A9A9A]/80 italic">
+                      No reflection captured. Next time, write down what stopped you — that's the data that matters.
+                    </p>
+                  )}
+                  {trade.missedReason && (
+                    <p className="mt-2 text-[10.5px] text-[#9A9A9A]/70">
+                      Surface trigger: {MISSED_REASON_LABELS[trade.missedReason].toLowerCase()}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Violations — humanized + severity-tinted */}
+              {!isMissed && trade.rulesBroken.length > 0 && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80 mb-1.5">
+                    Behavioral breakdown
+                  </p>
+                  <ul className="space-y-1.5">
+                    {trade.rulesBroken.map((r) => {
+                      const sev = violationSeverity(r);
+                      const tone = severityTone(sev);
+                      return (
+                        <li
+                          key={r}
+                          className={`flex items-start gap-2 rounded-md px-2.5 py-1.5 ${tone.bg} ring-1 ${tone.ring}`}
+                        >
+                          <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: tone.dot }} />
+                          <span className={`text-[12px] ${tone.text}`}>{humanizeViolation(r)}</span>
+                          <span className="ml-auto text-[9.5px] uppercase tracking-wider text-[#9A9A9A]/70">
+                            {sev}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {!isMissed && trade.rulesFollowed.length > 0 && (
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-400/80 mb-1.5">
-                    Rules followed
+                    What you did right
                   </p>
                   <ul className="space-y-1">
                     {trade.rulesFollowed.map((r) => (
                       <li
                         key={r}
-                        className="text-[11.5px] text-[#EDEDED]/80 flex items-start gap-1.5"
+                        className="text-[12px] text-[#EDEDED]/85 flex items-start gap-1.5"
                       >
                         <span className="text-emerald-400 mt-0.5">✓</span>
-                        <span>{r}</span>
+                        <span>{humanizeViolation(r)}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
-              {trade.rulesBroken.length > 0 && (
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-rose-400/80 mb-1.5">
-                    Rules broken
-                  </p>
-                  <ul className="space-y-1">
-                    {trade.rulesBroken.map((r) => (
-                      <li
-                        key={r}
-                        className="text-[11.5px] text-[#EDEDED]/80 flex items-start gap-1.5"
-                      >
-                        <span className="text-rose-400 mt-0.5">✗</span>
-                        <span>{r}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {trade.notes && (
+
+              {/* Reflection */}
+              {!isMissed && trade.notes && (
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80 mb-1.5">
-                    Notes
+                    Reflection
                   </p>
-                  <p className="text-[11.5px] italic text-[#9A9A9A]">
+                  <p className="text-[12px] italic leading-relaxed text-[#EDEDED]/80">
                     "{trade.notes}"
                   </p>
                 </div>
               )}
-              {(trade.entryPrice != null ||
+
+              {/* Execution context */}
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[10.5px] text-[#9A9A9A]/80">
+                {trade.session && <span>Session · <span className="text-[#EDEDED]/80">{trade.session}</span></span>}
+                {trade.executionType && <span>Quality · <span className="text-[#EDEDED]/80">{trade.executionType}</span></span>}
+                {trade.marketType && <span>Market · <span className="text-[#EDEDED]/80">{trade.marketType}</span></span>}
+              </div>
+
+              {/* Prices */}
+              {!isMissed && (trade.entryPrice != null ||
                 trade.exitPrice != null ||
                 trade.stopLoss != null ||
                 trade.takeProfit != null) && (
-                <div className="grid grid-cols-4 gap-2 pt-1">
+                <div className="grid grid-cols-4 gap-2 pt-1 border-t border-white/5">
                   {[
                     ["Entry", trade.entryPrice],
                     ["Exit", trade.exitPrice],
@@ -592,7 +663,7 @@ function TradeCard({
                       <p className="text-[9px] uppercase tracking-wider text-[#9A9A9A]/70">
                         {label as string}
                       </p>
-                      <p className="text-[11px] tabular-nums text-[#EDEDED]/80">
+                      <p className="text-[11px] tabular-nums text-[#EDEDED]/80 pt-1">
                         {val != null ? Number(val).toString() : "—"}
                       </p>
                     </div>
