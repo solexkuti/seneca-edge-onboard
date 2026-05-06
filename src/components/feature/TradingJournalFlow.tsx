@@ -400,26 +400,15 @@ function DisciplineImpactBanner({
   executionDelta: number;
   decisionDelta: number | null;
 }) {
-  // Translate execution discipline_score (0–100) into a familiar +2 / 0 / -5 / -10
-  // bucket so the user always sees a deterministic delta.
-  const exec =
-    executionDelta >= 100
-      ? "+2"
-      : executionDelta >= 75
-        ? "0"
-        : executionDelta >= 50
-          ? "-5"
-          : "-10";
+  // Strict ±10 engine: clean trade = +10, every broken rule = -10.
+  const brokenCount = Math.max(0, Math.round((100 - executionDelta) / 25));
+  const exec = brokenCount === 0 ? "+10" : `-${brokenCount * 10}`;
   const tone: "ok" | "warn" | "danger" =
-    executionDelta >= 75 ? "ok" : executionDelta >= 50 ? "warn" : "danger";
+    brokenCount === 0 ? "ok" : brokenCount === 1 ? "warn" : "danger";
   const reason =
-    executionDelta >= 100
-      ? "All four rules followed — clean execution."
-      : executionDelta >= 75
-        ? "Mostly followed plan — minor slip."
-        : executionDelta >= 50
-          ? "Two rules broken — discipline impacted."
-          : "Three or more rules broken — significant impact.";
+    brokenCount === 0
+      ? "All rules followed — clean execution."
+      : `${brokenCount} rule${brokenCount === 1 ? "" : "s"} broken — −10 each.`;
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}

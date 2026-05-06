@@ -67,7 +67,7 @@ function controlStateBlurb(args: {
   breakStreak: number;
 }): string {
   if (!args.hasEntries) return "Log a trade to begin";
-  if (args.classification === "severe") return "Exits losing control";
+  if (args.classification === "violation" && args.breakStreak >= 2) return "Exits losing control";
   if (args.breakStreak >= 2) return "Discipline drifting";
   if (args.cleanStreak >= 3) return "System holding";
   return "Control is stable";

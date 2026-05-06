@@ -66,7 +66,7 @@ export type BehaviorInsight = {
 function controlBucket(avg: number | null): { state: ControlState; label: string; tone: Tone } {
   if (avg == null) return { state: "inactive", label: "Inactive", tone: "inactive" };
   if (avg >= 80) return { state: "controlled", label: "Controlled", tone: "ok" };
-  if (avg >= 60) return { state: "slight_drift", label: "Slight drift", tone: "drift" };
+  if (avg >= 60) return { state: "slight_drift", label: "Drifting", tone: "drift" };
   if (avg >= 40) return { state: "losing_control", label: "Losing control", tone: "warn" };
   return { state: "undisciplined", label: "Undisciplined", tone: "risk" };
 }
