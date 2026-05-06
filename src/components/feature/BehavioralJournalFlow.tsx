@@ -774,10 +774,7 @@ export default function BehavioralJournalFlow({
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
       const session_tag = sessionTagFor(now);
 
-      const finalR = Number.isFinite(autoRealizedR ?? NaN)
-        ? (autoRealizedR as number)
-        : resultR;
-
+      const finalR = autoRealizedR as number;
       const pnl_percent = derivePnlPercent(finalR, risk);
 
       // Reuse the primary screenshot path saved by behavioralJournal as the
@@ -801,7 +798,9 @@ export default function BehavioralJournalFlow({
           take_profit: tp,
           risk_percent: risk,
           rr: Number.isFinite(finalR) ? finalR : null,
-          pnl: pnlDollar,
+          // Manual $ PnL is no longer accepted. The engine derives monetary
+          // PnL from R × risk_per_trade × balance via SSOT analytics.
+          pnl: null,
           pnl_percent,
           outcome: finalOutcome,
           opened_at,
@@ -815,7 +814,10 @@ export default function BehavioralJournalFlow({
           note: note?.trim() || null,
           screenshot_url,
           data_quality: lowDataQuality ? "low" : "normal",
-        });
+          // Persist the preferred-risk snapshot so the behavior engine can
+          // auto-classify risk-policy violations on this exact trade.
+          preferred_risk_percent_at_open: preferredRiskPercent,
+        } as Parameters<typeof insertTradeLog>[0]);
       } catch (perfErr) {
         console.warn("[trade_logs] insert failed:", perfErr);
       }
