@@ -532,6 +532,45 @@ export async function loadSsot(): Promise<Ssot> {
     violations,
     session_performance: buildSessionPerformance(executed, missed, violations),
     execution_type: buildExecutionType(executed),
-    discipline: { ...breakdown, score: disciplineScore, rule_adherence: adherence },
+    discipline: {
+      ...breakdown,
+      score: disciplineScore,
+      decision_score: disciplineScore,
+      execution_score: disciplineScore,
+      rule_adherence: adherence,
+      total_trades: totalLogs,
+      clean_trades: cleanTrades,
+      violation_count: violationCount,
+      decision_neutral: totalLogs === 0,
+      execution_neutral: totalLogs === 0,
+      recent_contributions: (() => {
+        let s = 100;
+        const ledger: typeof breakdown.recent_contributions = [];
+        for (const t of chrono) {
+          const broken = t.rules_broken?.length ?? 0;
+          let delta: number;
+          let reason: string;
+          if (broken === 0) {
+            delta = 10;
+            s = Math.min(100, s + delta);
+            reason = `Clean trade — ${t.asset || t.market || "trade"} (+10 → ${s}/100).`;
+          } else {
+            delta = -10 * broken;
+            s = Math.max(0, s + delta);
+            reason = `${broken} rule break${broken === 1 ? "" : "s"} — ${(t.rules_broken || []).join(", ")} (${delta} → ${s}/100).`;
+          }
+          ledger.push({
+            source: "execution",
+            id: t.id,
+            raw: delta,
+            value: s,
+            weight: 1,
+            reason,
+            timestamp: t.executed_at,
+          });
+        }
+        return ledger.reverse().slice(0, 20);
+      })(),
+    },
   };
 }
