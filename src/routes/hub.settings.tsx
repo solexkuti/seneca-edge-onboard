@@ -5,9 +5,15 @@ import { HubPageContainer } from "@/components/layout/HubLayout";
 import RequireAuth from "@/components/auth/RequireAuth";
 import { signOut } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { SUPPORTED_CURRENCIES, type CurrencyCode } from "@/lib/ssot";
+import { SUPPORTED_CURRENCIES, type CurrencyCode, type MetricDisplayMode } from "@/lib/ssot";
 import { useSsot } from "@/hooks/useSsot";
 import { JOURNAL_EVENT } from "@/lib/tradingJournal";
+
+const METRIC_MODES: { value: MetricDisplayMode; label: string; hint: string }[] = [
+  { value: "rr_only", label: "R only", hint: "Pure trader truth — no currency noise." },
+  { value: "rr_plus_currency", label: "R + currency", hint: "Show R with monetary equivalent." },
+  { value: "currency_only", label: "Currency only", hint: "Hide R, show money." },
+];
 
 export const Route = createFileRoute("/hub/settings")({
   head: () => ({
@@ -70,6 +76,8 @@ function AccountSettingsCard() {
   const [balance, setBalance] = useState<string>("");
   const [risk, setRisk] = useState<string>("");
   const [currency, setCurrency] = useState<CurrencyCode>("USD");
+  const [displayCurrency, setDisplayCurrency] = useState<CurrencyCode>("USD");
+  const [metricMode, setMetricMode] = useState<MetricDisplayMode>("rr_plus_currency");
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +87,16 @@ function AccountSettingsCard() {
     setBalance(ssot.account.balance != null ? String(ssot.account.balance) : "");
     setRisk(ssot.account.risk_per_trade != null ? String(ssot.account.risk_per_trade) : "");
     setCurrency((ssot.account.currency as CurrencyCode) ?? "USD");
-  }, [ssot.loading, ssot.account.balance, ssot.account.risk_per_trade, ssot.account.currency]);
+    setDisplayCurrency((ssot.account.display_currency as CurrencyCode) ?? "USD");
+    setMetricMode(ssot.account.metric_display_mode ?? "rr_plus_currency");
+  }, [
+    ssot.loading,
+    ssot.account.balance,
+    ssot.account.risk_per_trade,
+    ssot.account.currency,
+    ssot.account.display_currency,
+    ssot.account.metric_display_mode,
+  ]);
 
   async function save() {
     setSaving(true);
@@ -100,11 +117,18 @@ function AccountSettingsCard() {
       // Keep profile in sync (acts as fallback + global preference).
       const profUpdate: {
         currency: string;
+        display_currency: string;
+        metric_display_mode: MetricDisplayMode;
         risk_per_trade: number | null;
         account_balance?: number;
         balance_source?: string;
         balance_updated_at?: string;
-      } = { currency, risk_per_trade: riskNum };
+      } = {
+        currency,
+        display_currency: displayCurrency,
+        metric_display_mode: metricMode,
+        risk_per_trade: riskNum,
+      };
       if (balNum != null) {
         profUpdate.account_balance = balNum;
         profUpdate.balance_source = "manual";
@@ -205,6 +229,41 @@ function AccountSettingsCard() {
         Risk basis is multiplied by R values to derive PnL in {currency}. Without
         it, the dashboard only shows R.
       </p>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Field label="Display currency">
+          <select
+            value={displayCurrency}
+            onChange={(e) => setDisplayCurrency(e.target.value as CurrencyCode)}
+            className="w-full rounded-lg border border-white/[0.08] bg-[#0F1115] px-3 py-2 text-[13.5px] text-text-primary outline-none focus:border-gold/40"
+          >
+            {SUPPORTED_CURRENCIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-[11px] text-text-secondary/70">
+            What currency the app converts monetary PnL to. Historical trades keep their snapshot.
+          </p>
+        </Field>
+        <Field label="Metric display mode">
+          <select
+            value={metricMode}
+            onChange={(e) => setMetricMode(e.target.value as MetricDisplayMode)}
+            className="w-full rounded-lg border border-white/[0.08] bg-[#0F1115] px-3 py-2 text-[13.5px] text-text-primary outline-none focus:border-gold/40"
+          >
+            {METRIC_MODES.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-[11px] text-text-secondary/70">
+            {METRIC_MODES.find((m) => m.value === metricMode)?.hint}
+          </p>
+        </Field>
+      </div>
 
       <div className="mt-4 flex items-center gap-3">
         <button
