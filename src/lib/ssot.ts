@@ -508,8 +508,30 @@ export async function loadSsot(): Promise<Ssot> {
   const missed = allTrades.filter((t) => t.trade_type === "missed");
 
   const bestSession = bestSessionFromTrades(executed);
-  const metrics = metricsFromViews(views, bestSession);
+  // Compute metrics directly from trades — no stale views.
+  const metrics: SsotMetrics = { ...computeMetrics(executed), best_session: bestSession };
   metrics.worst_rule_break = worstBreak;
+
+  // Derive violation rows from trades.rules_broken so impact = trade R for
+  // every (trade, rule) row, keeping aggregate and per-rule drilldowns identical.
+  const derivedViolations: SsotViolation[] = [];
+  for (const t of executed) {
+    const broken = t.rules_broken ?? [];
+    if (broken.length === 0) continue;
+    const tradeR = typeof t.rr === "number" ? t.rr : 0;
+    for (const type of broken) {
+      derivedViolations.push({
+        id: `${t.id}:${type}`,
+        trade_id: t.id,
+        type,
+        impact_r: tradeR,
+        session: t.session ?? null,
+        occurred_at: t.executed_at,
+      });
+    }
+  }
+  // Prefer derived (always coherent with trades). Fallback to DB rows if no trades have rules_broken.
+  const ssotViolations = derivedViolations.length > 0 ? derivedViolations : violations;
 
   // ── Discipline / behavior — computed DIRECTLY from trades.rules_broken.
   // Single source of truth: the trades table. We replay every executed
