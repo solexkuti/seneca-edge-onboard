@@ -16,6 +16,7 @@ import {
   summarize,
 } from "./analysis";
 import type { Trade } from "./types";
+import { humanizeViolation } from "@/lib/violationLabels";
 
 export type InsightSeverity = "positive" | "neutral" | "warning" | "critical";
 
