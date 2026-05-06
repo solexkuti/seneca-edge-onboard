@@ -33,6 +33,7 @@ import {
   metricGlowShadow,
   metricTextClass,
 } from "@/lib/metricColor";
+import SsotAlerts from "@/components/feature/SsotAlerts";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -84,6 +85,11 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
           <ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />
         </Link>
       </motion.header>
+
+      {/* SSOT-derived alerts (read-only, no hard blocks) */}
+      <div className="mb-6">
+        <SsotAlerts />
+      </div>
 
       {/* Top row: account / discipline / strategy */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">

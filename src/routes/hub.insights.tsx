@@ -14,10 +14,6 @@ import {
   tradeFromRow,
   generateInsights,
   generateRecommendations,
-  behaviorScore,
-  ruleAdherence,
-  executionSplit,
-  summarize,
   sessionPerformance,
   type Trade,
   type TradeRow,
@@ -25,6 +21,11 @@ import {
 } from "@/lib/trade";
 import { JOURNAL_EVENT } from "@/lib/tradingJournal";
 import { Recommendations } from "@/components/feature/Recommendations";
+import { useSsot } from "@/hooks/useSsot";
+import {
+  metricColorStyle,
+  metricGlowShadow,
+} from "@/lib/metricColor";
 
 export const Route = createFileRoute("/hub/insights")({
   head: () => ({
@@ -144,15 +145,18 @@ function InsightsPage() {
     };
   }, []);
 
+  const { ssot } = useSsot();
   const insights = useMemo(() => generateInsights(trades), [trades]);
   const recommendations = useMemo(
     () => generateRecommendations(trades),
     [trades],
   );
-  const score = useMemo(() => behaviorScore(trades), [trades]);
-  const adherence = useMemo(() => ruleAdherence(trades), [trades]);
-  const split = useMemo(() => executionSplit(trades), [trades]);
-  const summary = useMemo(() => summarize(trades), [trades]);
+  // SSOT-derived headline metrics — never recompute locally.
+  const behaviorScoreVal = ssot.behavior.discipline_score;
+  const adherencePct = Math.round(ssot.behavior.rule_adherence * 100);
+  const winRatePct = Math.round(ssot.metrics.win_rate * 100);
+  const totalR = ssot.metrics.total_r;
+  // executionSplit no longer used — controlled% replaced by win-rate from SSOT
   const sessions = useMemo(() => sessionPerformance(trades), [trades]);
 
   return (
@@ -232,28 +236,30 @@ function InsightsPage() {
           >
             <Stat
               label="Behavior"
-              value={`${score.score}`}
+              value={`${behaviorScoreVal}`}
               suffix="/100"
-              tone="gold"
+              metricValue={behaviorScoreVal}
               glow
               flashKey={pulseKey}
             />
             <Stat
               label="Adherence"
-              value={`${Math.round(adherence.pct * 100)}`}
+              value={`${adherencePct}`}
               suffix="%"
+              metricValue={adherencePct}
               flashKey={pulseKey}
             />
             <Stat
-              label="Controlled"
-              value={`${Math.round(split.controlledPct * 100)}`}
+              label="Win rate"
+              value={`${winRatePct}`}
               suffix="%"
+              metricValue={winRatePct}
               flashKey={pulseKey}
             />
             <Stat
               label="Total R"
-              value={fmtR(summary.totalR)}
-              tone={summary.totalR > 0 ? "gold" : summary.totalR < 0 ? "loss" : "muted"}
+              value={fmtR(totalR)}
+              tone={totalR > 0 ? "gold" : totalR < 0 ? "loss" : "muted"}
               flashKey={pulseKey}
             />
           </motion.div>
@@ -374,6 +380,7 @@ function Stat({
   tone = "muted",
   glow,
   flashKey,
+  metricValue,
 }: {
   label: string;
   value: string;
@@ -381,9 +388,14 @@ function Stat({
   tone?: "gold" | "loss" | "muted";
   glow?: boolean;
   flashKey?: number;
+  /** When provided, color of the value reflects discipline/perf state. */
+  metricValue?: number | null;
 }) {
-  const toneClass =
-    tone === "gold"
+  const useMetric = metricValue !== undefined;
+  const valueStyle = useMetric ? metricColorStyle(metricValue) : undefined;
+  const toneClass = useMetric
+    ? ""
+    : tone === "gold"
       ? "text-[#E7C98A]"
       : tone === "loss"
         ? "text-rose-300"
@@ -399,6 +411,8 @@ function Stat({
       return () => clearTimeout(t);
     }
   }, [flashKey, value]);
+  const glowShadow = useMetric && glow ? metricGlowShadow(metricValue) : undefined;
+  const fallbackGlow = !useMetric && glow ? "drop-shadow-[0_0_18px_rgba(198,161,91,0.35)]" : "";
   return (
     <motion.div
       animate={
@@ -424,9 +438,8 @@ function Stat({
         initial={{ opacity: 0.4, y: -4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease }}
-        className={`mt-1 font-serif text-[26px] leading-none tabular-nums ${toneClass} ${
-          glow ? "drop-shadow-[0_0_18px_rgba(198,161,91,0.35)]" : ""
-        }`}
+        style={{ ...(valueStyle ?? {}), ...(glowShadow ? { textShadow: glowShadow } : {}) }}
+        className={`mt-1 font-serif text-[26px] leading-none tabular-nums ${toneClass} ${fallbackGlow}`}
       >
         {value}
         {suffix && (
