@@ -13,6 +13,8 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   // HIGH — risk discipline collapse
+  { match: /^revenge_risk$/, label: "Revenge sizing (≥2× preferred risk)", severity: "high" },
+  { match: /^high_risk$/, label: "High risk (1.5–2× preferred)", severity: "high" },
   { match: /ignored?[_\s-]?sl|no[_\s-]?sl|removed[_\s-]?sl/, label: "Ignored stop discipline", severity: "high" },
   { match: /moved[_\s-]?sl|widened[_\s-]?sl/, label: "Moved stop loss", severity: "high" },
   { match: /doubled?[_\s-]?(down|position|size)/, label: "Doubled position", severity: "high" },
@@ -20,6 +22,7 @@ const ENTRIES: Entry[] = [
   { match: /martingale/, label: "Martingaled losses", severity: "high" },
 
   // MEDIUM — emotional / sizing drift
+  { match: /^oversized_risk$/, label: "Oversized risk (1.25–1.5× preferred)", severity: "medium" },
   { match: /oversiz|over[_\s-]?lever/, label: "Oversized position", severity: "medium" },
   { match: /revenge/, label: "Revenge entry", severity: "medium" },
   { match: /emotional|tilt|fomo/, label: "Emotional execution", severity: "medium" },
