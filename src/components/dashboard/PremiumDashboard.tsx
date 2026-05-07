@@ -1101,11 +1101,7 @@ function BehaviorBreakdownCard({ ssot }: { ssot: Ssot }) {
   const has = ssot.behavior.total_trades > 0;
   const behaviorMessage = !has
     ? "No trades logged yet"
-    : behaviorScore >= 85
-      ? "Controlled execution"
-      : behaviorScore >= 65
-        ? "Slight discipline drift"
-        : "High inconsistency detected";
+    : BEHAVIOR_STATE_COPY[ssot.behavior.state].label;
 
   const exec = ssot.execution_type;
 
