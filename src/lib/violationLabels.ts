@@ -31,6 +31,7 @@ const ENTRIES: Entry[] = [
   { match: /late[_\s-]?entry/, label: "Entered late", severity: "medium" },
 
   // LOW — process slips
+  { match: /^minor_risk$/, label: "Slight risk drift (1.1–1.25× preferred)", severity: "low" },
   { match: /no[_\s-]?setup|invalid[_\s-]?setup|without[_\s-]?confirmation/, label: "Entered without valid setup", severity: "low" },
   { match: /hesitat/, label: "Hesitated despite valid setup", severity: "low" },
   { match: /distract/, label: "Distracted execution", severity: "low" },
