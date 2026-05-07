@@ -41,13 +41,7 @@ import {
   metricTextClass,
 } from "@/lib/metricColor";
 import SsotAlerts from "@/components/feature/SsotAlerts";
-
-function disciplineLabel(score: number): string {
-  if (score >= 80) return "In control";
-  if (score >= 60) return "Slipping";
-  if (score >= 40) return "At risk";
-  return "Locked";
-}
+import { BEHAVIOR_STATE_COPY } from "@/lib/behaviorEngine";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
