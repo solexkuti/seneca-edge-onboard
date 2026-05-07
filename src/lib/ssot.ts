@@ -20,7 +20,12 @@ import {
   type DisciplineBreakdown,
 } from "@/lib/disciplineScore";
 import { getRate } from "@/lib/fxService";
-import { replay as replayBehavior, type ReplayTradeInput } from "@/lib/behaviorEngine";
+import {
+  replay as replayBehavior,
+  type ReplayTradeInput,
+  type ReplayContribution,
+  type BehaviorState,
+} from "@/lib/behaviorEngine";
 
 export type BalanceSource = "manual" | "synced";
 
@@ -121,12 +126,20 @@ export type SsotMetrics = {
 };
 
 export type SsotBehavior = {
-  discipline_score: number;          // 0..100
+  discipline_score: number;          // 0..100 (EMA overall)
   rule_adherence: number;            // 0..1 → clean / total
   clean_trades: number;
   total_trades: number;
   violation_count: number;
   recent_violations: { type: string; count: number }[];
+  /** 5-state ladder derived from EMA score. */
+  state: BehaviorState;
+  /** Active clean-execution streak. */
+  clean_streak: number;
+  /** Best clean streak ever recorded. */
+  longest_streak: number;
+  /** Newest-first per-trade EMA contributions (max 50). */
+  contributions: ReplayContribution[];
 };
 
 export type SsotAnalytics = {
@@ -640,6 +653,10 @@ export async function loadSsot(): Promise<Ssot> {
         total_trades: 0,
         violation_count: 0,
         recent_violations: [],
+        state: "controlled",
+        clean_streak: 0,
+        longest_streak: 0,
+        contributions: [],
       },
       violations: [],
       session_performance: buildSessionPerformance([], [], []),
@@ -771,6 +788,10 @@ export async function loadSsot(): Promise<Ssot> {
       total_trades: totalLogs,
       violation_count: violationCount,
       recent_violations,
+      state: behaviorReplay.state,
+      clean_streak: behaviorReplay.cleanStreak,
+      longest_streak: behaviorReplay.longestStreak,
+      contributions: behaviorReplay.contributions,
     },
     violations: ssotViolations,
     session_performance: buildSessionPerformance(executed, missed, ssotViolations),

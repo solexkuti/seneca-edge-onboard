@@ -22,6 +22,10 @@ const EMPTY_SSOT: Ssot = {
     total_trades: 0,
     violation_count: 0,
     recent_violations: [],
+    state: "controlled",
+    clean_streak: 0,
+    longest_streak: 0,
+    contributions: [],
   },
   violations: [],
   session_performance: [
