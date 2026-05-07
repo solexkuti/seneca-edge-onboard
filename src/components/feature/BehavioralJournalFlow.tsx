@@ -441,7 +441,7 @@ export default function BehavioralJournalFlow({
       hasBlock: merged.some((i) => i.level === "block"),
       hasWarn: merged.some((i) => i.level === "warn"),
     };
-  }, [direction, entry, exit, sl, tp, manualR]);
+  }, [direction, entry, exit, sl, tp]);
 
   // Confirmation flag for the Trade Preview card. Resets automatically
   // whenever any input that affects validation changes.
