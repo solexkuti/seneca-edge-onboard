@@ -1834,13 +1834,7 @@ export default function BehavioralJournalFlow({
                     tone={outcome === "win" ? "ok" : outcome === "loss" ? "risk" : undefined}
                   />
                 )}
-                {pnlDollar != null && (
-                  <Row
-                    k="P/L ($)"
-                    v={`${pnlDollar > 0 ? "+" : ""}$${pnlDollar.toFixed(2)}`}
-                    tone={pnlDollar > 0 ? "ok" : pnlDollar < 0 ? "risk" : undefined}
-                  />
-                )}
+                {/* P/L ($) row removed — derived by SSOT engine. */}
                 {plannedRR != null && (
                   <Row k="Planned RR" v={`${plannedRR.toFixed(2)}R`} />
                 )}
