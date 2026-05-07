@@ -812,9 +812,6 @@ export default function BehavioralJournalFlow({
     setSlStr("");
     setTpStr("");
     setRiskStr("");
-    setResultStr("");
-    setPnlDollarStr("");
-    setPnlDollarManuallySet(false);
     // Note: accountSizeStr is intentionally NOT reset — it persists per user.
     setOutcome(null);
     setOutcomeManuallySet(false);
