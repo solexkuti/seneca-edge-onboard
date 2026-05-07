@@ -448,7 +448,7 @@ export default function BehavioralJournalFlow({
   const [previewConfirmed, setPreviewConfirmed] = useState(false);
   useEffect(() => {
     setPreviewConfirmed(false);
-  }, [direction, entryStr, exitStr, slStr, tpStr, resultStr]);
+  }, [direction, entryStr, exitStr, slStr, tpStr]);
 
   // ── Intelligent Price Correction wiring ──────────────────────────────
   // The modal opens when analyzeForCorrection() flags suspicious inputs
