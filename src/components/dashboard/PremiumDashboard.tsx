@@ -1169,6 +1169,56 @@ function BehaviorBreakdownCard({ ssot }: { ssot: Ssot }) {
         </div>
       </div>
 
+      {ssot.behavior.contributions.length > 0 && (
+        <>
+          <Divider />
+          <div>
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-text-secondary/70">
+              Score replay
+            </p>
+            <p className="mt-1 text-[12px] text-text-secondary">
+              How each trade moved your behavior score (newest first).
+            </p>
+            <ul className="mt-3 divide-y divide-white/[0.04] rounded-xl border border-white/[0.05] bg-white/[0.015]">
+              {ssot.behavior.contributions.slice(0, 6).map((c) => {
+                const up = c.delta > 0;
+                const flat = c.delta === 0;
+                const tone = c.isClean
+                  ? "text-emerald-300"
+                  : up
+                    ? "text-emerald-300"
+                    : flat
+                      ? "text-text-secondary"
+                      : "text-rose-300";
+                const arrow = flat ? "·" : up ? "▲" : "▼";
+                return (
+                  <li key={c.id} className="flex items-start justify-between gap-3 px-4 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12.5px] text-text-primary/90 leading-snug">
+                        {c.reason}
+                      </p>
+                      <p className="mt-0.5 text-[10.5px] uppercase tracking-wider text-text-secondary/60">
+                        {new Date(c.timestamp).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                        {" · "}
+                        {BEHAVIOR_STATE_COPY[c.state].label}
+                      </p>
+                    </div>
+                    <div className="text-right tabular-nums">
+                      <p className={`text-[13px] font-semibold ${tone}`}>
+                        {arrow} {c.overallBefore} → {c.overallAfter}
+                      </p>
+                      <p className="text-[10.5px] text-text-secondary/60">
+                        Trade {c.tradeScore}/100
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </>
+      )}
+
       <Divider />
 
       <div>
