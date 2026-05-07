@@ -1323,35 +1323,7 @@ export default function BehavioralJournalFlow({
                   </div>
                 )}
 
-                {/* Manual vs calculated R mismatch — explicit choice. */}
-                {validation.issues.some((i) => i.code === "manual_mismatch") &&
-                  validation.calculatedR != null && manualR != null && (
-                    <div className="rounded-lg bg-amber-500/10 ring-1 ring-amber-500/25 px-3 py-3 text-[12px] text-amber-100">
-                      <p className="leading-relaxed">
-                        Your entered result does not match your trade prices.
-                        Please review.
-                      </p>
-                      <div className="mt-2.5 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const v = validation.calculatedR!;
-                            setResultStr(v.toFixed(2));
-                          }}
-                          className="rounded-full bg-primary/20 ring-1 ring-primary/40 px-3 py-1.5 text-[11.5px] font-semibold text-text-primary hover:bg-primary/25 transition"
-                        >
-                          Use calculated
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPreviewConfirmed(true)}
-                          className="rounded-full ring-1 ring-amber-500/40 px-3 py-1.5 text-[11.5px] font-semibold text-amber-100 hover:bg-amber-500/10 transition"
-                        >
-                          Keep mine
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                {/* Manual R mismatch UI removed — R is auto-derived only. */}
 
                 {/* ── Trade Preview card ─────────────────────────────────
                     Surfaces the engine-derived view of the trade right
