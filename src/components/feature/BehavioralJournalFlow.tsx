@@ -235,11 +235,7 @@ export default function BehavioralJournalFlow({
   const [slStr, setSlStr] = useState("");
   const [tpStr, setTpStr] = useState("");
   const [riskStr, setRiskStr] = useState("");
-  const [resultStr, setResultStr] = useState("");
-  const [pnlDollarStr, setPnlDollarStr] = useState("");
-  // True once the user has manually edited the $ field — auto-suggest stops filling it.
-  const [pnlDollarManuallySet, setPnlDollarManuallySet] = useState(false);
-  // Account size ($), persisted per-user. Optional; enables $ auto-calc.
+  // Account size ($), persisted per-user. Optional; informational only.
   const [accountSizeStr, setAccountSizeStr] = useState("");
   // Explicit user-selected outcome. Auto-suggested from R but user-overridable.
   const [outcome, setOutcome] = useState<Outcome | null>(null);
@@ -320,38 +316,15 @@ export default function BehavioralJournalFlow({
     [direction, entry, sl, tp],
   );
 
-  // Auto: realized R from exit (used when user leaves R blank)
+  // Auto: realized R from exit. Strictly derived — no manual override.
   const autoRealizedR = useMemo(
     () => realizedR({ direction, entry, exit, stop: sl }),
     [direction, entry, exit, sl],
   );
+  const resultR = autoRealizedR ?? NaN;
 
-  // Manually-typed R (if any). null when user hasn't entered an explicit value.
-  const manualR = useMemo(() => {
-    const cleaned = resultStr.replace(/[+rR\s]/g, "");
-    if (!cleaned) return null;
-    const n = parseFloat(cleaned);
-    return Number.isFinite(n) ? n : null;
-  }, [resultStr]);
-
-  // Always prioritize calculated result (from Entry/SL/Exit) over manual input.
-  // Manual R is only used when Exit is empty (optional mode).
-  const resultR = useMemo(() => {
-    if (autoRealizedR != null) return autoRealizedR;
-    if (manualR != null) return manualR;
-    return NaN;
-  }, [manualR, autoRealizedR]);
-
-  // Parsed dollar PnL (optional). Empty → null. Non-numeric → null but flagged.
-  const pnlDollar = useMemo(() => {
-    const t = pnlDollarStr.trim().replace(/[$,\s]/g, "");
-    if (!t) return null;
-    const n = Number(t);
-    return Number.isFinite(n) ? n : null;
-  }, [pnlDollarStr]);
-  const pnlDollarInvalid = pnlDollarStr.trim().length > 0 && pnlDollar === null;
-
-  // Account size — parsed and persisted per-user.
+  // Account size — parsed and persisted per-user. Informational only —
+  // monetary PnL is derived by the SSOT engine from balance × risk × R.
   const accountSize = useMemo(() => {
     const t = accountSizeStr.trim().replace(/[$,\s]/g, "");
     if (!t) return null;
@@ -382,34 +355,6 @@ export default function BehavioralJournalFlow({
       // ignore storage errors
     }
   }, [accountSize, accountSizeStr]);
-
-  // Auto-calc $ from R × risk% × account size.
-  // $ = result_R × (risk_percent / 100) × account_size
-  const autoPnlDollar = useMemo(() => {
-    if (
-      !Number.isFinite(resultR) ||
-      risk == null ||
-      !Number.isFinite(risk) ||
-      risk <= 0 ||
-      accountSize == null
-    ) {
-      return null;
-    }
-    return resultR * (risk / 100) * accountSize;
-  }, [resultR, risk, accountSize]);
-
-  // When the user hasn't typed in the $ field manually, auto-fill it from
-  // the calculated value. As soon as they type, we stop overriding.
-  useEffect(() => {
-    if (pnlDollarManuallySet) return;
-    if (autoPnlDollar == null) {
-      // Clear any previously auto-filled value so the field doesn't lie.
-      if (pnlDollarStr !== "") setPnlDollarStr("");
-      return;
-    }
-    const formatted = autoPnlDollar.toFixed(2);
-    if (pnlDollarStr !== formatted) setPnlDollarStr(formatted);
-  }, [autoPnlDollar, pnlDollarManuallySet, pnlDollarStr]);
 
   // Auto-suggest outcome from R (soft logic — does not lock).
   const suggestedOutcome: Outcome | null = useMemo(() => {
@@ -457,7 +402,7 @@ export default function BehavioralJournalFlow({
       entry,
       exit,
       stop: sl,
-      manualR,
+      manualR: null,
     });
     // Centralized directional structure check (entry/SL/TP only — never
     // exit/outcome/RR). Merges into the existing issue list so blocks/
@@ -496,14 +441,14 @@ export default function BehavioralJournalFlow({
       hasBlock: merged.some((i) => i.level === "block"),
       hasWarn: merged.some((i) => i.level === "warn"),
     };
-  }, [direction, entry, exit, sl, tp, manualR]);
+  }, [direction, entry, exit, sl, tp]);
 
   // Confirmation flag for the Trade Preview card. Resets automatically
   // whenever any input that affects validation changes.
   const [previewConfirmed, setPreviewConfirmed] = useState(false);
   useEffect(() => {
     setPreviewConfirmed(false);
-  }, [direction, entryStr, exitStr, slStr, tpStr, resultStr]);
+  }, [direction, entryStr, exitStr, slStr, tpStr]);
 
   // ── Intelligent Price Correction wiring ──────────────────────────────
   // The modal opens when analyzeForCorrection() flags suspicious inputs
@@ -867,9 +812,6 @@ export default function BehavioralJournalFlow({
     setSlStr("");
     setTpStr("");
     setRiskStr("");
-    setResultStr("");
-    setPnlDollarStr("");
-    setPnlDollarManuallySet(false);
     // Note: accountSizeStr is intentionally NOT reset — it persists per user.
     setOutcome(null);
     setOutcomeManuallySet(false);
@@ -1164,8 +1106,7 @@ export default function BehavioralJournalFlow({
                       onChange={(e) => setExitStr(e.target.value)}
                       inputMode="decimal"
                       placeholder="0.00"
-                      disabled={exitStr.trim() === "" && manualR != null}
-                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
                     />
                   </Field>
                   <Field label="Stop loss">
@@ -1199,24 +1140,14 @@ export default function BehavioralJournalFlow({
                     />
                   </Field>
                   <Field label="Result (R)">
-                    {exit !== null ? (
-                      <div className="w-full text-[15px] text-text-primary tabular-nums">
-                        {autoRealizedR != null
-                          ? `${autoRealizedR > 0 ? "+" : ""}${autoRealizedR.toFixed(2)}R`
-                          : "—"}
-                        <span className="ml-2 text-[10.5px] uppercase tracking-wider text-text-secondary/60">
-                          auto
-                        </span>
-                      </div>
-                    ) : (
-                      <input
-                        value={resultStr}
-                        onChange={(e) => setResultStr(e.target.value)}
-                        placeholder="+1.5 / -1"
-                        inputMode="decimal"
-                        className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
-                      />
-                    )}
+                    <div className="w-full text-[15px] text-text-primary tabular-nums">
+                      {autoRealizedR != null
+                        ? `${autoRealizedR > 0 ? "+" : ""}${autoRealizedR.toFixed(2)}R`
+                        : "—"}
+                      <span className="ml-2 text-[10.5px] uppercase tracking-wider text-text-secondary/60">
+                        auto
+                      </span>
+                    </div>
                   </Field>
                 </div>
 
@@ -1265,38 +1196,7 @@ export default function BehavioralJournalFlow({
                   );
                 })()}
 
-                <div className="space-y-3 opacity-75">
-
-                  {/* Profit / Loss ($) — optional, auto-fills from R × Risk % × Account size. */}
-                  <Field subtle label="Profit / Loss ($)">
-                    <input
-                      value={pnlDollarStr}
-                      onChange={(e) => {
-                        setPnlDollarStr(e.target.value);
-                        setPnlDollarManuallySet(true);
-                      }}
-                      placeholder={
-                        autoPnlDollar != null && !pnlDollarManuallySet
-                          ? `auto ${autoPnlDollar > 0 ? "+" : ""}${autoPnlDollar.toFixed(2)}`
-                          : "—"
-                      }
-                      inputMode="decimal"
-                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/30"
-                    />
-                  </Field>
-                  {autoPnlDollar != null && pnlDollarManuallySet && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPnlDollarManuallySet(false);
-                        setPnlDollarStr(autoPnlDollar.toFixed(2));
-                      }}
-                      className="text-[11px] text-primary/85 hover:text-primary underline-offset-2 hover:underline"
-                    >
-                      Use auto-calculated {autoPnlDollar > 0 ? "+" : ""}${autoPnlDollar.toFixed(2)}
-                    </button>
-                  )}
-                </div>
+                {/* Manual Profit/Loss ($) input removed — engine derives PnL from balance × risk × R via SSOT. */}
 
                 {/* Trade Outcome — explicit selection, required */}
                 <div>
@@ -1423,35 +1323,7 @@ export default function BehavioralJournalFlow({
                   </div>
                 )}
 
-                {/* Manual vs calculated R mismatch — explicit choice. */}
-                {validation.issues.some((i) => i.code === "manual_mismatch") &&
-                  validation.calculatedR != null && manualR != null && (
-                    <div className="rounded-lg bg-amber-500/10 ring-1 ring-amber-500/25 px-3 py-3 text-[12px] text-amber-100">
-                      <p className="leading-relaxed">
-                        Your entered result does not match your trade prices.
-                        Please review.
-                      </p>
-                      <div className="mt-2.5 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const v = validation.calculatedR!;
-                            setResultStr(v.toFixed(2));
-                          }}
-                          className="rounded-full bg-primary/20 ring-1 ring-primary/40 px-3 py-1.5 text-[11.5px] font-semibold text-text-primary hover:bg-primary/25 transition"
-                        >
-                          Use calculated
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPreviewConfirmed(true)}
-                          className="rounded-full ring-1 ring-amber-500/40 px-3 py-1.5 text-[11.5px] font-semibold text-amber-100 hover:bg-amber-500/10 transition"
-                        >
-                          Keep mine
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                {/* Manual R mismatch UI removed — R is auto-derived only. */}
 
                 {/* ── Trade Preview card ─────────────────────────────────
                     Surfaces the engine-derived view of the trade right
@@ -1962,13 +1834,7 @@ export default function BehavioralJournalFlow({
                     tone={outcome === "win" ? "ok" : outcome === "loss" ? "risk" : undefined}
                   />
                 )}
-                {pnlDollar != null && (
-                  <Row
-                    k="P/L ($)"
-                    v={`${pnlDollar > 0 ? "+" : ""}$${pnlDollar.toFixed(2)}`}
-                    tone={pnlDollar > 0 ? "ok" : pnlDollar < 0 ? "risk" : undefined}
-                  />
-                )}
+                {/* P/L ($) row removed — derived by SSOT engine. */}
                 {plannedRR != null && (
                   <Row k="Planned RR" v={`${plannedRR.toFixed(2)}R`} />
                 )}
