@@ -316,8 +316,11 @@ export default function BehavioralJournalFlow({
     [direction, entry, sl, tp],
   );
 
-  // Auto: realized R from exit (used when user leaves R blank)
-  // Realized R is strictly auto-derived from prices. No manual override.
+  // Auto: realized R from exit. Strictly derived — no manual override.
+  const autoRealizedR = useMemo(
+    () => realizedR({ direction, entry, exit, stop: sl }),
+    [direction, entry, exit, sl],
+  );
   const resultR = autoRealizedR ?? NaN;
 
   // Account size — parsed and persisted per-user. Informational only —
