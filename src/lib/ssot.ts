@@ -126,12 +126,20 @@ export type SsotMetrics = {
 };
 
 export type SsotBehavior = {
-  discipline_score: number;          // 0..100
+  discipline_score: number;          // 0..100 (EMA overall)
   rule_adherence: number;            // 0..1 → clean / total
   clean_trades: number;
   total_trades: number;
   violation_count: number;
   recent_violations: { type: string; count: number }[];
+  /** 5-state ladder derived from EMA score. */
+  state: BehaviorState;
+  /** Active clean-execution streak. */
+  clean_streak: number;
+  /** Best clean streak ever recorded. */
+  longest_streak: number;
+  /** Newest-first per-trade EMA contributions (max 50). */
+  contributions: ReplayContribution[];
 };
 
 export type SsotAnalytics = {
