@@ -235,11 +235,7 @@ export default function BehavioralJournalFlow({
   const [slStr, setSlStr] = useState("");
   const [tpStr, setTpStr] = useState("");
   const [riskStr, setRiskStr] = useState("");
-  const [resultStr, setResultStr] = useState("");
-  const [pnlDollarStr, setPnlDollarStr] = useState("");
-  // True once the user has manually edited the $ field — auto-suggest stops filling it.
-  const [pnlDollarManuallySet, setPnlDollarManuallySet] = useState(false);
-  // Account size ($), persisted per-user. Optional; enables $ auto-calc.
+  // Account size ($), persisted per-user. Optional; informational only.
   const [accountSizeStr, setAccountSizeStr] = useState("");
   // Explicit user-selected outcome. Auto-suggested from R but user-overridable.
   const [outcome, setOutcome] = useState<Outcome | null>(null);
