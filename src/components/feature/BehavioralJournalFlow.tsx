@@ -1140,24 +1140,14 @@ export default function BehavioralJournalFlow({
                     />
                   </Field>
                   <Field label="Result (R)">
-                    {exit !== null ? (
-                      <div className="w-full text-[15px] text-text-primary tabular-nums">
-                        {autoRealizedR != null
-                          ? `${autoRealizedR > 0 ? "+" : ""}${autoRealizedR.toFixed(2)}R`
-                          : "—"}
-                        <span className="ml-2 text-[10.5px] uppercase tracking-wider text-text-secondary/60">
-                          auto
-                        </span>
-                      </div>
-                    ) : (
-                      <input
-                        value={resultStr}
-                        onChange={(e) => setResultStr(e.target.value)}
-                        placeholder="+1.5 / -1"
-                        inputMode="decimal"
-                        className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/40"
-                      />
-                    )}
+                    <div className="w-full text-[15px] text-text-primary tabular-nums">
+                      {autoRealizedR != null
+                        ? `${autoRealizedR > 0 ? "+" : ""}${autoRealizedR.toFixed(2)}R`
+                        : "—"}
+                      <span className="ml-2 text-[10.5px] uppercase tracking-wider text-text-secondary/60">
+                        auto
+                      </span>
+                    </div>
                   </Field>
                 </div>
 
