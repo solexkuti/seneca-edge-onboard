@@ -317,37 +317,11 @@ export default function BehavioralJournalFlow({
   );
 
   // Auto: realized R from exit (used when user leaves R blank)
-  const autoRealizedR = useMemo(
-    () => realizedR({ direction, entry, exit, stop: sl }),
-    [direction, entry, exit, sl],
-  );
+  // Realized R is strictly auto-derived from prices. No manual override.
+  const resultR = autoRealizedR ?? NaN;
 
-  // Manually-typed R (if any). null when user hasn't entered an explicit value.
-  const manualR = useMemo(() => {
-    const cleaned = resultStr.replace(/[+rR\s]/g, "");
-    if (!cleaned) return null;
-    const n = parseFloat(cleaned);
-    return Number.isFinite(n) ? n : null;
-  }, [resultStr]);
-
-  // Always prioritize calculated result (from Entry/SL/Exit) over manual input.
-  // Manual R is only used when Exit is empty (optional mode).
-  const resultR = useMemo(() => {
-    if (autoRealizedR != null) return autoRealizedR;
-    if (manualR != null) return manualR;
-    return NaN;
-  }, [manualR, autoRealizedR]);
-
-  // Parsed dollar PnL (optional). Empty → null. Non-numeric → null but flagged.
-  const pnlDollar = useMemo(() => {
-    const t = pnlDollarStr.trim().replace(/[$,\s]/g, "");
-    if (!t) return null;
-    const n = Number(t);
-    return Number.isFinite(n) ? n : null;
-  }, [pnlDollarStr]);
-  const pnlDollarInvalid = pnlDollarStr.trim().length > 0 && pnlDollar === null;
-
-  // Account size — parsed and persisted per-user.
+  // Account size — parsed and persisted per-user. Informational only —
+  // monetary PnL is derived by the SSOT engine from balance × risk × R.
   const accountSize = useMemo(() => {
     const t = accountSizeStr.trim().replace(/[$,\s]/g, "");
     if (!t) return null;
@@ -378,34 +352,6 @@ export default function BehavioralJournalFlow({
       // ignore storage errors
     }
   }, [accountSize, accountSizeStr]);
-
-  // Auto-calc $ from R × risk% × account size.
-  // $ = result_R × (risk_percent / 100) × account_size
-  const autoPnlDollar = useMemo(() => {
-    if (
-      !Number.isFinite(resultR) ||
-      risk == null ||
-      !Number.isFinite(risk) ||
-      risk <= 0 ||
-      accountSize == null
-    ) {
-      return null;
-    }
-    return resultR * (risk / 100) * accountSize;
-  }, [resultR, risk, accountSize]);
-
-  // When the user hasn't typed in the $ field manually, auto-fill it from
-  // the calculated value. As soon as they type, we stop overriding.
-  useEffect(() => {
-    if (pnlDollarManuallySet) return;
-    if (autoPnlDollar == null) {
-      // Clear any previously auto-filled value so the field doesn't lie.
-      if (pnlDollarStr !== "") setPnlDollarStr("");
-      return;
-    }
-    const formatted = autoPnlDollar.toFixed(2);
-    if (pnlDollarStr !== formatted) setPnlDollarStr(formatted);
-  }, [autoPnlDollar, pnlDollarManuallySet, pnlDollarStr]);
 
   // Auto-suggest outcome from R (soft logic — does not lock).
   const suggestedOutcome: Outcome | null = useMemo(() => {
