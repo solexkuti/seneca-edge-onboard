@@ -1196,38 +1196,7 @@ export default function BehavioralJournalFlow({
                   );
                 })()}
 
-                <div className="space-y-3 opacity-75">
-
-                  {/* Profit / Loss ($) — optional, auto-fills from R × Risk % × Account size. */}
-                  <Field subtle label="Profit / Loss ($)">
-                    <input
-                      value={pnlDollarStr}
-                      onChange={(e) => {
-                        setPnlDollarStr(e.target.value);
-                        setPnlDollarManuallySet(true);
-                      }}
-                      placeholder={
-                        autoPnlDollar != null && !pnlDollarManuallySet
-                          ? `auto ${autoPnlDollar > 0 ? "+" : ""}${autoPnlDollar.toFixed(2)}`
-                          : "—"
-                      }
-                      inputMode="decimal"
-                      className="w-full bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-secondary/30"
-                    />
-                  </Field>
-                  {autoPnlDollar != null && pnlDollarManuallySet && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPnlDollarManuallySet(false);
-                        setPnlDollarStr(autoPnlDollar.toFixed(2));
-                      }}
-                      className="text-[11px] text-primary/85 hover:text-primary underline-offset-2 hover:underline"
-                    >
-                      Use auto-calculated {autoPnlDollar > 0 ? "+" : ""}${autoPnlDollar.toFixed(2)}
-                    </button>
-                  )}
-                </div>
+                {/* Manual Profit/Loss ($) input removed — engine derives PnL from balance × risk × R via SSOT. */}
 
                 {/* Trade Outcome — explicit selection, required */}
                 <div>
