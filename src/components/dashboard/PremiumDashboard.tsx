@@ -177,6 +177,7 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
           <Divider />
           <Row label="Trades logged" value={String(ssot.behavior.total_trades)} />
           <Row label="Clean trades" value={String(ssot.behavior.clean_trades)} />
+          <Row label="Clean streak" value={cleanStreak > 0 ? `${cleanStreak} in a row` : "—"} />
           <Row label="Violations" value={String(ssot.behavior.violation_count)} />
         </Card>
 
