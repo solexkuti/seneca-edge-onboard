@@ -57,7 +57,8 @@ export default function PremiumDashboard({ userName }: { userName?: string }) {
   const { state } = useTraderState();
   const { ssot } = useSsot();
   const score = ssot.behavior.discipline_score;
-  const dsLabel = disciplineLabel(score);
+  const dsLabel = BEHAVIOR_STATE_COPY[ssot.behavior.state].label;
+  const cleanStreak = ssot.behavior.clean_streak;
   const bp = state.strategy?.blueprint ?? null;
   const winRatePct = Math.round((ssot.metrics.win_rate ?? 0) * 100);
   const recent = useMemo(() => ssot.trades.slice(0, 5), [ssot.trades]);
