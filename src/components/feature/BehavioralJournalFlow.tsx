@@ -402,7 +402,7 @@ export default function BehavioralJournalFlow({
       entry,
       exit,
       stop: sl,
-      manualR,
+      manualR: null,
     });
     // Centralized directional structure check (entry/SL/TP only — never
     // exit/outcome/RR). Merges into the existing issue list so blocks/
