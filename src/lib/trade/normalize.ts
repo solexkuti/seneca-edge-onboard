@@ -191,6 +191,8 @@ export function tradeFromDeriv(
     takeProfit: null,
     lotSize: null,
     riskR: null,
+    actualRiskPct: null,
+    preferredRiskPct: null,
     resultR: null,
     pnl: raw.profit ?? null,
     session: sessionFromTimestamp(startMs),
