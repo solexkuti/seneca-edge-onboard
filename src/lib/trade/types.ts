@@ -38,6 +38,10 @@ export interface Trade {
   lotSize: number | null;
   riskR: number | null;
 
+  // Risk-policy snapshot (engine input for synthetic risk-policy violations).
+  actualRiskPct: number | null;
+  preferredRiskPct: number | null;
+
   // Outcome — executed trades
   resultR: number | null;
   pnl: number | null;
@@ -81,6 +85,8 @@ export const emptyTrade = (
   takeProfit: null,
   lotSize: null,
   riskR: null,
+  actualRiskPct: null,
+  preferredRiskPct: null,
   resultR: null,
   pnl: null,
   session: null,

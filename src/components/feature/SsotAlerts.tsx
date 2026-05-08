@@ -4,9 +4,11 @@
 // come from useSsot() — never recompute here.
 
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ShieldAlert, TrendingDown, Wallet } from "lucide-react";
+import { AlertTriangle, Brain, ShieldAlert, TrendingDown, Wallet } from "lucide-react";
 import { useSsot } from "@/hooks/useSsot";
 import { metricColorStyle, metricTone } from "@/lib/metricColor";
+import { BEHAVIOR_STATE_COPY } from "@/lib/behaviorEngine";
+import { humanizeViolation, violationSeverity } from "@/lib/violationLabels";
 
 type Severity = "warn" | "critical" | "info";
 
@@ -37,25 +39,45 @@ export default function SsotAlerts() {
 
   const alerts: Alert[] = [];
 
-  // Discipline state — gradual-recovery vocabulary, no gameable language.
+  // Behavior state — engine-driven 5-tier ladder. Surfaces collapse/impulse/
+  // unstable states with state-specific copy. Score tone is informational.
   const ds = ssot.behavior.discipline_score;
-  if (metricTone(ds) === "bad") {
+  const state = ssot.behavior.state;
+  const stateCopy = BEHAVIOR_STATE_COPY[state];
+  if (state === "collapsed" || state === "impulsive") {
     alerts.push({
-      id: "discipline-critical",
+      id: "behavior-state",
       severity: "critical",
-      icon: ShieldAlert,
-      title: `Discipline at ${ds}`,
-      body: "Recent trades show impulsive execution. Slow down — discipline recovers gradually, not in one trade.",
+      icon: Brain,
+      title: `${stateCopy.label} · ${ds}`,
+      body:
+        state === "collapsed"
+          ? "Behavior has collapsed. Stop trading. Recovery is gradual — clean executions only."
+          : "Impulsive execution detected. Slow down. The score rebuilds slowly with disciplined trades.",
       cta: { label: "Review breakdown", to: "/hub/journal/breakdown" },
     });
-  } else if (metricTone(ds) === "warn") {
+  } else if (state === "unstable" || (state === "drifting" && metricTone(ds) === "warn")) {
     alerts.push({
-      id: "discipline-warn",
+      id: "behavior-state",
       severity: "warn",
-      icon: ShieldAlert,
-      title: `Consistency unstable (${ds})`,
+      icon: Brain,
+      title: `${stateCopy.label} · ${ds}`,
       body: "Execution quality slipping. Stay patient — the score rebuilds slowly with consistent clean trades.",
       cta: { label: "Open insights", to: "/hub/insights" },
+    });
+  }
+
+  // Recent risk-policy or high-severity violation — surfaced from engine.
+  const recent = ssot.behavior.recent_violations ?? [];
+  const highSev = recent.find((v) => violationSeverity(v.type) === "high");
+  if (highSev) {
+    alerts.push({
+      id: "recent-high",
+      severity: "critical",
+      icon: ShieldAlert,
+      title: `Recent: ${humanizeViolation(highSev.type)}`,
+      body: "Engine flagged a high-severity break on your latest trade. Review what triggered it before the next entry.",
+      cta: { label: "Open trade history", to: "/hub/journal/history" },
     });
   }
 

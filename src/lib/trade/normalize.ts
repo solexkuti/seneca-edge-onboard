@@ -40,6 +40,8 @@ export interface TradeRow {
   lot_size: number | null;
   risk_r: number | null;
   rr: number | null;
+  actual_risk_pct: number | null;
+  preferred_risk_pct: number | null;
   pnl: number | null;
   session: TradeSession | null;
   screenshot_url: string | null;
@@ -69,6 +71,8 @@ export function tradeFromRow(row: TradeRow): Trade {
     takeProfit: row.take_profit,
     lotSize: row.lot_size,
     riskR: row.risk_r,
+    actualRiskPct: row.actual_risk_pct,
+    preferredRiskPct: row.preferred_risk_pct,
     // resultR is canonical R-multiple. We use the existing `rr` column.
     resultR: row.rr,
     pnl: row.pnl,
@@ -187,6 +191,8 @@ export function tradeFromDeriv(
     takeProfit: null,
     lotSize: null,
     riskR: null,
+    actualRiskPct: null,
+    preferredRiskPct: null,
     resultR: null,
     pnl: raw.profit ?? null,
     session: sessionFromTimestamp(startMs),
@@ -237,6 +243,8 @@ export function tradeFromMt5(raw: Mt5Deal, userId: string): Trade {
     takeProfit: raw.takeProfit ?? null,
     lotSize: raw.volume,
     riskR: null,
+    actualRiskPct: null,
+    preferredRiskPct: null,
     resultR: null,
     pnl: raw.profit ?? null,
     session: sessionFromTimestamp(new Date(raw.openTime).getTime()),

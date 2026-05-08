@@ -771,6 +771,20 @@ export default function AiMentorChat() {
             clean_trades: ssot.behavior.clean_trades,
             total_trades: ssot.behavior.total_trades,
             violation_count: ssot.behavior.violation_count,
+            state: ssot.behavior.state,
+            clean_streak: ssot.behavior.clean_streak,
+            longest_streak: ssot.behavior.longest_streak,
+            recent_violations: ssot.behavior.recent_violations,
+            recent_contributions: (ssot.behavior.contributions ?? []).slice(0, 5).map((c) => ({
+              trade_score: c.tradeScore,
+              overall_before: c.overallBefore,
+              overall_after: c.overallAfter,
+              delta: c.delta,
+              is_clean: c.isClean,
+              state: c.state,
+              violations: c.violations,
+              reason: c.reason,
+            })),
           },
         }
       : undefined;

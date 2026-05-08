@@ -41,6 +41,7 @@ import {
   severityTone,
   severityRank,
 } from "@/lib/violationLabels";
+import { classifyRiskRatio } from "@/lib/behaviorEngine";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -465,31 +466,40 @@ function TradeCard({
             {trade.marketType && ` · ${trade.marketType}`}
           </p>
 
-          {/* Quick rule summary — humanized + severity-colored */}
-          {!isMissed && (broken > 0 || followed > 0) && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10.5px]">
-              {followed > 0 && (
-                <span className="inline-flex items-center gap-1 text-emerald-400/90">
-                  ✓ {followed} clean
-                </span>
-              )}
-              {trade.rulesBroken.slice(0, 2).map((r) => {
-                const tone = severityTone(violationSeverity(r));
-                return (
-                  <span
-                    key={r}
-                    className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] ring-1 ${tone.ring} ${tone.bg} ${tone.text}`}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone.dot }} />
-                    {humanizeViolation(r)}
+          {/* Quick rule summary — humanized + severity-colored.
+              Risk-policy violation is auto-derived by the engine and
+              prepended so the chip surface always matches the score. */}
+          {!isMissed && (() => {
+            const riskId = classifyRiskRatio(trade.actualRiskPct, trade.preferredRiskPct);
+            const allBroken = riskId
+              ? [riskId, ...trade.rulesBroken.filter((r) => r !== riskId)]
+              : trade.rulesBroken;
+            if (allBroken.length === 0 && followed === 0) return null;
+            return (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10.5px]">
+                {followed > 0 && (
+                  <span className="inline-flex items-center gap-1 text-emerald-400/90">
+                    ✓ {followed} clean
                   </span>
-                );
-              })}
-              {trade.rulesBroken.length > 2 && (
-                <span className="text-[#9A9A9A]/70">+{trade.rulesBroken.length - 2} more</span>
-              )}
-            </div>
-          )}
+                )}
+                {allBroken.slice(0, 2).map((r) => {
+                  const tone = severityTone(violationSeverity(r));
+                  return (
+                    <span
+                      key={r}
+                      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] ring-1 ${tone.ring} ${tone.bg} ${tone.text}`}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone.dot }} />
+                      {humanizeViolation(r)}
+                    </span>
+                  );
+                })}
+                {allBroken.length > 2 && (
+                  <span className="text-[#9A9A9A]/70">+{allBroken.length - 2} more</span>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Missed-trade row: minimal reason chip only — full context in expanded view */}
           {isMissed && trade.missedPotentialR != null && (
@@ -570,44 +580,52 @@ function TradeCard({
                 </div>
               )}
 
-              {/* SECTION 2 — Behavioral breakdown (humanized + R-impact) */}
-              {!isMissed && trade.rulesBroken.length > 0 && (
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80 mb-2">
-                    Behavioral breakdown
-                  </p>
-                  <ul className="space-y-1.5">
-                    {trade.rulesBroken.map((r) => {
-                      const sev = violationSeverity(r);
-                      const tone = severityTone(sev);
-                      // R impact spread evenly across violations on a losing trade.
-                      const impact =
-                        (trade.resultR ?? 0) < 0
-                          ? (trade.resultR ?? 0) / trade.rulesBroken.length
-                          : 0;
-                      return (
-                        <li
-                          key={r}
-                          className={`flex items-center gap-2.5 rounded-lg px-3 py-2 ${tone.bg} ring-1 ${tone.ring}`}
-                        >
-                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: tone.dot }} />
-                          <div className="min-w-0 flex-1">
-                            <p className={`text-[12.5px] ${tone.text}`}>{humanizeViolation(r)}</p>
-                            <p className="text-[9.5px] uppercase tracking-wider text-[#9A9A9A]/70 mt-0.5">
-                              {sev} severity
-                            </p>
-                          </div>
-                          {impact !== 0 && (
-                            <span className="text-[11px] font-semibold tabular-nums text-rose-300 shrink-0">
-                              {fmtR(impact)}
-                            </span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
+              {/* SECTION 2 — Behavioral breakdown (humanized + R-impact).
+                  Engine-derived risk-policy violation is prepended. */}
+              {!isMissed && (() => {
+                const riskId = classifyRiskRatio(trade.actualRiskPct, trade.preferredRiskPct);
+                const allBroken = riskId
+                  ? [riskId, ...trade.rulesBroken.filter((r) => r !== riskId)]
+                  : trade.rulesBroken;
+                if (allBroken.length === 0) return null;
+                return (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80 mb-2">
+                      Behavioral breakdown
+                    </p>
+                    <ul className="space-y-1.5">
+                      {allBroken.map((r) => {
+                        const sev = violationSeverity(r);
+                        const tone = severityTone(sev);
+                        const isRiskPolicy = r === riskId;
+                        const impact =
+                          (trade.resultR ?? 0) < 0
+                            ? (trade.resultR ?? 0) / allBroken.length
+                            : 0;
+                        return (
+                          <li
+                            key={r}
+                            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 ${tone.bg} ring-1 ${tone.ring}`}
+                          >
+                            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: tone.dot }} />
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-[12.5px] ${tone.text}`}>{humanizeViolation(r)}</p>
+                              <p className="text-[9.5px] uppercase tracking-wider text-[#9A9A9A]/70 mt-0.5">
+                                {isRiskPolicy ? "risk policy · " : ""}{sev} severity
+                              </p>
+                            </div>
+                            {impact !== 0 && (
+                              <span className="text-[11px] font-semibold tabular-nums text-rose-300 shrink-0">
+                                {fmtR(impact)}
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                );
+              })()}
 
               {/* Behavior loop callout */}
               {!isMissed && trade.rulesBroken.length >= 2 && (
