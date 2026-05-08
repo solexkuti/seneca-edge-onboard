@@ -4,9 +4,11 @@
 // come from useSsot() — never recompute here.
 
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ShieldAlert, TrendingDown, Wallet } from "lucide-react";
+import { AlertTriangle, Brain, ShieldAlert, TrendingDown, Wallet } from "lucide-react";
 import { useSsot } from "@/hooks/useSsot";
 import { metricColorStyle, metricTone } from "@/lib/metricColor";
+import { BEHAVIOR_STATE_COPY } from "@/lib/behaviorEngine";
+import { humanizeViolation, violationSeverity } from "@/lib/violationLabels";
 
 type Severity = "warn" | "critical" | "info";
 
