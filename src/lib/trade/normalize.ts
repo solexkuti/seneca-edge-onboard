@@ -243,6 +243,8 @@ export function tradeFromMt5(raw: Mt5Deal, userId: string): Trade {
     takeProfit: raw.takeProfit ?? null,
     lotSize: raw.volume,
     riskR: null,
+    actualRiskPct: null,
+    preferredRiskPct: null,
     resultR: null,
     pnl: raw.profit ?? null,
     session: sessionFromTimestamp(new Date(raw.openTime).getTime()),
