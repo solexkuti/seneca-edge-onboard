@@ -71,6 +71,8 @@ export function tradeFromRow(row: TradeRow): Trade {
     takeProfit: row.take_profit,
     lotSize: row.lot_size,
     riskR: row.risk_r,
+    actualRiskPct: row.actual_risk_pct,
+    preferredRiskPct: row.preferred_risk_pct,
     // resultR is canonical R-multiple. We use the existing `rr` column.
     resultR: row.rr,
     pnl: row.pnl,
