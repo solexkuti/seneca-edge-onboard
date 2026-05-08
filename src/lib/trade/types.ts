@@ -85,6 +85,8 @@ export const emptyTrade = (
   takeProfit: null,
   lotSize: null,
   riskR: null,
+  actualRiskPct: null,
+  preferredRiskPct: null,
   resultR: null,
   pnl: null,
   session: null,
