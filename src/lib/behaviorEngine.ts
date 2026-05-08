@@ -309,15 +309,34 @@ export function replay(trades: ReplayTradeInput[]): ReplayResult {
   }
 
   const totalTrades = chrono.length;
-  const overall = Math.round(overallRaw);
+  const adherence = totalTrades === 0 ? 1 : cleanCount / totalTrades;
+
+  // Apply adherence ceiling so a low clean ratio cannot coexist with a
+  // high overall score. Recent-destructive guard: if 2 of the last 3
+  // trades were not clean, additionally clamp the ceiling at 70.
+  const ceiling = adherenceCeiling(adherence, totalTrades);
+  const recent = contribs.slice(-3);
+  const recentDirty = recent.filter((c) => !c.isClean).length;
+  const recentCap = recentDirty >= 2 && recent.length >= 3 ? 70 : 100;
+  const cappedRaw = Math.min(overallRaw, ceiling, recentCap);
+
+  // Recompute final-state on each contribution so the timeline reflects
+  // the same ceiling-clamped value the dashboard surfaces.
+  for (const c of contribs) {
+    c.overallAfter = Math.min(c.overallAfter, ceiling, recentCap);
+    c.state = stateFromOverall(c.overallAfter);
+    c.delta = c.overallAfter - c.overallBefore;
+  }
+
+  const overall = Math.round(cappedRaw);
   return {
     overall,
-    overallRaw,
+    overallRaw: cappedRaw,
     state: stateFromOverall(overall),
     totalTrades,
     cleanTrades: cleanCount,
     violationCount,
-    ruleAdherence: totalTrades === 0 ? 1 : cleanCount / totalTrades,
+    ruleAdherence: adherence,
     cleanStreak: streak,
     longestStreak: longest,
     contributions: contribs.reverse().slice(0, 50),
