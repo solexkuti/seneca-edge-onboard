@@ -722,15 +722,10 @@ export default function BehavioralJournalFlow({
       const finalR = autoRealizedR as number;
       const pnl_percent = derivePnlPercent(finalR, risk);
 
-      // Reuse the primary screenshot path saved by behavioralJournal as the
-      // public URL for trade_logs.
-      let screenshot_url: string | null = null;
-      if (r.entry.screenshot_path) {
-        const { data } = await supabase.storage
-          .from("trade-screenshots")
-          .createSignedUrl(r.entry.screenshot_path, 60 * 60 * 24 * 365);
-        screenshot_url = data?.signedUrl ?? r.entry.screenshot_path;
-      }
+      // Persist the storage *path* (not a signed URL) on trade_logs so
+      // every render re-signs a fresh URL. Signed URLs expire and were the
+      // root cause of blank thumbnails everywhere.
+      const screenshot_url: string | null = r.entry.screenshot_path ?? null;
 
       try {
         await insertTradeLog({
