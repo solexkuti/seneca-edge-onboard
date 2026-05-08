@@ -40,6 +40,8 @@ export interface TradeRow {
   lot_size: number | null;
   risk_r: number | null;
   rr: number | null;
+  actual_risk_pct: number | null;
+  preferred_risk_pct: number | null;
   pnl: number | null;
   session: TradeSession | null;
   screenshot_url: string | null;
