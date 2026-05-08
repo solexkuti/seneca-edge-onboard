@@ -369,14 +369,31 @@ function TradeCard({
   fmtR: (n: number | null) => string;
 }) {
   const [thumb, setThumb] = useState<string | null>(null);
+  const [thumbState, setThumbState] = useState<"idle" | "loading" | "ready" | "failed">(
+    trade.screenshotUrl ? "loading" : "idle",
+  );
 
   useEffect(() => {
     let cancelled = false;
-    if (trade.screenshotUrl) {
-      getScreenshotUrl(trade.screenshotUrl).then((u) => {
-        if (!cancelled) setThumb(u);
-      });
+    if (!trade.screenshotUrl) {
+      setThumbState("idle");
+      setThumb(null);
+      return;
     }
+    setThumbState("loading");
+    getScreenshotUrl(trade.screenshotUrl)
+      .then((u) => {
+        if (cancelled) return;
+        if (u) {
+          setThumb(u);
+          setThumbState("ready");
+        } else {
+          setThumbState("failed");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setThumbState("failed");
+      });
     return () => {
       cancelled = true;
     };
@@ -408,21 +425,41 @@ function TradeCard({
       }`}
     >
       <div className="flex items-start gap-3 p-3.5">
-        {/* Thumbnail */}
+        {/* Thumbnail — always reflects an explicit state instead of a silent
+            blank tile. Loading shows a spinner, failed shows ImageOff with a
+            tooltip, idle (no upload) shows a muted placeholder. */}
         <button
           type="button"
           onClick={() =>
-            trade.screenshotUrl && onPreview(trade.screenshotUrl)
+            trade.screenshotUrl && thumbState === "ready" && onPreview(trade.screenshotUrl)
           }
-          disabled={!trade.screenshotUrl}
+          disabled={!trade.screenshotUrl || thumbState !== "ready"}
+          title={
+            thumbState === "failed"
+              ? "Screenshot failed to load"
+              : thumbState === "loading"
+                ? "Loading screenshot…"
+                : !trade.screenshotUrl
+                  ? "No screenshot attached"
+                  : "Open screenshot"
+          }
           className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-[#0B0B0D] ring-1 ring-white/10 flex items-center justify-center"
         >
           {isMissed ? (
             <Eye className="h-5 w-5 text-[#C6A15B]/70" />
-          ) : thumb ? (
-            <img src={thumb} alt="" className="h-full w-full object-cover" />
+          ) : thumbState === "ready" && thumb ? (
+            <img
+              src={thumb}
+              alt=""
+              className="h-full w-full object-cover"
+              onError={() => setThumbState("failed")}
+            />
+          ) : thumbState === "loading" ? (
+            <Loader2 className="h-4 w-4 text-[#9A9A9A]/60 animate-spin" />
+          ) : thumbState === "failed" ? (
+            <ImageOff className="h-4 w-4 text-rose-400/70" />
           ) : (
-            <ImageOff className="h-4 w-4 text-[#9A9A9A]/50" />
+            <ImageOff className="h-4 w-4 text-[#9A9A9A]/40" />
           )}
         </button>
 

@@ -436,12 +436,38 @@ export function nextActionFromBehavior(args: {
   };
 }
 
-// Public storage URL helper (signed for private bucket).
+// Public storage URL helper. Accepts either:
+//   • a raw storage path (preferred, always re-signs fresh)
+//   • a full http(s) URL (legacy rows that stored a signed URL directly)
+// Legacy signed URLs may have expired; we extract the underlying object path
+// and re-sign so old trades render again instead of showing blank thumbnails.
 export async function getScreenshotUrl(path: string): Promise<string | null> {
   if (!path) return null;
+
+  let storagePath = path;
+  if (/^https?:\/\//i.test(path)) {
+    // Try to extract the storage object key from a Supabase signed URL.
+    // Pattern: .../storage/v1/object/sign/trade-screenshots/<key>?token=...
+    const m = path.match(/\/object\/(?:sign|public)\/trade-screenshots\/([^?]+)/);
+    if (m && m[1]) {
+      try {
+        storagePath = decodeURIComponent(m[1]);
+      } catch {
+        storagePath = m[1];
+      }
+    } else {
+      // Not our bucket — return the URL as-is (browser will try to load it).
+      return path;
+    }
+  }
+
   const { data, error } = await supabase.storage
     .from("trade-screenshots")
-    .createSignedUrl(path, 60 * 60); // 1h
-  if (error) return null;
-  return data?.signedUrl ?? null;
+    .createSignedUrl(storagePath, 60 * 60); // 1h
+  if (error || !data?.signedUrl) {
+    // Fallback: if we received a URL originally, hand it back so the
+    // <img> at least has a chance to render rather than going blank.
+    return /^https?:\/\//i.test(path) ? path : null;
+  }
+  return data.signedUrl;
 }

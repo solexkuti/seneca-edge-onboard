@@ -67,7 +67,10 @@ const RISK_VIOLATION_WEIGHT: Record<string, number> = {
   [RISK_VIOLATION_IDS.revenge]:  25,
 };
 
-const STACK_MULTIPLIERS = [1, 0.5, 0.25, 0.1] as const;
+// Stacking multipliers — stricter than before so multi-violation trades
+// (e.g. revenge_risk + no_setup + oversized) compound visibly instead of
+// being smoothed away. First three violations land at near-full weight.
+const STACK_MULTIPLIERS = [1, 0.75, 0.5, 0.3, 0.2] as const;
 const FALLBACK_PENALTY = 10;
 
 // ── Pure helpers ───────────────────────────────────────────────────────
@@ -170,8 +173,11 @@ export function tierFromTradeScore(score: number): {
 // ── Overall EMA + behavior state ───────────────────────────────────────
 
 export const STARTING_OVERALL = 100;
-export const EMA_PREV = 0.9;
-export const EMA_NEW = 0.1;
+// EMA weighting — recent behavior must move the needle. Previously the new
+// trade was 10% which over-protected the score; bumped so a destructive
+// trade actually shows up in the overall number.
+export const EMA_PREV = 0.78;
+export const EMA_NEW = 0.22;
 
 export type BehaviorState =
   | "controlled" //  90–100
@@ -191,6 +197,27 @@ export function stateFromOverall(overall: number): BehaviorState {
 export function nextOverall(prev: number, tradeScore: number): number {
   const next = prev * EMA_PREV + tradeScore * EMA_NEW;
   return Math.max(0, Math.min(100, next));
+}
+
+/**
+ * Adherence ceiling — once we have a meaningful sample (>=3 trades), the
+ * overall score cannot exceed a ceiling determined by clean/total ratio.
+ * This guarantees a 33% adherence trader cannot read "82 / Drifting".
+ *
+ *   adherence 1.00 → ceiling 100
+ *   adherence 0.66 → ceiling  82
+ *   adherence 0.50 → ceiling  72
+ *   adherence 0.33 → ceiling  62 → cap further: see below
+ *   adherence 0.00 → ceiling  35
+ *
+ * We then floor the ceiling by recent destructive trades: if 2 of the last 3
+ * were not clean, the ceiling is additionally capped at 70.
+ */
+export function adherenceCeiling(adherence: number, sample: number): number {
+  if (sample < 3) return 100;
+  const a = Math.max(0, Math.min(1, adherence));
+  // Linear from 35 (0% adherence) to 100 (100% adherence).
+  return Math.round(35 + 65 * a);
 }
 
 // ── Replay across many trades ──────────────────────────────────────────
@@ -282,15 +309,34 @@ export function replay(trades: ReplayTradeInput[]): ReplayResult {
   }
 
   const totalTrades = chrono.length;
-  const overall = Math.round(overallRaw);
+  const adherence = totalTrades === 0 ? 1 : cleanCount / totalTrades;
+
+  // Apply adherence ceiling so a low clean ratio cannot coexist with a
+  // high overall score. Recent-destructive guard: if 2 of the last 3
+  // trades were not clean, additionally clamp the ceiling at 70.
+  const ceiling = adherenceCeiling(adherence, totalTrades);
+  const recent = contribs.slice(-3);
+  const recentDirty = recent.filter((c) => !c.isClean).length;
+  const recentCap = recentDirty >= 2 && recent.length >= 3 ? 70 : 100;
+  const cappedRaw = Math.min(overallRaw, ceiling, recentCap);
+
+  // Recompute final-state on each contribution so the timeline reflects
+  // the same ceiling-clamped value the dashboard surfaces.
+  for (const c of contribs) {
+    c.overallAfter = Math.min(c.overallAfter, ceiling, recentCap);
+    c.state = stateFromOverall(c.overallAfter);
+    c.delta = c.overallAfter - c.overallBefore;
+  }
+
+  const overall = Math.round(cappedRaw);
   return {
     overall,
-    overallRaw,
+    overallRaw: cappedRaw,
     state: stateFromOverall(overall),
     totalTrades,
     cleanTrades: cleanCount,
     violationCount,
-    ruleAdherence: totalTrades === 0 ? 1 : cleanCount / totalTrades,
+    ruleAdherence: adherence,
     cleanStreak: streak,
     longestStreak: longest,
     contributions: contribs.reverse().slice(0, 50),
