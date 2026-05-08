@@ -173,8 +173,11 @@ export function tierFromTradeScore(score: number): {
 // ── Overall EMA + behavior state ───────────────────────────────────────
 
 export const STARTING_OVERALL = 100;
-export const EMA_PREV = 0.9;
-export const EMA_NEW = 0.1;
+// EMA weighting — recent behavior must move the needle. Previously the new
+// trade was 10% which over-protected the score; bumped so a destructive
+// trade actually shows up in the overall number.
+export const EMA_PREV = 0.78;
+export const EMA_NEW = 0.22;
 
 export type BehaviorState =
   | "controlled" //  90–100
@@ -194,6 +197,27 @@ export function stateFromOverall(overall: number): BehaviorState {
 export function nextOverall(prev: number, tradeScore: number): number {
   const next = prev * EMA_PREV + tradeScore * EMA_NEW;
   return Math.max(0, Math.min(100, next));
+}
+
+/**
+ * Adherence ceiling — once we have a meaningful sample (>=3 trades), the
+ * overall score cannot exceed a ceiling determined by clean/total ratio.
+ * This guarantees a 33% adherence trader cannot read "82 / Drifting".
+ *
+ *   adherence 1.00 → ceiling 100
+ *   adherence 0.66 → ceiling  82
+ *   adherence 0.50 → ceiling  72
+ *   adherence 0.33 → ceiling  62 → cap further: see below
+ *   adherence 0.00 → ceiling  35
+ *
+ * We then floor the ceiling by recent destructive trades: if 2 of the last 3
+ * were not clean, the ceiling is additionally capped at 70.
+ */
+export function adherenceCeiling(adherence: number, sample: number): number {
+  if (sample < 3) return 100;
+  const a = Math.max(0, Math.min(1, adherence));
+  // Linear from 35 (0% adherence) to 100 (100% adherence).
+  return Math.round(35 + 65 * a);
 }
 
 // ── Replay across many trades ──────────────────────────────────────────
