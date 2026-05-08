@@ -69,13 +69,13 @@ export default function SsotAlerts() {
 
   // Recent risk-policy or high-severity violation — surfaced from engine.
   const recent = ssot.behavior.recent_violations ?? [];
-  const highSev = recent.find((v) => violationSeverity(v) === "high");
+  const highSev = recent.find((v) => violationSeverity(v.type) === "high");
   if (highSev) {
     alerts.push({
       id: "recent-high",
       severity: "critical",
       icon: ShieldAlert,
-      title: `Recent: ${humanizeViolation(highSev)}`,
+      title: `Recent: ${humanizeViolation(highSev.type)}`,
       body: "Engine flagged a high-severity break on your latest trade. Review what triggered it before the next entry.",
       cta: { label: "Open trade history", to: "/hub/journal/history" },
     });
