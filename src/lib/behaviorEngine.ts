@@ -67,7 +67,10 @@ const RISK_VIOLATION_WEIGHT: Record<string, number> = {
   [RISK_VIOLATION_IDS.revenge]:  25,
 };
 
-const STACK_MULTIPLIERS = [1, 0.5, 0.25, 0.1] as const;
+// Stacking multipliers — stricter than before so multi-violation trades
+// (e.g. revenge_risk + no_setup + oversized) compound visibly instead of
+// being smoothed away. First three violations land at near-full weight.
+const STACK_MULTIPLIERS = [1, 0.75, 0.5, 0.3, 0.2] as const;
 const FALLBACK_PENALTY = 10;
 
 // ── Pure helpers ───────────────────────────────────────────────────────
