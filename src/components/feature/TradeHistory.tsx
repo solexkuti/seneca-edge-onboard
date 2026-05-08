@@ -466,31 +466,40 @@ function TradeCard({
             {trade.marketType && ` · ${trade.marketType}`}
           </p>
 
-          {/* Quick rule summary — humanized + severity-colored */}
-          {!isMissed && (broken > 0 || followed > 0) && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10.5px]">
-              {followed > 0 && (
-                <span className="inline-flex items-center gap-1 text-emerald-400/90">
-                  ✓ {followed} clean
-                </span>
-              )}
-              {trade.rulesBroken.slice(0, 2).map((r) => {
-                const tone = severityTone(violationSeverity(r));
-                return (
-                  <span
-                    key={r}
-                    className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] ring-1 ${tone.ring} ${tone.bg} ${tone.text}`}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone.dot }} />
-                    {humanizeViolation(r)}
+          {/* Quick rule summary — humanized + severity-colored.
+              Risk-policy violation is auto-derived by the engine and
+              prepended so the chip surface always matches the score. */}
+          {!isMissed && (() => {
+            const riskId = classifyRiskRatio(trade.actualRiskPct, trade.preferredRiskPct);
+            const allBroken = riskId
+              ? [riskId, ...trade.rulesBroken.filter((r) => r !== riskId)]
+              : trade.rulesBroken;
+            if (allBroken.length === 0 && followed === 0) return null;
+            return (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10.5px]">
+                {followed > 0 && (
+                  <span className="inline-flex items-center gap-1 text-emerald-400/90">
+                    ✓ {followed} clean
                   </span>
-                );
-              })}
-              {trade.rulesBroken.length > 2 && (
-                <span className="text-[#9A9A9A]/70">+{trade.rulesBroken.length - 2} more</span>
-              )}
-            </div>
-          )}
+                )}
+                {allBroken.slice(0, 2).map((r) => {
+                  const tone = severityTone(violationSeverity(r));
+                  return (
+                    <span
+                      key={r}
+                      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] ring-1 ${tone.ring} ${tone.bg} ${tone.text}`}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone.dot }} />
+                      {humanizeViolation(r)}
+                    </span>
+                  );
+                })}
+                {allBroken.length > 2 && (
+                  <span className="text-[#9A9A9A]/70">+{allBroken.length - 2} more</span>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Missed-trade row: minimal reason chip only — full context in expanded view */}
           {isMissed && trade.missedPotentialR != null && (
