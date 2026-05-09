@@ -18,8 +18,8 @@
 //   • score_before = 100 (per-trade base — kept for back-compat)
 //   • score_after  = per-trade score (0..100)
 //   • score_delta  = score_after - 100 (≤ 0)
-//   • profiles.discipline_score = current rolling AVERAGE of score_after
-//     across all entries. We re-compute on every insert.
+//   • Overall behavior score is a deterministic ledger: start 100, +5 clean,
+//     -10 per violation, clamp 0..100. No averaging.
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -177,33 +177,15 @@ export type JournalEntry = {
 // ── IO ──────────────────────────────────────────────────────────────────
 
 /**
- * Returns the current overall discipline score (average of per-trade scores)
- * or `null` when the user has logged 0 trades — meaning "inactive".
- *
- * Reads `profiles.discipline_score`, which is recomputed by `logTrade` on
- * every insert. We sanity-check against entry count to ensure null state is
- * accurate (e.g. after a manual reset).
+ * Returns the current deterministic discipline score or `null` when inactive.
  */
 export async function getCurrentScore(): Promise<number | null> {
   const { data: auth } = await supabase.auth.getUser();
   const uid = auth?.user?.id;
   if (!uid) return null;
 
-  // Count entries — if none exist, system is inactive regardless of profile cache.
-  const { count } = await supabase
-    .from("journal_entries")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", uid);
-
-  if (!count || count === 0) return null;
-
-  const { data } = await supabase
-    .from("profiles")
-    .select("discipline_score")
-    .eq("id", uid)
-    .maybeSingle();
-  const v = (data as { discipline_score?: number } | null)?.discipline_score;
-  return typeof v === "number" ? clampScore(v) : null;
+  const rows = await fetchAllLedgerRows(uid);
+  return rows.length === 0 ? null : replayJournalLedger(rows);
 }
 
 export async function fetchEntries(limit = 50): Promise<JournalEntry[]> {
@@ -220,13 +202,24 @@ export async function fetchEntries(limit = 50): Promise<JournalEntry[]> {
   return (data ?? []) as unknown as JournalEntry[];
 }
 
-/** Pull every score_after for the user — used to recompute the overall avg. */
-async function fetchAllScoreAfters(uid: string): Promise<number[]> {
+type JournalLedgerRow = { mistakes: MistakeId[]; created_at: string };
+
+async function fetchAllLedgerRows(uid: string): Promise<JournalLedgerRow[]> {
   const { data } = await supabase
     .from("journal_entries")
-    .select("score_after")
-    .eq("user_id", uid);
-  return ((data ?? []) as { score_after: number }[]).map((r) => r.score_after);
+    .select("mistakes,created_at")
+    .eq("user_id", uid)
+    .order("created_at", { ascending: true });
+  return (data ?? []) as unknown as JournalLedgerRow[];
+}
+
+function replayJournalLedger(rows: JournalLedgerRow[]): number {
+  let score = 100;
+  for (const r of rows) {
+    const count = Array.isArray(r.mistakes) ? new Set(r.mistakes.filter(Boolean)).size : 0;
+    score = clampScore(score + (count === 0 ? 5 : -10 * count));
+  }
+  return score;
 }
 
 export type LogTradeInput = {
