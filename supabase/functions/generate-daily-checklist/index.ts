@@ -706,15 +706,16 @@ async function loadInputs(supabase: any, userId: string) {
 
   const bp = blueprints?.[0];
 
-  // Last 20 trades + discipline logs
+  // Behavior ledger from actual trade history: start 100, +5 clean, -10 per violation.
   const { data: trades } = await supabase
     .from("trades")
     .select(
-      "id,executed_at,discipline_logs(followed_entry,followed_exit,followed_risk,followed_behavior,discipline_score)",
+      "id,executed_at,rules_broken",
     )
     .eq("user_id", userId)
+    .eq("trade_type", "executed")
     .order("executed_at", { ascending: false })
-    .limit(20);
+    .limit(500);
 
   // Behavior patterns (recent, unique by pattern_type)
   const { data: patterns } = await supabase
@@ -724,23 +725,20 @@ async function loadInputs(supabase: any, userId: string) {
     .order("last_triggered_at", { ascending: false })
     .limit(20);
 
-  // Compute discipline_score and current_streak
+  // Compute discipline_score and current_streak from the deterministic ledger.
   const tradesArr = trades ?? [];
-  const scores: number[] = [];
-  for (const t of tradesArr) {
-    const dl = Array.isArray(t.discipline_logs) ? t.discipline_logs[0] : t.discipline_logs;
-    if (dl && typeof dl.discipline_score === "number") scores.push(dl.discipline_score);
+  const uniqueRules = (t: any) => Array.from(new Set(((t.rules_broken ?? []) as string[]).filter(Boolean)));
+  let discipline_score = 100;
+  for (const t of [...tradesArr].sort((a: any, b: any) => new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime())) {
+    const count = uniqueRules(t).length;
+    discipline_score = Math.max(0, Math.min(100, discipline_score + (count === 0 ? 5 : -10 * count)));
   }
-  const discipline_score =
-    scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
   let current_streak = 0;
   let consecutive_breaks = 0;
   let countingBreaks = true;
   for (const t of tradesArr) {
-    const dl = Array.isArray(t.discipline_logs) ? t.discipline_logs[0] : t.discipline_logs;
-    const clean =
-      dl && dl.followed_entry && dl.followed_exit && dl.followed_risk && dl.followed_behavior;
+    const clean = uniqueRules(t).length === 0;
     if (clean) {
       current_streak += 1;
       countingBreaks = false;

@@ -42,11 +42,12 @@ async function loadGate(supabase: any, userId: string) {
       .order("created_at", { ascending: false })
       .limit(10),
     supabase
-      .from("discipline_logs")
-      .select("discipline_score,created_at")
+      .from("trades")
+      .select("rules_broken,executed_at")
       .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(10),
+      .eq("trade_type", "executed")
+      .order("executed_at", { ascending: false })
+      .limit(500),
     supabase
       .from("strategy_blueprints")
       .select("id")
@@ -69,7 +70,10 @@ async function loadGate(supabase: any, userId: string) {
 
   return {
     events: (evRes.data ?? []) as EventInput[],
-    trades: (trRes.data ?? []) as TradeInput[],
+    trades: ((trRes.data ?? []) as Array<{ rules_broken?: string[] | null; executed_at: string }>).map((t) => ({
+      rules_broken: t.rules_broken ?? [],
+      created_at: t.executed_at,
+    })) as TradeInput[],
     has_strategy: (stratRes.data ?? []).length > 0,
     checklist_confirmed: (checklistRes.data ?? []).length > 0,
     cachedState: stateRes.data as

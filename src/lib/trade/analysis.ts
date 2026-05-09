@@ -9,6 +9,7 @@
  * the unified Trade type. Real-world tuning happens as the data grows.
  */
 
+import { replay, scoreTrade } from "@/lib/behaviorEngine";
 import type { Trade, TradeSession } from "./types";
 
 // ---------- Summary ----------
@@ -53,21 +54,23 @@ export function behaviorScore(trades: Trade[]): BehaviorScore {
       description: "Not enough trades to score yet.",
     };
   }
-  // Adherence ratio + emotional ratio
-  const clean = executed.filter((t) => t.rulesBroken.length === 0).length;
-  const controlled = executed.filter((t) => t.executionType === "controlled").length;
-  const adherence = clean / executed.length; // 0–1
-  const control = controlled / executed.length; // 0–1
-  const score = Math.round(adherence * 70 + control * 30);
+  const result = replay(executed.map((t) => ({
+    id: t.id,
+    executed_at: t.createdAt,
+    rulesBroken: t.rulesBroken,
+    actualRisk: t.actualRiskPct,
+    preferredRisk: t.preferredRiskPct,
+  })));
+  const score = result.overall;
 
   let label: BehaviorScore["label"] = "drifting";
   let description = "Some discipline drift — review your last violations.";
   if (score >= 80) {
     label = "controlled";
-    description = "Controlled execution. System trades dominate.";
+    description = "Controlled execution. Clean trades are restoring discipline gradually.";
   } else if (score < 50) {
     label = "inconsistent";
-    description = "High inconsistency — emotion is leading.";
+    description = "High inconsistency — stacked violations are still active in the ledger.";
   }
 
   return { score, label, description };
@@ -83,7 +86,11 @@ export interface RuleAdherence {
 
 export function ruleAdherence(trades: Trade[]): RuleAdherence {
   const executed = trades.filter((t) => t.tradeType === "executed");
-  const clean = executed.filter((t) => t.rulesBroken.length === 0).length;
+  const clean = executed.filter((t) => scoreTrade({
+    rulesBroken: t.rulesBroken,
+    actualRisk: t.actualRiskPct,
+    preferredRisk: t.preferredRiskPct,
+  }).isClean).length;
   return {
     pct: executed.length ? clean / executed.length : 0,
     cleanTrades: clean,
@@ -105,7 +112,12 @@ export function ruleViolations(trades: Trade[]): RuleViolationRow[] {
   const map = new Map<string, RuleViolationRow>();
   for (const t of trades) {
     if (t.tradeType !== "executed") continue;
-    for (const rule of t.rulesBroken) {
+    const scored = scoreTrade({
+      rulesBroken: t.rulesBroken,
+      actualRisk: t.actualRiskPct,
+      preferredRisk: t.preferredRiskPct,
+    });
+    for (const rule of scored.violations) {
       const row = map.get(rule) ?? {
         rule,
         timesBroken: 0,
@@ -114,7 +126,9 @@ export function ruleViolations(trades: Trade[]): RuleViolationRow[] {
         trades: [] as Trade[],
       };
       row.timesBroken += 1;
-      row.totalImpactR += t.resultR ?? 0;
+      if (!row.trades.some((x) => x.id === t.id)) {
+        row.totalImpactR += t.resultR ?? 0;
+      }
       if (!row.lastBrokenAt || t.createdAt > row.lastBrokenAt) {
         row.lastBrokenAt = t.createdAt;
       }
@@ -323,24 +337,22 @@ export function behaviorTrend(
   // Rolling 7-day behavior score
   const ROLL = 7;
   for (let i = 0; i < days.length; i++) {
-    let cleanSum = 0;
-    let controlledSum = 0;
-    let total = 0;
+    const rollingTrades: Trade[] = [];
     for (let j = Math.max(0, i - ROLL + 1); j <= i; j++) {
       const key = days[j].date;
       const ts_trades = buckets.get(key) ?? [];
-      total += ts_trades.length;
-      cleanSum += ts_trades.filter((t) => t.rulesBroken.length === 0).length;
-      controlledSum += ts_trades.filter(
-        (t) => t.executionType === "controlled",
-      ).length;
+      rollingTrades.push(...ts_trades);
     }
-    if (total === 0) {
+    if (rollingTrades.length === 0) {
       days[i].score = null;
     } else {
-      const adherence = cleanSum / total;
-      const control = controlledSum / total;
-      days[i].score = Math.round(adherence * 70 + control * 30);
+      days[i].score = replay(rollingTrades.map((t) => ({
+        id: t.id,
+        executed_at: t.createdAt,
+        rulesBroken: t.rulesBroken,
+        actualRisk: t.actualRiskPct,
+        preferredRisk: t.preferredRiskPct,
+      }))).overall;
     }
   }
 

@@ -22,6 +22,7 @@ import {
 import { getRate } from "@/lib/fxService";
 import {
   replay as replayBehavior,
+  scoreTrade,
   type ReplayTradeInput,
   type ReplayContribution,
   type BehaviorState,
@@ -66,6 +67,7 @@ export type SsotTrade = {
   missed_potential_r: number | null;
   rules_broken: string[];
   notes: string | null;
+  screenshot_url: string | null;
   /** Immutable FX snapshot — frozen at trade close. */
   monetary_pnl_base: number | null;
   monetary_pnl_converted_snapshot: number | null;
@@ -427,7 +429,7 @@ async function loadAllTrades(userId: string): Promise<SsotTrade[]> {
   const { data, error } = await supabase
     .from("trades")
     .select(
-      "id,asset,market,direction,entry_price,exit_price,stop_loss,take_profit,rr,risk_r,pnl,result,session,executed_at,closed_at,trade_type,missed_reason,missed_potential_r,rules_broken,notes,monetary_pnl_base,monetary_pnl_converted_snapshot,exchange_rate_at_close,display_currency_at_close,actual_risk_pct,preferred_risk_pct",
+      "id,asset,market,direction,entry_price,exit_price,stop_loss,take_profit,rr,risk_r,pnl,result,session,executed_at,closed_at,trade_type,missed_reason,missed_potential_r,rules_broken,notes,screenshot_url,monetary_pnl_base,monetary_pnl_converted_snapshot,exchange_rate_at_close,display_currency_at_close,actual_risk_pct,preferred_risk_pct",
     )
     .eq("user_id", userId)
     .order("executed_at", { ascending: false })
@@ -454,6 +456,7 @@ async function loadAllTrades(userId: string): Promise<SsotTrade[]> {
     missed_potential_r: (r.missed_potential_r as number | null) ?? null,
     rules_broken: Array.isArray(r.rules_broken) ? (r.rules_broken as string[]) : [],
     notes: (r.notes as string | null) ?? null,
+    screenshot_url: (r.screenshot_url as string | null) ?? null,
     monetary_pnl_base: (r.monetary_pnl_base as number | null) ?? null,
     monetary_pnl_converted_snapshot: (r.monetary_pnl_converted_snapshot as number | null) ?? null,
     exchange_rate_at_close: (r.exchange_rate_at_close as number | null) ?? null,
@@ -691,7 +694,11 @@ export async function loadSsot(): Promise<Ssot> {
   // every (trade, rule) row, keeping aggregate and per-rule drilldowns identical.
   const derivedViolations: SsotViolation[] = [];
   for (const t of executed) {
-    const broken = t.rules_broken ?? [];
+    const broken = scoreTrade({
+      rulesBroken: t.rules_broken ?? [],
+      actualRisk: t.actual_risk_pct,
+      preferredRisk: t.preferred_risk_pct ?? account.risk_per_trade,
+    }).violations;
     if (broken.length === 0) continue;
     const tradeR = typeof t.rr === "number" ? t.rr : 0;
     for (const type of broken) {

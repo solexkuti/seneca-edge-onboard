@@ -41,7 +41,7 @@ import {
   metricTextClass,
 } from "@/lib/metricColor";
 import SsotAlerts from "@/components/feature/SsotAlerts";
-import { BEHAVIOR_STATE_COPY } from "@/lib/behaviorEngine";
+import { BEHAVIOR_STATE_COPY, scoreTrade } from "@/lib/behaviorEngine";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -740,7 +740,11 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
               const isOpen = openId === t.id;
               const isMissed = t.trade_type === "missed";
               const r = typeof t.rr === "number" ? t.rr : null;
-              const dispScore = isMissed ? null : clean ? 100 : Math.max(0, 100 - tradeQualityPenalty(t.rules_broken));
+              const dispScore = isMissed ? null : scoreTrade({
+                rulesBroken: t.rules_broken,
+                actualRisk: t.actual_risk_pct,
+                preferredRisk: t.preferred_risk_pct ?? ssot.account.risk_per_trade,
+              }).score;
               return (
                 <motion.li
                   key={t.id}
@@ -900,34 +904,6 @@ function SummaryCell({
       </p>
     </div>
   );
-}
-
-// Per-trade execution quality penalties (NOT global discipline).
-// Strict mode: severe violations carry punitive weight so a single SL
-// abandonment or revenge entry CANNOT render anywhere near "green".
-const TRADE_QUALITY_PENALTIES: Array<{ match: RegExp; weight: number; severe?: boolean }> = [
-  { match: /ignored?[_\s-]?sl|no[_\s-]?sl|removed[_\s-]?sl|abandon/i, weight: 40, severe: true },
-  { match: /revenge/i, weight: 35, severe: true },
-  { match: /risk[_\s-]?override|broke[_\s-]?risk[_\s-]?rule|exceed.*risk/i, weight: 30, severe: true },
-  { match: /moved[_\s-]?sl|widened[_\s-]?sl/i, weight: 25, severe: true },
-  { match: /oversiz|over[_\s-]?size|over[_\s-]?lever|doubled/i, weight: 25, severe: true },
-  { match: /no[_\s-]?setup|setup[_\s-]?missing|invalid[_\s-]?setup|without[_\s-]?confirmation/i, weight: 20 },
-  { match: /emotional|fomo|tilt|impulse|chase/i, weight: 20 },
-  { match: /early[_\s-]?entry|late[_\s-]?entry/i, weight: 12 },
-  { match: /hesitat|distract/i, weight: 10 },
-];
-
-function tradeQualityPenalty(rulesBroken: string[]): number {
-  let total = 0;
-  let severeCount = 0;
-  for (const r of rulesBroken) {
-    const hit = TRADE_QUALITY_PENALTIES.find((p) => p.match.test(r));
-    total += hit ? hit.weight : 12;
-    if (hit?.severe) severeCount++;
-  }
-  // Stacked severe violations force score below 40.
-  if (severeCount >= 2) total = Math.max(total, 65);
-  return total;
 }
 
 function tradeQualityLabel(value: number): string {
@@ -1096,7 +1072,16 @@ function BehaviorBreakdownCard({ ssot }: { ssot: Ssot }) {
   const behaviorScore = ssot.behavior.discipline_score;
   const adherence = Math.round((ssot.behavior.rule_adherence ?? 0) * 100);
   const totalViolations = filtered.length;
-  const totalImpact = filtered.reduce((a, v) => a + (v.impact_r ?? 0), 0);
+  const totalImpact = useMemo(() => {
+    const seen = new Set<string>();
+    let total = 0;
+    for (const v of filtered) {
+      if (seen.has(v.trade_id)) continue;
+      seen.add(v.trade_id);
+      total += v.impact_r ?? 0;
+    }
+    return total;
+  }, [filtered]);
 
   const has = ssot.behavior.total_trades > 0;
   const behaviorMessage = !has

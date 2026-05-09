@@ -1,13 +1,10 @@
 // SenecaEdge — server-only discipline helpers.
 //
-// SINGLE FORMULA, identical to src/lib/disciplineScore.ts:
-//   start 100, +10 clean trade, -10 per rule break, clamp [0, 100].
-//
-// `events` are no longer used in the score formula; the parameter is kept
-// for back-compat with older call sites.
+// Mirrors src/lib/behaviorEngine.ts exactly:
+//   start 100, +5 clean trade, -10 per violation, clamp [0, 100].
 
 export const STARTING_SCORE = 100;
-export const CLEAN_TRADE_DELTA = +10;
+export const CLEAN_TRADE_DELTA = +5;
 export const VIOLATION_DELTA = -10;
 export const SCORE_MIN = 0;
 export const SCORE_MAX = 100;
@@ -41,7 +38,7 @@ export function stateForScore(score: number): DisciplineStateName {
 }
 
 function clamp(n: number): number {
-  return Math.max(SCORE_MIN, Math.min(SCORE_MAX, n));
+  return Math.max(SCORE_MIN, Math.min(SCORE_MAX, Math.round(n)));
 }
 
 export type ComputedDiscipline = {
@@ -65,10 +62,12 @@ export type TradeInput = {
   followed_risk?: boolean;
   followed_behavior?: boolean;
   discipline_score?: number;
+  rules_broken?: string[] | null;
   created_at: string;
 };
 
-function violationsOn(t: TradeInput): number {
+function violationCount(t: TradeInput): number {
+  if (Array.isArray(t.rules_broken)) return new Set(t.rules_broken.filter(Boolean)).size;
   let n = 0;
   if (t.followed_entry === false) n++;
   if (t.followed_exit === false) n++;
@@ -81,15 +80,13 @@ export function computeDisciplineFromRows(
   _events: EventInput[],
   trades: TradeInput[],
 ): ComputedDiscipline {
-  // Replay chronologically (oldest first).
   const chrono = [...trades].sort(
-    (a, b) =>
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
   );
 
   let score = STARTING_SCORE;
   for (const t of chrono) {
-    const v = violationsOn(t);
+    const v = violationCount(t);
     score = clamp(score + (v === 0 ? CLEAN_TRADE_DELTA : VIOLATION_DELTA * v));
   }
 

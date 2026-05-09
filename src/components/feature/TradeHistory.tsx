@@ -630,15 +630,14 @@ function TradeCard({
                     <p className="text-[10px] uppercase tracking-[0.18em] text-[#9A9A9A]/80 mb-2">
                       Behavioral breakdown
                     </p>
+                    <p className="mb-2 text-[11px] text-[#9A9A9A]/75">
+                      Trade impact: <span className={(trade.resultR ?? 0) >= 0 ? "text-[#E7C98A]" : "text-rose-300"}>{fmtR(trade.resultR ?? 0)}</span> counted once for this trade.
+                    </p>
                     <ul className="space-y-1.5">
                       {allBroken.map((r) => {
                         const sev = violationSeverity(r);
                         const tone = severityTone(sev);
                         const isRiskPolicy = r === riskId;
-                        const impact =
-                          (trade.resultR ?? 0) < 0
-                            ? (trade.resultR ?? 0) / allBroken.length
-                            : 0;
                         return (
                           <li
                             key={r}
@@ -651,11 +650,6 @@ function TradeCard({
                                 {isRiskPolicy ? "risk policy · " : ""}{sev} severity
                               </p>
                             </div>
-                            {impact !== 0 && (
-                              <span className="text-[11px] font-semibold tabular-nums text-rose-300 shrink-0">
-                                {fmtR(impact)}
-                              </span>
-                            )}
                           </li>
                         );
                       })}
