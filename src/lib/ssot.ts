@@ -694,7 +694,11 @@ export async function loadSsot(): Promise<Ssot> {
   // every (trade, rule) row, keeping aggregate and per-rule drilldowns identical.
   const derivedViolations: SsotViolation[] = [];
   for (const t of executed) {
-    const broken = t.rules_broken ?? [];
+    const broken = scoreTrade({
+      rulesBroken: t.rules_broken ?? [],
+      actualRisk: t.actual_risk_pct,
+      preferredRisk: t.preferred_risk_pct ?? account.risk_per_trade,
+    }).violations;
     if (broken.length === 0) continue;
     const tradeR = typeof t.rr === "number" ? t.rr : 0;
     for (const type of broken) {
