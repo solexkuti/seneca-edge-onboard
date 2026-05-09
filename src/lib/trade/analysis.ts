@@ -337,24 +337,22 @@ export function behaviorTrend(
   // Rolling 7-day behavior score
   const ROLL = 7;
   for (let i = 0; i < days.length; i++) {
-    let cleanSum = 0;
-    let controlledSum = 0;
-    let total = 0;
+    const rollingTrades: Trade[] = [];
     for (let j = Math.max(0, i - ROLL + 1); j <= i; j++) {
       const key = days[j].date;
       const ts_trades = buckets.get(key) ?? [];
-      total += ts_trades.length;
-      cleanSum += ts_trades.filter((t) => t.rulesBroken.length === 0).length;
-      controlledSum += ts_trades.filter(
-        (t) => t.executionType === "controlled",
-      ).length;
+      rollingTrades.push(...ts_trades);
     }
-    if (total === 0) {
+    if (rollingTrades.length === 0) {
       days[i].score = null;
     } else {
-      const adherence = cleanSum / total;
-      const control = controlledSum / total;
-      days[i].score = Math.round(adherence * 70 + control * 30);
+      days[i].score = replay(rollingTrades.map((t) => ({
+        id: t.id,
+        executed_at: t.createdAt,
+        rulesBroken: t.rulesBroken,
+        actualRisk: t.actualRiskPct,
+        preferredRisk: t.preferredRiskPct,
+      }))).overall;
     }
   }
 
