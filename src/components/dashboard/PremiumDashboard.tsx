@@ -41,7 +41,7 @@ import {
   metricTextClass,
 } from "@/lib/metricColor";
 import SsotAlerts from "@/components/feature/SsotAlerts";
-import { BEHAVIOR_STATE_COPY } from "@/lib/behaviorEngine";
+import { BEHAVIOR_STATE_COPY, scoreTrade } from "@/lib/behaviorEngine";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -740,7 +740,11 @@ function TradeHistoryPanel({ ssot }: { ssot: Ssot }) {
               const isOpen = openId === t.id;
               const isMissed = t.trade_type === "missed";
               const r = typeof t.rr === "number" ? t.rr : null;
-              const dispScore = isMissed ? null : clean ? 100 : Math.max(0, 100 - tradeQualityPenalty(t.rules_broken));
+              const dispScore = isMissed ? null : scoreTrade({
+                rulesBroken: t.rules_broken,
+                actualRisk: t.actual_risk_pct,
+                preferredRisk: t.preferred_risk_pct ?? ssot.account.risk_per_trade,
+              }).score;
               return (
                 <motion.li
                   key={t.id}
