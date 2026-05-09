@@ -112,7 +112,12 @@ export function ruleViolations(trades: Trade[]): RuleViolationRow[] {
   const map = new Map<string, RuleViolationRow>();
   for (const t of trades) {
     if (t.tradeType !== "executed") continue;
-    for (const rule of t.rulesBroken) {
+    const scored = scoreTrade({
+      rulesBroken: t.rulesBroken,
+      actualRisk: t.actualRiskPct,
+      preferredRisk: t.preferredRiskPct,
+    });
+    for (const rule of scored.violations) {
       const row = map.get(rule) ?? {
         rule,
         timesBroken: 0,
@@ -121,7 +126,9 @@ export function ruleViolations(trades: Trade[]): RuleViolationRow[] {
         trades: [] as Trade[],
       };
       row.timesBroken += 1;
-      row.totalImpactR += t.resultR ?? 0;
+      if (!row.trades.some((x) => x.id === t.id)) {
+        row.totalImpactR += t.resultR ?? 0;
+      }
       if (!row.lastBrokenAt || t.createdAt > row.lastBrokenAt) {
         row.lastBrokenAt = t.createdAt;
       }
