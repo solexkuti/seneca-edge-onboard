@@ -327,21 +327,19 @@ export async function logTrade(input: LogTradeInput): Promise<LogTradeResult> {
     .single();
   if (insErr) throw insErr;
 
-  // Recompute overall average across ALL entries for this user.
-  const all = await fetchAllScoreAfters(uid);
-  const avg = all.length > 0
-    ? clampScore(all.reduce((s, n) => s + n, 0) / all.length)
-    : c.perTradeScore;
+  // Recompute deterministic behavior ledger across ALL entries for this user.
+  const ledgerRows = await fetchAllLedgerRows(uid);
+  const scoreAfter = ledgerRows.length > 0 ? replayJournalLedger(ledgerRows) : c.perTradeScore;
 
   await supabase
     .from("profiles")
-    .update({ discipline_score: avg })
+    .update({ discipline_score: scoreAfter })
     .eq("id", uid);
 
   return {
     entry: inserted as unknown as JournalEntry,
     scoreBefore: prevScore,
-    scoreAfter: avg,
+    scoreAfter,
     perTradeScore: c.perTradeScore,
     delta: c.scoreDelta,
     classification: c.classification,
