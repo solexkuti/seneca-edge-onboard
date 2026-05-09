@@ -14,9 +14,11 @@ import {
   TrendingDown,
   Check,
   Pencil,
+  ImageOff,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { RuleViolationRow, Trade } from "@/lib/trade";
+import { getScreenshotUrl } from "@/lib/behavioralJournal";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -275,13 +277,37 @@ function TradeAnnotationCard({
   const Icon = trade.direction === "buy" ? TrendingUp : TrendingDown;
   const dirty = value.trim() !== saved.trim();
   const hasNote = (saved ?? "").trim().length > 0;
+  const [thumb, setThumb] = useState<string | null>(null);
 
   useEffect(() => {
     if (editing) taRef.current?.focus();
   }, [editing]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!trade.screenshotUrl) {
+      setThumb(null);
+      return;
+    }
+    getScreenshotUrl(trade.screenshotUrl).then((url) => {
+      if (!cancelled) setThumb(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [trade.screenshotUrl]);
+
   return (
     <div className="rounded-xl bg-[#0B0B0D]/60 ring-1 ring-white/[0.06] p-3.5">
+      <div className="mb-3 overflow-hidden rounded-lg bg-[#0B0B0D] ring-1 ring-white/[0.08]">
+        {thumb ? (
+          <img src={thumb} alt="Trade evidence" loading="lazy" className="max-h-[220px] w-full object-contain" />
+        ) : (
+          <div className="flex h-24 items-center justify-center text-[#9A9A9A]/55">
+            <ImageOff className="h-4 w-4" />
+          </div>
+        )}
+      </div>
       {/* Trade header line */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
