@@ -1,85 +1,47 @@
-// SenecaEdge Behavior Engine — Single Source of Truth for ALL scoring.
-// =====================================================================
+// SenecaEdge Behavior Engine — deterministic SSOT for ALL behavior scoring.
+// ========================================================================
 //
-// One module. One formula. No UI-side math. Every trade score, behavior
-// score, state transition, color tier, streak, risk classification and
-// pressure label MUST come from here. Any component (dashboard, journal,
-// mentor, alerts) that needs a number imports from this file.
+// CORE MODEL
+//   Start overall score: 100
+//   Violation penalty:  -10 for every violation attached to a trade
+//   Clean recovery:     +5 for every clean trade
+//   Clamp:              0..100
 //
-// MODEL SUMMARY
-// -------------
-//   • Trade Score (per execution, instant):
-//       100 - stackedPenalties(rulesBroken + riskViolation?)
-//       Stacking: primary 100%, secondary 50%, third 25%, fourth+ 10%.
-//       Clamp 0..100.
-//
-//   • Behavior Score (overall, gradual EMA):
-//       overall = prev * 0.9 + tradeScore * 0.1
-//       Start 100. Clamp 0..100. Round on display only.
-//
-//   • Risk policy violation (auto-injected when actualRisk > preferredRisk):
-//       ratio = actualRisk / preferredRisk
-//       1.10–1.25  → minor_risk      (−5)
-//       1.25–1.50  → oversized       (−10)
-//       1.50–2.00  → high_risk       (−18)
-//       ≥ 2.00     → revenge_risk    (−25)
-//
-//   • Per-trade color tier (from trade score, NOT overall):
-//       95–100 green | 80–94 yellow | 60–79 orange | <60 red
-//
-//   • Behavior state (from overall score):
-//       90–100 controlled | 75–89 drifting | 60–74 unstable
-//       40–59 impulsive   | 0–39 collapsed
-//
-//   • Clean streak: increments ONLY when penalties == 0 (no risk override).
-//     Any violation (rule or risk) resets to 0.
-
-// ── Penalty weights (raw, before stacking reduction) ───────────────────
+// No averaging, no EMA, no normalization, no severity weighting, no AI
+// estimation. Dashboard, history, replay, mentor and alerts must consume this
+// module (or the SSOT object built from it) for behavior values.
 
 export type ViolationId = string;
 
-const PENALTY_WEIGHTS: Array<{ match: RegExp; id: string; weight: number }> = [
-  { match: /ignored?[_\s-]?sl|no[_\s-]?sl|abandon/i,             id: "ignored_sl",     weight: 40 },
-  { match: /revenge(?!_risk)/i,                                   id: "revenge_trade",  weight: 35 },
-  { match: /risk[_\s-]?override|broke[_\s-]?risk[_\s-]?rule/i,    id: "risk_override",  weight: 30 },
-  { match: /oversiz|over[_\s-]?lever|doubled/i,                   id: "oversized",      weight: 25 },
-  { match: /moved?[_\s-]?sl/i,                                    id: "moved_sl",       weight: 25 },
-  { match: /no[_\s-]?setup|invalid[_\s-]?setup/i,                 id: "no_setup",       weight: 20 },
-  { match: /fomo/i,                                               id: "fomo",           weight: 20 },
-  { match: /emotional|tilt/i,                                     id: "emotional",      weight: 15 },
-  { match: /hesitat/i,                                            id: "hesitation",     weight: 10 },
-  { match: /early[_\s-]?entry/i,                                  id: "early_entry",    weight: 10 },
-  { match: /late[_\s-]?entry/i,                                   id: "late_entry",     weight: 10 },
-];
+export const STARTING_OVERALL = 100;
+export const MIN_OVERALL = 0;
+export const MAX_OVERALL = 100;
+export const VIOLATION_PENALTY = 10;
+export const CLEAN_TRADE_RECOVERY = 5;
 
-// Risk-policy synthetic violations (injected by the engine, never user-tagged).
-export const RISK_VIOLATION_IDS = {
-  minor:    "minor_risk",
-  oversize: "oversized_risk",
-  high:     "high_risk",
-  revenge:  "revenge_risk",
-} as const;
-
-const RISK_VIOLATION_WEIGHT: Record<string, number> = {
-  [RISK_VIOLATION_IDS.minor]:    5,
-  [RISK_VIOLATION_IDS.oversize]: 10,
-  [RISK_VIOLATION_IDS.high]:     18,
-  [RISK_VIOLATION_IDS.revenge]:  25,
+export const FIXED_PENALTY_BY_VIOLATION: Record<string, number> = {
+  no_setup: VIOLATION_PENALTY,
+  fomo: VIOLATION_PENALTY,
+  revenge_risk: VIOLATION_PENALTY,
+  ignored_sl: VIOLATION_PENALTY,
+  oversized: VIOLATION_PENALTY,
+  emotional_entry: VIOLATION_PENALTY,
 };
 
-// Stacking multipliers — stricter than before so multi-violation trades
-// (e.g. revenge_risk + no_setup + oversized) compound visibly instead of
-// being smoothed away. First three violations land at near-full weight.
-const STACK_MULTIPLIERS = [1, 0.75, 0.5, 0.3, 0.2] as const;
-const FALLBACK_PENALTY = 10;
+// Risk-policy synthetic violations. All carry the same fixed -10 penalty.
+export const RISK_VIOLATION_IDS = {
+  minor: "minor_risk",
+  oversize: "oversized_risk",
+  high: "high_risk",
+  revenge: "revenge_risk",
+} as const;
 
-// ── Pure helpers ───────────────────────────────────────────────────────
+function clamp(n: number): number {
+  return Math.max(MIN_OVERALL, Math.min(MAX_OVERALL, Math.round(n)));
+}
 
 export function rawPenaltyFor(rule: string): number {
-  if (RISK_VIOLATION_WEIGHT[rule] != null) return RISK_VIOLATION_WEIGHT[rule];
-  const r = rule.toLowerCase();
-  for (const p of PENALTY_WEIGHTS) if (p.match.test(r)) return p.weight;
-  return FALLBACK_PENALTY;
+  return FIXED_PENALTY_BY_VIOLATION[rule] ?? VIOLATION_PENALTY;
 }
 
 /** Risk policy classifier — returns the violation id (or null when within policy). */
@@ -95,68 +57,59 @@ export function classifyRiskRatio(actual: number | null, preferred: number | nul
   return RISK_VIOLATION_IDS.revenge;
 }
 
+function uniqueViolations(input: ScoredTradeInput): string[] {
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const raw of input.rulesBroken ?? []) {
+    const id = String(raw ?? "").trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  const riskId = classifyRiskRatio(input.actualRisk ?? null, input.preferredRisk ?? null);
+  if (riskId && !seen.has(riskId)) ids.unshift(riskId);
+  return ids;
+}
+
 export type ScoredTradeInput = {
-  /** All rule violation ids on this trade (already includes any synthetic risk id, OR pass actual+preferred and we compute it). */
+  /** Rule violation ids on this trade. Pass actual+preferred to auto-append risk-policy violation. */
   rulesBroken: string[];
-  /** Optional — if both provided, engine auto-appends a risk violation id. */
   actualRisk?: number | null;
   preferredRisk?: number | null;
 };
 
 export type TradeScoreResult = {
-  /** Final per-trade score 0..100 (rounded). */
+  /** Per-trade score: 100 - (10 × violations), clamped 0..100. */
   score: number;
-  /** All violation ids actually counted (rules + auto-appended risk id). */
+  /** All violation ids actually counted. */
   violations: string[];
-  /** Per-violation breakdown after stacking reduction, sorted by severity desc. */
+  /** Per-violation breakdown. Every applied penalty is exactly 10. */
   breakdown: Array<{ id: string; raw: number; applied: number }>;
-  /** True when score == 100 AND zero violations. */
+  /** True when there are zero counted violations. */
   isClean: boolean;
-  /** Per-trade color tier — derived only from this trade. */
   tier: "controlled" | "drift" | "unstable" | "impulsive";
   tierColor: "green" | "yellow" | "orange" | "red";
-  /** Auto-injected risk-policy id, when applicable. */
   riskViolationId: string | null;
 };
 
 export function scoreTrade(input: ScoredTradeInput): TradeScoreResult {
-  const seen = new Set<string>();
-  const ids: string[] = [];
-  for (const r of input.rulesBroken ?? []) {
-    if (!r) continue;
-    const k = String(r);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    ids.push(k);
-  }
-  const riskId = classifyRiskRatio(input.actualRisk ?? null, input.preferredRisk ?? null);
-  if (riskId && !seen.has(riskId)) {
-    ids.push(riskId);
-    seen.add(riskId);
-  }
-
-  const ranked = ids
-    .map((id) => ({ id, raw: rawPenaltyFor(id) }))
-    .sort((a, b) => b.raw - a.raw);
-
-  let total = 0;
-  const breakdown = ranked.map((p, i) => {
-    const mult = STACK_MULTIPLIERS[Math.min(i, STACK_MULTIPLIERS.length - 1)];
-    const applied = Math.round(p.raw * mult);
-    total += applied;
-    return { id: p.id, raw: p.raw, applied };
-  });
-
-  const score = Math.max(0, Math.min(100, 100 - total));
-  const isClean = ids.length === 0 && score === 100;
+  const violations = uniqueViolations(input);
+  const riskViolationId = classifyRiskRatio(input.actualRisk ?? null, input.preferredRisk ?? null);
+  const breakdown = violations.map((id) => ({
+    id,
+    raw: rawPenaltyFor(id),
+    applied: VIOLATION_PENALTY,
+  }));
+  const score = clamp(STARTING_OVERALL - breakdown.length * VIOLATION_PENALTY);
+  const isClean = violations.length === 0;
 
   return {
     score,
-    violations: ids,
+    violations,
     breakdown,
     isClean,
     ...tierFromTradeScore(score),
-    riskViolationId: riskId,
+    riskViolationId,
   };
 }
 
@@ -165,26 +118,17 @@ export function tierFromTradeScore(score: number): {
   tierColor: TradeScoreResult["tierColor"];
 } {
   if (score >= 95) return { tier: "controlled", tierColor: "green" };
-  if (score >= 80) return { tier: "drift",      tierColor: "yellow" };
-  if (score >= 60) return { tier: "unstable",   tierColor: "orange" };
-  return            { tier: "impulsive",  tierColor: "red"    };
+  if (score >= 80) return { tier: "drift", tierColor: "yellow" };
+  if (score >= 60) return { tier: "unstable", tierColor: "orange" };
+  return { tier: "impulsive", tierColor: "red" };
 }
 
-// ── Overall EMA + behavior state ───────────────────────────────────────
-
-export const STARTING_OVERALL = 100;
-// EMA weighting — recent behavior must move the needle. Previously the new
-// trade was 10% which over-protected the score; bumped so a destructive
-// trade actually shows up in the overall number.
-export const EMA_PREV = 0.78;
-export const EMA_NEW = 0.22;
-
 export type BehaviorState =
-  | "controlled" //  90–100
-  | "drifting"   //  75–89
-  | "unstable"   //  60–74
-  | "impulsive"  //  40–59
-  | "collapsed"; //  0–39
+  | "controlled" // 90–100
+  | "drifting"   // 75–89
+  | "unstable"   // 60–74
+  | "impulsive"  // 40–59
+  | "collapsed"; // 0–39
 
 export function stateFromOverall(overall: number): BehaviorState {
   if (overall >= 90) return "controlled";
@@ -194,33 +138,11 @@ export function stateFromOverall(overall: number): BehaviorState {
   return "collapsed";
 }
 
+/** Back-compat helper: direct arithmetic, not EMA. */
 export function nextOverall(prev: number, tradeScore: number): number {
-  const next = prev * EMA_PREV + tradeScore * EMA_NEW;
-  return Math.max(0, Math.min(100, next));
+  const penalty = Math.max(0, STARTING_OVERALL - clamp(tradeScore));
+  return clamp(penalty === 0 ? prev + CLEAN_TRADE_RECOVERY : prev - penalty);
 }
-
-/**
- * Adherence ceiling — once we have a meaningful sample (>=3 trades), the
- * overall score cannot exceed a ceiling determined by clean/total ratio.
- * This guarantees a 33% adherence trader cannot read "82 / Drifting".
- *
- *   adherence 1.00 → ceiling 100
- *   adherence 0.66 → ceiling  82
- *   adherence 0.50 → ceiling  72
- *   adherence 0.33 → ceiling  62 → cap further: see below
- *   adherence 0.00 → ceiling  35
- *
- * We then floor the ceiling by recent destructive trades: if 2 of the last 3
- * were not clean, the ceiling is additionally capped at 70.
- */
-export function adherenceCeiling(adherence: number, sample: number): number {
-  if (sample < 3) return 100;
-  const a = Math.max(0, Math.min(1, adherence));
-  // Linear from 35 (0% adherence) to 100 (100% adherence).
-  return Math.round(35 + 65 * a);
-}
-
-// ── Replay across many trades ──────────────────────────────────────────
 
 export type ReplayTradeInput = {
   id: string;
@@ -236,7 +158,10 @@ export type ReplayContribution = {
   tradeScore: number;
   overallBefore: number;
   overallAfter: number;
+  /** Actual score movement after clamping. */
   delta: number;
+  /** Raw ledger movement before clamping: +5 clean, -10 per violation. */
+  rawDelta: number;
   violations: string[];
   isClean: boolean;
   cleanStreakAfter: number;
@@ -245,19 +170,15 @@ export type ReplayContribution = {
 };
 
 export type ReplayResult = {
-  /** Final overall (rounded). */
   overall: number;
-  /** Final overall (raw float — for chained EMA). */
   overallRaw: number;
   state: BehaviorState;
   totalTrades: number;
   cleanTrades: number;
   violationCount: number;
-  /** clean / total — 1 when total = 0. */
   ruleAdherence: number;
   cleanStreak: number;
   longestStreak: number;
-  /** Newest-first, capped 50. */
   contributions: ReplayContribution[];
 };
 
@@ -266,7 +187,7 @@ export function replay(trades: ReplayTradeInput[]): ReplayResult {
     (a, b) => new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime(),
   );
 
-  let overallRaw = STARTING_OVERALL;
+  let overall = STARTING_OVERALL;
   let cleanCount = 0;
   let violationCount = 0;
   let streak = 0;
@@ -274,64 +195,51 @@ export function replay(trades: ReplayTradeInput[]): ReplayResult {
   const contribs: ReplayContribution[] = [];
 
   for (const t of chrono) {
-    const before = overallRaw;
+    const before = overall;
     const result = scoreTrade({
       rulesBroken: t.rulesBroken,
       actualRisk: t.actualRisk,
       preferredRisk: t.preferredRisk,
     });
-    overallRaw = nextOverall(before, result.score);
+
+    const rawDelta = result.isClean
+      ? CLEAN_TRADE_RECOVERY
+      : -result.violations.length * VIOLATION_PENALTY;
+    overall = clamp(before + rawDelta);
 
     if (result.isClean) {
       cleanCount += 1;
       streak += 1;
-      if (streak > longest) longest = streak;
+      longest = Math.max(longest, streak);
     } else {
       violationCount += result.violations.length;
       streak = 0;
     }
 
+    const delta = overall - before;
     contribs.push({
       id: t.id,
       timestamp: t.executed_at,
       tradeScore: result.score,
-      overallBefore: Math.round(before),
-      overallAfter: Math.round(overallRaw),
-      delta: Math.round(overallRaw) - Math.round(before),
+      overallBefore: before,
+      overallAfter: overall,
+      delta,
+      rawDelta,
       violations: result.violations,
       isClean: result.isClean,
       cleanStreakAfter: streak,
-      state: stateFromOverall(overallRaw),
+      state: stateFromOverall(overall),
       reason: result.isClean
-        ? `Clean execution — overall ${Math.round(before)} → ${Math.round(overallRaw)}.`
-        : `${result.violations.length} violation${result.violations.length === 1 ? "" : "s"} (${result.violations.join(", ")}) — trade ${result.score}/100, overall ${Math.round(before)} → ${Math.round(overallRaw)}.`,
+        ? `Clean execution (+${CLEAN_TRADE_RECOVERY}) — overall ${before} → ${overall}.`
+        : `${result.violations.length} violation${result.violations.length === 1 ? "" : "s"} (${result.violations.join(", ")}) × -${VIOLATION_PENALTY} — overall ${before} → ${overall}.`,
     });
   }
 
   const totalTrades = chrono.length;
   const adherence = totalTrades === 0 ? 1 : cleanCount / totalTrades;
-
-  // Apply adherence ceiling so a low clean ratio cannot coexist with a
-  // high overall score. Recent-destructive guard: if 2 of the last 3
-  // trades were not clean, additionally clamp the ceiling at 70.
-  const ceiling = adherenceCeiling(adherence, totalTrades);
-  const recent = contribs.slice(-3);
-  const recentDirty = recent.filter((c) => !c.isClean).length;
-  const recentCap = recentDirty >= 2 && recent.length >= 3 ? 70 : 100;
-  const cappedRaw = Math.min(overallRaw, ceiling, recentCap);
-
-  // Recompute final-state on each contribution so the timeline reflects
-  // the same ceiling-clamped value the dashboard surfaces.
-  for (const c of contribs) {
-    c.overallAfter = Math.min(c.overallAfter, ceiling, recentCap);
-    c.state = stateFromOverall(c.overallAfter);
-    c.delta = c.overallAfter - c.overallBefore;
-  }
-
-  const overall = Math.round(cappedRaw);
   return {
     overall,
-    overallRaw: cappedRaw,
+    overallRaw: overall,
     state: stateFromOverall(overall),
     totalTrades,
     cleanTrades: cleanCount,
@@ -343,8 +251,6 @@ export function replay(trades: ReplayTradeInput[]): ReplayResult {
   };
 }
 
-// ── Display helpers ────────────────────────────────────────────────────
-
 /** Human-friendly transition label. Returns "stable at N" when before==after. */
 export function transitionLabel(before: number, after: number): string {
   const a = Math.round(before);
@@ -354,9 +260,9 @@ export function transitionLabel(before: number, after: number): string {
 }
 
 export const BEHAVIOR_STATE_COPY: Record<BehaviorState, { label: string; tone: "ok" | "drift" | "warn" | "risk" | "collapse" }> = {
-  controlled: { label: "Controlled", tone: "ok"       },
-  drifting:   { label: "Drifting",   tone: "drift"    },
-  unstable:   { label: "Unstable",   tone: "warn"     },
-  impulsive:  { label: "Impulsive",  tone: "risk"     },
-  collapsed:  { label: "Collapsed",  tone: "collapse" },
+  controlled: { label: "Controlled", tone: "ok" },
+  drifting: { label: "Drifting", tone: "drift" },
+  unstable: { label: "Unstable", tone: "warn" },
+  impulsive: { label: "Impulsive", tone: "risk" },
+  collapsed: { label: "Collapsed", tone: "collapse" },
 };
