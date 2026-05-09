@@ -1072,7 +1072,16 @@ function BehaviorBreakdownCard({ ssot }: { ssot: Ssot }) {
   const behaviorScore = ssot.behavior.discipline_score;
   const adherence = Math.round((ssot.behavior.rule_adherence ?? 0) * 100);
   const totalViolations = filtered.length;
-  const totalImpact = filtered.reduce((a, v) => a + (v.impact_r ?? 0), 0);
+  const totalImpact = useMemo(() => {
+    const seen = new Set<string>();
+    let total = 0;
+    for (const v of filtered) {
+      if (seen.has(v.trade_id)) continue;
+      seen.add(v.trade_id);
+      total += v.impact_r ?? 0;
+    }
+    return total;
+  }, [filtered]);
 
   const has = ssot.behavior.total_trades > 0;
   const behaviorMessage = !has
