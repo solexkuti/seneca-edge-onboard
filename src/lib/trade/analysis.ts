@@ -9,6 +9,7 @@
  * the unified Trade type. Real-world tuning happens as the data grows.
  */
 
+import { replay, scoreTrade } from "@/lib/behaviorEngine";
 import type { Trade, TradeSession } from "./types";
 
 // ---------- Summary ----------
@@ -53,21 +54,23 @@ export function behaviorScore(trades: Trade[]): BehaviorScore {
       description: "Not enough trades to score yet.",
     };
   }
-  // Adherence ratio + emotional ratio
-  const clean = executed.filter((t) => t.rulesBroken.length === 0).length;
-  const controlled = executed.filter((t) => t.executionType === "controlled").length;
-  const adherence = clean / executed.length; // 0–1
-  const control = controlled / executed.length; // 0–1
-  const score = Math.round(adherence * 70 + control * 30);
+  const result = replay(executed.map((t) => ({
+    id: t.id,
+    executed_at: t.createdAt,
+    rulesBroken: t.rulesBroken,
+    actualRisk: t.actualRiskPct,
+    preferredRisk: t.preferredRiskPct,
+  })));
+  const score = result.overall;
 
   let label: BehaviorScore["label"] = "drifting";
   let description = "Some discipline drift — review your last violations.";
   if (score >= 80) {
     label = "controlled";
-    description = "Controlled execution. System trades dominate.";
+    description = "Controlled execution. Clean trades are restoring discipline gradually.";
   } else if (score < 50) {
     label = "inconsistent";
-    description = "High inconsistency — emotion is leading.";
+    description = "High inconsistency — stacked violations are still active in the ledger.";
   }
 
   return { score, label, description };
@@ -83,7 +86,11 @@ export interface RuleAdherence {
 
 export function ruleAdherence(trades: Trade[]): RuleAdherence {
   const executed = trades.filter((t) => t.tradeType === "executed");
-  const clean = executed.filter((t) => t.rulesBroken.length === 0).length;
+  const clean = executed.filter((t) => scoreTrade({
+    rulesBroken: t.rulesBroken,
+    actualRisk: t.actualRiskPct,
+    preferredRisk: t.preferredRiskPct,
+  }).isClean).length;
   return {
     pct: executed.length ? clean / executed.length : 0,
     cleanTrades: clean,
