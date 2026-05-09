@@ -22,6 +22,7 @@ import {
 import { getRate } from "@/lib/fxService";
 import {
   replay as replayBehavior,
+  scoreTrade,
   type ReplayTradeInput,
   type ReplayContribution,
   type BehaviorState,
@@ -66,6 +67,7 @@ export type SsotTrade = {
   missed_potential_r: number | null;
   rules_broken: string[];
   notes: string | null;
+  screenshot_url: string | null;
   /** Immutable FX snapshot — frozen at trade close. */
   monetary_pnl_base: number | null;
   monetary_pnl_converted_snapshot: number | null;
