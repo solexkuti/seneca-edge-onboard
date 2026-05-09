@@ -906,34 +906,6 @@ function SummaryCell({
   );
 }
 
-// Per-trade execution quality penalties (NOT global discipline).
-// Strict mode: severe violations carry punitive weight so a single SL
-// abandonment or revenge entry CANNOT render anywhere near "green".
-const TRADE_QUALITY_PENALTIES: Array<{ match: RegExp; weight: number; severe?: boolean }> = [
-  { match: /ignored?[_\s-]?sl|no[_\s-]?sl|removed[_\s-]?sl|abandon/i, weight: 40, severe: true },
-  { match: /revenge/i, weight: 35, severe: true },
-  { match: /risk[_\s-]?override|broke[_\s-]?risk[_\s-]?rule|exceed.*risk/i, weight: 30, severe: true },
-  { match: /moved[_\s-]?sl|widened[_\s-]?sl/i, weight: 25, severe: true },
-  { match: /oversiz|over[_\s-]?size|over[_\s-]?lever|doubled/i, weight: 25, severe: true },
-  { match: /no[_\s-]?setup|setup[_\s-]?missing|invalid[_\s-]?setup|without[_\s-]?confirmation/i, weight: 20 },
-  { match: /emotional|fomo|tilt|impulse|chase/i, weight: 20 },
-  { match: /early[_\s-]?entry|late[_\s-]?entry/i, weight: 12 },
-  { match: /hesitat|distract/i, weight: 10 },
-];
-
-function tradeQualityPenalty(rulesBroken: string[]): number {
-  let total = 0;
-  let severeCount = 0;
-  for (const r of rulesBroken) {
-    const hit = TRADE_QUALITY_PENALTIES.find((p) => p.match.test(r));
-    total += hit ? hit.weight : 12;
-    if (hit?.severe) severeCount++;
-  }
-  // Stacked severe violations force score below 40.
-  if (severeCount >= 2) total = Math.max(total, 65);
-  return total;
-}
-
 function tradeQualityLabel(value: number): string {
   if (value >= 90) return "Elite";
   if (value >= 70) return "Acceptable";
